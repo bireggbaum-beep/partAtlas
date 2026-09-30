@@ -37,6 +37,13 @@ BEKANNT = [
     ("UltiMaker Cura", SLICER, ("3mf", "stl", "obj"),
      ["cura", "UltiMaker-Cura", "com.ultimaker.cura"], ["*UltiMaker-Cura*.AppImage"],
      [r"UltiMaker Cura*\UltiMaker-Cura.exe"]),
+    # Anycubic Slicer Next baut auf OrcaSlicer auf. Programmnamen und Orte
+    # sind nicht an einer Installation geprüft, deshalb breit gefasst;
+    # wer nicht gefunden wird, trägt sich in den Einstellungen ein.
+    ("Anycubic Slicer", SLICER, ("3mf", "stl", "obj", "step"),
+     ["AnycubicSlicerNext", "anycubicslicernext", "anycubic-slicer-next", "AnycubicSlicer", "anycubicslicer"],
+     ["*Anycubic*Slicer*.AppImage", "*Anycubic*Slicer*.appimage"],
+     [r"AnycubicSlicer*\AnycubicSlicer*.exe", r"Anycubic*\AnycubicSlicer*.exe"]),
     ("FreeCAD", CAD, ("step", "stl", "obj"),
      ["freecad", "FreeCAD", "org.freecad.FreeCAD", "freecad-daily"],
      ["*FreeCAD*.AppImage"], [r"FreeCAD*\bin\freecad.exe"]),

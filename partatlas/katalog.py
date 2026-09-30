@@ -16,6 +16,7 @@ import re
 import time
 
 from . import archiv, dateien, formate, tags
+from .suche import Suchindex
 from .bestand import DATEI, HAT_DATEI, HAT_TAG, IN_SAMMLUNG, MODELL, SAMMLUNG, TAG, WURZEL
 
 
@@ -35,6 +36,7 @@ class Katalog:
     def __init__(self, bestand):
         self.b = bestand
         self.db = bestand.db
+        self.suche = Suchindex(self)
 
     # ------------------------------------------------------------ Wurzeln
 
@@ -195,19 +197,17 @@ class Katalog:
         return teile[0].split("/", 1)[1] if teile else None
 
     def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None):
-        """Kacheln für das Raster, gefiltert. Suche und Tag gehen über flatgraph
-        (Feldindex bzw. Nachbarschaft), der Rest über die Kacheln selbst."""
+        """Kacheln für das Raster, gefiltert. Suche über den Wortindex (suche.py),
+        Tag über die Nachbarschaft in flatgraph, der Rest über die Kacheln selbst."""
         if ansicht == "papierkorb":
             roh = self.db.list_nodes(MODELL, include_deleted=True, readonly=True)
             liste = [self._kurz(k, v, papierkorb=True) for k, v in roh.items()
                      if self.db.get_node(ref(MODELL, k), readonly=True) is None]
             return sorted(liste, key=lambda x: (x["name"] or "").lower())
         kandidaten = self.db.list_nodes(MODELL, readonly=True)
-        if suche:
-            wörter = [w for w in re.split(r"\s+", suche.strip()) if w]
-            for w in wörter:
-                treffer = self.db.find_nodes(MODELL, {"name": w}, readonly=True)
-                kandidaten = {k: v for k, v in kandidaten.items() if k in treffer}
+        punkte = self.suche.suchen(suche) if suche else None
+        if punkte is not None:
+            kandidaten = {k: v for k, v in kandidaten.items() if k in punkte}
         if tag:
             mit_tag = {r.split("/", 1)[1] for r in
                        self.db.get_connected(ref(TAG, tag), direction="in", rel_type=HAT_TAG)}
@@ -237,6 +237,9 @@ class Katalog:
         if ansicht == "neu":
             liste = sorted(liste, key=lambda x: x["angelegt"] or "", reverse=True)[:100]
             return liste
+        if punkte is not None:
+            # Mit Suche zuerst die Relevanz; die Oberfläche sortiert nur um, wenn man es verlangt.
+            return sorted(liste, key=lambda x: (-punkte[x["id"]], (x["name"] or "").lower()))
         return sorted(liste, key=lambda x: (x["name"] or "").lower())
 
     def modell(self, mid):

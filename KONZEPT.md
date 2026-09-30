@@ -238,7 +238,12 @@ Zahlen aus `flatgraphdb/VERTRAG.md` und §8.
    ganze Baugruppe braucht, ist ein Gang durch den Graphen, der die
    Mengen multipliziert; „wo steckt dieses Teil“ sind die eingehenden
    Kanten. In SQLite je eine rekursive Abfrage.
-7. **Live-Oberfläche:** `bei_aenderung` (VERTRAG §2.7) meldet jede
+7. **Suche wie in pDMS** (0.8.0): Wortindex im Arbeitsspeicher, Kopie
+   aus pDMS; nachgeführt über `bei_aenderung` — ein umbenannter Tag,
+   eine umbenannte Baugruppe erreicht jedes Modell daran über die
+   Nachbarschaft. Zwei Anwender derselben Kopie sind der Beleg für den
+   Umzug nach flatgraph (§9).
+8. **Live-Oberfläche:** `bei_aenderung` (VERTRAG §2.7) meldet jede
    Änderung — Druckerstatus, Abbuchung, neues Modell — per SSE in den
    Browser.
 
@@ -320,7 +325,9 @@ Datei.
 Umbenennen, Kopien, fehlende Dateien), Leser für STL/OBJ/3MF (Komponenten,
 Transformationen, Bild, Platten aus `slice_info`) und STEP ohne Geometrie,
 Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
-3MF Katalog, Suche, Tag-/Ordner-/Format-Filter, Favorit, Gedruckt,
+3MF Katalog, Suche wie in pDMS (Teilwörter, alle Wörter, "Wortfolge",
+-wort, Feldfilter tag:/ordner:/baugruppe:/sammlung:/material:/format:/
+designer:/gedruckt:/favorit:, Relevanz nach Feld), Tag-/Ordner-/Format-Filter, Favorit, Gedruckt,
 Umbenennen auf der Platte, Löschen mit Vorschau → Papierkorb →
 Wiederherstellen, „Öffnen in …“ (Slicer, FreeCAD, System; Standard je Format), Live-Oberfläche per SSE,
 virtuelles Raster, Wache gegen fremde Herkunft.
@@ -403,6 +410,9 @@ einigen tausend Dreiecken — echte Modelle sind grösser).
 | Bestand: Datenbank / Vorschau-Cache | 11 MB / 43 MB |
 | `/api/modelle` alle 5 593 Kacheln (2 MB JSON) | 346 ms |
 | Suche „zahnrad“ / Tag-Filter „petg“ | 16 / 54 ms |
+| Wortindex aufbauen (5 593 Modelle, 5 653 Wörter), 0.8.0 | 0,15 s |
+| Suche „halter“ (1 080 Treffer) / „a“ (5 130) / „arm front“ (188), nur Index | 8 / 39 / 3 ms |
+| … dieselben mit Kacheln (`modelle()`) | 51 / 140 / 6 ms |
 | Modell für den Inspektor | 4,4 ms |
 | Browser: erste Kacheln nach dem Laden | 1,4 s; 30 Kacheln im DOM, beim Scrollen gleich viele |
 | Vorschau eines Torus mit 180 000 Dreiecken, ein Kern | 1,3 s |
@@ -421,6 +431,9 @@ Ungeprüft, zu klären vor der genannten Phase:
 | Punkt | vor Phase |
 |---|---|
 | Bambu Studio: steht die volle Konfiguration im G-Code? | 2 |
+| Wortindex nach flatgraph (VERTRAG, 4.1), dann pDMS und partAtlas darauf | — |
+| Gespeicherte Suchen (pDMS hat sie) | — |
+| Anycubic Slicer: Programmnamen und Orte an einer echten Installation | — |
 | Druck bei ausgeschaltetem PC: Nachtrag aus der Moonraker-Historie beim Start; bei Bambu unbekannt | 2 |
 | Render-Zeit mit echten Modellen auf dem Rechner des Anwenders (hier nur erzeugte Formen gemessen) | 1 |
 | flatTSDB: Stand und Ort der Bibliothek | 3 |
