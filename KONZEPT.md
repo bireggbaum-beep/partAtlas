@@ -180,9 +180,12 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
 - **Fortschritt**: je Position „gedruckt“ bzw. „beschafft“ per Klick
   zählen; oben „11 von 16 fertig · noch 140 g · 6 h“. Ab Phase 2 zählt
   die Druckhistorie mit.
-- **Summen über alle Ebenen**: Filament je Material und Farbe,
-  Druckzeit, Einkaufsliste der Kaufteile. Ohne Slicer-Daten wird das
-  Gewicht geschätzt (1,2 mm Hülle + 15 % Füllung) und so benannt.
+- **Summen über alle Ebenen**: Filament je Material mit seinen Farben
+  und dem Anteil einer 1-kg-Rolle („TPU 86 g in Rot und Schwarz, ein
+  Rest“), Druckzeit, Einkaufsliste der Kaufteile. Ohne Slicer-Daten wird
+  das Gewicht geschätzt (1,2 mm Hülle + 15 % Füllung) und so benannt.
+- **Kein stilles PLA**: ohne Angabe heisst es „Material offen“; Material
+  und Farbe je Druckteil per Klick, oder für alle offenen auf einmal.
 - **Weniger tippen**: aus einem Ordner, einer Sammlung oder der Auswahl
   anlegen; Mengen aus Dateinamen (`Arm_x4`, `4x_Arm`); Ordner, die wie
   Baugruppen aussehen, werden vorgeschlagen. Kacheln auf eine Baugruppe

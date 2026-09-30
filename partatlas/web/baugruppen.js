@@ -16,6 +16,25 @@ const dauer = (s) => {
 };
 const symbolFuer = (k) => ({ Schrauben: "🔩", Muttern: "⬡", Scheiben: "◯", Gewindeeinsätze: "🔧", Magnete: "🧲",
                             Lager: "⚙", Elektronik: "🔌", "Profil & Linear": "📏" }[k] || "📦");
+// Übliche Filamentfarben — ein Klick statt Farbwähler.
+const FARBEN = [["Schwarz", "#1a1a1a"], ["Weiss", "#f2f2f2"], ["Grau", "#8a8a8a"], ["Silber", "#c0c0c0"],
+                ["Rot", "#c0392b"], ["Orange", "#e67e22"], ["Gelb", "#f1c40f"], ["Grün", "#27ae60"],
+                ["Blau", "#2e86c1"], ["Violett", "#8e44ad"], ["Braun", "#7b4a2a"], ["Natur", "#e8dcc0"]];
+const farbName = (hex) => (FARBEN.find(([, h]) => h.toLowerCase() === (hex || "").toLowerCase()) || [hex || "ohne Farbe"])[0];
+const tupfer = (farbe, titel = "") => farbe
+  ? `<span class="farbpunkt" style="background:${esc(farbe)}" title="${esc(titel || farbName(farbe))}"></span>`
+  : `<span class="farbpunkt offen" title="Farbe offen"></span>`;
+
+// „Brauche ich eine halbe Rolle?“ — in Worten, Rollen zu 1 kg.
+function rollenText(r) {
+  if (r <= 0) return "";
+  if (r < 0.15) return "ein Rest";
+  if (r < 0.35) return "≈ ¼ Rolle";
+  if (r < 0.65) return "≈ ½ Rolle";
+  if (r < 0.85) return "≈ ¾ Rolle";
+  if (r < 1.2) return "≈ 1 Rolle";
+  return `≈ ${zahl(Math.round(r * 2) / 2, 1)} Rollen`;
+}
 const prozent = (f) => (f.bedarf ? Math.round((100 * f.erledigt) / f.bedarf) : 0);
 const balken = (f) => `<div class="balken ${f.bedarf && f.erledigt >= f.bedarf ? "fertig" : ""}"><i style="width:${prozent(f)}%"></i></div>`;
 
@@ -112,6 +131,7 @@ function zeichneBaugruppe(d) {
     <div class="kennzahl"><small>FILAMENT</small><b>${zahl(s.gewicht_g, 0)} g</b><span title="Ohne Slicer-Daten geschätzt: 1,2 mm Hülle und 15 % Füllung">${s.gewicht_geschaetzt ? "teils geschätzt ⓘ" : "aus dem Slicer"}${s.ohne_daten ? ` · ${s.ohne_daten} ohne Daten` : ""}</span></div>
     <div class="kennzahl"><small>DRUCKZEIT</small><b>${dauer(s.zeit_s)}</b><span>${!s.zeit_s ? "keine Slicer-Daten" : s.ohne_zeit ? `${s.ohne_zeit} Teile ohne Slicer-Zeit` : "aus dem Slicer"}</span></div>
   </div>
+  ${filamentKarte(s)}
   <div class="bg-aktionen">
     <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenTeile ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
@@ -159,7 +179,8 @@ function position(p) {
        ${fertig ? '<span style="color:var(--good)">✓</span>' : `<button class="voll" data-bg-voll="${r}" title="alle ${zaehlerText}">alle</button>`}</div>
        <span class="dim">${zaehlerText}</span></div>`;
   const material = p.art === "modell"
-    ? `<div class="material dim">${p.farbe ? `<span class="farbpunkt" style="background:${esc(p.farbe)}"></span>` : ""}${esc(p.material || "")}</div>` : `<div class="material"></div>`;
+    ? `<div class="material"><button class="mat-knopf ${p.material ? "" : "fehlt"}" data-bg-material="${r}" title="Material und Farbe festlegen">
+        ${tupfer(p.farbe)}${p.material ? esc(p.material) : "Material?"}</button></div>` : `<div class="material"></div>`;
   return `<div class="pos ${fertig && p.art !== "baugruppe" ? "erledigt" : ""}">
     <div class="vorschau">${vorschau}</div>
     <div style="min-width:0">${name}<div class="unter">${unterzeile}</div>
@@ -170,13 +191,35 @@ function position(p) {
     <button class="weg" data-bg-weg="${r}" title="aus der Baugruppe nehmen">×</button></div>`;
 }
 
+function filamentKarte(s) {
+  if (!s.materialien.length) return "";
+  const gesamt = s.materialien.reduce((a, m) => a + m.gesamt_g, 0) || 1;
+  const segmente = s.materialien.flatMap((m) => m.farben.map((f) =>
+    `<i style="width:${(100 * f.gesamt_g) / gesamt}%;${f.farbe ? `background:${esc(f.farbe)}` : ""}" class="${f.farbe ? "" : "offen"}"
+        title="${esc(m.material || "Material offen")} ${esc(farbName(f.farbe))}: ${zahl(f.gesamt_g, 0)} g"></i>`)).join("");
+  const zeilen = s.materialien.map((m) => {
+    const offen = m.material === null;
+    const rolle = Math.min(1, m.gesamt_g / 1000);
+    return `<div class="mat-zeile ${offen ? "mat-offen" : ""}">
+      <div class="mat-name">${offen ? "Material offen" : esc(m.material)}</div>
+      <div class="mat-farben">${m.farben.map((f) => `<span class="mat-farbe">${tupfer(f.farbe)}<small>${f.farbe && !farbName(f.farbe).startsWith("#") ? esc(farbName(f.farbe)) + " " : !f.farbe ? "Farbe offen " : ""}${zahl(f.gesamt_g, 0)} g</small></span>`).join("")}</div>
+      <div class="mat-menge"><b>${zahl(m.gesamt_g, 0)} g</b>${m.offen_g < m.gesamt_g ? `<small>noch ${zahl(m.offen_g, 0)} g</small>` : ""}</div>
+      <div class="mat-rolle">${offen
+        ? `<button class="knopf akzent" data-bg-aktion="material-offen">Material festlegen …</button>`
+        : `<span class="spule" title="Anteil einer 1-kg-Rolle"><i style="width:${Math.round(rolle * 100)}%"></i></span><small>${rollenText(m.rollen)}</small>`}</div>
+    </div>`;
+  }).join("");
+  return `<div class="i-karte filament-karte">
+    <div class="i-titel" style="margin-top:8px">FILAMENT NACH MATERIAL${s.gewicht_geschaetzt ? ' <span class="dim" title="Ohne Slicer-Daten: 1,2 mm Hülle und 15 % Füllung">· teils geschätzt ⓘ</span>' : ""}</div>
+    <div class="mischung">${segmente}</div>
+    ${zeilen}
+  </div>`;
+}
+
 function einkaufsliste(s) {
-  if (!s.filament.length && !s.einkauf.length) return "";
-  return `<div class="bg-abschnitt"><h3>EINKAUFSLISTE — ÜBER ALLE EBENEN</h3></div>
+  if (!s.einkauf.length) return "";
+  return `<div class="bg-abschnitt"><h3>EINKAUFSLISTE KAUFTEILE — ÜBER ALLE EBENEN</h3></div>
   <div class="einkauf">
-    <div class="i-karte"><div class="i-titel" style="margin-top:8px">FILAMENT</div>
-      ${s.filament.map((x) => `<div class="zeile"><span>${x.farbe ? `<span class="farbpunkt" style="background:${esc(x.farbe)}"></span>` : ""}${esc(x.material)}${x.farbe ? "" : ' <span class="dim">(Farbe offen)</span>'}</span>
-        <span>${x.offen_g ? `noch ${zahl(x.offen_g, 0)} g` : "✓"} · ${zahl(x.gesamt_g, 0)} g gesamt</span></div>`).join("") || '<div class="zeile"><span class="dim">–</span></div>'}</div>
     <div class="i-karte"><div class="i-titel" style="margin-top:8px">KAUFTEILE</div>
       ${s.einkauf.map((x) => `<div class="zeile"><span>${esc(x.name)}</span><span>${x.offen ? `fehlen <b>${x.offen}</b> von ${x.bedarf}` : "✓ alle " + x.bedarf} ${esc(x.einheit === "Stück" ? "" : x.einheit)}</span></div>`).join("") || '<div class="zeile"><span class="dim">–</span></div>'}</div>
   </div>`;
@@ -296,10 +339,40 @@ async function waehler(art) {
   d.classList.remove("breit");
 }
 
+async function materialWahl(titel, vorher = {}) {
+  const liste = bgDaten?.materialien || ["PLA", "PETG", "ABS", "ASA", "TPU"];
+  const a = await dialog(`<h2>${esc(titel)}</h2>
+    <div class="i-titel">MATERIAL</div>
+    <div class="kategorien">${liste.map((m) => `<button type="button" class="chip ${m === vorher.material ? "aktiv" : ""}" data-mw-mat="${esc(m)}">${esc(m)}</button>`).join("")}</div>
+    <div class="i-titel">FARBE</div>
+    <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === vorher.farbe ? "aktiv" : ""}" data-mw-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
+      <label class="dim" style="display:inline-flex;gap:6px;align-items:center">eigene <input type="color" id="mw-eigen" value="${esc(vorher.farbe || "#888888")}"></label>
+      <button type="button" class="knopf" data-mw-farbe="">keine</button></div>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Übernehmen</button></div>`);
+  return a === "ja" ? { material: mwWahl.material, farbe: mwWahl.farbe } : null;
+}
+const mwWahl = { material: null, farbe: null };
+document.addEventListener("click", (e) => {
+  const m = e.target.closest?.("[data-mw-mat]"), f = e.target.closest?.("[data-mw-farbe]");
+  if (m) { mwWahl.material = m.dataset.mwMat; document.querySelectorAll("[data-mw-mat]").forEach((x) => x.classList.toggle("aktiv", x === m)); }
+  if (f) { mwWahl.farbe = f.dataset.mwFarbe || null; document.querySelectorAll("[data-mw-farbe]").forEach((x) => x.classList.toggle("aktiv", x === f)); }
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "mw-eigen") { mwWahl.farbe = e.target.value; document.querySelectorAll("[data-mw-farbe]").forEach((x) => x.classList.remove("aktiv")); }
+});
+
 async function bgAktion(aktion) {
   const d = bgDaten;
   switch (aktion) {
     case "teile": case "kaufteile": case "unter": return waehler(aktion);
+    case "material-offen": {
+      Object.assign(mwWahl, { material: null, farbe: null });
+      const w = await materialWahl("Material für alle Druckteile ohne Angabe");
+      if (!w) return;
+      if (!w.material) return toast("Bitte ein Material wählen.");
+      await api(`/api/baugruppen/${bid()}/material`, { method: "POST", body: w }).catch((e) => toast(e.message));
+      return ladeBaugruppe();
+    }
     case "warteschlange": {
       const { eingereiht } = await api(`/api/baugruppen/${bid()}/warteschlange`, { method: "POST" });
       return toast(`${eingereiht} fehlende Druckteile in der Warteschlange.`);
@@ -343,6 +416,14 @@ document.addEventListener("click", async (e) => {
   if (w) {
     await api(`/api/baugruppen/${bid()}/positionen?ref=${encodeURIComponent(w.dataset.bgWeg)}`, { method: "DELETE" });
     return ladeBaugruppe();
+  }
+  const mat = t.closest("[data-bg-material]");
+  if (mat) {
+    const p = positionVon(mat.dataset.bgMaterial);
+    Object.assign(mwWahl, { material: p.material || null, farbe: p.farbe || null });
+    const w = await materialWahl(`Material und Farbe: ${p.name}`, p);
+    if (w) return positionAendern(p.ref, { material: w.material || "", farbe: w.farbe || "" });
+    return;
   }
   const mod = t.closest("[data-bg-modell]");
   if (mod) return waehle(mod.dataset.bgModell);

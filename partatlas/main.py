@@ -9,6 +9,7 @@ Ohne Passwort lauscht er nur auf 127.0.0.1 — lieber unbrauchbar als offen
 import asyncio
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -379,6 +380,14 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.put("/api/baugruppen/{bid}/reihenfolge")
     async def positionen_ordnen(bid: str, request: Request):
         B().ordnen(bid, (await request.json()).get("refs", []))
+        return {"ok": True}
+
+    @app.post("/api/baugruppen/{bid}/material")
+    async def baugruppe_material(bid: str, request: Request):
+        d = await request.json()
+        if d.get("farbe") and not re.fullmatch(r"#[0-9a-fA-F]{6}", d["farbe"]):
+            raise KatalogFehler("Farbe als #RRGGBB angeben.")
+        B().material_fuer_offene(bid, (d.get("material") or "").strip()[:20] or "PLA", d.get("farbe"))
         return {"ok": True}
 
     @app.post("/api/baugruppen/{bid}/warteschlange")

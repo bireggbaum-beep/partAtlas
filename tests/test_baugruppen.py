@@ -72,8 +72,21 @@ if __name__ == "__main__":
         check("Gewicht: Slicer-Wert, sonst Hülle + 15 % Füllung, als geschätzt markiert",
               abs(s["gewicht_g"] - (28.69 + 7.56 + 15.75)) < 0.2 and s["gewicht_geschaetzt"])
         fil = {(f["material"], f["farbe"]): f["gesamt_g"] for f in s["filament"]}
-        check("Filament je Material und Farbe (PETG schwarz aus der 3MF, sonst PLA)",
-              abs(fil[("PETG", "#000000")] - 15.75) < 0.1 and abs(fil[("PLA", None)] - 36.25) < 0.2)
+        check("Filament je Material und Farbe: PETG schwarz aus der 3MF, der Rest „Material offen“ statt still PLA",
+              abs(fil[("PETG", "#000000")] - 15.75) < 0.1 and abs(fil[(None, None)] - 36.25) < 0.2)
+        mat = {m["material"]: m for m in s["materialien"]}
+        check("Je Material zusammengefasst, mit Farben und Anteil einer 1-kg-Rolle; „offen“ steht zuletzt",
+              mat["PETG"]["farben"] == [{"farbe": "#000000", "gesamt_g": 15.8, "offen_g": 15.8}]
+              and mat["PETG"]["rollen"] == 0.02 and s["materialien"][-1]["material"] is None and s["material_offen"] == 1)
+        r = c.post(f"/api/baugruppen/{bid}/material", json={"material": "tpu", "farbe": "#c0392b"})
+        s = c.get(f"/api/baugruppen/{bid}").json()["summen"]
+        mat = {m["material"]: m for m in s["materialien"]}
+        check("„Material festlegen“ für alle Offenen: TPU rot, das PETG bleibt PETG",
+              r.status_code == 200 and "TPU" in mat and "PETG" in mat and None not in mat
+              and mat["TPU"]["farben"][0]["farbe"] == "#c0392b")
+        check("Farbe nur als #RRGGBB (landet als CSS in der Oberfläche)",
+              c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": f"MODEL_ASSET/{m['Halter']}",
+                      "farbe": "red;background:url(x)"}).status_code == 400)
         check("Druckzeit ehrlich: zwei der drei Druckteile ohne Slicer-Zeit", s["ohne_zeit"] == 2)
 
         # -- Fortschritt
@@ -88,7 +101,9 @@ if __name__ == "__main__":
         check("Unterbaugruppe weiss, dass sie 4× gebraucht wird: Halter-Bedarf 8, nicht 2",
               dm["exemplare"] == 4 and next(p for p in dm["positionen"] if p["name"] == "Halter")["bedarf"] == 8)
         s = c.get(f"/api/baugruppen/{bid}").json()["summen"]
-        check("Offen: Gewicht ohne die fertigen Halter", abs(s["offen_gewicht_g"] - (28.69 + 15.75)) < 0.2)
+        # Arm ist inzwischen TPU: 5,784 cm³ × 1,21 × 4 = 27,99 g — die Dichte folgt dem Material.
+        check("Offen: Gewicht ohne die fertigen Halter, mit der Dichte des gewählten Materials",
+              abs(s["offen_gewicht_g"] - (27.99 + 15.75)) < 0.2)
         check("Negative Menge wird zu 1", c.patch(f"/api/baugruppen/{bid}/positionen",
                                                   json={"ref": f"ASSEMBLY/{modul}", "menge": -3}).status_code == 200
               and next(p for p in c.get(f"/api/baugruppen/{bid}").json()["positionen"] if p["art"] == "baugruppe")["menge"] == 1)
