@@ -9,6 +9,7 @@ const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const zustand = {
   modelle: [], ansicht: "alle", tag: "", ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
+  auswahl: new Set(), layout: localStorageLesen("layout") === "liste" ? "liste" : "raster",
   sortierung: "name", gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
 
@@ -52,6 +53,8 @@ async function ladeModelle() {
   zustand.modelle = liste;
   $("#anzahl").textContent = `${liste.length.toLocaleString("de-DE")} Dateien`;
   zeichneFilterzeile();
+  zeichneStapel();
+  zeichneListenkopf();
   raster.neu();
 }
 
@@ -112,24 +115,32 @@ function zeichneFilterzeile() {
     : (teile.length ? "Keine Treffer." : "Noch keine Modelle. Über „Importieren“ einen Ordner hinzufügen.");
 }
 
-// ---------------------------------------------------------------- Virtuelles Raster
+// ---------------------------------------------------------------- Virtuelles Raster und Liste
+//
+// Beide Ansichten zeichnen nur, was sichtbar ist. Die Liste ist dasselbe
+// Raster mit einer Spalte und niedrigen Zeilen.
 
 const raster = (() => {
-  const B = 164, H = 246, LUECKE = 14, RAND = 14;
+  const RAND = 14;
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
+  const mass = () => zustand.layout === "liste"
+    ? { B: 0, H: 36, LUECKE: 0, RAND: 0 } : { B: 164, H: 246, LUECKE: 14, RAND };
 
   function neu() {
-    spalten = Math.max(1, Math.floor((aussen.clientWidth - RAND * 2 + LUECKE) / (B + LUECKE)));
+    const { B, H, LUECKE, RAND: R } = mass();
+    spalten = zustand.layout === "liste" ? 1 : Math.max(1, Math.floor((aussen.clientWidth - R * 2 + LUECKE) / (B + LUECKE)));
     const zeilen = Math.ceil(zustand.modelle.length / spalten);
-    innen.style.height = `${RAND * 2 + zeilen * (H + LUECKE)}px`;
+    innen.style.height = `${R * 2 + zeilen * (H + LUECKE)}px`;
+    $("#listenkopf").hidden = zustand.layout !== "liste";
     zeichne();
   }
 
   function zeichne() {
     geplant = false;
+    const { B, H, LUECKE, RAND: R } = mass();
     const oben = aussen.scrollTop, hoehe = aussen.clientHeight;
-    const von = Math.max(0, Math.floor((oben - RAND) / (H + LUECKE)) - 2);
+    const von = Math.max(0, Math.floor((oben - R) / (H + LUECKE)) - 2);
     const bis = Math.ceil((oben + hoehe) / (H + LUECKE)) + 2;
     const html = [];
     for (let z = von; z < bis; z++) {
@@ -137,7 +148,7 @@ const raster = (() => {
         const i = z * spalten + s;
         const m = zustand.modelle[i];
         if (!m) break;
-        html.push(karte(m, RAND + s * (B + LUECKE), RAND + z * (H + LUECKE)));
+        html.push(zustand.layout === "liste" ? zeileL(m, z * H) : karte(m, R + s * (B + LUECKE), R + z * (H + LUECKE)));
       }
     }
     innen.innerHTML = html.join("");
@@ -149,25 +160,206 @@ const raster = (() => {
 })();
 
 function bildUrl(m) {
+  if (m.bild) return `/api/modelle/${m.id}/bild?v=${m.bild}`;
   return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png` : null;
+}
+
+function statusBadge(m) {
+  return m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
+    : m.fehler ? `<span class="badge warn">unlesbar</span>`
+    : m.gedruckt ? `<span class="badge gedruckt">✓ Gedruckt${m.gewicht_g ? " · " + zahl(m.gewicht_g, 2) + " g" : ""}</span>` : "";
 }
 
 function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (m.format === "step" ? "STEP · nur CAD" : "keine Vorschau");
-  const status = m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
-    : m.fehler ? `<span class="badge warn">unlesbar</span>`
-    : m.gedruckt ? `<span class="badge gedruckt">✓ Gedruckt${m.gewicht_g ? " · " + zahl(m.gewicht_g, 2) + " g" : ""}</span>` : "";
   const unter = [masse(m.masse), m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g${m.material ? " | " + esc(m.material) : ""}` : ""].filter(Boolean).join(" · ");
-  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
+  const markiert = zustand.auswahl.has(m.id);
+  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
     <div class="bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="platzhalter">${platz}</div>`}
       ${istNeu(m) ? '<span class="badge neu">NEU</span>' : ""}
-      <span class="badge format">${esc(endung[m.format] || m.format || "?")}</span>
+      <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
-      ${status}</div>
+      ${statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</div>
       <div class="masse">${unter || "&nbsp;"}</div>
       <div class="tags">${m.tags.slice(0, 5).map((t) => `<span>#${esc(t)}</span>`).join("")}</div></div></div>`;
+}
+
+const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
+                       ["STATUS", ""], ["TAGS", ""], ["ORDNER", ""]];
+
+function zeileL(m, y) {
+  const url = bildUrl(m);
+  const markiert = zustand.auswahl.has(m.id);
+  const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
+  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.gedruckt ? "✓ gedruckt" : (m.warteschlange != null ? "☰ Warteschlange" : "");
+  return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
+    <span>${url ? `<img loading="lazy" src="${url}" alt="">` : '<div class="mini"></div>'}</span>
+    <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
+    <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}</span>
+    <span class="mono">${esc(endung[m.format] || "")}</span>
+    <span class="mono">${esc(masse(m.masse))}</span>
+    <span class="mono">${m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : ""}</span>
+    <span class="mono">${status}</span>
+    <span class="mono">${m.tags.map((t) => "#" + esc(t)).join(" ")}</span>
+    <span class="mono" title="${esc(ordner)}">${esc(ordner)}</span></div>`;
+}
+
+function zeichneListenkopf() {
+  $("#listenkopf").innerHTML = LISTENSPALTEN.map(([t, k]) =>
+    k ? `<button data-sortiere="${k}">${t}${zustand.sortierung === k ? " ▾" : ""}</button>` : `<span>${t}</span>`).join("");
+}
+
+// ---------------------------------------------------------------- Mehrfachauswahl
+//
+// Wie im 3MF Katalog: Kästchen je Kachel, Umschalt-Klick wählt einen
+// Bereich, Leiste mit den Aktionen für alle Gewählten.
+
+let letzteWahl = null;
+
+function waehleAus(id, bereich) {
+  if (bereich && letzteWahl) {
+    const ids = zustand.modelle.map((m) => m.id);
+    const [a, b] = [ids.indexOf(letzteWahl), ids.indexOf(id)].sort((x, y) => x - y);
+    if (a >= 0 && b >= 0) ids.slice(a, b + 1).forEach((x) => zustand.auswahl.add(x));
+  } else if (zustand.auswahl.has(id)) {
+    zustand.auswahl.delete(id);
+  } else {
+    zustand.auswahl.add(id);
+  }
+  letzteWahl = id;
+  zeichneStapel();
+  raster.zeichne();
+}
+
+function zeichneStapel() {
+  // Was nicht mehr in der Liste ist (gelöscht, weggefiltert), ist auch nicht gewählt.
+  const sichtbar = new Set(zustand.modelle.map((m) => m.id));
+  for (const id of [...zustand.auswahl]) if (!sichtbar.has(id)) zustand.auswahl.delete(id);
+  const n = zustand.auswahl.size;
+  const st = $("#stapel");
+  st.hidden = n === 0;
+  if (!n) return;
+  st.innerHTML = zustand.ansicht === "papierkorb"
+    ? `<b>${n} ausgewählt</b><button class="knopf" data-stapel="wiederherstellen">Wiederherstellen</button>
+       <button class="knopf" data-stapel="alle">Alle auswählen</button><button class="knopf" data-stapel="keine">✕ Auswahl aufheben</button>`
+    : `<b>${n} ausgewählt</b>
+    <button class="knopf" data-stapel="alle">Alle auswählen (${zustand.modelle.length})</button>
+    <button class="knopf" data-stapel="warteschlange">☰ In Warteschlange</button>
+    <select class="knopf" id="stapel-sammlung"><option value="">Zu Sammlung …</option>${zustand.sammlungen.map((x) =>
+      `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}<option value="__neu">Neue Sammlung …</option></select>
+    <button class="knopf" data-stapel="tag">＃ Tag …</button>
+    <button class="knopf" data-stapel="gedruckt">✓ Gedruckt</button>
+    <button class="knopf" data-stapel="favorit">♥ Favorit</button>
+    <button class="knopf" data-stapel="verschieben">Verschieben …</button>
+    <button class="knopf gefahr" data-stapel="loeschen">Löschen</button>
+    <button class="knopf" data-stapel="keine">✕</button>`;
+}
+
+async function stapel(aktion, wert) {
+  const modelle = [...zustand.auswahl];
+  try {
+    const r = await api("/api/stapel", { method: "POST", body: { aktion, modelle, wert } });
+    if (r.fehler.length) toast(`${modelle.length - r.fehler.length} erledigt, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
+    else toast(`${modelle.length} erledigt.`);
+  } catch (e) { toast(e.message); }
+}
+
+async function stapelAktion(aktion) {
+  const modelle = [...zustand.auswahl];
+  switch (aktion) {
+    case "alle": zustand.modelle.forEach((m) => zustand.auswahl.add(m.id)); zeichneStapel(); return raster.zeichne();
+    case "keine": zustand.auswahl.clear(); zeichneStapel(); return raster.zeichne();
+    case "warteschlange": return stapel("warteschlange");
+    case "gedruckt": return stapel("gedruckt", true);
+    case "favorit": return stapel("favorit", true);
+    case "tag": {
+      const a = await dialog(`<h2>Tag für ${modelle.length} Modelle</h2><input type="text" id="s-name" placeholder="z. B. Funktional">
+        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
+      if (a === "ja") return stapel("tag", $("#s-name").value);
+      return;
+    }
+    case "verschieben": {
+      const ziel = await ordnerWahl(`${modelle.length} Modelle verschieben`, "Die Dateien werden auf der Platte verschoben. Nichts wird überschrieben.");
+      if (ziel) { await stapel("verschieben", ziel); }
+      return;
+    }
+    case "loeschen": return loeschenViele(modelle);
+    case "wiederherstellen":
+      for (const id of modelle) await api(`/api/modelle/${id}/wiederherstellen`, { method: "POST" }).catch((e) => toast(e.message));
+      zustand.auswahl.clear();
+      return;
+  }
+}
+
+async function loeschenViele(modelle) {
+  const v = await api("/api/stapel/loeschvorschau", { method: "POST", body: { modelle } });
+  const kanten = Object.entries(v.kanten).map(([art, n]) => `${n} × ${esc(art)}`).join(", ");
+  const a = await dialog(`<h2>${modelle.length} Modelle löschen?</h2>
+    <p>${v.dateien.length} Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihren Ordnern.</p>
+    <ul>${v.dateien.slice(0, 8).map((d) => `<li>${esc(d)}</li>`).join("")}${v.dateien.length > 8 ? `<li>… und ${v.dateien.length - 8} weitere</li>` : ""}</ul>
+    <p class="dim">Mit in den Papierkorb (flatgraph <code>loeschfolgen</code>): ${v.knoten.length} Datei-Knoten${kanten ? "; Verknüpfungen: " + kanten : ""}.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">In den Papierkorb</button></div>`);
+  if (a !== "ja") return;
+  await stapel("loeschen");
+  zustand.auswahl.clear();
+  waehle(null);
+}
+
+// ---------------------------------------------------------------- Ordner wählen, Hochladen, Archive
+
+async function ordnerWahl(titel, hinweis, vorwahl = "") {
+  const liste = await api("/api/verzeichnisse");
+  const a = await dialog(`<h2>${esc(titel)}</h2><p class="dim">${esc(hinweis)}</p>
+    <select id="ordner-ziel">${liste.map((v) => `<option value="${esc(v.id)}" ${v.id === vorwahl ? "selected" : ""}>${esc(v.name)}${v.pfad ? " / " + esc(v.pfad) : ""}</option>`).join("")}</select>
+    <label>Neuer Unterordner darin: <input type="text" id="ordner-neu" placeholder="optional"></label>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">OK</button></div>`);
+  if (a !== "ja") return null;
+  let ziel = $("#ordner-ziel").value;
+  const neuName = $("#ordner-neu").value.trim();
+  if (neuName) {
+    try { ziel = (await api("/api/verzeichnisse", { method: "POST", body: { eltern: ziel, name: neuName } })).id; }
+    catch (e) { toast(e.message); return null; }
+  }
+  return ziel;
+}
+
+async function hochladen(dateiliste) {
+  const dateien = [...dateiliste];
+  if (!dateien.length) return;
+  const ziel = await ordnerWahl(`${dateien.length} Datei${dateien.length > 1 ? "en" : ""} hochladen`,
+    "Archive (zip, tar) werden in einen Unterordner entpackt. Nichts wird überschrieben.", zustand.ordner);
+  if (!ziel) return;
+  let ok = 0;
+  for (const [i, f] of dateien.entries()) {
+    toast(`Hochladen ${i + 1}/${dateien.length}: ${f.name}`);
+    try {
+      await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(f.name)}`, { method: "POST", body: f })
+        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); });
+      ok++;
+    } catch (e) { toast(`${f.name}: ${e.message}`); await new Promise((w) => setTimeout(w, 1500)); }
+  }
+  toast(`${ok} von ${dateien.length} hochgeladen, wird eingelesen …`);
+}
+
+async function archiveEntpacken() {
+  $("#import-menu").hidden = true;
+  const liste = await api("/api/archive");
+  if (!liste.length) return toast("Keine Archive in den Ordnern.");
+  const a = await dialog(`<h2>Archive entpacken</h2><p class="dim">Jedes in einen Unterordner daneben. Heraus kommen nur Modelle, G-Code, Bilder und Texte — nie Programme.</p>
+    ${liste.map((x, i) => `<label><input type="checkbox" data-archiv="${esc(x.id)}" ${i < 50 ? "checked" : ""}> ${esc(x.id.split("/").slice(1).join("/"))} <span class="dim">${zahl(x.groesse / 1048576, 1)} MB</span></label>`).join("")}
+    <label><input type="checkbox" id="archiv-weg"> Original danach in den Papierkorb von partAtlas</label>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Entpacken</button></div>`);
+  if (a !== "ja") return;
+  const weg = $("#archiv-weg").checked;
+  const gewaehlt = [...document.querySelectorAll("[data-archiv]:checked")].map((x) => x.dataset.archiv);
+  let n = 0;
+  for (const id of gewaehlt) {
+    try { n += (await api("/api/archive/entpacken", { method: "POST", body: { id, original_loeschen: weg } })).entpackt; }
+    catch (e) { toast(`${id}: ${e.message}`); }
+  }
+  toast(`${n} Dateien entpackt, wird eingelesen …`);
 }
 
 // ---------------------------------------------------------------- Inspektor
@@ -187,6 +379,7 @@ async function waehle(id) {
     ["Druckplatten", m.platten.length || "–"],
     ["Dreiecke", m.dreiecke != null ? zahl(m.dreiecke, 0) : "–"],
     ["Ersteller", m.designer || "–"],
+    ["Dateigrösse", m.groesse ? zahl(m.groesse / 1024, 0) + " KB" : "–"],
     ["Eingelesen", m.eingelesen ? new Date(m.eingelesen).toLocaleDateString("de-DE") : "–"],
   ];
   const platten = m.platten.map((p) => `<div class="zeile"><span>Platte ${p.nr}</span><span>${p.filamente.map((f) =>
@@ -200,7 +393,10 @@ async function waehle(id) {
     <div class="i-name">${esc(m.name)}${esc(endung[m.format] || "")}</div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? `<p class="fehler">Die Datei ist an keinem bekannten Ort mehr. Tags und Historie bleiben erhalten.</p>` : ""}
-    <div class="i-karte">${zeilen.map(([a, b]) => `<div class="zeile"><span>${a}</span><span>${esc(b)}</span></div>`).join("")}</div>
+    <div class="i-karte">${zeilen.map(([a, b]) => `<div class="zeile"><span>${a}</span><span>${esc(b)}</span></div>`).join("")}
+      ${papierkorb ? "" : `<div class="zeile quelle"><span>Quelle</span><span>${m.quelle_url
+        ? `<a href="${esc(m.quelle_url)}" target="_blank" rel="noopener noreferrer">${esc(m.quelle_url.replace(/^https?:\/\//, "").slice(0, 32))}…</a>` : "–"}
+        <button class="knopf" id="quelle-aendern" title="Quelle ändern">✎</button></span></div>`}</div>
     ${platten ? `<div class="i-titel">FILAMENTVERBRAUCH (AUS SLICER)</div><div class="i-karte">${platten}</div>` : ""}
     ${papierkorb ? "" : `<div class="i-titel">HASHTAGS</div>
     <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
@@ -220,6 +416,9 @@ async function waehle(id) {
          ${slicer.length ? `<select class="knopf" id="slicer"><option value="">↗ Im Slicer öffnen …</option>${slicer.map((s) =>
             `<option value="${esc(s.pfad)}">${esc(s.name)}</option>`).join("")}</select>` : `<span class="dim">Kein Slicer gefunden</span>`}
          <button class="knopf" id="umbenennen">Umbenennen</button>
+         <button class="knopf" id="verschieben">Verschieben …</button>
+         <button class="knopf" id="bild-hoch">Bild hochladen</button>
+         ${m.bild ? `<button class="knopf" id="bild-weg">Eigenes Bild entfernen</button>` : ""}
          <button class="knopf gefahr" id="loeschen">Löschen</button>`}</div>`;
   $("#inspektor").dataset.id = id;
   if (altesBild) { $("#i-bild").replaceWith(altesBild); return; }
@@ -326,6 +525,23 @@ async function wurzelNeu() {
 
 document.addEventListener("click", async (e) => {
   const t = e.target;
+  const wahl = t.closest("[data-wahl]");
+  if (wahl) { e.stopPropagation(); return waehleAus(wahl.dataset.wahl, e.shiftKey); }
+  const st = t.closest("[data-stapel]");
+  if (st) return stapelAktion(st.dataset.stapel);
+  const lay = t.closest("[data-layout]");
+  if (lay) {
+    zustand.layout = lay.dataset.layout;
+    localStorageSchreiben("layout", zustand.layout);
+    document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
+    $("#raster").scrollTop = 0;
+    return raster.neu();
+  }
+  const sort = t.closest("[data-sortiere]");
+  if (sort) { zustand.sortierung = sort.dataset.sortiere; $("#sortierung").value = zustand.sortierung; return ladeModelle(); }
+  const zeileListe = t.closest(".zeile-l");
+  if (zeileListe && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(zeileListe.dataset.id, e.shiftKey);
+  if (zeileListe) return waehle(zeileListe.dataset.id);
   const herz = t.closest("[data-herz]");
   if (herz) {
     e.stopPropagation();
@@ -342,6 +558,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
   const k = t.closest(".karte");
+  if (k && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(k.dataset.id, e.shiftKey);
   if (k) return waehle(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
   if (ansicht) { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tag: "", format: "", sammlung: "" }); return neuLaden(); }
@@ -399,6 +616,23 @@ document.addEventListener("click", async (e) => {
     }
     case "import-knopf": $("#import-menu").hidden = !$("#import-menu").hidden; return;
     case "wurzel-neu": case "wurzel-neu-2": return wurzelNeu();
+    case "hochladen-knopf": $("#import-menu").hidden = true; return $("#datei-wahl").click();
+    case "archive-knopf": return archiveEntpacken();
+    case "verschieben": {
+      const ziel = await ordnerWahl("Verschieben", "Die Datei wird auf der Platte verschoben. Nichts wird überschrieben.");
+      if (ziel) await api(`/api/modelle/${id}/verschieben`, { method: "POST", body: { ordner: ziel } }).then(() => toast("Verschoben.")).catch((e2) => toast(e2.message));
+      return;
+    }
+    case "bild-hoch": return $("#bild-wahl").click();
+    case "bild-weg": await api(`/api/modelle/${id}/bild`, { method: "DELETE" }); return;
+    case "quelle-aendern": {
+      const m = await api(`/api/modelle/${id}`);
+      const a = await dialog(`<h2>Quelle</h2><p class="dim">Woher das Modell stammt, z. B. Printables oder MakerWorld.</p>
+        <input type="text" id="quelle-url" value="${esc(m.quelle_url || "")}" placeholder="https://…">
+        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Speichern</button></div>`);
+      if (a === "ja") await aendern(id, { quelle_url: $("#quelle-url").value });
+      return;
+    }
     case "neu-einlesen": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
     case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
@@ -431,6 +665,20 @@ document.addEventListener("change", async (e) => {
     if (sid === "__neu") return sammlungNeu([id]);
     await api(`/api/sammlungen/${sid}/modelle`, { method: "POST", body: { modelle: [id] } }).catch((err) => toast(err.message));
   }
+  if (e.target.id === "stapel-sammlung" && e.target.value) {
+    const sid = e.target.value;
+    e.target.value = "";
+    if (sid === "__neu") return sammlungNeu([...zustand.auswahl]);
+    return stapel("sammlung", sid);
+  }
+  if (e.target.id === "datei-wahl") { const f = e.target.files; await hochladen(f); e.target.value = ""; return; }
+  if (e.target.id === "bild-wahl" && e.target.files[0]) {
+    const id = $("#inspektor").dataset.id, f = e.target.files[0];
+    e.target.value = "";
+    const r = await fetch(`/api/modelle/${id}/bild`, { method: "POST", body: f });
+    if (!r.ok) toast((await r.json()).fehler); else toast("Bild gespeichert.");
+    return;
+  }
   if (e.target.id === "sortierung") { zustand.sortierung = e.target.value; ladeModelle(); }
 });
 
@@ -441,7 +689,15 @@ document.addEventListener("keydown", async (e) => {
     catch (err) { toast(err.message); }
     waehle(id);
   }
-  if (e.key === "/" && !["INPUT", "SELECT"].includes(document.activeElement.tagName)) { e.preventDefault(); $("#suche").focus(); }
+  const tippt = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || $("#dialog").open;
+  if (e.key === "/" && !tippt) { e.preventDefault(); $("#suche").focus(); }
+  // Escape hebt die Auswahl auch aus dem Suchfeld heraus auf — nur ein
+  // offener Dialog schliesst zuerst sich selbst.
+  if (e.key === "Escape" && zustand.auswahl.size && !$("#dialog").open) stapelAktion("keine");
+  if ((e.key === "Delete" || e.key === "Backspace") && zustand.auswahl.size && !tippt && zustand.ansicht !== "papierkorb") {
+    e.preventDefault();
+    loeschenViele([...zustand.auswahl]);
+  }
 });
 
 let suchZeit;
@@ -469,7 +725,7 @@ async function sammlungNeu(modelle) {
 let gezogen = null;          // {art: "modell"|"ws", id}
 
 document.addEventListener("dragstart", (e) => {
-  const k = e.target.closest?.(".karte"), w = e.target.closest?.("[data-ws]");
+  const k = e.target.closest?.(".karte, .zeile-l"), w = e.target.closest?.("[data-ws]");
   if (k) { gezogen = { art: "modell", id: k.dataset.id }; k.classList.add("ziehen"); }
   else if (w) gezogen = { art: "ws", id: w.dataset.ws };
   else return;
@@ -481,8 +737,13 @@ document.addEventListener("dragend", () => {
   document.querySelectorAll(".ziehen, .ziehziel").forEach((x) => x.classList.remove("ziehen", "ziehziel"));
 });
 
+// Zieht man eine gewählte Kachel, gelten alle Gewählten.
+const gezogene = () => (zustand.auswahl.has(gezogen.id) ? [...zustand.auswahl] : [gezogen.id]);
+
 function ablageZiel(el) {
   if (!gezogen || !el?.closest) return null;
+  const o = el.closest("[data-ordner]");
+  if (o && gezogen.art === "modell" && zustand.ansicht !== "papierkorb") return o;
   const s = el.closest("[data-sammlung]");
   if (s && gezogen.art === "modell") return s;
   const ws = el.closest('[data-ansicht="warteschlange"], [data-ws]');
@@ -504,8 +765,11 @@ document.addEventListener("drop", async (e) => {
   e.preventDefault();
   const g = gezogen;
   try {
-    if (z.dataset.sammlung) {
-      await api(`/api/sammlungen/${z.dataset.sammlung}/modelle`, { method: "POST", body: { modelle: [g.id] } });
+    if (z.dataset.ordner) {
+      const r = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: gezogene(), wert: z.dataset.ordner } });
+      toast(r.fehler.length ? r.fehler[0].fehler : "Verschoben.");
+    } else if (z.dataset.sammlung) {
+      await api(`/api/sammlungen/${z.dataset.sammlung}/modelle`, { method: "POST", body: { modelle: gezogene() } });
       toast("Zur Sammlung hinzugefügt.");
     } else if (z.dataset.ws || z.dataset.ansicht === "warteschlange") {
       const reihe = [...document.querySelectorAll("[data-ws]")].map((x) => x.dataset.ws);
@@ -557,3 +821,18 @@ function live() {
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
 neuLaden();
 live();
+
+// Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
+let abwurfZaehler = 0;
+const vonAussen = (e) => !gezogen && [...(e.dataTransfer?.types || [])].includes("Files");
+window.addEventListener("dragenter", (e) => { if (vonAussen(e)) { abwurfZaehler++; $("#abwurf").hidden = false; } });
+window.addEventListener("dragleave", (e) => { if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; } });
+window.addEventListener("dragover", (e) => { if (vonAussen(e)) e.preventDefault(); });
+window.addEventListener("drop", (e) => {
+  if (!vonAussen(e)) return;
+  e.preventDefault();
+  abwurfZaehler = 0;
+  $("#abwurf").hidden = true;
+  hochladen(e.dataTransfer.files);
+});
+document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));

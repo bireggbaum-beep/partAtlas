@@ -9,11 +9,13 @@ von Orten `{"wurzel", "pfad"}` (Pfad relativ zur Wurzel). Liegt dieselbe
 Datei an zwei Stellen, ist das EIN Knoten mit zwei Orten — ein Duplikat.
 Ohne Ort fehlt sie. Beides wird abgeleitet, nicht gespeichert.
 """
+import hashlib
+import io
 import os
 import re
 import time
 
-from . import dateien, tags
+from . import archiv, dateien, formate, tags
 from .bestand import DATEI, HAT_DATEI, HAT_TAG, IN_SAMMLUNG, MODELL, SAMMLUNG, TAG, WURZEL
 
 
@@ -181,6 +183,10 @@ class Katalog:
             "ordner": [f'{o["wurzel"]}/{o["pfad"].rsplit("/", 1)[0] if "/" in o["pfad"] else ""}' for o in orte],
             "tags": self.tags_von(mid) if not papierkorb else [],
             "angelegt": m.get("angelegt"), "warteschlange": m.get("warteschlange"),
+            # Kurzer Hash des eigenen Bilds: ändert sich mit dem Bild und macht
+            # die Adresse im Browser-Cache eindeutig.
+            "bild": (m.get("bild") or "")[-16:-4] or None,
+            "groesse": sum(o.get("groesse") or 0 for o in orte[:1]) or None,
         }
 
     def _datei_im_papierkorb(self, mid):
@@ -264,6 +270,13 @@ class Katalog:
             if k not in erlaubt or not isinstance(v, erlaubt[k]):
                 raise KatalogFehler(f"Feld {k!r} lässt sich so nicht ändern.")
             neu[k] = v
+        if "quelle_url" in neu:
+            # Nur http(s): die Oberfläche macht daraus einen Link, und ein
+            # „javascript:“ wäre dort ausführbarer Code.
+            url = (neu["quelle_url"] or "").strip()
+            if url and (not re.match(r"https?://[^\s]+$", url, re.I) or len(url) > 2000):
+                raise KatalogFehler("Quelle muss eine http(s)-Adresse sein.")
+            neu["quelle_url"] = url or None
         if neu.get("gedruckt"):
             # Wie im 3MF Katalog: gedruckt heisst erledigt, raus aus der Warteschlange.
             neu["warteschlange"] = None
@@ -304,6 +317,194 @@ class Katalog:
         with self.db.transaction():
             self.db.update_node(DATEI, h, {"orte": neue_orte})
             self.db.update_node(MODELL, mid, {"name": name})
+
+    # ------------------------------------------------------------ Verschieben
+    #
+    # Wie im 3MF Katalog: der Ordner in der App ist das Verzeichnis auf der
+    # Platte. Verschieben heisst die Datei verschieben — ohne zu
+    # überschreiben (dateien.verschiebe).
+
+    def _ordner_pfad(self, ordner_id):
+        wid, _, rel = ordner_id.partition("/")
+        wpfad = self.wurzel_pfad(wid)
+        if wpfad is None:
+            raise KatalogFehler("Unbekannter Wurzelordner.")
+        ziel = os.path.realpath(os.path.join(wpfad, *[t for t in rel.split("/") if t]))
+        if ziel != os.path.realpath(wpfad) and not ziel.startswith(os.path.realpath(wpfad) + os.sep):
+            raise KatalogFehler("Ziel liegt ausserhalb des Wurzelordners.")
+        return wid, wpfad, ziel
+
+    def verzeichnisse(self):
+        """Alle Verzeichnisse unter den Wurzeln, auch leere — Ziele zum Verschieben."""
+        liste = []
+        for wid, w in self.wurzeln().items():
+            liste.append({"id": wid, "name": w["name"], "pfad": ""})
+            for ordner, unter, _ in os.walk(w["pfad"]):
+                unter[:] = sorted(u for u in unter if not u.startswith("."))
+                for u in unter:
+                    rel = os.path.relpath(os.path.join(ordner, u), w["pfad"]).replace(os.sep, "/")
+                    liste.append({"id": f"{wid}/{rel}", "name": w["name"], "pfad": rel})
+        return liste
+
+    def ordner_anlegen(self, eltern_id, name):
+        name = (name or "").strip()
+        if not name or any(c in name for c in '/\\\0') or name.startswith("."):
+            raise KatalogFehler("Ungültiger Ordnername.")
+        wid, _, eltern = self._ordner_pfad(eltern_id)
+        ziel = os.path.join(eltern, name)
+        if os.path.lexists(ziel):
+            raise KatalogFehler("Den Ordner gibt es schon.")
+        os.makedirs(ziel)
+        return f"{eltern_id.rstrip('/')}/{name}"
+
+    def verschieben(self, mid, ordner_id):
+        h = self.datei_von(mid)
+        d = self.db.get_node(ref(DATEI, h)) if h else None
+        orte = (d or {}).get("orte", [])
+        if len(orte) != 1:
+            raise KatalogFehler("Das Modell liegt mehrfach oder fehlt — erst die Duplikate auflösen."
+                                if orte else "Die Datei ist nicht da.")
+        wid, wpfad, zielordner = self._ordner_pfad(ordner_id)
+        alt = self.absoluter_pfad(orte[0])
+        ziel = os.path.join(zielordner, os.path.basename(alt))
+        if os.path.realpath(ziel) == os.path.realpath(alt):
+            return
+        try:
+            dateien.verschiebe(alt, ziel)
+        except dateien.ZielBelegt as e:
+            raise KatalogFehler(f"Im Zielordner liegt schon „{os.path.basename(alt)}“.") from e
+        st = os.stat(ziel)
+        self.db.update_node(DATEI, h, {"orte": [{"wurzel": wid, "pfad": os.path.relpath(ziel, wpfad).replace(os.sep, "/"),
+                                                 "groesse": st.st_size, "mtime": st.st_mtime}]})
+
+    # ------------------------------------------------------------ Eigenes Bild
+    #
+    # Ein hochgeladenes Bild ist Anwenderdaten, nicht abgeleitet: es gehört in
+    # den Vault (gesichert), nicht in den Cache. Pillow liest und schreibt es
+    # neu als PNG — so kommt nur ein Bild an, keine Metadaten, kein Anhängsel.
+
+    MAX_BILD = 5 * 1024**2
+
+    def bild_setzen(self, mid, daten):
+        from PIL import Image, UnidentifiedImageError
+        m = self.db.get_node(ref(MODELL, mid), readonly=True)
+        if m is None:
+            raise KatalogFehler(f"Modell {mid} gibt es nicht.")
+        if len(daten) > self.MAX_BILD:
+            raise KatalogFehler("Bild grösser als 5 MB.")
+        try:
+            bild = Image.open(io.BytesIO(daten))
+            if bild.format not in ("PNG", "JPEG", "WEBP"):
+                raise KatalogFehler("Nur PNG, JPG oder WebP.")
+            bild.load()
+        except (UnidentifiedImageError, OSError) as e:
+            raise KatalogFehler("Kein lesbares Bild.") from e
+        bild = bild.convert("RGBA")
+        bild.thumbnail((1024, 1024))
+        puffer = io.BytesIO()
+        bild.save(puffer, "PNG", optimize=True)
+        png = puffer.getvalue()
+        titel = re.sub(r"[^\w.-]+", "_", m.get("name") or mid)[:60]
+        rel = f"vault/bilder/{titel}__{hashlib.sha256(png).hexdigest()[:12]}.png"
+        ziel = self.b.pfad(*rel.split("/"))
+        if not os.path.exists(ziel):
+            dateien.schreibe_atomar(ziel, png)
+        self.db.update_node(MODELL, mid, {"bild": rel})
+
+    def bild_entfernen(self, mid):
+        # Die Datei bleibt im Vault — er wächst nur (KONZEPT §3.2).
+        self.db.update_node(MODELL, mid, {"bild": None})
+
+    def bild_pfad(self, mid):
+        m = self.db.get_node(ref(MODELL, mid), readonly=True) or self.db.get_node_raw(ref(MODELL, mid))
+        return self.b.pfad(*m["bild"].split("/")) if m and m.get("bild") else None
+
+    # ------------------------------------------------------------ Hochladen und Archive
+
+    def hochladen(self, ordner_id, name, daten):
+        """Eine Datei aus dem Browser in einen Ordner legen, nie überschreiben.
+        Ein Archiv wird gleich entpackt. Gibt die neuen Pfade zurück."""
+        name = os.path.basename((name or "").replace("\\", "/"))
+        if not name or name.startswith("."):
+            raise KatalogFehler("Ungültiger Dateiname.")
+        if formate.format_von(name) is None and not archiv.ist_archiv(name):
+            raise KatalogFehler(f"„{name}“ ist weder Modell noch Archiv.")
+        _, _, zielordner = self._ordner_pfad(ordner_id)
+        ziel = dateien.freier_name(os.path.join(zielordner, name))
+        dateien.neu_anlegen(ziel, daten)
+        if archiv.ist_archiv(name):
+            try:
+                _, neu, _ = archiv.entpacken(ziel)
+            finally:
+                os.unlink(ziel)          # hochgeladen, um entpackt zu werden
+            return neu
+        return [ziel]
+
+    def archive(self):
+        """Archive unter den Wurzeln — der 3MF Katalog entpackt auf Rückfrage."""
+        liste = []
+        for wid, w in self.wurzeln().items():
+            for ordner, unter, namen in os.walk(w["pfad"]):
+                unter[:] = sorted(u for u in unter if not u.startswith("."))
+                for n in sorted(namen):
+                    if archiv.ist_archiv(n) and not n.startswith("."):
+                        p = os.path.join(ordner, n)
+                        liste.append({"id": f"{wid}/{os.path.relpath(p, w['pfad']).replace(os.sep, '/')}",
+                                      "name": n, "groesse": os.path.getsize(p)})
+        return liste
+
+    def archiv_entpacken(self, archiv_id, original_loeschen=False):
+        wid, wpfad, pfad = self._ordner_pfad(archiv_id)
+        if not os.path.isfile(pfad) or not archiv.ist_archiv(pfad):
+            raise KatalogFehler("Kein Archiv.")
+        try:
+            ziel, neu, weg = archiv.entpacken(pfad)
+        except archiv.ArchivFehler as e:
+            raise KatalogFehler(str(e)) from e
+        if original_loeschen:
+            # Nicht löschen, sondern in den Papierkorb von partAtlas.
+            dateien.verschiebe(pfad, dateien.freier_name(self.b.pfad("papierkorb", os.path.basename(pfad))))
+        return {"ordner": os.path.relpath(ziel, wpfad), "entpackt": len(neu), "uebersprungen": weg}
+
+    # ------------------------------------------------------------ Mehrere auf einmal
+
+    def stapel(self, aktion, modelle, wert=None):
+        """Eine Aktion für viele Modelle; reine Graph-Änderungen in einer
+        Transaktion, Dateiaktionen einzeln (jede für sich rückgängig)."""
+        fehler = []
+        if aktion in ("favorit", "gedruckt", "tag", "sammlung", "warteschlange", "aus_warteschlange"):
+            with self.db.transaction():
+                for mid in modelle:
+                    if aktion in ("favorit", "gedruckt"):
+                        self.modell_aendern(mid, {aktion: bool(wert)})
+                    elif aktion == "tag":
+                        self._tag_verbinden(mid, wert)
+                    elif aktion == "warteschlange":
+                        self.in_warteschlange(mid)
+                    elif aktion == "aus_warteschlange":
+                        self.aus_warteschlange(mid)
+                if aktion == "sammlung":
+                    self._sammlung_pruefen(wert)
+                    self._hinzufuegen(wert, modelle)
+        elif aktion in ("loeschen", "verschieben"):
+            for mid in modelle:
+                try:
+                    self.loeschen(mid) if aktion == "loeschen" else self.verschieben(mid, wert)
+                except (KatalogFehler, OSError) as e:
+                    fehler.append({"id": mid, "fehler": str(e)})
+        else:
+            raise KatalogFehler(f"Unbekannte Aktion {aktion!r}.")
+        return {"fehler": fehler}
+
+    def loeschvorschau_viele(self, modelle):
+        ergebnis = {"knoten": [], "kanten": {}, "dateien": []}
+        for mid in modelle:
+            v = self.loeschvorschau(mid)
+            ergebnis["knoten"] += v["knoten"]
+            ergebnis["dateien"] += v["dateien"]
+            for k, n in v["kanten"].items():
+                ergebnis["kanten"][k] = ergebnis["kanten"].get(k, 0) + n
+        return ergebnis
 
     @staticmethod
     def _zurueck(erledigt):

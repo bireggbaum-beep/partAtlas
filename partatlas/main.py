@@ -256,6 +256,69 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         K().warteschlange_ordnen((await request.json()).get("modelle", []))
         return {"ok": True}
 
+    # ---------------------------------------------------------------- Ordner, Verschieben, Hochladen
+
+    @app.get("/api/verzeichnisse")
+    def verzeichnisse():
+        return K().verzeichnisse()
+
+    @app.post("/api/verzeichnisse")
+    async def verzeichnis_neu(request: Request):
+        d = await request.json()
+        return {"id": K().ordner_anlegen(d.get("eltern", ""), d.get("name", ""))}
+
+    @app.post("/api/modelle/{mid}/verschieben")
+    async def verschieben(mid: str, request: Request):
+        K().verschieben(mid, (await request.json()).get("ordner", ""))
+        return {"ok": True}
+
+    @app.post("/api/hochladen")
+    async def hochladen(request: Request, ordner: str, name: str):
+        neu = K().hochladen(ordner, name, await request.body())
+        zustand["scanner"].starten()
+        return {"dateien": len(neu)}
+
+    @app.get("/api/archive")
+    def archive():
+        return K().archive()
+
+    @app.post("/api/archive/entpacken")
+    async def archiv_entpacken(request: Request):
+        d = await request.json()
+        ergebnis = K().archiv_entpacken(d.get("id", ""), bool(d.get("original_loeschen")))
+        zustand["scanner"].starten()
+        return ergebnis
+
+    # ---------------------------------------------------------------- Eigenes Bild
+
+    @app.get("/api/modelle/{mid}/bild")
+    def bild(mid: str):
+        pfad = K().bild_pfad(mid)
+        if not pfad or not os.path.exists(pfad):
+            raise HTTPException(404)
+        return FileResponse(pfad, media_type="image/png", headers={"Cache-Control": "max-age=31536000, immutable"})
+
+    @app.post("/api/modelle/{mid}/bild")
+    async def bild_setzen(mid: str, request: Request):
+        K().bild_setzen(mid, await request.body())
+        return {"ok": True}
+
+    @app.delete("/api/modelle/{mid}/bild")
+    def bild_weg(mid: str):
+        K().bild_entfernen(mid)
+        return {"ok": True}
+
+    # ---------------------------------------------------------------- Mehrere auf einmal
+
+    @app.post("/api/stapel")
+    async def stapel(request: Request):
+        d = await request.json()
+        return K().stapel(d.get("aktion", ""), d.get("modelle", []), d.get("wert"))
+
+    @app.post("/api/stapel/loeschvorschau")
+    async def stapel_loeschvorschau(request: Request):
+        return K().loeschvorschau_viele((await request.json()).get("modelle", []))
+
     @app.get("/api/tags")
     def tags():
         return K().tags()

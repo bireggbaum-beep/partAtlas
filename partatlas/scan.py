@@ -76,6 +76,7 @@ class Scanner:
         self.prozesse = prozesse or max(1, (os.cpu_count() or 2) - 1)
         self._sperre = threading.Lock()
         self._faden = None
+        self._nochmal = False
         self.status = {"laeuft": False}
 
     def _setze(self, **werte):
@@ -83,10 +84,14 @@ class Scanner:
         self.melden(dict(self.status))
 
     def starten(self):
-        """Im Hintergrund; ein zweiter Aufruf während eines Laufs tut nichts."""
+        """Im Hintergrund. Kommt ein Auftrag während eines Laufs (Hochladen,
+        Entpacken), läuft danach ein zweiter — der erste hat die neuen
+        Dateien womöglich schon hinter sich gelassen."""
         with self._sperre:
             if self._faden and self._faden.is_alive():
+                self._nochmal = True
                 return False
+            self._nochmal = False
             self._faden = threading.Thread(target=self._lauf_sicher, name="scan", daemon=True)
             self._faden.start()
             return True
@@ -96,11 +101,16 @@ class Scanner:
             self._faden.join(zeit)
 
     def _lauf_sicher(self):
-        try:
-            self.lauf()
-        except Exception as e:                       # der Server soll weiterlaufen
-            log.exception("Scan abgebrochen")
-            self._setze(laeuft=False, abbruch=str(e))
+        while True:
+            try:
+                self.lauf()
+            except Exception as e:                   # der Server soll weiterlaufen
+                log.exception("Scan abgebrochen")
+                self._setze(laeuft=False, abbruch=str(e))
+            with self._sperre:
+                if not self._nochmal:
+                    return
+                self._nochmal = False
 
     def lauf(self):
         t0 = time.time()

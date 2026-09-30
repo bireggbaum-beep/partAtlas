@@ -272,9 +272,19 @@ Bild), Sammlungen (Kante mit Position, Ziehen zum Hinzufügen und
 Umsortieren), Warteschlange (Feld am Modell, Liste links, Ziehen, fällt
 bei „gedruckt“ heraus).
 
-**Fehlt noch zur Parität:** Mehrfachauswahl, Listenansicht, Verschieben
-in einen Ordner, Archive entpacken, eigenes Bild hochladen, Quelle-URL,
-Papierkorb nach 7 Tagen leeren.
+Mehrfachauswahl (Kästchen, Umschalt-Klick, Leiste mit Warteschlange,
+Sammlung, Tag, Gedruckt, Favorit, Verschieben, Löschen; Escape, Entf),
+Listenansicht mit sortierbarem Kopf, Verschieben in einen Ordner (Dialog
+oder Kachel auf den Ordner ziehen, nie überschreiben, Duplikate nicht),
+neuer Unterordner, Quelle als http(s)-Link, eigenes Bild (als PNG neu
+geschrieben, im Vault), Hochladen per Dialog oder aus dem Dateimanager
+ins Fenster ziehen, Archive entpacken (zip, tar; Positivliste der
+Endungen, kein ../, keine Links; Original auf Wunsch in den Papierkorb).
+Ein Scan-Auftrag während eines Laufs startet danach einen Nachlauf —
+vorher gingen so hochgeladene Dateien verloren.
+
+**Fehlt noch zur Parität:** Papierkorb nach 7 Tagen leeren (braucht
+flatgraph, siehe §9), 7z und rar entpacken (fremde Pakete).
 
 **Zurückgestellt:** Passwort für den Zugriff aus dem Heimnetz — erst wenn
 alles andere steht. Bis dahin nur `127.0.0.1`.
@@ -356,4 +366,6 @@ Ungeprüft, zu klären vor der genannten Phase:
 | Bambu LAN: seit den Firmware-Änderungen 2025 womöglich nur im Entwicklermodus | 4 |
 | OrcaSlicer: Slicen über die Kommandozeile mit fremder Konfiguration | 4 |
 | Windows: Verzeichnis-`fsync` fehlt (VERTRAG §2.2), ungeprüft | 1 |
+| flatgraph: Müllsammler nur für Knoten, die länger als N Tage im Papierkorb liegen — heute räumt `run_garbage_collection` alles ab, also auch gestern Gelöschtes | 1 |
+| 7z und rar: `py7zr` bzw. `rarfile` + `unrar` — fremde Pakete, Lizenz von unrar prüfen | 1 |
 | Lizenz: Hinweis auf den 3MF Katalog (MIT) steht in `web/app.css`; beim Übernehmen weiterer Teile mitführen | 1 |

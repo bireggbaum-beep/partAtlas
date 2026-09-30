@@ -162,10 +162,33 @@ if __name__ == "__main__":
           and os.path.exists(os.path.join(downloads, "Top_Plate (1).3mf"))
           and len(zurueck["orte"]) == 2 and "mehrteilig" in zurueck["tags"])
 
+    # -- Auftrag während eines Laufs: läuft danach nochmal
+    # Der erste Lauf wird nach seiner Arbeit angehalten: so liegt die neue
+    # Datei sicher hinter ihm, ohne auf Zeiten zu wetten.
+    import threading
+    halt, laeufe, echt = threading.Event(), [], s.lauf
+
+    def lauf_mit_halt():
+        echt()
+        laeufe.append(1)
+        if len(laeufe) == 1:
+            halt.wait(30)
+    s.lauf = lauf_mit_halt
+    s.starten()
+    while not laeufe:
+        threading.Event().wait(0.01)
+    muster.stl_binaer(os.path.join(sammlung, "Nachzuegler.stl"), 4, 4, 4)
+    check("Zweiter Auftrag während eines Laufs wird angenommen, nicht verworfen", s.starten() is False)
+    halt.set()
+    s.warten(120)
+    s.lauf = echt
+    check("… und der Nachlauf findet die Datei, die der erste Lauf schon hinter sich hatte",
+          "Nachzuegler" in [m["name"] for m in k.modelle()])
+
     # -- Nach Neustart ist alles da (flatgraph auf der Platte)
     neu_oeffnen()
     check("Nach Neustart: dieselben Modelle, Tags, Orte",
-          sorted(m["name"] for m in k.modelle()) == ["Arm Front", "Belegt", "Haken", "Top_Plate", "Welle", "kaputt"]
+          sorted(m["name"] for m in k.modelle()) == ["Arm Front", "Belegt", "Haken", "Nachzuegler", "Top_Plate", "Welle", "kaputt"]
           and "funktional" in k.modell(arm["id"])["tags"])
 
     k.loeschen(top_id)

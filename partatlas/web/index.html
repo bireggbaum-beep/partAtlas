@@ -23,6 +23,8 @@
       <button class="knopf akzent" id="import-knopf">＋ Importieren ▾</button>
       <div class="menu" id="import-menu" hidden>
         <button id="wurzel-neu">Ordner hinzufügen …</button>
+        <button id="hochladen-knopf">Dateien hochladen …</button>
+        <button id="archive-knopf">Archive entpacken …</button>
         <button id="neu-einlesen">Alle Ordner neu einlesen</button>
       </div>
     </div>
@@ -33,6 +35,7 @@
       <option value="gewicht">Gewicht</option>
       <option value="groesse">Grösse</option>
     </select>
+    <div class="segment" id="ansicht-wahl"><button data-layout="raster" class="an">Raster</button><button data-layout="liste">Liste</button></div>
     <span class="kopf-luecke"></span>
     <span class="scan-status" id="scan-status"></span>
     <span class="mono dim" id="anzahl"></span>
@@ -75,6 +78,8 @@
   <main class="mitte">
     <div class="tagleiste" id="tagleiste"></div>
     <div class="filterzeile" id="filterzeile" hidden></div>
+    <div class="stapel" id="stapel" hidden></div>
+    <div class="listenkopf" id="listenkopf" hidden></div>
     <div class="raster" id="raster"><div class="raster-innen" id="raster-innen"></div></div>
     <div class="leer" id="leer" hidden></div>
   </main>
@@ -86,6 +91,9 @@
 
 <dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>
 <div class="toast" id="toast" hidden></div>
+<input type="file" id="datei-wahl" multiple hidden accept=".3mf,.stl,.obj,.step,.stp,.zip,.tar,.gz,.tgz,.bz2,.xz">
+<input type="file" id="bild-wahl" hidden accept="image/png,image/jpeg,image/webp">
+<div class="abwurf" id="abwurf" hidden>Dateien hier ablegen zum Hochladen</div>
 <script src="/web/app.js"></script>
 </body>
 </html>

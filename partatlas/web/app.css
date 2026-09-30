@@ -24,6 +24,8 @@
         --mono: 'IBM Plex Mono', ui-monospace, 'DejaVu Sans Mono', monospace; }
 
 * { box-sizing: border-box; }
+/* Klassen mit display: … dürfen hidden nicht aushebeln (Leiste, Listenkopf). */
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--ink); font: var(--fs-body)/1.4 'Barlow', 'Segoe UI', Helvetica, sans-serif; }
 button, input, select { font: inherit; color: inherit; }
@@ -91,7 +93,7 @@ button, input, select { font: inherit; color: inherit; }
 .karte .platzhalter { position: absolute; inset: 0; display: grid; place-items: center; font: 11px var(--mono); color: var(--ink-3); }
 .badge { position: absolute; font: 9px var(--mono); padding: 1px 5px; border-radius: 3px; }
 .badge.neu { top: 6px; left: 6px; background: var(--ink); color: var(--bg); }
-.badge.format { top: 6px; right: 6px; background: var(--panel); color: var(--ink-2); border: 1px solid var(--line); }
+.badge.format { top: 6px; right: 28px; background: var(--panel); color: var(--ink-2); border: 1px solid var(--line); }
 .badge.gedruckt { bottom: 6px; right: 6px; border: 1px solid var(--accent); color: var(--accent); background: var(--panel); }
 .badge.warn { bottom: 6px; right: 6px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
 .herz { position: absolute; bottom: 6px; left: 6px; width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--line-strong);
@@ -163,3 +165,34 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 .i-bild .laden { font: 11px var(--mono); color: var(--ink-3); }
 .i-sammlungen { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .i-sammlungen select { font-size: 11px; }
+
+/* Mehrfachauswahl */
+.wahl { position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.karte.markiert { outline: 2px solid var(--accent); outline-offset: -1px; }
+.stapel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 14px; border-bottom: 1px solid var(--line);
+          background: var(--accent-soft); font-size: 12px; }
+.stapel b { margin-right: 6px; }
+.stapel .knopf, .stapel select { padding: 2px 8px; font-size: 12px; }
+
+/* Raster | Liste */
+.segment { display: flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.segment button { background: none; border: 0; padding: 3px 10px; cursor: pointer; font-size: 12px; color: var(--ink-2); }
+.segment button.an { background: var(--accent); color: var(--accent-ink); }
+.listenkopf, .zeile-l { display: grid; grid-template-columns: 44px 26px minmax(160px, 2.2fr) 60px 150px 80px 80px minmax(120px, 1.6fr) minmax(120px, 1.3fr);
+                        align-items: center; gap: 8px; padding: 0 14px; font-size: 12px; }
+.listenkopf { height: 28px; border-bottom: 1px solid var(--line); font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+.listenkopf button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; padding: 0; }
+.zeile-l { position: absolute; left: 0; right: 0; height: 36px; border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
+.zeile-l:hover { background: var(--panel); }
+.zeile-l.gewaehlt { background: var(--accent-soft); }
+.zeile-l img, .zeile-l .mini { width: 30px; height: 30px; object-fit: contain; border-radius: 3px; background: var(--plate); }
+.zeile-l span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zeile-l .mono { font-size: 11px; color: var(--ink-2); }
+.zeile-l input { accent-color: var(--accent); }
+
+/* Hochladen per Ablegen */
+.abwurf { position: fixed; inset: 12px; border: 3px dashed var(--accent); border-radius: 14px; background: rgba(0, 0, 0, 0.45);
+          display: grid; place-items: center; font-size: 20px; color: #fff; z-index: 40; pointer-events: none; }
+dialog select { width: 100%; padding: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; margin: 4px 0; }
+dialog label { display: flex; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; }
+.quelle a { color: var(--accent); }

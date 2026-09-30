@@ -91,9 +91,40 @@ def _kopiere_ohne_ueberschreiben(quelle, ziel):
             raise ZielBelegt(ziel) from e
         # Kein link möglich (FAT): exklusiv anlegen geht nicht atomar mit
         # Inhalt; letzte Prüfung, dann umbenennen.
+        if os.path.lexists(ziel):
+            os.unlink(arbeit)
+            raise ZielBelegt(ziel)
         os.replace(arbeit, ziel)
     else:
         os.unlink(arbeit)
+    _verzeichnis_sichern(ordner)
+
+
+def neu_anlegen(ziel, daten):
+    """Neue Datei mit Inhalt; scheitert, wenn am Ziel schon etwas liegt.
+    Arbeitsdatei, fsync, dann `link` — der scheitert statt zu überschreiben."""
+    ordner = os.path.dirname(os.path.abspath(ziel))
+    os.makedirs(ordner, exist_ok=True)
+    arbeit = os.path.join(ordner, f".{os.path.basename(ziel)}.{os.getpid()}.arbeit")
+    try:
+        with open(arbeit, "wb") as f:
+            f.write(daten)
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            os.link(arbeit, ziel)
+        except FileExistsError as e:
+            raise ZielBelegt(ziel) from e
+        except OSError:
+            # Dateisystem ohne harte Links: letzte Prüfung, dann umbenennen.
+            if os.path.lexists(ziel):
+                raise ZielBelegt(ziel)
+            os.replace(arbeit, ziel)
+    finally:
+        try:
+            os.unlink(arbeit)
+        except FileNotFoundError:
+            pass
     _verzeichnis_sichern(ordner)
 
 

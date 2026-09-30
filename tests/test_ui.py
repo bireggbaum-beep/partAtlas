@@ -95,6 +95,8 @@ async def oberflaeche(port):
         check("… und die 3D-Ansicht wurde dabei nicht neu aufgebaut",
               await pg.evaluate("(c) => c.isConnected", canvas))
 
+        global WID
+        WID = api(port, "/api/wurzeln")[0]["id"]
         sid = api(port, "/api/sammlungen", {"name": "Drohne V2"})["id"]
         await pg.wait_for_timeout(800)
         await suche("Arm")
@@ -113,6 +115,50 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(800)
         check("Warteschlange per Ziehen umsortiert",
               [m["name"] for m in api(port, "/api/warteschlange")] == ["Vase", "Haken", "Arm"])
+
+        # -- Mehrfachauswahl und Aktionsleiste
+        await suche("")
+        await pg.locator(".karte .wahl").nth(0).click()
+        await pg.locator(".karte .wahl").nth(2).click(modifiers=["Shift"])
+        check("Kästchen und Umschalt-Klick: Bereich von drei gewählt, Leiste zeigt es",
+              "3 ausgewählt" in await pg.inner_text("#stapel"))
+        await pg.click('[data-stapel="tag"]')
+        await pg.fill("#s-name", "Stapel")
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_timeout(1000)
+        check("Tag für alle Gewählten", len(api(port, "/api/modelle?tag=stapel")) == 3)
+        await pg.keyboard.press("Escape")
+        await pg.wait_for_timeout(300)
+        check("Escape hebt die Auswahl auf", await pg.locator("#stapel").is_hidden())
+
+        # -- Liste
+        await pg.click('[data-layout="liste"]')
+        await pg.wait_for_timeout(500)
+        check("Listenansicht: Zeilen mit Spaltenkopf", await pg.locator(".zeile-l").count() == 3
+              and "GEWICHT" in await pg.inner_text("#listenkopf"))
+        await pg.click('[data-layout="raster"]')
+        await pg.wait_for_timeout(500)
+
+        # -- Kachel auf einen Ordner ziehen: Datei wird verschoben
+        await pg.click(f'[data-klappe="{WID}"]')
+        await pg.wait_for_selector(f'[data-ordner="{WID}/Technik"]')
+        await suche("Arm")
+        ok = await pg.evaluate(ZIEHEN, [".karte", f'[data-ordner="{WID}/Technik"]'])
+        await pg.wait_for_timeout(1200)
+        check("Kachel auf Ordner gezogen: Datei auf der Platte verschoben",
+              ok and os.path.exists(os.path.join(SAMMLUNG, "Technik", "Arm.stl")) and not os.path.exists(os.path.join(SAMMLUNG, "Arm.stl")))
+
+        # -- Quelle als Link
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector("#quelle-aendern")
+        await pg.click("#quelle-aendern")
+        await pg.fill("#quelle-url", "https://www.printables.com/model/42")
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_timeout(1000)
+        link = pg.locator(".quelle a")
+        check("Quelle im Inspektor als Link, öffnet in neuem Tab ohne Zugriff auf partAtlas",
+              await link.get_attribute("href") == "https://www.printables.com/model/42"
+              and "noopener" in (await link.get_attribute("rel")))
 
         await suche("Haken")
         await pg.locator(".karte").first.click()
@@ -139,8 +185,10 @@ if __name__ == "__main__":
     tmp = tempfile.mkdtemp()
     sammlung = os.path.join(tmp, "3D-Druck")
     os.makedirs(sammlung)
+    SAMMLUNG = sammlung
+    os.makedirs(os.path.join(sammlung, "Technik"))
     muster.stl_binaer(os.path.join(sammlung, "Arm.stl"), 120, 20, 6)
-    muster.stl_binaer(os.path.join(sammlung, "Haken.stl"), 10, 30, 40)
+    muster.stl_binaer(os.path.join(sammlung, "Technik", "Haken.stl"), 10, 30, 40)
     sys.path.insert(0, os.path.join(WURZEL, "werkzeuge"))
     import demo_sammlung
     demo_sammlung.stl(os.path.join(sammlung, "Vase.stl"),
