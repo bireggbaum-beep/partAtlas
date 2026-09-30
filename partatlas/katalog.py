@@ -14,7 +14,7 @@ import re
 import time
 
 from . import dateien, tags
-from .bestand import DATEI, HAT_DATEI, HAT_TAG, MODELL, TAG, WURZEL
+from .bestand import DATEI, HAT_DATEI, HAT_TAG, IN_SAMMLUNG, MODELL, SAMMLUNG, TAG, WURZEL
 
 
 class KatalogFehler(Exception):
@@ -180,7 +180,7 @@ class Katalog:
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),
             "ordner": [f'{o["wurzel"]}/{o["pfad"].rsplit("/", 1)[0] if "/" in o["pfad"] else ""}' for o in orte],
             "tags": self.tags_von(mid) if not papierkorb else [],
-            "angelegt": m.get("angelegt"),
+            "angelegt": m.get("angelegt"), "warteschlange": m.get("warteschlange"),
         }
 
     def _datei_im_papierkorb(self, mid):
@@ -188,7 +188,7 @@ class Katalog:
         teile = self.db.get_connected(ref(MODELL, mid), rel_type=HAT_DATEI, include_deleted=True)
         return teile[0].split("/", 1)[1] if teile else None
 
-    def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle"):
+    def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None):
         """Kacheln für das Raster, gefiltert. Suche und Tag gehen über flatgraph
         (Feldindex bzw. Nachbarschaft), der Rest über die Kacheln selbst."""
         if ansicht == "papierkorb":
@@ -206,6 +206,10 @@ class Katalog:
             mit_tag = {r.split("/", 1)[1] for r in
                        self.db.get_connected(ref(TAG, tag), direction="in", rel_type=HAT_TAG)}
             kandidaten = {k: v for k, v in kandidaten.items() if k in mit_tag}
+        reihe = None
+        if sammlung:
+            reihe = self._sammlung_reihe(sammlung)
+            kandidaten = {k: v for k, v in kandidaten.items() if k in reihe}
         liste = [self._kurz(k, v) for k, v in kandidaten.items()]
         if fmt:
             liste = [x for x in liste if x["format"] == fmt]
@@ -220,7 +224,11 @@ class Katalog:
             liste = [x for x in liste if x["fehlt"]]
         elif ansicht == "unlesbar":
             liste = [x for x in liste if x["fehler"]]
-        elif ansicht == "neu":
+        elif ansicht == "warteschlange":
+            return sorted((x for x in liste if x["warteschlange"] is not None), key=lambda x: x["warteschlange"])
+        if reihe is not None:
+            return sorted(liste, key=lambda x: reihe[x["id"]])
+        if ansicht == "neu":
             liste = sorted(liste, key=lambda x: x["angelegt"] or "", reverse=True)[:100]
             return liste
         return sorted(liste, key=lambda x: (x["name"] or "").lower())
@@ -246,6 +254,7 @@ class Katalog:
             "platten": d.get("platten") or [], "fehler_text": d.get("fehler"),
             "quelle_url": m.get("quelle_url"), "eingelesen": d.get("eingelesen"),
             "papierkorb_ablage": d.get("papierkorb", []),
+            "sammlungen": [] if papierkorb else self.sammlungen_von(mid),
         }
 
     def modell_aendern(self, mid, werte):
@@ -255,6 +264,9 @@ class Katalog:
             if k not in erlaubt or not isinstance(v, erlaubt[k]):
                 raise KatalogFehler(f"Feld {k!r} lässt sich so nicht ändern.")
             neu[k] = v
+        if neu.get("gedruckt"):
+            # Wie im 3MF Katalog: gedruckt heisst erledigt, raus aus der Warteschlange.
+            neu["warteschlange"] = None
         if neu:
             self.db.update_node(MODELL, mid, neu)
 
@@ -300,6 +312,126 @@ class Katalog:
                 dateien.verschiebe(ziel, alt)
             except OSError:
                 pass
+
+    # ------------------------------------------------------------ Sammlungen
+    #
+    # Mitgliedschaft ist eine Kante Modell → Sammlung mit `position` als
+    # Kantenfeld; ein Modell kann in vielen Sammlungen sein. flatgraph
+    # ändert Kanten nicht an Ort und Stelle, also heisst Umsortieren: die
+    # Kanten der Sammlung in einer Transaktion neu legen.
+
+    def sammlungen(self):
+        liste = []
+        for sid, s in self.db.list_nodes(SAMMLUNG, readonly=True).items():
+            n = len(self.db.get_connected(ref(SAMMLUNG, sid), direction="in", rel_type=IN_SAMMLUNG))
+            liste.append({"id": sid, "name": s["name"], "anzahl": n, "angelegt": s.get("angelegt")})
+        return sorted(liste, key=lambda x: x["name"].lower())
+
+    def _sammlung_pruefen(self, sid):
+        if self.db.get_node(ref(SAMMLUNG, sid), readonly=True) is None:
+            raise KatalogFehler(f"Sammlung {sid} gibt es nicht.")
+
+    def _sammlung_kanten(self, sid):
+        """[(kanten_id, modell_id, position)] in Reihenfolge."""
+        kanten = [(eid, e["source"].split("/", 1)[1], e.get("position", 0))
+                  for eid, e in self.db.get_connected_edges(ref(SAMMLUNG, sid), direction="in", rel_type=IN_SAMMLUNG)
+                  if self.db.get_node(e["source"], readonly=True) is not None]
+        return sorted(kanten, key=lambda k: (k[2], k[1]))
+
+    def _sammlung_reihe(self, sid):
+        return {mid: i for i, (_, mid, _) in enumerate(self._sammlung_kanten(sid))}
+
+    def sammlungen_von(self, mid):
+        namen = []
+        for r in self.db.get_connected(ref(MODELL, mid), rel_type=IN_SAMMLUNG):
+            s = self.db.get_node(r, readonly=True)
+            if s is not None:
+                namen.append({"id": r.split("/", 1)[1], "name": s["name"]})
+        return sorted(namen, key=lambda x: x["name"].lower())
+
+    @staticmethod
+    def _name_pruefen(name):
+        name = (name or "").strip()
+        if not name or len(name) > 120:
+            raise KatalogFehler("Name leer oder zu lang.")
+        return name
+
+    def sammlung_anlegen(self, name, modelle=()):
+        name = self._name_pruefen(name)
+        with self.db.transaction():
+            sid = self.db.next_id(SAMMLUNG, "s_", 4)
+            self.db.create_node(SAMMLUNG, sid, {"name": name, "angelegt": jetzt()})
+            self._hinzufuegen(sid, modelle)
+        return sid
+
+    def sammlung_umbenennen(self, sid, name):
+        self._sammlung_pruefen(sid)
+        self.db.update_node(SAMMLUNG, sid, {"name": self._name_pruefen(name)})
+
+    def sammlung_loeschen(self, sid):
+        """Die Sammlung geht, die Modelle bleiben — nur ihre Kanten verlieren das Ziel."""
+        self._sammlung_pruefen(sid)
+        self.db.soft_delete(SAMMLUNG, sid)
+
+    def _hinzufuegen(self, sid, modelle):
+        vorhanden = self._sammlung_kanten(sid)
+        drin = {mid for _, mid, _ in vorhanden}
+        pos = max((p for _, _, p in vorhanden), default=-1) + 1
+        for mid in modelle:
+            if mid in drin or self.db.get_node(ref(MODELL, mid), readonly=True) is None:
+                continue
+            self.db.create_edge(ref(MODELL, mid), ref(SAMMLUNG, sid), IN_SAMMLUNG, meta={"position": pos})
+            drin.add(mid)
+            pos += 1
+
+    def zur_sammlung(self, sid, modelle):
+        self._sammlung_pruefen(sid)
+        with self.db.transaction():
+            self._hinzufuegen(sid, modelle)
+
+    def aus_sammlung(self, sid, mid):
+        for eid, m, _ in self._sammlung_kanten(sid):
+            if m == mid:
+                self.db.delete_edge(eid)
+
+    def sammlung_ordnen(self, sid, modelle):
+        """Neue Reihenfolge; wer fehlt, kommt in alter Reihenfolge ans Ende."""
+        self._sammlung_pruefen(sid)
+        alt = self._sammlung_kanten(sid)
+        drin = [mid for _, mid, _ in alt]
+        neu = [m for m in dict.fromkeys(modelle) if m in drin] + [m for m in drin if m not in modelle]
+        with self.db.transaction():
+            for eid, _, _ in alt:
+                self.db.delete_edge(eid)
+            for pos, mid in enumerate(neu):
+                self.db.create_edge(ref(MODELL, mid), ref(SAMMLUNG, sid), IN_SAMMLUNG, meta={"position": pos})
+
+    # ------------------------------------------------------------ Warteschlange
+    #
+    # Ein Feld am Modell wie im 3MF Katalog (`queue_position`), bis die
+    # Flotte in Phase 4 eine eigene Sammlung braucht (KONZEPT §6.1).
+
+    def warteschlange(self):
+        return self.modelle(ansicht="warteschlange")
+
+    def in_warteschlange(self, mid):
+        m = self.db.get_node(ref(MODELL, mid), readonly=True)
+        if m is None:
+            raise KatalogFehler(f"Modell {mid} gibt es nicht.")
+        if m.get("warteschlange") is not None:
+            return
+        letzte = max((x["warteschlange"] for x in self.warteschlange()), default=-1)
+        self.db.update_node(MODELL, mid, {"warteschlange": letzte + 1})
+
+    def aus_warteschlange(self, mid):
+        self.db.update_node(MODELL, mid, {"warteschlange": None})
+
+    def warteschlange_ordnen(self, modelle):
+        drin = [x["id"] for x in self.warteschlange()]
+        neu = [m for m in dict.fromkeys(modelle) if m in drin] + [m for m in drin if m not in modelle]
+        with self.db.transaction():
+            for pos, mid in enumerate(neu):
+                self.db.update_node(MODELL, mid, {"warteschlange": pos})
 
     # ------------------------------------------------------------ Tags
 

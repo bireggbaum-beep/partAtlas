@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>partAtlas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23e87a5c%27/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/web/app.css">
+<script type="importmap">{"imports": {"three": "/web/vendor/three.module.min.js"}}</script>
 </head>
 <body>
 <div class="app">
@@ -45,6 +47,11 @@
       <button class="gestrichelt" id="wurzel-neu-2">＋ Ordner hinzufügen</button>
     </section>
     <section>
+      <h3>SAMMLUNGEN</h3>
+      <div id="sammlungen"></div>
+      <button class="gestrichelt" id="sammlung-neu">＋ Neue Sammlung</button>
+    </section>
+    <section>
       <h3>FORMATE</h3>
       <div id="formate"></div>
     </section>
@@ -54,6 +61,8 @@
     </section>
     <section>
       <h3>WERKZEUGE</h3>
+      <button class="eintrag ablage" data-ansicht="warteschlange"><span>☰ Warteschlange</span><em id="z-warteschlange"></em></button>
+      <ol class="ws-liste" id="ws-liste"></ol>
       <button class="eintrag" data-ansicht="neu"><span>⊕ Neu hinzugefügt</span><em></em></button>
       <button class="eintrag" data-ansicht="favoriten"><span>♡ Favoriten</span><em id="z-favoriten"></em></button>
       <button class="eintrag" data-ansicht="duplikate"><span>⧉ Duplikate</span><em id="z-duplikate"></em></button>

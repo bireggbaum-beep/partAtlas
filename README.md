@@ -22,8 +22,12 @@ python werkzeuge/demo_sammlung.py ~/partatlas-demo --anzahl 60
 ## Testen
 
 ```bash
+pip install -r requirements-test.txt
 for t in tests/test_*.py; do python "$t" | tail -1; done
 ```
+
+`test_ui.py` startet den Server als eigenen Prozess und prüft im echten
+Chromium (`PARTATLAS_CHROMIUM`, wenn Playwrights eigenes fehlt).
 
 Selbstgeschrieben wie flatgraph und pDMS: jede Suite endet mit „n/n Checks
 bestanden“, Exit 1 bei einem Fehlschlag. Gegenprobe an einer mutierten

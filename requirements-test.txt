@@ -1,0 +1,3 @@
+# Für die Suiten: TestClient braucht httpx, test_ui.py Playwright + Chromium.
+httpx
+playwright

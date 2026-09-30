@@ -11,7 +11,7 @@ import numpy as np
 # PARTATLAS_QUELLE: eine mutierte Kopie prüfen (Gegenprobe) statt des Repos.
 sys.path.insert(0, os.environ.get("PARTATLAS_QUELLE") or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message=".*httpx.*")
 
 PRUEFUNGEN = [0, 0]
 

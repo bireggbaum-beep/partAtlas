@@ -13,10 +13,12 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import slicer
+import numpy as np
+
+from . import formate, slicer
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
@@ -109,9 +111,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     # ---------------------------------------------------------------- Modelle
 
     @app.get("/api/modelle")
-    def modelle(q: str = "", tag: str = "", ordner: str = "", format: str = "", ansicht: str = "alle"):
+    def modelle(q: str = "", tag: str = "", ordner: str = "", format: str = "", ansicht: str = "alle",
+                sammlung: str = ""):
         return K().modelle(suche=q or None, tag=tag or None, ordner=ordner or None,
-                           fmt=format or None, ansicht=ansicht)
+                           fmt=format or None, ansicht=ansicht, sammlung=sammlung or None)
 
     @app.get("/api/zaehler")
     def zaehler():
@@ -125,6 +128,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             "duplikate": sum(m["duplikat"] for m in alle), "fehlt": sum(m["fehlt"] for m in alle),
             "unlesbar": sum(m["fehler"] for m in alle),
             "papierkorb": len(k.modelle(ansicht="papierkorb")), "formate": formate,
+            "warteschlange": sum(m["warteschlange"] is not None for m in alle),
         }
 
     @app.get("/api/modelle/{mid}")
@@ -170,6 +174,87 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/papierkorb/leeren")
     def papierkorb_leeren():
         return {"geloescht": K().papierkorb_leeren()}
+
+    # Netz für die 3D-Ansicht: Dreiecke als float32, little endian, 9 Werte
+    # je Dreieck. Ausgedünnt, damit ein Modell mit 2 Mio. Dreiecken nicht
+    # 72 MB in den Browser schiebt — für die Ansicht reichen 200 000.
+    MAX_ANZEIGE = 200_000
+
+    @app.get("/api/modelle/{mid}/netz")
+    def netz(mid: str):
+        m = K().modell(mid)
+        datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
+        if not datei:
+            raise HTTPException(404, "Datei nicht da")
+        try:
+            a = formate.analysiere(datei, mit_netz=True)
+        except formate.FormatFehler as e:
+            raise HTTPException(422, str(e))
+        if a.netz is None or len(a.netz) == 0:
+            raise HTTPException(422, "Keine Geometrie")
+        n = a.netz
+        if len(n) > MAX_ANZEIGE:
+            n = n[np.random.default_rng(0).choice(len(n), MAX_ANZEIGE, replace=False)]
+        return Response(np.ascontiguousarray(n, dtype="<f4").tobytes(), media_type="application/octet-stream",
+                        headers={"X-Dreiecke": str(a.dreiecke), "Cache-Control": "no-cache"})
+
+    # ---------------------------------------------------------------- Sammlungen
+
+    @app.get("/api/sammlungen")
+    def sammlungen():
+        return K().sammlungen()
+
+    @app.post("/api/sammlungen")
+    async def sammlung_neu(request: Request):
+        d = await request.json()
+        return {"id": K().sammlung_anlegen(d.get("name", ""), d.get("modelle", []))}
+
+    @app.patch("/api/sammlungen/{sid}")
+    async def sammlung_umbenennen(sid: str, request: Request):
+        K().sammlung_umbenennen(sid, (await request.json()).get("name", ""))
+        return {"ok": True}
+
+    @app.delete("/api/sammlungen/{sid}")
+    def sammlung_loeschen(sid: str):
+        K().sammlung_loeschen(sid)
+        return {"ok": True}
+
+    @app.post("/api/sammlungen/{sid}/modelle")
+    async def sammlung_dazu(sid: str, request: Request):
+        K().zur_sammlung(sid, (await request.json()).get("modelle", []))
+        return {"ok": True}
+
+    @app.delete("/api/sammlungen/{sid}/modelle/{mid}")
+    def sammlung_weg(sid: str, mid: str):
+        K().aus_sammlung(sid, mid)
+        return {"ok": True}
+
+    @app.put("/api/sammlungen/{sid}/reihenfolge")
+    async def sammlung_ordnen(sid: str, request: Request):
+        K().sammlung_ordnen(sid, (await request.json()).get("modelle", []))
+        return {"ok": True}
+
+    # ---------------------------------------------------------------- Warteschlange
+
+    @app.get("/api/warteschlange")
+    def warteschlange():
+        return K().warteschlange()
+
+    @app.post("/api/warteschlange")
+    async def warteschlange_dazu(request: Request):
+        for mid in (await request.json()).get("modelle", []):
+            K().in_warteschlange(mid)
+        return {"ok": True}
+
+    @app.delete("/api/warteschlange/{mid}")
+    def warteschlange_weg(mid: str):
+        K().aus_warteschlange(mid)
+        return {"ok": True}
+
+    @app.put("/api/warteschlange")
+    async def warteschlange_ordnen(request: Request):
+        K().warteschlange_ordnen((await request.json()).get("modelle", []))
+        return {"ok": True}
 
     @app.get("/api/tags")
     def tags():

@@ -266,11 +266,18 @@ Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
 Umbenennen auf der Platte, Löschen mit Vorschau → Papierkorb →
 Wiederherstellen, „Im Slicer öffnen“, Live-Oberfläche per SSE,
 virtuelles Raster, Wache gegen fremde Herkunft.
+3D-Ansicht direkt im Inspektor (three.js r170 aus dem npm-Paket, vom
+eigenen Server ausgeliefert; umschaltbar auf das Bild, ohne WebGL nur das
+Bild), Sammlungen (Kante mit Position, Ziehen zum Hinzufügen und
+Umsortieren), Warteschlange (Feld am Modell, Liste links, Ziehen, fällt
+bei „gedruckt“ heraus).
 
-**Fehlt noch zur Parität:** 3D-Ansicht im Browser (three.js, lokal
-ausgeliefert), Sammlungen, Warteschlange, Mehrfachauswahl, Listenansicht,
-Verschieben in einen Ordner, Archive entpacken, eigenes Bild hochladen,
-Quelle-URL, Papierkorb nach 7 Tagen leeren, Passwort für das Heimnetz.
+**Fehlt noch zur Parität:** Mehrfachauswahl, Listenansicht, Verschieben
+in einen Ordner, Archive entpacken, eigenes Bild hochladen, Quelle-URL,
+Papierkorb nach 7 Tagen leeren.
+
+**Zurückgestellt:** Passwort für den Zugriff aus dem Heimnetz — erst wenn
+alles andere steht. Bis dahin nur `127.0.0.1`.
 
 Die Zeilenschätzung aus v1.5.0 (16 110 SLOC) ist verworfen: die
 Aufteilung nach Schichten (8 400 / 4 850) widersprach der Modulliste
