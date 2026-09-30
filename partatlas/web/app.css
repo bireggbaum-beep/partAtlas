@@ -1,0 +1,142 @@
+/* Farben und Masse aus dem 3MF Katalog Manager (src/styles/theme.css,
+   MIT, © 2026 Bexxs75) — die Oberfläche soll dem Anwender vertraut sein.
+   Schriften: Barlow / IBM Plex Mono, wenn installiert; sonst Systemschrift. */
+
+[data-app] {
+  --bg: oklch(0.965 0.004 60); --panel: oklch(1 0 0); --panel-2: oklch(0.985 0.003 60);
+  --line: oklch(0.895 0.006 60); --line-strong: oklch(0.82 0.008 60);
+  --ink: oklch(0.245 0.01 45); --ink-2: oklch(0.505 0.01 50); --ink-3: oklch(0.645 0.008 50);
+  --accent: oklch(0.565 0.165 30); --accent-ink: oklch(0.99 0.01 30); --accent-soft: oklch(0.945 0.03 30);
+  --plate: oklch(0.915 0.006 60); --plate-2: oklch(0.955 0.004 60);
+  --good: oklch(0.52 0.13 150); --warn: oklch(0.62 0.14 80); --crit: oklch(0.55 0.18 18);
+  --shadow: 0 1px 2px rgba(40, 28, 24, 0.06), 0 8px 24px rgba(40, 28, 24, 0.05);
+}
+[data-app="dark"] {
+  --bg: oklch(0.165 0.005 60); --panel: oklch(0.205 0.006 60); --panel-2: oklch(0.235 0.006 60);
+  --line: oklch(0.295 0.008 60); --line-strong: oklch(0.375 0.01 60);
+  --ink: oklch(0.945 0.005 60); --ink-2: oklch(0.715 0.008 60); --ink-3: oklch(0.555 0.01 60);
+  --accent: oklch(0.735 0.155 34); --accent-ink: oklch(0.17 0.03 30); --accent-soft: oklch(0.285 0.05 32);
+  --plate: oklch(0.195 0.006 60); --plate-2: oklch(0.235 0.006 60);
+  --good: oklch(0.72 0.14 150); --warn: oklch(0.8 0.15 85); --crit: oklch(0.68 0.19 15);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+:root { --fs-title: 12.5px; --fs-body: 13px; --fs-meta: 10px; --fs-label: 9px; --radius: 4px;
+        --mono: 'IBM Plex Mono', ui-monospace, 'DejaVu Sans Mono', monospace; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: var(--fs-body)/1.4 'Barlow', 'Segoe UI', Helvetica, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+.mono { font-family: var(--mono); }
+.dim { color: var(--ink-3); font-size: 11px; }
+
+.app { display: grid; height: 100vh; grid-template-columns: 50px 200px 1fr 320px; grid-template-rows: 44px 1fr;
+       grid-template-areas: "rail kopf kopf kopf" "rail seite mitte inspektor"; }
+
+.rail { grid-area: rail; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0;
+        background: var(--panel); border-right: 1px solid var(--line); }
+.rail-btn { width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--ink-3); cursor: pointer; font-size: 16px; }
+.rail-btn.aktiv { background: var(--accent-soft); color: var(--accent); }
+.rail-luecke { flex: 1; }
+
+.kopf { grid-area: kopf; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+        border-bottom: 1px solid var(--line); background: var(--bg); }
+.logo { font-weight: 700; letter-spacing: 0.08em; font-size: 13px; }
+.logo span { color: var(--accent); font-family: var(--mono); font-weight: 500; font-size: 10px; margin-left: 4px; }
+.kopf-luecke { flex: 1; }
+.label { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-3); letter-spacing: 0.1em; }
+.knopf { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; font-size: 12.5px; }
+.knopf:hover { border-color: var(--line-strong); }
+.knopf.akzent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.knopf.gefahr { color: var(--crit); }
+.knopf:disabled { opacity: 0.5; cursor: default; }
+.import { position: relative; }
+.menu { position: absolute; top: 32px; left: 0; z-index: 20; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 6px; box-shadow: var(--shadow); padding: 4px; min-width: 220px; }
+.menu button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 6px 10px; cursor: pointer; border-radius: 4px; }
+.menu button:hover { background: var(--panel-2); }
+.scan-status { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+.seite { grid-area: seite; overflow-y: auto; border-right: 1px solid var(--line); padding: 10px 8px; }
+.suche { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; margin-bottom: 10px; }
+.seite section { margin-bottom: 14px; }
+.seite h3 { font: 500 var(--fs-label)/1 var(--mono); letter-spacing: 0.12em; color: var(--ink-3); margin: 10px 4px 6px; }
+.eintrag { display: flex; justify-content: space-between; width: 100%; background: none; border: 0; padding: 4px 6px;
+           border-radius: var(--radius); cursor: pointer; text-align: left; font-size: 12px; }
+.eintrag:hover { background: var(--panel-2); }
+.eintrag.aktiv { background: var(--accent-soft); color: var(--accent); }
+.eintrag em { font-style: normal; font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.eintrag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.baum .eintrag { padding-left: calc(6px + var(--tiefe, 0) * 12px); }
+.pfeil { display: inline-block; width: 12px; color: var(--ink-3); }
+.gestrichelt { width: 100%; background: none; border: 1px dashed var(--line-strong); border-radius: var(--radius);
+               padding: 4px 6px; color: var(--ink-3); font: 11px var(--mono); text-align: left; cursor: pointer; margin-top: 4px; }
+
+.mitte { grid-area: mitte; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.tagleiste { display: flex; gap: 6px; padding: 8px 14px; overflow-x: auto; border-bottom: 1px solid var(--line); flex-wrap: nowrap; }
+.chip { font: 11px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
+        color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.chip.aktiv { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.filterzeile { padding: 6px 14px; font-size: 12px; color: var(--ink-2); }
+.filterzeile button { background: none; border: 0; color: var(--accent); cursor: pointer; }
+.raster { flex: 1; overflow-y: auto; position: relative; }
+.raster-innen { position: relative; }
+.leer { padding: 60px; text-align: center; color: var(--ink-3); }
+
+.karte { position: absolute; width: 164px; height: 246px; background: var(--panel); border: 1px solid var(--line);
+         border-radius: var(--radius); overflow: hidden; cursor: pointer; box-shadow: var(--shadow); }
+.karte.gewaehlt { outline: 2px solid var(--accent); }
+.karte .bild { height: 164px; position: relative; background: linear-gradient(160deg, var(--plate-2), var(--plate)); }
+.karte img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.karte .platzhalter { position: absolute; inset: 0; display: grid; place-items: center; font: 11px var(--mono); color: var(--ink-3); }
+.badge { position: absolute; font: 9px var(--mono); padding: 1px 5px; border-radius: 3px; }
+.badge.neu { top: 6px; left: 6px; background: var(--ink); color: var(--bg); }
+.badge.format { top: 6px; right: 6px; background: var(--panel); color: var(--ink-2); border: 1px solid var(--line); }
+.badge.gedruckt { bottom: 6px; right: 6px; border: 1px solid var(--accent); color: var(--accent); background: var(--panel); }
+.badge.warn { bottom: 6px; right: 6px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
+.herz { position: absolute; bottom: 6px; left: 6px; width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--line-strong);
+        background: var(--panel); color: var(--ink-3); font-size: 11px; line-height: 16px; text-align: center; padding: 0; cursor: pointer; }
+.herz.an { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.karte .text { padding: 6px 8px; }
+.karte .name { font-weight: 600; font-size: var(--fs-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karte .masse { font: 10px var(--mono); color: var(--ink-3); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karte .tags { display: flex; flex-wrap: wrap; gap: 3px; max-height: 36px; overflow: hidden; }
+.karte .tags span { font: 9.5px var(--mono); padding: 1px 5px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); }
+
+.inspektor { grid-area: inspektor; border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+.hinweis { color: var(--ink-3); text-align: center; margin-top: 45vh; font-size: 12px; }
+.i-bild { aspect-ratio: 1; background: linear-gradient(160deg, var(--plate-2), var(--plate)); border-radius: 6px;
+          border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+.i-bild img { width: 100%; height: 100%; object-fit: contain; }
+.i-name { font-weight: 700; font-size: 15px; margin: 12px 0 2px; word-break: break-word; }
+.i-karte { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 12px; margin: 10px 0; }
+.zeile { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.zeile:last-child { border-bottom: 0; }
+.zeile span:first-child { color: var(--ink-2); }
+.zeile span:last-child { font-family: var(--mono); text-align: right; word-break: break-all; }
+.i-titel { font: 500 var(--fs-label)/1 var(--mono); letter-spacing: 0.12em; color: var(--ink-3); margin: 14px 0 8px; }
+.i-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.i-tags .chip button { background: none; border: 0; color: var(--ink-3); cursor: pointer; padding: 0 0 0 4px; }
+.i-tags input { font: 11px var(--mono); background: none; border: 1px dashed var(--line-strong); border-radius: 999px; padding: 2px 8px; width: 120px; }
+.i-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.farbpunkt { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--line-strong); margin-right: 6px; vertical-align: middle; }
+.ort { font: 10.5px var(--mono); color: var(--ink-2); word-break: break-all; padding: 3px 0; }
+.fehler { color: var(--crit); font-size: 12px; }
+
+dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 18px; max-width: 520px; box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+dialog h2 { margin: 0 0 10px; font-size: 16px; }
+dialog ul { padding-left: 18px; font-size: 12px; }
+dialog li { word-break: break-all; }
+dialog input[type=text] { width: 100%; padding: 6px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+         padding: 8px 14px; border-radius: 6px; font-size: 12.5px; z-index: 50; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 44px 1fr; grid-template-rows: 44px auto 1fr auto;
+         grid-template-areas: "rail kopf" "rail seite" "rail mitte" "rail inspektor"; }
+  .seite { max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .inspektor { border-left: 0; border-top: 1px solid var(--line); max-height: 45vh; }
+  .hinweis { margin-top: 10px; }
+}

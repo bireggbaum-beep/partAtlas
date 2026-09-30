@@ -256,6 +256,22 @@ Datei.
    Eignungsprüfung (Bauraum, Düse, Material), gemeinsame Warteschlange;
    STL mit Referenzeinstellungen slicen.
 
+### Stand Phase 1 (30.09.2026)
+
+**Da:** Wurzelordner (mehrere), Scan mit Hash als Kennung (Verschieben,
+Umbenennen, Kopien, fehlende Dateien), Leser für STL/OBJ/3MF (Komponenten,
+Transformationen, Bild, Platten aus `slice_info`) und STEP ohne Geometrie,
+Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
+3MF Katalog, Suche, Tag-/Ordner-/Format-Filter, Favorit, Gedruckt,
+Umbenennen auf der Platte, Löschen mit Vorschau → Papierkorb →
+Wiederherstellen, „Im Slicer öffnen“, Live-Oberfläche per SSE,
+virtuelles Raster, Wache gegen fremde Herkunft.
+
+**Fehlt noch zur Parität:** 3D-Ansicht im Browser (three.js, lokal
+ausgeliefert), Sammlungen, Warteschlange, Mehrfachauswahl, Listenansicht,
+Verschieben in einen Ordner, Archive entpacken, eigenes Bild hochladen,
+Quelle-URL, Papierkorb nach 7 Tagen leeren, Passwort für das Heimnetz.
+
 Die Zeilenschätzung aus v1.5.0 (16 110 SLOC) ist verworfen: die
 Aufteilung nach Schichten (8 400 / 4 850) widersprach der Modulliste
 (≈ 7 760 / 5 500), die Testquote (18 %) der Zusage (20–25 %). Neu
@@ -294,6 +310,30 @@ Was daraus folgt: jede Abfrage der Oberfläche liegt unter 20 ms. Erstes
 Einlesen in einer Transaktion (≈ 15 s für 5 700 Dateien), nicht Datei für
 Datei (hochgerechnet ≈ 1 min).
 
+### Phase 1 am echten Scan
+
+30.09.2026, derselbe Container, 3 Arbeitsprozesse. Sammlung aus
+`werkzeuge/demo_sammlung.py --anzahl 5700` (84 MB; einfache Formen mit
+einigen tausend Dreiecken — echte Modelle sind grösser).
+
+| Frage | Ergebnis |
+|---|---|
+| Erster Scan: alle 5 593 Modelle im Katalog sichtbar | 9,5 s |
+| … alle Vorschauen gerendert | 260 s |
+| Zweiter Scan ohne Änderung | 0,1 s |
+| Server nach dem Scan (RSS) | 127 MB |
+| Bestand: Datenbank / Vorschau-Cache | 11 MB / 43 MB |
+| `/api/modelle` alle 5 593 Kacheln (2 MB JSON) | 346 ms |
+| Suche „zahnrad“ / Tag-Filter „petg“ | 16 / 54 ms |
+| Modell für den Inspektor | 4,4 ms |
+| Browser: erste Kacheln nach dem Laden | 1,4 s; 30 Kacheln im DOM, beim Scrollen gleich viele |
+| Vorschau eines Torus mit 180 000 Dreiecken, ein Kern | 1,3 s |
+
+Schätzung, nicht gemessen: echte Modelle mit 100 000 bis 2 Mio. Dreiecken
+(beim Rendern auf 400 000 ausgedünnt) brauchen um 1 s je Vorschau; 5 700
+davon auf 3 Prozessen also rund eine halbe Stunde — im Hintergrund, der
+Katalog ist vorher benutzbar.
+
 ---
 
 ## 9. Offen
@@ -304,9 +344,9 @@ Ungeprüft, zu klären vor der genannten Phase:
 |---|---|
 | Bambu Studio: steht die volle Konfiguration im G-Code? | 2 |
 | Druck bei ausgeschaltetem PC: Nachtrag aus der Moonraker-Historie beim Start; bei Bambu unbekannt | 2 |
-| Render-Zeit je Modell mit Software-Rasterizer auf dem Rechner des Anwenders | 1 |
+| Render-Zeit mit echten Modellen auf dem Rechner des Anwenders (hier nur erzeugte Formen gemessen) | 1 |
 | flatTSDB: Stand und Ort der Bibliothek | 3 |
 | Bambu LAN: seit den Firmware-Änderungen 2025 womöglich nur im Entwicklermodus | 4 |
 | OrcaSlicer: Slicen über die Kommandozeile mit fremder Konfiguration | 4 |
 | Windows: Verzeichnis-`fsync` fehlt (VERTRAG §2.2), ungeprüft | 1 |
-| Lizenz: Übernahme der Oberfläche des 3MF Katalogs (MIT → Hinweis mitführen) | 1 |
+| Lizenz: Hinweis auf den 3MF Katalog (MIT) steht in `web/app.css`; beim Übernehmen weiterer Teile mitführen | 1 |

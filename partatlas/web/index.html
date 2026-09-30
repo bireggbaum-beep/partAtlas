@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de" data-app="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>partAtlas</title>
+<link rel="stylesheet" href="/web/app.css">
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <button class="rail-btn aktiv" data-rail="katalog" title="Katalog">▦</button>
+    <button class="rail-btn" data-rail="papierkorb" title="Papierkorb">🗑</button>
+    <span class="rail-luecke"></span>
+    <button class="rail-btn" id="thema" title="Hell/Dunkel">◐</button>
+  </nav>
+
+  <header class="kopf">
+    <div class="logo">PARTATLAS <span>KATALOG</span></div>
+    <div class="import">
+      <button class="knopf akzent" id="import-knopf">＋ Importieren ▾</button>
+      <div class="menu" id="import-menu" hidden>
+        <button id="wurzel-neu">Ordner hinzufügen …</button>
+        <button id="neu-einlesen">Alle Ordner neu einlesen</button>
+      </div>
+    </div>
+    <span class="label">SORTIEREN</span>
+    <select id="sortierung" class="knopf">
+      <option value="name">Name</option>
+      <option value="neu">Neueste</option>
+      <option value="gewicht">Gewicht</option>
+      <option value="groesse">Grösse</option>
+    </select>
+    <span class="kopf-luecke"></span>
+    <span class="scan-status" id="scan-status"></span>
+    <span class="mono dim" id="anzahl"></span>
+  </header>
+
+  <aside class="seite">
+    <input class="suche" id="suche" placeholder="⌕  Name oder Tag suchen …" autocomplete="off">
+    <section>
+      <h3>ORDNER</h3>
+      <button class="eintrag" data-ansicht="alle"><span>Alle Modelle</span><em id="z-alle"></em></button>
+      <div id="ordner"></div>
+      <button class="gestrichelt" id="wurzel-neu-2">＋ Ordner hinzufügen</button>
+    </section>
+    <section>
+      <h3>FORMATE</h3>
+      <div id="formate"></div>
+    </section>
+    <section>
+      <h3>TAGS</h3>
+      <div id="tag-liste"></div>
+    </section>
+    <section>
+      <h3>WERKZEUGE</h3>
+      <button class="eintrag" data-ansicht="neu"><span>⊕ Neu hinzugefügt</span><em></em></button>
+      <button class="eintrag" data-ansicht="favoriten"><span>♡ Favoriten</span><em id="z-favoriten"></em></button>
+      <button class="eintrag" data-ansicht="duplikate"><span>⧉ Duplikate</span><em id="z-duplikate"></em></button>
+      <button class="eintrag" data-ansicht="fehlt"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
+      <button class="eintrag" data-ansicht="unlesbar"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
+      <button class="eintrag" data-ansicht="papierkorb"><span>🗑 Papierkorb</span><em id="z-papierkorb"></em></button>
+    </section>
+  </aside>
+
+  <main class="mitte">
+    <div class="tagleiste" id="tagleiste"></div>
+    <div class="filterzeile" id="filterzeile" hidden></div>
+    <div class="raster" id="raster"><div class="raster-innen" id="raster-innen"></div></div>
+    <div class="leer" id="leer" hidden></div>
+  </main>
+
+  <aside class="inspektor" id="inspektor">
+    <p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>
+  </aside>
+</div>
+
+<dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>
+<div class="toast" id="toast" hidden></div>
+<script src="/web/app.js"></script>
+</body>
+</html>
