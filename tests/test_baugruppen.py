@@ -73,7 +73,7 @@ if __name__ == "__main__":
               abs(s["gewicht_g"] - (28.69 + 7.56 + 15.75)) < 0.2 and s["gewicht_geschaetzt"])
         fil = {(f["material"], f["farbe"]): f["gesamt_g"] for f in s["filament"]}
         check("Filament je Material und Farbe: PETG schwarz aus der 3MF, der Rest „Material offen“ statt still PLA",
-              abs(fil[("PETG", "#000000")] - 15.75) < 0.1 and abs(fil[(None, None)] - 36.25) < 0.2)
+              abs(fil.get(("PETG", "#000000"), -1e9) - 15.75) < 0.1 and abs(fil.get((None, None), -1e9) - 36.25) < 0.2)
         mat = {m["material"]: m for m in s["materialien"]}
         check("Je Material zusammengefasst, mit Farben und Anteil einer 1-kg-Rolle; „offen“ steht zuletzt",
               mat["PETG"]["farben"] == [{"farbe": "#000000", "gesamt_g": 15.8, "offen_g": 15.8}]
