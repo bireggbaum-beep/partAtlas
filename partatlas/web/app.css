@@ -116,7 +116,7 @@ button, input, select { font: inherit; color: inherit; }
 .zeile span:last-child { font-family: var(--mono); text-align: right; word-break: break-all; }
 .i-titel { font: 500 var(--fs-label)/1 var(--mono); letter-spacing: 0.12em; color: var(--ink-3); margin: 14px 0 8px; }
 .i-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-.i-tags .chip button { background: none; border: 0; color: var(--ink-3); cursor: pointer; padding: 0 0 0 4px; }
+.i-tags .chip button, .i-sammlungen .chip button { background: none; border: 0; color: var(--ink-3); cursor: pointer; padding: 0 0 0 4px; }
 .i-tags input { font: 11px var(--mono); background: none; border: 1px dashed var(--line-strong); border-radius: 999px; padding: 2px 8px; width: 120px; }
 .i-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .farbpunkt { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--line-strong); margin-right: 6px; vertical-align: middle; }
