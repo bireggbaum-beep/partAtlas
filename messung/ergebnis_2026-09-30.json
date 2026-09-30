@@ -1,0 +1,45 @@
+{
+ "bauen": {
+  "knoten": 50000,
+  "kanten": 125440,
+  "aufbau_s": 13.51
+ },
+ "platte": {
+  "platte_mb": 43.6,
+  "dateien": 7021
+ },
+ "oeffnen": {
+  "warm_s": 1.007,
+  "kalt_s": 1.479,
+  "rss_nur_python_mb": 11.953,
+  "rss_nach_import_mb": 17.984,
+  "rss_offen_mb": 199.598,
+  "rss_spitze_mb": 199.598
+ },
+ "tracemalloc": {
+  "tracemalloc_mb": 160.514473,
+  "tracemalloc_spitze_mb": 163.187175
+ },
+ "abfragen": {
+  "suche_name_erste_ms": 8.43,
+  "suche_name_treffer": 1212,
+  "suche_name_warm_ms": 1.205,
+  "suche_beschreibung_erste_ms": 16.05,
+  "suche_beschreibung_warm_ms": 5.249,
+  "tag_filter_treffer": 434,
+  "tag_filter_ms": 0.167,
+  "tag_und_suche_ms": 1.804,
+  "bauraum_treffer": 6161,
+  "bauraum_ms": 4.748,
+  "grid_seite_24_ms": 0.019,
+  "list_models_readonly_ms": 1.291,
+  "list_models_kopie_ms": 30.052,
+  "inspector_ms": 0.014,
+  "ampel_ms": 0.011,
+  "protokoll_drucker_treffer": 3192,
+  "protokoll_drucker_ms": 2.206,
+  "modell_einlesen_ms": 10.641,
+  "druckende_ms": 7.477,
+  "suche_nach_aenderung_ms": 2.103
+ }
+}
