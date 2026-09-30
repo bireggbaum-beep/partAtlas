@@ -184,8 +184,16 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   und dem Anteil einer 1-kg-Rolle („TPU 86 g in Rot und Schwarz, ein
   Rest“), Druckzeit, Einkaufsliste der Kaufteile. Ohne Slicer-Daten wird
   das Gewicht geschätzt (1,2 mm Hülle + 15 % Füllung) und so benannt.
-- **Kein stilles PLA**: ohne Angabe heisst es „Material offen“; Material
-  und Farbe je Druckteil per Klick, oder für alle offenen auf einmal.
+- **Standard statt Nachfragen**: ohne Angabe gelten Standardmaterial,
+  -farbe und Rollengrösse aus den Einstellungen (⚙, wie in pDMS). Wer
+  nur PLA+ druckt, stellt das einmal ein. Angenommenes steht dezent als
+  „Standard“ dabei; Material und Farbe je Druckteil per Klick.
+- **Fortschritt getrennt**: „Druckteile 3 von 21 gedruckt“ und
+  „Kaufteile 0 von 24 beschafft“ — zusammengezählt war „3 von 45“
+  unverständlich.
+- **Kacheln statt Dauerplatz**: Filament (Top 4 mit Tupfer) und
+  Druckzeit (längste Teile) klappen per Klick ihre Aufschlüsselung auf:
+  Material mit Farben und Rollenanteil, Zeit je Teil als Balken.
 - **Weniger tippen**: aus einem Ordner, einer Sammlung oder der Auswahl
   anlegen; Mengen aus Dateinamen (`Arm_x4`, `4x_Arm`); Ordner, die wie
   Baugruppen aussehen, werden vorgeschlagen. Kacheln auf eine Baugruppe

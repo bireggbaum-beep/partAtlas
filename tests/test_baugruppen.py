@@ -72,18 +72,28 @@ if __name__ == "__main__":
         check("Gewicht: Slicer-Wert, sonst Hülle + 15 % Füllung, als geschätzt markiert",
               abs(s["gewicht_g"] - (28.69 + 7.56 + 15.75)) < 0.2 and s["gewicht_geschaetzt"])
         fil = {(f["material"], f["farbe"]): f["gesamt_g"] for f in s["filament"]}
-        check("Filament je Material und Farbe: PETG schwarz aus der 3MF, der Rest „Material offen“ statt still PLA",
-              abs(fil.get(("PETG", "#000000"), -1e9) - 15.75) < 0.1 and abs(fil.get((None, None), -1e9) - 36.25) < 0.2)
+        check("Filament je Material und Farbe: PETG schwarz aus der 3MF, der Rest mit dem Standard (PLA)",
+              abs(fil.get(("PETG", "#000000"), -1e9) - 15.75) < 0.1 and abs(fil.get(("PLA", None), -1e9) - 36.25) < 0.2)
         mat = {m["material"]: m for m in s["materialien"]}
-        check("Je Material zusammengefasst, mit Farben und Anteil einer 1-kg-Rolle; „offen“ steht zuletzt",
+        check("Je Material zusammengefasst, mit Farben und Rollenanteil; was nur angenommen ist, steht dabei",
               mat["PETG"]["farben"] == [{"farbe": "#000000", "gesamt_g": 15.8, "offen_g": 15.8}]
-              and mat["PETG"]["rollen"] == 0.02 and s["materialien"][-1]["material"] is None and s["material_offen"] == 1)
+              and mat["PETG"]["rollen"] == 0.02 and mat["PETG"]["angenommen_g"] == 0
+              and abs(mat["PLA"]["angenommen_g"] - 36.2) < 0.2)
+        # Standard aus den Einstellungen: wer nur PLA+ druckt, stellt das einmal ein.
+        e = c.put("/api/einstellungen", json={"standard_material": "pla+", "standard_farbe": "#8a8a8a", "rolle_g": 750})
+        s = c.get(f"/api/baugruppen/{bid}").json()["summen"]
+        mat = {m["material"]: m for m in s["materialien"]}
+        check("Einstellungen: Standard PLA+ grau, Rolle 750 g — gilt für alle Teile ohne Angabe",
+              e.status_code == 200 and "PLA+" in mat and "PLA" not in mat and mat["PLA+"]["farben"][0]["farbe"] == "#8a8a8a"
+              and s["rolle_g"] == 750 and mat["PLA+"]["rollen"] == round(mat["PLA+"]["gesamt_g"] / 750, 2))
+        check("… das PETG aus dem Slicer bleibt PETG schwarz", "PETG" in mat and mat["PETG"]["farben"][0]["farbe"] == "#000000")
+        check("Einstellungen: falsche Farbe abgelehnt", c.put("/api/einstellungen", json={"standard_farbe": "blau"}).status_code == 400)
         r = c.post(f"/api/baugruppen/{bid}/material", json={"material": "tpu", "farbe": "#c0392b"})
         s = c.get(f"/api/baugruppen/{bid}").json()["summen"]
         mat = {m["material"]: m for m in s["materialien"]}
-        check("„Material festlegen“ für alle Offenen: TPU rot, das PETG bleibt PETG",
-              r.status_code == 200 and "TPU" in mat and "PETG" in mat and None not in mat
-              and mat["TPU"]["farben"][0]["farbe"] == "#c0392b")
+        check("Für alle ohne Angabe festlegen: TPU rot, das PETG bleibt PETG, nichts mehr angenommen",
+              r.status_code == 200 and "TPU" in mat and "PETG" in mat and "PLA+" not in mat
+              and mat["TPU"]["farben"][0]["farbe"] == "#c0392b" and mat["TPU"]["angenommen_g"] == 0)
         check("Farbe nur als #RRGGBB (landet als CSS in der Oberfläche)",
               c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": f"MODEL_ASSET/{m['Halter']}",
                       "farbe": "red;background:url(x)"}).status_code == 400)
@@ -91,12 +101,17 @@ if __name__ == "__main__":
 
         # -- Fortschritt
         f = c.get(f"/api/baugruppen/{bid}").json()["fortschritt"]
-        check("Fortschritt am Anfang: 0 von 13 + 22 Kaufteile", f == {"bedarf": 35, "erledigt": 0})
+        check("Fortschritt getrennt: 0 von 13 Druckteilen, 0 von 22 Kaufteilen",
+              (f["druck_bedarf"], f["druck_erledigt"], f["kauf_bedarf"], f["kauf_erledigt"]) == (13, 0, 22, 0))
         c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": f"MODEL_ASSET/{m['Halter']}", "erledigt": 8})
         c.patch(f"/api/baugruppen/{bid}/positionen", json={"ref": f"PURCHASED_PART/{eigen}", "erledigt": 10})
         f = c.get(f"/api/baugruppen/{bid}").json()["fortschritt"]
         check("Zähler gelten über alle Exemplare (8 Halter); zu viel zählt nur bis zum Bedarf (4 Propeller)",
-              f["erledigt"] == 12)
+              f["erledigt"] == 12 and f["druck_erledigt"] == 8 and f["kauf_erledigt"] == 4)
+        z = {x["name"]: x for x in c.get(f"/api/baugruppen/{bid}").json()["summen"]["zeiten"]}
+        check("Druckzeit je Teil: Platte mit Slicer-Zeit vorn (1 h aus slice_info), Halter ohne Zeit, 8 Stück",
+              list(z)[0] == "Top_Plate" and z["Top_Plate"]["gesamt_s"] == 3600 and z["Halter"]["je_s"] is None
+              and z["Halter"]["stueck"] == 8)
         dm = c.get(f"/api/baugruppen/{modul}").json()
         check("Unterbaugruppe weiss, dass sie 4× gebraucht wird: Halter-Bedarf 8, nicht 2",
               dm["exemplare"] == 4 and next(p for p in dm["positionen"] if p["name"] == "Halter")["bedarf"] == 8)

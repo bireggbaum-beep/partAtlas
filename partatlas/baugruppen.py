@@ -33,10 +33,10 @@ POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
 # Füllung innen. Massiv gerechnet käme ein 10-cm-Klotz auf das Drei- bis
 # Vierfache. Es bleibt eine Schätzung, und die Oberfläche sagt das.
 ROLLE_G = 1000
-MATERIALIEN = ["PLA", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "PLA-CF", "PETG-CF", "PVA", "HIPS"]
+MATERIALIEN = ["PLA", "PLA+", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "PLA-CF", "PETG-CF", "PVA", "HIPS"]
 HUELLE_CM = 0.12
 FUELLUNG = 0.15
-DICHTE = {"PLA": 1.24, "PETG": 1.27, "ABS": 1.04, "ASA": 1.07, "TPU": 1.21, "PA": 1.14, "PC": 1.20}
+DICHTE = {"PLA": 1.24, "PLA+": 1.24, "PETG": 1.27, "ABS": 1.04, "ASA": 1.07, "TPU": 1.21, "PA": 1.14, "PC": 1.20}
 
 MENGE_IM_NAMEN = [re.compile(r"(?:^|[_\-\s])x(\d{1,3})(?:$|[_\-\s.])", re.I),
                   re.compile(r"(?:^|[_\-\s])(\d{1,3})x(?:$|[_\-\s.])", re.I)]
@@ -230,7 +230,7 @@ class Baugruppen:
             if col == BAUGRUPPE:
                 self._material_setzen(kid, material, farbe, gesehen)
                 continue
-            if col != MODELL or p[2].get("material") or self._modell_daten(kid)[1]["material"]:
+            if col != MODELL or p[2].get("material") or not self._modell_daten(kid)[1]["material_angenommen"]:
                 continue
             aenderung = {"material": material}
             if farbe and not p[2].get("farbe"):
@@ -252,7 +252,15 @@ class Baugruppen:
 
     # ------------------------------------------------------------ Auswerten
 
-    def _modell_daten(self, mid, material=None):
+    def standard(self):
+        """Was gilt, wo nichts angegeben ist — aus den Einstellungen (wie in
+        pDMS). Wer nur PLA+ druckt, soll nicht jedes Teil anfassen müssen."""
+        e = self.k.b.einstellungen()
+        return {"material": (e.get("standard_material") or "PLA").upper(),
+                "farbe": e.get("standard_farbe") or None,
+                "rolle_g": int(e.get("rolle_g") or ROLLE_G)}
+
+    def _modell_daten(self, mid, material=None, farbe=None, standard=None):
         m = self.db.get_node(ref(MODELL, mid), readonly=True)
         kurz = self.k._kurz(mid, m)
         h = kurz["hash"]
@@ -261,9 +269,12 @@ class Baugruppen:
         platten = d.get("platten") or []
         fil = next((f for p in platten for f in p.get("filamente", [])), {})
         gewicht, geschaetzt = kurz["gewicht_g"], False
-        # Kein stilles PLA: ohne Angabe bleibt das Material offen und die
-        # Oberfläche fragt danach. Gerechnet wird dann mit PLA-Dichte.
+        # Reihenfolge: an der Position gesetzt, aus dem Slicer, sonst der
+        # Standard aus den Einstellungen — dann als „angenommen“ markiert.
+        standard = standard or self.standard()
         stoff = (material or kurz["material"] or "").upper() or None
+        stoff_angenommen = stoff is None
+        stoff = stoff or standard["material"]
         if gewicht is None and d.get("volumen_cm3"):
             volumen = d["volumen_cm3"]
             if d.get("flaeche_cm2"):
@@ -272,8 +283,11 @@ class Baugruppen:
             gewicht = volumen * DICHTE.get(stoff or "PLA", 1.24)   # gerundet wird erst die Summe
             geschaetzt = True
         zeit = sum(p.get("zeit_s") or 0 for p in platten) or None
+        farbe = farbe or fil.get("farbe")
+        farbe_angenommen = farbe is None
         return kurz, {"gewicht_g": gewicht, "geschaetzt": geschaetzt, "zeit_s": zeit,
-                      "material": stoff, "farbe": fil.get("farbe")}
+                      "material": stoff, "material_angenommen": stoff_angenommen,
+                      "farbe": farbe or standard["farbe"], "farbe_angenommen": farbe_angenommen}
 
     def _aufloesen(self, bid, faktor=1, pfad=()):
         """Blätter der Stückliste mit Gesamtmenge: (art, id, kante, bedarf)."""
@@ -288,11 +302,17 @@ class Baugruppen:
                 yield ARTEN[col], kid, kante, bedarf
 
     def fortschritt(self, bid):
-        bedarf = erledigt = 0
-        for _, _, kante, b in self._aufloesen(bid):
-            bedarf += b
-            erledigt += min(kante.get("erledigt", 0), b)
-        return {"bedarf": bedarf, "erledigt": erledigt}
+        """Stück, getrennt nach Druck- und Kaufteilen — zusammengezählt hiess
+        „3 von 45“, und niemand wusste, was die 45 sind."""
+        f = {"bedarf": 0, "erledigt": 0, "druck_bedarf": 0, "druck_erledigt": 0, "kauf_bedarf": 0, "kauf_erledigt": 0}
+        for art, _, kante, b in self._aufloesen(bid):
+            fertig = min(kante.get("erledigt", 0), b)
+            teil = "druck" if art == "modell" else "kauf"
+            f[f"{teil}_bedarf"] += b
+            f[f"{teil}_erledigt"] += fertig
+            f["bedarf"] += b
+            f["erledigt"] += fertig
+        return f
 
     def liste(self):
         ergebnis = []
@@ -334,11 +354,13 @@ class Baugruppen:
             eintrag["erledigt"] = kante.get("erledigt", 0)
             eintrag["bedarf"] = eintrag["menge"] * exemplare
             if art == "modell":
-                kurz, daten = self._modell_daten(kid, kante.get("material"))
+                kurz, daten = self._modell_daten(kid, kante.get("material"), kante.get("farbe"))
                 eintrag.update(name=kurz["name"], format=kurz["format"], hash=kurz["hash"], vorschau=kurz["vorschau"],
                                bild=kurz["bild"], fehlt=kurz["fehlt"], masse=kurz["masse"], **{f"je_{k}": v for k, v in daten.items()})
-                eintrag["material"] = kante.get("material") or daten["material"]
-                eintrag["farbe"] = kante.get("farbe") or daten["farbe"]
+                eintrag["material"] = daten["material"]
+                eintrag["farbe"] = daten["farbe"]
+                eintrag["material_angenommen"] = daten["material_angenommen"]
+                eintrag["farbe_angenommen"] = daten["farbe_angenommen"]
             elif art == "kaufteil":
                 t = self.db.get_node(r, readonly=True)
                 eintrag.update(name=t["name"], kategorie=t.get("kategorie"), einheit=t.get("einheit", "Stück"))
@@ -356,6 +378,8 @@ class Baugruppen:
     def summen(self, bid):
         """Was die ganze Baugruppe braucht, über alle Ebenen: Gewicht, Zeit,
         Filament je Material und Farbe, Einkaufsliste der Kaufteile."""
+        standard = self.standard()
+        zeiten = {}
         gewicht = rest_gewicht = zeit = rest_zeit = 0.0
         geschaetzt = False
         ohne_daten = 0
@@ -366,7 +390,11 @@ class Baugruppen:
             offen = max(0, bedarf - kante.get("erledigt", 0))
             if art == "modell":
                 druckteile += bedarf
-                _, d = self._modell_daten(kid, kante.get("material"))
+                kurz, d = self._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
+                z = zeiten.setdefault(kid, {"id": kid, "name": kurz["name"], "stueck": 0, "offen": 0,
+                                            "je_s": d["zeit_s"], "farbe": d["farbe"]})
+                z["stueck"] += bedarf
+                z["offen"] += offen
                 if d["gewicht_g"] is None:
                     ohne_daten += 1
                     continue
@@ -376,11 +404,13 @@ class Baugruppen:
                 ohne_zeit += 0 if d["zeit_s"] else 1
                 zeit += (d["zeit_s"] or 0) * bedarf
                 rest_zeit += (d["zeit_s"] or 0) * offen
-                schluessel = (kante.get("material") or d["material"], kante.get("farbe") or d["farbe"])
+                schluessel = (d["material"], d["farbe"])
                 eintrag = filament.setdefault(schluessel, {"material": schluessel[0], "farbe": schluessel[1],
-                                                          "gesamt_g": 0.0, "offen_g": 0.0})
+                                                          "gesamt_g": 0.0, "offen_g": 0.0, "angenommen_g": 0.0})
                 eintrag["gesamt_g"] += d["gewicht_g"] * bedarf
                 eintrag["offen_g"] += d["gewicht_g"] * offen
+                if d["material_angenommen"]:
+                    eintrag["angenommen_g"] += d["gewicht_g"] * bedarf
             else:
                 kaufteile += bedarf
                 t = self.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
@@ -394,12 +424,15 @@ class Baugruppen:
         # Gesamtsumme. Rollen zu 1 kg, der üblichen Grösse.
         materialien = {}
         for v in filament.values():
-            m = materialien.setdefault(v["material"], {"material": v["material"], "gesamt_g": 0.0, "offen_g": 0.0, "farben": []})
+            m = materialien.setdefault(v["material"], {"material": v["material"], "gesamt_g": 0.0, "offen_g": 0.0,
+                                                       "angenommen_g": 0.0, "farben": []})
             m["gesamt_g"] += v["gesamt_g"]
             m["offen_g"] += v["offen_g"]
+            m["angenommen_g"] += v["angenommen_g"]
             m["farben"].append({"farbe": v["farbe"], "gesamt_g": runden(v["gesamt_g"]), "offen_g": runden(v["offen_g"])})
         materialien = sorted(({**m, "gesamt_g": runden(m["gesamt_g"]), "offen_g": runden(m["offen_g"]),
-                               "rollen": round(m["gesamt_g"] / ROLLE_G, 2),
+                               "angenommen_g": runden(m["angenommen_g"]),
+                               "rollen": round(m["gesamt_g"] / standard["rolle_g"], 2),
                                "farben": sorted(m["farben"], key=lambda f: -f["gesamt_g"])}
                               for m in materialien.values()),
                              key=lambda m: (m["material"] is None, -m["gesamt_g"]))
@@ -411,7 +444,10 @@ class Baugruppen:
                                 for v in filament.values()), key=lambda x: -x["gesamt_g"]),
             "einkauf": sorted(kauf.values(), key=lambda x: (x["kategorie"] or "", x["name"])),
             "materialien": materialien,
-            "material_offen": sum(1 for m in materialien if m["material"] is None),
+            "rolle_g": standard["rolle_g"], "standard": standard,
+            # Druckzeit je Teil, längste zuerst — „was frisst die Zeit?“
+            "zeiten": sorted(({**z, "gesamt_s": (z["je_s"] or 0) * z["stueck"], "offen_s": (z["je_s"] or 0) * z["offen"]}
+                              for z in zeiten.values()), key=lambda z: (z["je_s"] is None, -((z["je_s"] or 0) * z["stueck"]))),
         }
 
     def fehlende_in_warteschlange(self, bid):
@@ -440,7 +476,7 @@ class Baugruppen:
         if s["einkauf"]:
             md += ["", "## Einkaufsliste (alle Ebenen)", ""] + [f"- {e['bedarf']} {e['einheit']} {e['name']}" for e in s["einkauf"]]
         if s["filament"]:
-            md += ["", "## Filament", ""] + [f"- {m['material'] or 'Material offen'}: {m['gesamt_g']} g (" + ", ".join(
+            md += ["", "## Filament", ""] + [f"- {m['material']}: {m['gesamt_g']} g (" + ", ".join(
                 f"{x['farbe'] or 'Farbe offen'} {x['gesamt_g']} g" for x in m["farben"]) + ")" for m in s["materialien"]]
         return "\n".join(md) + "\n"
 

@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from . import formate, slicer
-from .baugruppen import Baugruppen
+from .baugruppen import MATERIALIEN, Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
@@ -324,6 +324,33 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/stapel/loeschvorschau")
     async def stapel_loeschvorschau(request: Request):
         return K().loeschvorschau_viele((await request.json()).get("modelle", []))
+
+    # ---------------------------------------------------------------- Einstellungen
+
+    @app.get("/api/einstellungen")
+    def einstellungen():
+        return {**zustand["bestand"].einstellungen(), "gilt": B().standard(),
+                "materialien": MATERIALIEN}
+
+    @app.put("/api/einstellungen")
+    async def einstellungen_setzen(request: Request):
+        d = await request.json()
+        werte = {}
+        if "standard_material" in d:
+            werte["standard_material"] = str(d["standard_material"] or "PLA").strip().upper()[:20] or "PLA"
+        if "standard_farbe" in d:
+            f = d["standard_farbe"] or None
+            if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
+                raise KatalogFehler("Farbe als #RRGGBB angeben.")
+            werte["standard_farbe"] = f
+        if "rolle_g" in d:
+            try:
+                werte["rolle_g"] = max(100, min(int(d["rolle_g"]), 10_000))
+            except (TypeError, ValueError):
+                raise KatalogFehler("Rollengrösse in Gramm.")
+        zustand["bestand"].einstellungen_setzen(**werte)
+        verteiler.senden("einstellungen", werte)
+        return B().standard()
 
     # ---------------------------------------------------------------- Baugruppen
 

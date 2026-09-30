@@ -47,7 +47,7 @@ async function ladeBaugruppenLeiste() {
     ? `<div class="tipp" id="bg-tipp"><b>💡 ${vorschlaege.length} Ordner</b> sehen aus wie Baugruppen — ansehen</div>` : "";
   $("#baugruppen").innerHTML = liste.map((b) => `
     <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
-      <div class="kopfzeile"><span>${esc(b.name)}</span><em>${b.erledigt}/${b.bedarf}</em></div>${balken(b)}</button>`).join("") + tipp;
+      <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken(b)}</button>`).join("") + tipp;
   zustand.bgVorschlaege = vorschlaege;
 }
 
@@ -95,18 +95,22 @@ function zeichneBaugruppe(d) {
   const kauf = d.positionen.filter((p) => p.art === "kaufteil");
   const titelbild = druck.map((p) => bildUrl(p)).find(Boolean);
   const offenTeile = f.bedarf - f.erledigt;
-  const text = !f.bedarf ? "Noch leer."
-    : offenTeile === 0 ? `<b>Alles da.</b> ${f.bedarf} von ${f.bedarf} Teilen gedruckt und beschafft.`
-    : `<b>${f.erledigt} von ${f.bedarf}</b> Teilen fertig · noch ca. <b>${zahl(s.offen_gewicht_g, 0)} g</b> Filament`
-      + (s.offen_zeit_s ? ` · <b>${dauer(s.offen_zeit_s)}</b> Druckzeit` : "");
+  const offenDruck = f.druck_bedarf - f.druck_erledigt;
   const leer = !d.positionen.length;
+  // Zwei Zeilen statt einer Summe: „3 von 45“ vermischte Druck- und Kaufteile.
+  const fortschrittZeilen = [
+    f.druck_bedarf ? `<div class="fz"><span class="fz-name">Druckteile</span>${balken({ bedarf: f.druck_bedarf, erledigt: f.druck_erledigt })}
+      <span class="fz-text"><b>${f.druck_erledigt} von ${f.druck_bedarf}</b> gedruckt${offenDruck ? ` · noch ca. ${zahl(s.offen_gewicht_g, 0)} g${s.offen_zeit_s ? ", " + dauer(s.offen_zeit_s) : ""}` : " ✓"}</span></div>` : "",
+    f.kauf_bedarf ? `<div class="fz"><span class="fz-name">Kaufteile</span>${balken({ bedarf: f.kauf_bedarf, erledigt: f.kauf_erledigt })}
+      <span class="fz-text"><b>${f.kauf_erledigt} von ${f.kauf_bedarf}</b> beschafft${f.kauf_erledigt >= f.kauf_bedarf ? " ✓" : ""}</span></div>` : "",
+  ].join("");
   return `
   <div class="bg-kopf">
     <div class="bg-bild">${titelbild ? `<img src="${titelbild}" alt="">` : '<span style="font-size:40px">🧩</span>'}</div>
     <div style="flex:1;min-width:0">
       <h2 class="bg-titel" id="bg-name" title="Klicken zum Umbenennen">${esc(d.name)}</h2>
       <div class="bg-beschreibung" id="bg-beschreibung" title="Klicken zum Bearbeiten">${d.beschreibung ? esc(d.beschreibung) : '<span class="dim">Beschreibung hinzufügen …</span>'}</div>
-      ${leer ? "" : `<div class="bg-fortschritt">${balken(f)}<div class="text">${text}</div></div>`}
+      ${leer ? "" : `<div class="bg-fortschritt">${fortschrittZeilen}</div>`}
       ${!leer && offenTeile === 0 ? '<div class="feier">🎉 Alle Teile fertig — Zeit zum Zusammenbauen!</div>' : ""}
       ${d.verwendet_in.length ? `<div class="dim" style="margin-top:6px">Steckt in: ${d.verwendet_in.map((b) =>
         `<a href="#" data-baugruppe="${esc(b.id)}">${esc(b.name)}</a> (${b.menge}×)`).join(", ")}${d.exemplare > 1
@@ -126,12 +130,19 @@ function zeichneBaugruppe(d) {
       <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button><button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button></div>
   </div>` : `
   <div class="kennzahlen">
-    <div class="kennzahl"><small>DRUCKTEILE</small><b>${s.druckteile}</b><span>${druck.length} verschiedene</span></div>
-    <div class="kennzahl"><small>KAUFTEILE</small><b>${s.kaufteile}</b><span>${s.einkauf.length} Positionen</span></div>
-    <div class="kennzahl"><small>FILAMENT</small><b>${zahl(s.gewicht_g, 0)} g</b><span title="Ohne Slicer-Daten geschätzt: 1,2 mm Hülle und 15 % Füllung">${s.gewicht_geschaetzt ? "teils geschätzt ⓘ" : "aus dem Slicer"}${s.ohne_daten ? ` · ${s.ohne_daten} ohne Daten` : ""}</span></div>
-    <div class="kennzahl"><small>DRUCKZEIT</small><b>${dauer(s.zeit_s)}</b><span>${!s.zeit_s ? "keine Slicer-Daten" : s.ohne_zeit ? `${s.ohne_zeit} Teile ohne Slicer-Zeit` : "aus dem Slicer"}</span></div>
+    <div class="kennzahl"><small>DRUCKTEILE</small><b>${f.druck_erledigt} / ${f.druck_bedarf}</b><span>gedruckt · ${druck.length} verschiedene</span></div>
+    <div class="kennzahl"><small>KAUFTEILE</small><b>${f.kauf_erledigt} / ${f.kauf_bedarf}</b><span>beschafft · ${s.einkauf.length} Positionen</span></div>
+    <button class="kennzahl klappbar ${aufgeklappt("filament") ? "offen" : ""}" data-klapp="filament" title="Aufschlüsselung ${aufgeklappt("filament") ? "zuklappen" : "zeigen"}">
+      <div class="kz-links"><small>FILAMENT ▾</small><b>${zahl(s.gewicht_g, 0)} g</b><span>${s.gewicht_geschaetzt ? "teils geschätzt" : "aus dem Slicer"}</span></div>
+      <div class="kz-mini">${s.materialien.slice(0, 4).map((m) => `<div>${m.farben.slice(0, 3).map((x) => tupfer(x.farbe)).join("")}<span>${esc(m.material)}</span><em>${zahl(m.gesamt_g, 0)} g</em></div>`).join("")}</div>
+    </button>
+    <button class="kennzahl klappbar ${aufgeklappt("zeit") ? "offen" : ""}" data-klapp="zeit" title="Druckzeit je Teil ${aufgeklappt("zeit") ? "zuklappen" : "zeigen"}">
+      <div class="kz-links"><small>DRUCKZEIT ▾</small><b>${dauer(s.zeit_s)}</b><span>${!s.zeit_s ? "keine Slicer-Daten" : s.ohne_zeit ? `${s.ohne_zeit} Teile ohne Zeit` : "aus dem Slicer"}</span></div>
+      <div class="kz-mini">${s.zeiten.filter((z) => z.je_s).slice(0, 3).map((z) => `<div>${tupfer(z.farbe)}<span>${esc(z.name)}</span><em>${dauer(z.gesamt_s)}</em></div>`).join("")}</div>
+    </button>
   </div>
-  ${filamentKarte(s)}
+  ${aufgeklappt("filament") ? filamentKarte(s) : ""}
+  ${aufgeklappt("zeit") ? zeitKarte(s) : ""}
   <div class="bg-aktionen">
     <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenTeile ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
@@ -179,8 +190,9 @@ function position(p) {
        ${fertig ? '<span style="color:var(--good)">✓</span>' : `<button class="voll" data-bg-voll="${r}" title="alle ${zaehlerText}">alle</button>`}</div>
        <span class="dim">${zaehlerText}</span></div>`;
   const material = p.art === "modell"
-    ? `<div class="material"><button class="mat-knopf ${p.material ? "" : "fehlt"}" data-bg-material="${r}" title="Material und Farbe festlegen">
-        ${tupfer(p.farbe)}${p.material ? esc(p.material) : "Material?"}</button></div>` : `<div class="material"></div>`;
+    ? `<div class="material"><button class="mat-knopf ${p.material_angenommen ? "standard" : ""}" data-bg-material="${r}"
+        title="${p.material_angenommen ? "Keine Angabe — Standard aus den Einstellungen. Klicken zum Festlegen." : "Material und Farbe festlegen"}">
+        ${tupfer(p.farbe)}${esc(p.material)}${p.material_angenommen ? " <small>Standard</small>" : ""}</button></div>` : `<div class="material"></div>`;
   return `<div class="pos ${fertig && p.art !== "baugruppe" ? "erledigt" : ""}">
     <div class="vorschau">${vorschau}</div>
     <div style="min-width:0">${name}<div class="unter">${unterzeile}</div>
@@ -198,15 +210,12 @@ function filamentKarte(s) {
     `<i style="width:${(100 * f.gesamt_g) / gesamt}%;${f.farbe ? `background:${esc(f.farbe)}` : ""}" class="${f.farbe ? "" : "offen"}"
         title="${esc(m.material || "Material offen")} ${esc(farbName(f.farbe))}: ${zahl(f.gesamt_g, 0)} g"></i>`)).join("");
   const zeilen = s.materialien.map((m) => {
-    const offen = m.material === null;
-    const rolle = Math.min(1, m.gesamt_g / 1000);
-    return `<div class="mat-zeile ${offen ? "mat-offen" : ""}">
-      <div class="mat-name">${offen ? "Material offen" : esc(m.material)}</div>
+    const rolle = Math.min(1, m.gesamt_g / s.rolle_g);
+    return `<div class="mat-zeile">
+      <div class="mat-name">${esc(m.material)}${m.angenommen_g ? `<small title="Teile ohne Angabe — Standard aus den Einstellungen">davon ${zahl(m.angenommen_g, 0)} g Standard</small>` : ""}</div>
       <div class="mat-farben">${m.farben.map((f) => `<span class="mat-farbe">${tupfer(f.farbe)}<small>${f.farbe && !farbName(f.farbe).startsWith("#") ? esc(farbName(f.farbe)) + " " : !f.farbe ? "Farbe offen " : ""}${zahl(f.gesamt_g, 0)} g</small></span>`).join("")}</div>
       <div class="mat-menge"><b>${zahl(m.gesamt_g, 0)} g</b>${m.offen_g < m.gesamt_g ? `<small>noch ${zahl(m.offen_g, 0)} g</small>` : ""}</div>
-      <div class="mat-rolle">${offen
-        ? `<button class="knopf akzent" data-bg-aktion="material-offen">Material festlegen …</button>`
-        : `<span class="spule" title="Anteil einer 1-kg-Rolle"><i style="width:${Math.round(rolle * 100)}%"></i></span><small>${rollenText(m.rollen)}</small>`}</div>
+      <div class="mat-rolle"><span class="spule" title="Anteil einer Rolle zu ${s.rolle_g} g"><i style="width:${Math.round(rolle * 100)}%"></i></span><small>${rollenText(m.rollen)}</small></div>
     </div>`;
   }).join("");
   return `<div class="i-karte filament-karte">
@@ -215,6 +224,23 @@ function filamentKarte(s) {
     ${zeilen}
   </div>`;
 }
+
+// Druckzeit je Teil als Balken: sieht man, was die Zeit frisst. Teile ohne
+// Slicer-Zeit stehen darunter — geschätzt wird hier nichts.
+function zeitKarte(s) {
+  const mit = s.zeiten.filter((z) => z.je_s), ohne = s.zeiten.filter((z) => !z.je_s);
+  const max = Math.max(1, ...mit.map((z) => z.gesamt_s));
+  return `<div class="i-karte filament-karte">
+    <div class="i-titel" style="margin-top:8px">DRUCKZEIT JE TEIL — ${dauer(s.zeit_s)} GESAMT${s.offen_zeit_s < s.zeit_s ? `, NOCH ${dauer(s.offen_zeit_s).toUpperCase()}` : ""}</div>
+    ${mit.map((z) => `<div class="zeit-zeile ${z.offen ? "" : "fertig"}">
+      <span class="zeit-name">${tupfer(z.farbe)}${esc(z.name)}${z.stueck > 1 ? ` <small>${z.stueck}× à ${dauer(z.je_s)}</small>` : ""}</span>
+      <span class="zeit-balken"><i style="width:${(100 * z.gesamt_s) / max}%"></i><i class="rest" style="width:${(100 * z.offen_s) / max}%"></i></span>
+      <span class="zeit-wert">${dauer(z.gesamt_s)}</span></div>`).join("") || '<div class="dim" style="padding:6px 0">Keine Slicer-Zeiten.</div>'}
+    ${ohne.length ? `<div class="dim" style="padding:8px 0 2px">Ohne Slicer-Zeit (${ohne.length}): ${ohne.slice(0, 12).map((z) => esc(z.name)).join(", ")}${ohne.length > 12 ? " …" : ""} — Zeit kommt mit dem G-Code (Phase 2).</div>` : ""}
+  </div>`;
+}
+
+function aufgeklappt(k) { return localStorageLesen(`klapp.${k}`) === "1"; }
 
 function einkaufsliste(s) {
   if (!s.einkauf.length) return "";
@@ -365,14 +391,7 @@ async function bgAktion(aktion) {
   const d = bgDaten;
   switch (aktion) {
     case "teile": case "kaufteile": case "unter": return waehler(aktion);
-    case "material-offen": {
-      Object.assign(mwWahl, { material: null, farbe: null });
-      const w = await materialWahl("Material für alle Druckteile ohne Angabe");
-      if (!w) return;
-      if (!w.material) return toast("Bitte ein Material wählen.");
-      await api(`/api/baugruppen/${bid()}/material`, { method: "POST", body: w }).catch((e) => toast(e.message));
-      return ladeBaugruppe();
-    }
+
     case "warteschlange": {
       const { eingereiht } = await api(`/api/baugruppen/${bid()}/warteschlange`, { method: "POST" });
       return toast(`${eingereiht} fehlende Druckteile in der Warteschlange.`);
@@ -404,6 +423,12 @@ document.addEventListener("click", async (e) => {
   const b = t.closest("[data-baugruppe]");
   if (b) { e.preventDefault(); return oeffneBaugruppe(b.dataset.baugruppe); }
   if (!t.closest("#bg-ansicht")) return;
+  const klapp = t.closest("[data-klapp]");
+  if (klapp) {
+    localStorageSchreiben(`klapp.${klapp.dataset.klapp}`, aufgeklappt(klapp.dataset.klapp) ? "0" : "1");
+    $("#bg-ansicht").innerHTML = zeichneBaugruppe(bgDaten);
+    return;
+  }
   const akt = t.closest("[data-bg-aktion]");
   if (akt) return bgAktion(akt.dataset.bgAktion);
   const m = t.closest("[data-bg-menge]");
@@ -462,3 +487,31 @@ async function zuBaugruppe(modelle) {
 }
 
 ladeBaugruppenLeiste();
+
+// ---------------------------------------------------------------- Einstellungen
+//
+// Was gilt, wo nichts angegeben ist. Wer nur PLA+ druckt, stellt das
+// einmal ein und muss nie wieder ein Teil anfassen.
+
+async function einstellungen() {
+  const e = await api("/api/einstellungen");
+  Object.assign(mwWahl, { material: e.gilt.material, farbe: e.gilt.farbe });
+  const a = await dialog(`<h2>Einstellungen</h2>
+    <p class="dim">Was partAtlas annimmt, wenn ein Druckteil keine Angabe hat (kein Slicer-Wert, nichts festgelegt).</p>
+    <div class="i-titel">STANDARDMATERIAL</div>
+    <div class="kategorien">${e.materialien.map((m) => `<button type="button" class="chip ${m === e.gilt.material ? "aktiv" : ""}" data-mw-mat="${esc(m)}">${esc(m)}</button>`).join("")}</div>
+    <div class="i-titel">STANDARDFARBE</div>
+    <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === e.gilt.farbe ? "aktiv" : ""}" data-mw-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
+      <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
+    <div class="i-titel">ROLLENGRÖSSE</div>
+    <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Speichern</button></div>`);
+  if (a !== "ja") return;
+  try {
+    await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
+                                                          rolle_g: Number($("#ein-rolle").value) } });
+    toast("Gespeichert.");
+    ladeBaugruppe();
+  } catch (err) { toast(err.message); }
+}
+document.addEventListener("click", (e) => { if (e.target.closest?.("#einstellungen")) einstellungen(); });
