@@ -61,6 +61,8 @@ function zeigeBaugruppeFlaeche(an) {
 
 async function oeffneBaugruppe(bid) {
   zustand.baugruppe = bid;
+  // Eine vorher im Katalog gewählte Datei gehört nicht zur Baugruppe: rechts beginnt die Übersicht.
+  zustand.gewaehlt = null;
   zeigeBaugruppeFlaeche(true);
   document.querySelectorAll("[data-ansicht], [data-ordner], [data-sammlung]").forEach((b) => b.classList.remove("aktiv"));
   document.querySelectorAll("[data-baugruppe]").forEach((b) => b.classList.toggle("aktiv", b.dataset.baugruppe === bid));
@@ -72,6 +74,8 @@ function schliesseBaugruppe() {
   zustand.baugruppe = "";
   zeigeBaugruppeFlaeche(false);
   document.querySelectorAll("[data-baugruppe]").forEach((b) => b.classList.remove("aktiv"));
+  zustand.gewaehlt = null;
+  $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`;
   ladeModelle();
 }
 
@@ -86,6 +90,70 @@ async function ladeBaugruppe() {
   // Eingabe in einer Notiz nicht unter den Fingern wegzeichnen.
   if (document.activeElement?.classList.contains("notiz")) return;
   $("#bg-ansicht").innerHTML = zeichneBaugruppe(d);
+  // Rechts steht die Übersicht, solange kein einzelnes Teil gewählt ist.
+  if (!zustand.gewaehlt) zeigeBgUebersicht();
+}
+
+// ---------------------------------------------------------------- Übersicht rechts
+//
+// Mitte: die Stückliste, sonst nichts. Rechts: was die ganze Baugruppe
+// braucht — Filament, Druckzeit, Kaufteile, Ausgabe. Ein Klick auf ein Teil
+// zeigt dort das Modell; „← Baugruppe“ bringt die Übersicht zurück.
+
+function zeigeBgUebersicht() {
+  const d = bgDaten;
+  if (!d || !zustand.baugruppe) return;
+  zustand.angezeigt = null;
+  if (typeof dreiDModul !== "undefined" && dreiDModul) dreiD().then((v) => v.schliessen());
+  const s = d.summen, f = d.fortschritt;
+  const leer = !d.positionen.length;
+  $("#inspektor").dataset.id = "";
+  $("#inspektor").innerHTML = leer ? `<p class="hinweis">Hier erscheint die Übersicht, sobald die Baugruppe Teile hat.</p>` : `
+    <div class="ue-kopf"><small>BAUGRUPPE</small><b>${esc(d.name)}</b>
+      <span>${f.druck_bedarf} Druckteile · ${f.kauf_bedarf} Kaufteile</span></div>
+    ${uebersichtFilament(s)}
+    ${uebersichtZeit(s)}
+    ${uebersichtKauf(s)}
+    <div class="i-titel">AUSGABE</div>
+    <div class="i-knoepfe"><button class="knopf akzent" data-bg-aktion="pdf">📄 Stückliste als PDF</button>
+      <button class="knopf" data-bg-aktion="csv">CSV</button><button class="knopf" data-bg-aktion="md">Markdown</button></div>`;
+}
+
+function uebersichtFilament(s) {
+  if (!s.materialien.length) return "";
+  const gesamt = s.materialien.reduce((a, m) => a + m.gesamt_g, 0) || 1;
+  const segmente = s.materialien.flatMap((m) => m.farben.map((x) =>
+    `<i style="width:${(100 * x.gesamt_g) / gesamt}%;${x.farbe ? `background:${esc(x.farbe)}` : ""}" class="${x.farbe ? "" : "offen"}"
+        title="${esc(m.material)} ${esc(farbName(x.farbe))}: ${zahl(x.gesamt_g, 0)} g"></i>`)).join("");
+  return `<div class="i-titel">FILAMENT · ${zahl(s.gewicht_g, 0)} g${s.gewicht_geschaetzt ? ' <span title="Ohne Slicer-Daten: 1,2 mm Hülle und 15 % Füllung">· teils geschätzt ⓘ</span>' : ""}</div>
+    <div class="mischung">${segmente}</div>
+    ${s.materialien.map((m) => `<div class="ue-zeile">
+      <span class="ue-name"><b>${esc(m.material)}</b>${m.angenommen_g ? '<small title="ohne Angabe — Standard aus den Einstellungen">Std.</small>' : ""}</span>
+      <span class="ue-farben">${m.farben.map((x) => tupfer(x.farbe, `${farbName(x.farbe)} ${zahl(x.gesamt_g, 0)} g`)).join("")}</span>
+      <span class="ue-wert">${zahl(m.gesamt_g, 0)} g<small>${rollenText(m.rollen)}</small></span></div>`).join("")}`;
+}
+
+function uebersichtZeit(s) {
+  const mit = s.zeiten.filter((z) => z.je_s), ohne = s.zeiten.filter((z) => !z.je_s);
+  if (!mit.length && !ohne.length) return "";
+  const gesamt = mit.reduce((a, z) => a + z.gesamt_s, 0) || 1;
+  const segmente = mit.map((z) => `<i style="width:${(100 * z.gesamt_s) / gesamt}%;${z.farbe ? `background:${esc(z.farbe)}` : ""}"
+      class="${z.farbe ? "" : "offen"} ${z.offen ? "" : "fertig"}" title="${esc(z.name)}: ${dauer(z.gesamt_s)}"></i>`).join("");
+  return `<div class="i-titel">DRUCKZEIT · ${dauer(s.zeit_s)}${s.offen_zeit_s < s.zeit_s ? ` · noch ${dauer(s.offen_zeit_s)}` : ""}</div>
+    ${mit.length ? `<div class="mischung">${segmente}</div>` : ""}
+    ${mit.map((z) => `<div class="ue-zeile ${z.offen ? "" : "fertig"}">
+      <span class="ue-name">${tupfer(z.farbe)}<span title="${esc(z.name)}">${esc(z.name)}</span>${z.stueck > 1 ? `<small>${z.stueck}×</small>` : ""}</span>
+      <span class="ue-wert">${dauer(z.gesamt_s)}<small>${Math.round((100 * z.gesamt_s) / gesamt)} %</small></span></div>`).join("")}
+    ${ohne.length ? `<div class="ue-zeile ohne" title="${ohne.map((z) => esc(z.name)).join(", ")}"><span class="ue-name">Ohne Slicer-Zeit</span>
+      <span class="ue-wert">${ohne.length} Teile<small>kommt mit dem G-Code</small></span></div>` : ""}`;
+}
+
+function uebersichtKauf(s) {
+  if (!s.einkauf.length) return "";
+  return `<div class="i-titel">KAUFTEILE — EINKAUFSLISTE</div>
+    ${s.einkauf.map((x) => `<div class="ue-zeile ${x.offen ? "" : "fertig"}">
+      <span class="ue-name"><span title="${esc(x.name)}">${esc(x.name)}</span></span>
+      <span class="ue-wert">${x.bedarf}${x.einheit === "Stück" ? "×" : " " + esc(x.einheit)}${x.offen ? "" : "<small>✓ da</small>"}</span></div>`).join("")}`;
 }
 
 function zeichneBaugruppe(d) {
@@ -127,34 +195,18 @@ function zeichneBaugruppe(d) {
     <div class="i-knoepfe"><button class="knopf akzent" data-bg-aktion="teile">＋ Druckteile wählen</button>
       <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button><button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button></div>
   </div>` : `
-  <div class="kennzahlen">
-    <div class="kennzahl"><small>DRUCKTEILE</small><b>${f.druck_erledigt} / ${f.druck_bedarf}</b><span>gedruckt · ${druck.length} verschiedene</span></div>
-    <div class="kennzahl"><small>KAUFTEILE</small><b>${f.kauf_bedarf}</b><span>Stück · ${s.einkauf.length} Positionen</span></div>
-    <button class="kennzahl klappbar ${aufgeklappt("filament") ? "offen" : ""}" data-klapp="filament" title="Aufschlüsselung ${aufgeklappt("filament") ? "zuklappen" : "zeigen"}">
-      <div class="kz-links"><small>FILAMENT ▾</small><b>${zahl(s.gewicht_g, 0)} g</b><span>${s.gewicht_geschaetzt ? "teils geschätzt" : "aus dem Slicer"}</span></div>
-      <div class="kz-mini">${s.materialien.slice(0, 4).map((m) => `<div>${m.farben.slice(0, 3).map((x) => tupfer(x.farbe)).join("")}<span>${esc(m.material)}</span><em>${zahl(m.gesamt_g, 0)} g</em></div>`).join("")}</div>
-    </button>
-    <button class="kennzahl klappbar ${aufgeklappt("zeit") ? "offen" : ""}" data-klapp="zeit" title="Druckzeit je Teil ${aufgeklappt("zeit") ? "zuklappen" : "zeigen"}">
-      <div class="kz-links"><small>DRUCKZEIT ▾</small><b>${dauer(s.zeit_s)}</b><span>${!s.zeit_s ? "keine Slicer-Daten" : s.ohne_zeit ? `${s.ohne_zeit} Teile ohne Zeit` : "aus dem Slicer"}</span></div>
-      <div class="kz-mini">${s.zeiten.filter((z) => z.je_s).slice(0, 3).map((z) => `<div>${tupfer(z.farbe)}<span>${esc(z.name)}</span><em>${dauer(z.gesamt_s)}</em></div>`).join("")}</div>
-    </button>
-  </div>
-  ${aufgeklappt("filament") ? filamentKarte(s) : ""}
-  ${aufgeklappt("zeit") ? zeitKarte(s) : ""}
+
   <div class="bg-aktionen">
     <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
-    <button class="knopf" data-bg-aktion="pdf">📄 Stückliste als PDF</button>
-    <button class="knopf" data-bg-aktion="csv">CSV</button>
-    <button class="knopf" data-bg-aktion="md">Markdown</button>
     <button class="knopf gefahr" data-bg-aktion="loeschen">Baugruppe löschen</button>
   </div>
   ${abschnitt("DRUCKTEILE", druck, "teile", "Noch keine Druckteile.")}
   ${unter.length ? abschnitt("UNTERBAUGRUPPEN", unter, "unter", "") : ""}
   ${abschnitt("KAUFTEILE", kauf, "kaufteile", "Noch keine Kaufteile — Schrauben, Magnete, Lager …")}
-  ${einkaufsliste(s)}`}`;
+`}`;
 }
 
 function abschnitt(titel, liste, aktion, leer) {
@@ -200,61 +252,6 @@ function position(p) {
     ${zaehler}
     ${material}
     <button class="weg" data-bg-weg="${r}" title="aus der Baugruppe nehmen">×</button></div>`;
-}
-
-function filamentKarte(s) {
-  if (!s.materialien.length) return "";
-  const gesamt = s.materialien.reduce((a, m) => a + m.gesamt_g, 0) || 1;
-  const segmente = s.materialien.flatMap((m) => m.farben.map((f) =>
-    `<i style="width:${(100 * f.gesamt_g) / gesamt}%;${f.farbe ? `background:${esc(f.farbe)}` : ""}" class="${f.farbe ? "" : "offen"}"
-        title="${esc(m.material || "Material offen")} ${esc(farbName(f.farbe))}: ${zahl(f.gesamt_g, 0)} g"></i>`)).join("");
-  const zeilen = s.materialien.map((m) => {
-    const rolle = Math.min(1, m.gesamt_g / s.rolle_g);
-    return `<div class="mat-zeile">
-      <div class="mat-name">${esc(m.material)}${m.angenommen_g ? `<small title="Teile ohne Angabe — Standard aus den Einstellungen">davon ${zahl(m.angenommen_g, 0)} g Standard</small>` : ""}</div>
-      <div class="mat-farben">${m.farben.map((f) => `<span class="mat-farbe">${tupfer(f.farbe)}<small>${f.farbe && !farbName(f.farbe).startsWith("#") ? esc(farbName(f.farbe)) + " " : !f.farbe ? "Farbe offen " : ""}${zahl(f.gesamt_g, 0)} g</small></span>`).join("")}</div>
-      <div class="mat-menge"><b>${zahl(m.gesamt_g, 0)} g</b>${m.offen_g < m.gesamt_g ? `<small>noch ${zahl(m.offen_g, 0)} g</small>` : ""}</div>
-      <div class="mat-rolle"><span class="spule" title="Anteil einer Rolle zu ${s.rolle_g} g"><i style="width:${Math.round(rolle * 100)}%"></i></span><small>${rollenText(m.rollen)}</small></div>
-    </div>`;
-  }).join("");
-  return `<div class="i-karte filament-karte">
-    <div class="i-titel" style="margin-top:8px">FILAMENT NACH MATERIAL${s.gewicht_geschaetzt ? ' <span class="dim" title="Ohne Slicer-Daten: 1,2 mm Hülle und 15 % Füllung">· teils geschätzt ⓘ</span>' : ""}</div>
-    <div class="mischung">${segmente}</div>
-    ${zeilen}
-  </div>`;
-}
-
-// Druckzeit im selben Schema wie das Filament: ein Gesamtbalken, jedes Teil
-// ein Stück davon in seiner Farbe, darunter je Teil Stückzahl und Dauer.
-// Teile ohne Slicer-Zeit stehen grau darunter — geschätzt wird nichts.
-function zeitKarte(s) {
-  const mit = s.zeiten.filter((z) => z.je_s), ohne = s.zeiten.filter((z) => !z.je_s);
-  const gesamt = mit.reduce((a, z) => a + z.gesamt_s, 0) || 1;
-  const segmente = mit.map((z) => `<i style="width:${(100 * z.gesamt_s) / gesamt}%;${z.farbe ? `background:${esc(z.farbe)}` : ""}"
-      class="${z.farbe ? "" : "offen"} ${z.offen ? "" : "fertig"}" title="${esc(z.name)}: ${dauer(z.gesamt_s)}${z.offen ? "" : " (gedruckt)"}"></i>`).join("");
-  const zeilen = mit.map((z) => `<div class="mat-zeile zeit ${z.offen ? "" : "fertig"}">
-      <div class="mat-name" title="${esc(z.name)}">${esc(z.name)}<small>${z.stueck}× à ${dauer(z.je_s)}</small></div>
-      <div class="mat-farben">${tupfer(z.farbe)}${z.offen < z.stueck ? `<small>${z.stueck - z.offen} von ${z.stueck} gedruckt</small>` : ""}</div>
-      <div class="mat-menge"><b>${dauer(z.gesamt_s)}</b>${z.offen && z.offen < z.stueck ? `<small>noch ${dauer(z.offen_s)}</small>` : ""}</div>
-      <div class="mat-rolle"><span class="spule" title="Anteil an der Druckzeit"><i style="width:${Math.round((100 * z.gesamt_s) / gesamt)}%"></i></span><small>${Math.round((100 * z.gesamt_s) / gesamt)} %</small></div>
-    </div>`).join("");
-  return `<div class="i-karte filament-karte">
-    <div class="i-titel" style="margin-top:8px">DRUCKZEIT NACH TEIL · ${dauer(s.zeit_s)}${s.offen_zeit_s < s.zeit_s ? ` · NOCH ${dauer(s.offen_zeit_s)}` : ""}</div>
-    ${mit.length ? `<div class="mischung">${segmente}</div>${zeilen}` : '<div class="dim" style="padding:6px 0">Noch keine Slicer-Zeiten.</div>'}
-    ${ohne.length ? `<div class="mat-zeile zeit ohne"><div class="mat-name">Ohne Zeit<small>${ohne.length} Teile</small></div>
-      <div class="mat-farben dim" style="grid-column: span 3">${ohne.slice(0, 10).map((z) => esc(z.name)).join(", ")}${ohne.length > 10 ? " …" : ""} — die Zeit kommt mit dem G-Code (Phase 2)</div></div>` : ""}
-  </div>`;
-}
-
-function aufgeklappt(k) { return localStorageLesen(`klapp.${k}`) === "1"; }
-
-function einkaufsliste(s) {
-  if (!s.einkauf.length) return "";
-  return `<div class="bg-abschnitt"><h3>EINKAUFSLISTE KAUFTEILE — ÜBER ALLE EBENEN</h3></div>
-  <div class="einkauf">
-    <div class="i-karte"><div class="i-titel" style="margin-top:8px">KAUFTEILE</div>
-      ${s.einkauf.map((x) => `<div class="zeile"><span>${esc(x.name)}</span><span>${x.offen ? `fehlen <b>${x.offen}</b> von ${x.bedarf}` : "✓ alle " + x.bedarf} ${esc(x.einheit === "Stück" ? "" : x.einheit)}</span></div>`).join("") || '<div class="zeile"><span class="dim">–</span></div>'}</div>
-  </div>`;
 }
 
 // ---------------------------------------------------------------- Ändern
@@ -429,13 +426,10 @@ document.addEventListener("click", async (e) => {
   if (vor) return ausVorschlag(vor.dataset.vorschlag);
   const b = t.closest("[data-baugruppe]");
   if (b) { e.preventDefault(); return oeffneBaugruppe(b.dataset.baugruppe); }
+  if (t.closest("#bg-zurueck")) { zustand.gewaehlt = null; return zeigeBgUebersicht(); }
+  const aktRechts = t.closest("#inspektor [data-bg-aktion]");
+  if (aktRechts) return bgAktion(aktRechts.dataset.bgAktion);
   if (!t.closest("#bg-ansicht")) return;
-  const klapp = t.closest("[data-klapp]");
-  if (klapp) {
-    localStorageSchreiben(`klapp.${klapp.dataset.klapp}`, aufgeklappt(klapp.dataset.klapp) ? "0" : "1");
-    $("#bg-ansicht").innerHTML = zeichneBaugruppe(bgDaten);
-    return;
-  }
   const akt = t.closest("[data-bg-aktion]");
   if (akt) return bgAktion(akt.dataset.bgAktion);
   const m = t.closest("[data-bg-menge]");

@@ -190,10 +190,13 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   „Standard“ dabei; Material und Farbe je Druckteil per Klick.
 - **Fortschritt oben nur für den Druck**: „Druckteile 3 von 21
   gedruckt“. Kaufteile zählen in der Stückliste, nicht im Kopf.
-- **Kacheln statt Dauerplatz**: Filament (Top 4 mit Tupfer) und
-  Druckzeit (längste Teile) klappen per Klick ihre Aufschlüsselung auf,
-  beide im selben Schema: ein Gesamtbalken aus den Teilen, darunter je
-  Zeile Menge bzw. Dauer und Anteil.
+- **Mitte Stückliste, rechts Übersicht**: die Mitte zeigt Kopf,
+  Aktionen und Stückliste. Die rechte Seitenleiste, sonst die
+  Modellvorschau, trägt die Übersicht: Filament je Material mit
+  Farbtupfern, Druckzeit je Teil, Einkaufsliste, Ausgabe (PDF, CSV,
+  Markdown). Filament und Druckzeit folgen demselben Schema: ein
+  Gesamtbalken aus den Teilen, darunter je Zeile Menge bzw. Dauer. Ein
+  Klick auf ein Teil zeigt rechts das Modell, „← Baugruppe“ führt zurück.
 - **Stückliste als PDF** (A4, Helvetica, keine Schriftdatei nötig):
   Kopf mit Kennzahlen, Strukturstückliste mit Positionsnummern über die
   Ebenen (1, 1.1 …) und Abhakkästchen, Mengenübersicht der Druckteile

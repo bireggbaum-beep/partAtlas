@@ -370,6 +370,7 @@ async function archiveEntpacken() {
 async function waehle(id) {
   zustand.gewaehlt = id;
   raster.zeichne();
+  if (!id && zustand.baugruppe && typeof zeigeBgUebersicht === "function") return zeigeBgUebersicht();
   if (!id) { zustand.angezeigt = null; if (dreiDModul) (await dreiD()).schliessen(); $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`; return; }
   const [m, slicer] = await Promise.all([api(`/api/modelle/${id}`), ladeSlicer()]);
   if (zustand.gewaehlt !== id) return;
@@ -392,6 +393,7 @@ async function waehle(id) {
   // bleibt stehen, statt das Netz neu zu laden.
   const altesBild = zustand.angezeigt === id ? $("#i-bild") : null;
   $("#inspektor").innerHTML = `
+    ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
     <div class="i-bild" id="i-bild"></div>
     <div class="i-name">${esc(m.name)}${esc(endung[m.format] || "")}</div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}

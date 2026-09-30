@@ -181,11 +181,16 @@ async def oberflaeche(port):
         await pg.locator("[data-bg-voll]").first.click()
         await pg.wait_for_timeout(800)
         check("„alle“ zählt eine Position voll, Fortschritt oben", "1 von 2" in await pg.inner_text(".bg-fortschritt"))
-        await pg.evaluate("localStorage.setItem('partatlas.klapp.zeit', '0')")
-        await pg.click('[data-klapp="zeit"]')
-        await pg.wait_for_timeout(400)
-        check("Druckzeit-Kachel klappt auf, im selben Schema wie Filament (Gesamtbalken, Zeile je Teil)",
-              await pg.locator(".filament-karte .mat-zeile.zeit").count() >= 1)
+        rechts = await pg.inner_text("#inspektor")
+        check("Übersicht steht rechts: Filament, Druckzeit, PDF — die Mitte bleibt der Stückliste",
+              "FILAMENT" in rechts and "DRUCKZEIT" in rechts and "PDF" in rechts
+              and await pg.locator("#bg-ansicht .mischung").count() == 0)
+        await pg.locator("#bg-ansicht .pos .name").first.click()
+        await pg.wait_for_selector("#bg-zurueck")
+        await pg.click("#bg-zurueck")
+        await pg.wait_for_timeout(300)
+        check("Klick auf ein Teil zeigt das Modell, „← Baugruppe“ führt zur Übersicht zurück",
+              "DRUCKZEIT" in await pg.inner_text("#inspektor"))
         await pg.click('[data-bg-aktion="kaufteile"]')
         await pg.wait_for_selector("#w-liste .w-zeile")
         await pg.fill("#w-suche", "m3x10")
@@ -196,7 +201,7 @@ async def oberflaeche(port):
         await pg.click('dialog button[value="fertig"]')
         await pg.wait_for_timeout(800)
         check("Kaufteil aus dem Katalog mit Menge, erscheint in der Einkaufsliste",
-              "fehlen 6 von 6" in await pg.inner_text(".einkauf"))
+              "KAUFTEILE" in await pg.inner_text("#inspektor") and "6×" in await pg.inner_text("#inspektor"))
         check("Kaufteile stehen nicht im Druckfortschritt oben", "Kaufteile" not in await pg.inner_text(".bg-fortschritt"))
         await pg.locator("[data-bg-voll]").first.click()
         await pg.locator("[data-bg-voll]").first.click()
