@@ -40,6 +40,7 @@ class Analyse:
     format: str
     masse_mm: list | None = None          # [x, y, z]
     volumen_cm3: float | None = None
+    flaeche_cm2: float | None = None
     dreiecke: int | None = None
     objekte: int | None = None
     titel: str | None = None
@@ -52,7 +53,7 @@ class Analyse:
         """Was in den Graphen gehört: alles ausser Bild und Netz."""
         return {
             "format": self.format, "masse_mm": self.masse_mm,
-            "volumen_cm3": self.volumen_cm3, "dreiecke": self.dreiecke,
+            "volumen_cm3": self.volumen_cm3, "flaeche_cm2": self.flaeche_cm2, "dreiecke": self.dreiecke,
             "objekte": self.objekte, "titel": self.titel,
             "designer": self.designer, "platten": self.platten,
         }
@@ -101,6 +102,9 @@ def _geometrie_ausfuellen(a):
     n = netz.astype(np.float64)
     vol = np.einsum("ij,ij->i", n[:, 0], np.cross(n[:, 1], n[:, 2])).sum() / 6.0
     a.volumen_cm3 = round(abs(float(vol)) / 1000.0, 3)
+    # Oberfläche: für die Gewichtsschätzung ohne Slicer (Hülle + Füllung).
+    flaeche = 0.5 * np.linalg.norm(np.cross(n[:, 1] - n[:, 0], n[:, 2] - n[:, 0]), axis=1).sum()
+    a.flaeche_cm2 = round(float(flaeche) / 100.0, 2)
 
 
 # ---------------------------------------------------------------- STL

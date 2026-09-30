@@ -164,6 +164,32 @@ dass das Bett nie auf Temperatur kam. Gespeichert in flatTSDB, verknüpft
   anwenden → G-Code ohne die Slicer-Oberfläche. PrusaSlicer kann das;
   *OrcaSlicer ungeprüft.*
 
+### 4.5 Baugruppen
+
+Viele Modelle einer Sammlung sind Teile eines Ganzen — eine Drohne, ein
+Voron-Mod, eine Werkzeugwand. Der 3MF Katalog kennt dafür nur Sammlungen:
+eine Liste. Eine Baugruppe ist eine **Stückliste**:
+
+- **Positionen mit Menge**: Druckteile, Unterbaugruppen, Kaufteile.
+  Mengen multiplizieren sich über die Ebenen (4× Arm-Modul mit je 2
+  Haltern = 8 Halter). Eine Unterbaugruppe weiss, wie oft sie insgesamt
+  gebraucht wird; ihre Zähler gelten über alle Exemplare.
+- **Kaufteile aus einem Normteil-Katalog**: Schrauben (DIN 912, 7991,
+  ISO 7380 …), Muttern, Scheiben, Gewindeeinsätze, Magnete, Lager,
+  Profil, Elektronik — rund 200 Teile, dazu eigene.
+- **Fortschritt**: je Position „gedruckt“ bzw. „beschafft“ per Klick
+  zählen; oben „11 von 16 fertig · noch 140 g · 6 h“. Ab Phase 2 zählt
+  die Druckhistorie mit.
+- **Summen über alle Ebenen**: Filament je Material und Farbe,
+  Druckzeit, Einkaufsliste der Kaufteile. Ohne Slicer-Daten wird das
+  Gewicht geschätzt (1,2 mm Hülle + 15 % Füllung) und so benannt.
+- **Weniger tippen**: aus einem Ordner, einer Sammlung oder der Auswahl
+  anlegen; Mengen aus Dateinamen (`Arm_x4`, `4x_Arm`); Ordner, die wie
+  Baugruppen aussehen, werden vorgeschlagen. Kacheln auf eine Baugruppe
+  ziehen fügt sie hinzu.
+- „Fehlende in die Warteschlange“, Export als CSV und Markdown,
+  „steckt in …“ an jedem Modell und in der Löschvorschau.
+
 ---
 
 ## 5. Was partAtlas an flatgraph zeigt
@@ -184,7 +210,11 @@ Zahlen aus `flatgraphdb/VERTRAG.md` und §8.
    je eine Kantenart, keine tote Spalte.
 5. **Bestand ohne App lesbar:** JSON-Dateien, per `grep` durchsuchbar;
    Vault mit Titeln im Dateinamen.
-6. **Live-Oberfläche:** `bei_aenderung` (VERTRAG §2.7) meldet jede
+6. **Baugruppen** (§4.5): Stückliste als Kanten mit Menge; was die
+   ganze Baugruppe braucht, ist ein Gang durch den Graphen, der die
+   Mengen multipliziert; „wo steckt dieses Teil“ sind die eingehenden
+   Kanten. In SQLite je eine rekursive Abfrage.
+7. **Live-Oberfläche:** `bei_aenderung` (VERTRAG §2.7) meldet jede
    Änderung — Druckerstatus, Abbuchung, neues Modell — per SSE in den
    Browser.
 
@@ -206,6 +236,8 @@ Sammlungs- und Kantennamen folgen der flatgraph-Namensregel (VERTRAG §7).
 | `GCODE_ARTIFACT` | SHA-256 der Datei | Vault-Pfad, Slicer, Druckzeit, Filament je Material | — |
 | `PRINT_PROFILE` | Hash der Einstellungen | normalisierte Slicer-Konfiguration | — |
 | `PRINT_JOB` | `next_id`, nie wiederverwendet | Zeit, Dauer, Ergebnis, Notiz, Foto, TSDB-Stream + Zeitraum | `print_log`, `printer_jobs` |
+| `ASSEMBLY` | fortlaufend | Baugruppe: Name, Beschreibung | — |
+| `PURCHASED_PART` | sprechend (`din912-m3x10`) | Kaufteil: Name, Kategorie, Norm, Einheit | — |
 | `PRINTER_DEVICE` | fortlaufend | Name, Anschluss, Adresse, Bett, Düse | `printers`, `printer_connections` |
 | `AMS_SLOT` | fortlaufend | Fach einer Einheit | `material_units` |
 | `MATERIAL_SPOOL` | fortlaufend | Spule/Flasche: Rest, Preis, Lagerort, Farbe | `filament_spools` |
@@ -232,6 +264,8 @@ MODEL_ASSET    ─[REFERENCE]─────────▶ PRINT_JOB         h�
 PRINTER_DEVICE ─[HAS_SLOT]──────────▶ AMS_SLOT
 AMS_SLOT       ─[LOADED_WITH]───────▶ MATERIAL_SPOOL
 MATERIAL_SPOOL ─[IS_TYPE_OF]────────▶ MATERIAL_MASTER
+ASSEMBLY       ─[CONTAINS]──────────▶ MODEL_ASSET | ASSEMBLY | PURCHASED_PART
+                                                        meta: menge, erledigt, material, farbe, notiz, position
 MODEL_ASSET    ─[REMIX_OF]──────────▶ MODEL_ASSET
 MODEL_ASSET    ─[SPARE_PART_FOR]────▶ MODEL_ASSET
 MODEL_ASSET    ─[FITS]──────────────  MODEL_ASSET       ungerichtet
@@ -282,6 +316,9 @@ ins Fenster ziehen, Archive entpacken (zip, tar; Positivliste der
 Endungen, kein ../, keine Links; Original auf Wunsch in den Papierkorb).
 Ein Scan-Auftrag während eines Laufs startet danach einen Nachlauf —
 vorher gingen so hochgeladene Dateien verloren.
+
+Über den 3MF Katalog hinaus: Baugruppen mit Stückliste, Kaufteil-Katalog,
+Fortschritt, Einkaufsliste (§4.5).
 
 **Fehlt noch zur Parität:** Papierkorb nach 7 Tagen leeren (braucht
 flatgraph, siehe §9), 7z und rar entpacken (fremde Pakete).

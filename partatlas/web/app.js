@@ -56,6 +56,7 @@ async function ladeModelle() {
   zeichneStapel();
   zeichneListenkopf();
   raster.neu();
+  if (zustand.baugruppe) zeigeBaugruppeFlaeche(true);
 }
 
 async function ladeSeite() {
@@ -100,7 +101,7 @@ function markiereAnsicht() {
 function zeichneFilterzeile() {
   const teile = [];
   const sammlung = zustand.sammlungen.find((x) => x.id === zustand.sammlung);
-  if (sammlung) teile.push(`Sammlung <b>${esc(sammlung.name)}</b> <button id="sammlung-umbenennen">umbenennen</button> <button id="sammlung-loeschen">löschen</button> <span class="dim">· Reihenfolge per Ziehen</span>`);
+  if (sammlung) teile.push(`Sammlung <b>${esc(sammlung.name)}</b> <button id="sammlung-umbenennen">umbenennen</button> <button id="sammlung-loeschen">löschen</button> <button id="sammlung-zu-baugruppe">🧩 als Baugruppe</button> <span class="dim">· Reihenfolge per Ziehen</span>`);
   if (zustand.ansicht === "warteschlange") teile.push(`Warteschlange <span class="dim">· Reihenfolge per Ziehen</span>`);
   if (zustand.ordner) teile.push(`Ordner ${esc(zustand.ordner.split("/").slice(1).join("/") || "(Wurzel)")}`);
   if (zustand.tag) teile.push(`#${esc(zustand.tag)}`);
@@ -246,6 +247,7 @@ function zeichneStapel() {
        <button class="knopf" data-stapel="alle">Alle auswählen</button><button class="knopf" data-stapel="keine">✕ Auswahl aufheben</button>`
     : `<b>${n} ausgewählt</b>
     <button class="knopf" data-stapel="alle">Alle auswählen (${zustand.modelle.length})</button>
+    <button class="knopf" data-stapel="baugruppe">🧩 Zu Baugruppe …</button>
     <button class="knopf" data-stapel="warteschlange">☰ In Warteschlange</button>
     <select class="knopf" id="stapel-sammlung"><option value="">Zu Sammlung …</option>${zustand.sammlungen.map((x) =>
       `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}<option value="__neu">Neue Sammlung …</option></select>
@@ -272,6 +274,7 @@ async function stapelAktion(aktion) {
     case "alle": zustand.modelle.forEach((m) => zustand.auswahl.add(m.id)); zeichneStapel(); return raster.zeichne();
     case "keine": zustand.auswahl.clear(); zeichneStapel(); return raster.zeichne();
     case "warteschlange": return stapel("warteschlange");
+    case "baugruppe": return zuBaugruppe(modelle);
     case "gedruckt": return stapel("gedruckt", true);
     case "favorit": return stapel("favorit", true);
     case "tag": {
@@ -295,7 +298,7 @@ async function stapelAktion(aktion) {
 
 async function loeschenViele(modelle) {
   const v = await api("/api/stapel/loeschvorschau", { method: "POST", body: { modelle } });
-  const kanten = Object.entries(v.kanten).map(([art, n]) => `${n} × ${esc(art)}`).join(", ");
+  const kanten = kantenText(v.kanten);
   const a = await dialog(`<h2>${modelle.length} Modelle löschen?</h2>
     <p>${v.dateien.length} Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihren Ordnern.</p>
     <ul>${v.dateien.slice(0, 8).map((d) => `<li>${esc(d)}</li>`).join("")}${v.dateien.length > 8 ? `<li>… und ${v.dateien.length - 8} weitere</li>` : ""}</ul>
@@ -401,6 +404,9 @@ async function waehle(id) {
     ${papierkorb ? "" : `<div class="i-titel">HASHTAGS</div>
     <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
       <input id="tag-neu" placeholder="Tag hinzufügen" autocomplete="off"></div>`}
+    ${papierkorb ? "" : `<div class="i-titel">BAUGRUPPEN</div>
+    <div class="i-sammlungen">${(m.baugruppen || []).map((b) => `<button class="chip" data-baugruppe="${esc(b.id)}">🧩 ${esc(b.name)} · ${b.menge}×</button>`).join("")}
+      <button class="knopf" id="zu-baugruppe">＋ Zu Baugruppe …</button></div>`}
     ${papierkorb ? "" : `<div class="i-titel">SAMMLUNGEN</div>
     <div class="i-sammlungen">${m.sammlungen.map((x) => `<span class="chip">${esc(x.name)}<button data-sammlung-weg="${esc(x.id)}" title="aus der Sammlung">×</button></span>`).join("")}
       <select class="knopf" id="sammlung-dazu"><option value="">＋ Zu Sammlung …</option>${zustand.sammlungen
@@ -478,6 +484,15 @@ async function aendern(id, werte) {
 
 // ---------------------------------------------------------------- Dialoge
 
+// Was an einem Modell hängt, in Worten statt Kantennamen; der Name der
+// Kante steht dahinter, damit man sieht, dass es flatgraph ist, der zählt.
+function kantenText(kanten) {
+  const worte = { HAS_TAG: "Tag", IN_COLLECTION: "Sammlung", CONTAINS: "Baugruppe", HAS_PART: "Datei" };
+  return Object.entries(kanten).map(([art, n]) =>
+    art === "CONTAINS" ? `<b>steckt in ${n} Baugruppe${n > 1 ? "n" : ""}</b> <code>${art}</code>`
+      : `${n} × ${esc(worte[art] || art)} <code>${esc(art)}</code>`).join(", ");
+}
+
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;
@@ -487,7 +502,7 @@ function dialog(html) {
 
 async function loeschen(id) {
   const [m, v] = await Promise.all([api(`/api/modelle/${id}`), api(`/api/modelle/${id}/loeschen`)]);
-  const kanten = Object.entries(v.kanten).map(([art, n]) => `${n} × ${esc(art)}`).join(", ");
+  const kanten = kantenText(v.kanten);
   const antwort = await dialog(`<h2>„${esc(m.name)}“ löschen?</h2>
     <p>Diese Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihrem Ordner:</p>
     <ul>${v.dateien.map((d) => `<li>${esc(d)}</li>`).join("") || "<li>keine (Datei fehlt schon)</li>"}</ul>
@@ -593,6 +608,16 @@ document.addEventListener("click", async (e) => {
   switch (t.id) {
     case "filter-weg": Object.assign(zustand, { ordner: "", tag: "", format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; return neuLaden();
     case "sammlung-neu": return sammlungNeu([]);
+    case "sammlung-zu-baugruppe": {
+      try {
+        const neu = await api("/api/baugruppen", { method: "POST", body: { aus_sammlung: zustand.sammlung } });
+        await ladeBaugruppenLeiste();
+        oeffneBaugruppe(neu.id);
+        toast("Baugruppe angelegt — jetzt Mengen und Kaufteile ergänzen.");
+      } catch (e2) { toast(e2.message); }
+      return;
+    }
+    case "zu-baugruppe": return zuBaugruppe([id]);
     case "sammlung-umbenennen": {
       const alt = zustand.sammlungen.find((x) => x.id === zustand.sammlung);
       const a = await dialog(`<h2>Sammlung umbenennen</h2><input type="text" id="s-name" value="${esc(alt?.name)}">
@@ -706,7 +731,12 @@ $("#suche").addEventListener("input", (e) => {
   suchZeit = setTimeout(() => { zustand.suche = e.target.value.trim(); ladeModelle(); }, 150);
 });
 
-function neuLaden() { ladeModelle(); ladeSeite(); }
+function neuLaden() {
+  ladeModelle();
+  ladeSeite();
+  if (typeof ladeBaugruppenLeiste === "function") ladeBaugruppenLeiste();
+  if (zustand.baugruppe) ladeBaugruppe();
+}
 
 async function sammlungNeu(modelle) {
   const a = await dialog(`<h2>Neue Sammlung</h2><p class="dim">Mehrere Modelle zu einem Projekt zusammenfassen.</p>
@@ -742,6 +772,8 @@ const gezogene = () => (zustand.auswahl.has(gezogen.id) ? [...zustand.auswahl] :
 
 function ablageZiel(el) {
   if (!gezogen || !el?.closest) return null;
+  const bg = el.closest("#baugruppen [data-baugruppe]");
+  if (bg && gezogen.art === "modell") return bg;
   const o = el.closest("[data-ordner]");
   if (o && gezogen.art === "modell" && zustand.ansicht !== "papierkorb") return o;
   const s = el.closest("[data-sammlung]");
@@ -765,7 +797,10 @@ document.addEventListener("drop", async (e) => {
   e.preventDefault();
   const g = gezogen;
   try {
-    if (z.dataset.ordner) {
+    if (z.dataset.baugruppe) {
+      await api(`/api/baugruppen/${z.dataset.baugruppe}/positionen`, { method: "POST", body: { refs: gezogene().map((x) => `MODEL_ASSET/${x}`) } });
+      toast("Zur Baugruppe hinzugefügt.");
+    } else if (z.dataset.ordner) {
       const r = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: gezogene(), wert: z.dataset.ordner } });
       toast(r.fehler.length ? r.fehler[0].fehler : "Verschoben.");
     } else if (z.dataset.sammlung) {

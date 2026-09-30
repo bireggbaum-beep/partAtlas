@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from . import formate, slicer
+from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
@@ -39,7 +40,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         b = Bestand(bestand_pfad, bei_aenderung=verteiler.graph)
         k = Katalog(b)
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), prozesse=prozesse)
-        zustand.update(bestand=b, katalog=k, scanner=s)
+        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=Baugruppen(k))
         if scan_beim_start and k.wurzeln():
             s.starten()
         yield
@@ -51,6 +52,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     def K():
         return zustand["katalog"]
+
+    def B():
+        return zustand["baugruppen"]
 
     # -- Wache: schreibende Anfragen nur von der eigenen Oberfläche. Ein
     # fremder Tab im selben Browser könnte sonst Dateien umbenennen oder
@@ -135,6 +139,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def modell(mid: str):
         k = K()
         daten = k.modell(mid)
+        daten["baugruppen"] = B().verwendet_in(f"MODEL_ASSET/{mid}")
         k.angesehen(mid)
         return daten
 
@@ -318,6 +323,84 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/stapel/loeschvorschau")
     async def stapel_loeschvorschau(request: Request):
         return K().loeschvorschau_viele((await request.json()).get("modelle", []))
+
+    # ---------------------------------------------------------------- Baugruppen
+
+    @app.get("/api/baugruppen")
+    def baugruppen():
+        return B().liste()
+
+    @app.get("/api/baugruppen/vorschlaege")
+    def baugruppen_vorschlaege():
+        return B().vorschlaege()
+
+    @app.post("/api/baugruppen")
+    async def baugruppe_neu(request: Request):
+        d = await request.json()
+        if d.get("aus_sammlung"):
+            return {"id": B().aus_sammlung(d["aus_sammlung"])}
+        if d.get("aus_ordner"):
+            return {"id": B().aus_ordner(d["aus_ordner"])}
+        return {"id": B().aus_modellen(d.get("name", ""), d.get("modelle", []))}
+
+    @app.get("/api/baugruppen/{bid}")
+    def baugruppe(bid: str):
+        return B().detail(bid)
+
+    @app.patch("/api/baugruppen/{bid}")
+    async def baugruppe_aendern(bid: str, request: Request):
+        B().aendern(bid, await request.json())
+        return {"ok": True}
+
+    @app.delete("/api/baugruppen/{bid}")
+    def baugruppe_loeschen(bid: str):
+        B().loeschen(bid)
+        return {"ok": True}
+
+    @app.post("/api/baugruppen/{bid}/positionen")
+    async def position_neu(bid: str, request: Request):
+        d = await request.json()
+        for ziel in d.get("refs") or [d.get("ref", "")]:
+            B().hinzufuegen(bid, ziel, d.get("menge", 1))
+        return {"ok": True}
+
+    @app.patch("/api/baugruppen/{bid}/positionen")
+    async def position_aendern(bid: str, request: Request):
+        d = await request.json()
+        ziel = d.pop("ref", "")
+        B().position_aendern(bid, ziel, d)
+        return {"ok": True}
+
+    @app.delete("/api/baugruppen/{bid}/positionen")
+    def position_weg(bid: str, ref: str):
+        B().position_entfernen(bid, ref)
+        return {"ok": True}
+
+    @app.put("/api/baugruppen/{bid}/reihenfolge")
+    async def positionen_ordnen(bid: str, request: Request):
+        B().ordnen(bid, (await request.json()).get("refs", []))
+        return {"ok": True}
+
+    @app.post("/api/baugruppen/{bid}/warteschlange")
+    def baugruppe_warteschlange(bid: str):
+        return {"eingereiht": B().fehlende_in_warteschlange(bid)}
+
+    @app.get("/api/baugruppen/{bid}/export")
+    def baugruppe_export(bid: str, format: str = "csv"):
+        art = "md" if format == "md" else "csv"
+        name = B().detail(bid)["name"]
+        sicher = "".join(c if (c.isascii() and c.isalnum()) or c in "-_ " else "_" for c in name).strip() or bid
+        return Response(B().export(bid, art), media_type="text/csv; charset=utf-8" if art == "csv" else "text/markdown; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{sicher}.{art}"'})
+
+    @app.get("/api/kaufteile")
+    def kaufteile(q: str = "", kategorie: str = ""):
+        return B().kaufteile(q or None, kategorie or None)
+
+    @app.post("/api/kaufteile")
+    async def kaufteil_neu(request: Request):
+        d = await request.json()
+        return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}
 
     @app.get("/api/tags")
     def tags():

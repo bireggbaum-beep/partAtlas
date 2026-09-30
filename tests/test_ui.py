@@ -170,6 +170,36 @@ async def oberflaeche(port):
               await link.get_attribute("href") == "https://www.printables.com/model/42"
               and "noopener" in (await link.get_attribute("rel")))
 
+        # -- Baugruppe: öffnen, zählen, Kaufteil aus dem Katalog
+        bid = api(port, "/api/baugruppen", {"name": "Testaufbau", "modelle": [m["id"] for m in api(port, "/api/modelle")][:2]})["id"]
+        await suche("")
+        await pg.wait_for_selector(f'#baugruppen [data-baugruppe="{bid}"]')
+        await pg.click(f'#baugruppen [data-baugruppe="{bid}"]')
+        await pg.wait_for_selector(".bg-titel")
+        check("Baugruppe öffnet ihre eigene Ansicht statt des Rasters",
+              await pg.locator("#raster").is_hidden() and "Testaufbau" in await pg.inner_text(".bg-titel"))
+        await pg.locator("[data-bg-voll]").first.click()
+        await pg.wait_for_timeout(800)
+        check("„alle“ zählt eine Position voll, Fortschritt oben", "1 von 2" in await pg.inner_text(".bg-fortschritt"))
+        await pg.click('[data-bg-aktion="kaufteile"]')
+        await pg.wait_for_selector("#w-liste .w-zeile")
+        await pg.fill("#w-suche", "m3x10")
+        await pg.wait_for_timeout(600)
+        await pg.fill('[data-w-menge="PURCHASED_PART/din912-m3x10"]', "6")
+        await pg.click('[data-w-plus="PURCHASED_PART/din912-m3x10"]')
+        await pg.wait_for_timeout(600)
+        await pg.click('dialog button[value="fertig"]')
+        await pg.wait_for_timeout(800)
+        check("Kaufteil aus dem Katalog mit Menge, erscheint in der Einkaufsliste",
+              "fehlen 6 von 6" in await pg.inner_text(".einkauf"))
+        await pg.locator("[data-bg-voll]").first.click()
+        await pg.locator("[data-bg-voll]").first.click()
+        await pg.wait_for_timeout(1000)
+        check("Alles gedruckt und beschafft: Glückwunsch zum Zusammenbauen", await pg.locator(".feier").count() == 1)
+        await pg.click('[data-ansicht="alle"]')
+        await pg.wait_for_timeout(600)
+        check("Zurück zum Katalog: Raster wieder da", await pg.locator("#raster").is_visible())
+
         await suche("Haken")
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#loeschen")

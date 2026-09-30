@@ -196,3 +196,79 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 dialog select { width: 100%; padding: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; margin: 4px 0; }
 dialog label { display: flex; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; }
 .quelle a { color: var(--accent); }
+
+/* ---------------------------------------------------------------- Baugruppen */
+.bg-eintrag { display: block; width: 100%; background: none; border: 0; padding: 5px 6px 6px; border-radius: var(--radius); cursor: pointer; text-align: left; }
+.bg-eintrag:hover { background: var(--panel-2); }
+.bg-eintrag.aktiv { background: var(--accent-soft); }
+.bg-eintrag .kopfzeile { display: flex; justify-content: space-between; font-size: 12px; }
+.bg-eintrag em { font: normal 10px var(--mono); color: var(--ink-3); }
+.balken { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+.balken i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+.balken.fertig i { background: var(--good); }
+.tipp { font-size: 11.5px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+        border-radius: var(--radius); padding: 6px 8px; margin: 6px 0; cursor: pointer; }
+.tipp b { color: var(--accent); }
+
+.bg-ansicht { flex: 1; overflow-y: auto; padding: 18px 22px 40px; }
+.bg-kopf { display: flex; gap: 18px; align-items: flex-start; }
+.bg-kopf .bg-bild { width: 120px; height: 120px; border-radius: 8px; background: linear-gradient(160deg, var(--plate-2), var(--plate));
+                    border: 1px solid var(--line); flex: none; overflow: hidden; display: grid; place-items: center; }
+.bg-kopf .bg-bild img { width: 100%; height: 100%; object-fit: contain; }
+.bg-titel { font-size: 22px; font-weight: 700; margin: 0; cursor: text; }
+.bg-titel:hover { text-decoration: underline dotted var(--ink-3); }
+.bg-beschreibung { color: var(--ink-2); font-size: 13px; margin: 4px 0 10px; cursor: text; min-height: 1em; }
+.bg-fortschritt { margin: 8px 0 4px; }
+.bg-fortschritt .balken { height: 10px; border-radius: 5px; }
+.bg-fortschritt .text { font-size: 13px; margin-top: 6px; color: var(--ink-2); }
+.bg-fortschritt .text b { color: var(--ink); }
+.feier { margin-top: 8px; padding: 8px 12px; border-radius: 6px; background: color-mix(in oklch, var(--good) 18%, transparent);
+         color: var(--good); font-weight: 600; font-size: 13px; }
+.kennzahlen { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; margin: 16px 0; }
+.kennzahl { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.kennzahl small { display: block; font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+.kennzahl b { display: block; font-size: 20px; margin-top: 4px; }
+.kennzahl span { font-size: 11px; color: var(--ink-3); }
+.bg-aktionen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.bg-abschnitt { margin: 18px 0 6px; display: flex; align-items: baseline; justify-content: space-between; }
+.bg-abschnitt h3 { font: 500 11px var(--mono); letter-spacing: 0.12em; color: var(--ink-3); margin: 0; }
+.bg-abschnitt button { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 12px; }
+.pos { display: grid; grid-template-columns: 44px minmax(140px, 1fr) 118px 150px 150px 28px; gap: 10px; align-items: center;
+       padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.pos:hover { background: var(--panel); }
+.pos.erledigt .name { color: var(--ink-3); text-decoration: line-through; }
+.pos .vorschau { width: 44px; height: 44px; border-radius: 4px; background: var(--plate); display: grid; place-items: center; overflow: hidden; font-size: 18px; }
+.pos .vorschau img { width: 100%; height: 100%; object-fit: contain; }
+.pos .name { font-size: 13px; font-weight: 600; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos .unter { font-size: 11px; color: var(--ink-3); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos .notiz { width: 100%; background: none; border: 0; border-bottom: 1px dashed transparent; font-size: 11px; color: var(--ink-2); padding: 0; }
+.pos .notiz:hover, .pos .notiz:focus { border-bottom-color: var(--line-strong); outline: none; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stepper button { width: 26px; height: 26px; border: 0; background: var(--panel-2); cursor: pointer; font-size: 14px; color: var(--ink-2); }
+.stepper button:hover { background: var(--accent-soft); color: var(--accent); }
+.stepper span { min-width: 40px; text-align: center; font: 12px var(--mono); }
+.zaehler { display: flex; flex-direction: column; gap: 3px; }
+.zaehler .zeile2 { display: flex; align-items: center; gap: 6px; }
+.zaehler .voll { background: none; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; cursor: pointer; padding: 2px 6px; color: var(--ink-2); }
+.pos .weg { background: none; border: 0; color: var(--ink-3); cursor: pointer; font-size: 15px; }
+.pos .weg:hover { color: var(--crit); }
+.pos-leer { color: var(--ink-3); font-size: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.einkauf { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+.einkauf .i-karte { margin: 0; }
+.bg-leer { max-width: 560px; margin: 20px 0; background: var(--panel); border: 1px dashed var(--line-strong); border-radius: 10px; padding: 18px 20px; }
+.bg-leer h3 { margin: 0 0 8px; font-size: 15px; }
+.bg-leer ol { padding-left: 18px; font-size: 13px; color: var(--ink-2); line-height: 1.7; }
+.bg-leer .i-knoepfe { margin-top: 12px; }
+.waehler { max-height: 52vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; }
+.waehler .w-zeile { display: grid; grid-template-columns: 36px 1fr 64px 34px; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.waehler .w-zeile:last-child { border-bottom: 0; }
+.waehler .w-zeile img, .waehler .w-zeile .mini { width: 32px; height: 32px; object-fit: contain; border-radius: 3px; background: var(--plate); }
+.waehler .w-zeile small { display: block; color: var(--ink-3); font-size: 10.5px; }
+.waehler input[type=number] { width: 60px; padding: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+.waehler .plus { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 4px; height: 26px; cursor: pointer; font-weight: 700; }
+.waehler .plus.ok { background: var(--good); }
+.kategorien { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+dialog.breit { width: min(640px, 92vw); max-width: none; }
+.vorschlag { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.vorschlag small { color: var(--ink-3); display: block; }
+@media (max-width: 1100px) { .kennzahlen { grid-template-columns: repeat(2, 1fr); } .pos { grid-template-columns: 44px 1fr 110px 140px 28px; } .pos .material { display: none; } .einkauf { grid-template-columns: 1fr; } }

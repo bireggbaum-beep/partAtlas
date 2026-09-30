@@ -14,6 +14,7 @@ a = formate.analysiere(os.path.join(d, "b.stl"))
 check("Binäres STL: Masse 10 × 20 × 30 mm, obwohl der Kopf mit „solid“ beginnt", a.masse_mm == [10.0, 20.0, 30.0])
 check("Binäres STL: Volumen 6 cm³ aus dem geschlossenen Netz", a.volumen_cm3 == 6.0)
 check("Binäres STL: 12 Dreiecke", a.dreiecke == 12)
+check("Binäres STL: Oberfläche 22 cm² (für die Gewichtsschätzung)", a.flaeche_cm2 == 22.0)
 
 muster.stl_ascii(os.path.join(d, "a.stl"))
 a = formate.analysiere(os.path.join(d, "a.stl"))
