@@ -22,7 +22,8 @@ if __name__ == "__main__":
     muster.dreimf(os.path.join(drohne, "Top_Plate.3mf"))                         # 15,75 g aus dem Slicer, PETG schwarz
     muster.stl_binaer(os.path.join(samm, "Einzelteil.stl"), 5, 5, 5)
 
-    with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=2)) as c:
+    # Serverfehler als 500 statt Ausnahme: sonst bricht die Suite ab, statt FAIL zu melden.
+    with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=2), raise_server_exceptions=False) as c:
         w = c.post("/api/wurzeln", json={"pfad": samm}).json()["id"]
         c.app.state.zustand["scanner"].warten(120)
         m = {x["name"]: x["id"] for x in c.get("/api/modelle").json()}
@@ -137,6 +138,28 @@ if __name__ == "__main__":
         check("Liste mit Fortschritt; das Modul weiss, dass es verwendet wird",
               liste["Drohne V2"]["bedarf"] == 35 and liste["Arm-Modul"]["verwendet_in"] == 1)
 
+        r = c.get(f"/api/baugruppen/{bid}/export", params={"format": "pdf"})
+        import io
+        import sys
+        # pypdf lädt `cryptography`, falls vorhanden; in manchen Umgebungen
+        # stürzt das beim Import ab. Zum Textlesen braucht es keins.
+        sys.modules.setdefault("cryptography", None)
+        from pypdf import PdfReader
+        try:
+            text = "\n".join(seite.extract_text() for seite in PdfReader(io.BytesIO(r.content)).pages)
+        except Exception:
+            text = ""          # kein lesbares PDF: die Prüfungen darunter melden FAIL
+        check("Stückliste als PDF: application/pdf, lesbar — auch mit kaputtem eingebettetem Vorschaubild", r.status_code == 200
+              and r.headers["content-type"] == "application/pdf" and r.content[:5] == b"%PDF-")
+        check("PDF: Strukturstückliste mit Positionsnummern über die Ebenen (Arm-Modul 1.1, 1.2 …)",
+              "Strukturstückliste" in text and "Arm-Modul" in text and any(f"{n}.1" in text for n in range(1, 6)))
+        check("PDF: Mengenübersicht zählt über alle Ebenen (8× Halter)", "Mengenübersicht" in text and "8×" in text)
+        struktur = text.split("Strukturstückliste", 1)[-1].split("Mengenübersicht", 1)[0]
+        import re as _re
+        check("PDF: Strukturstückliste zeigt Menge je Modul (2) und gesamt (8) für den Halter",
+              bool(_re.search(r"\d\.\d+\s+Halter\s+[^\n]*Halter\.stl\s+2\s+8\s", struktur)))
+        check("PDF: Einkaufsliste mit 18 Schrauben M3×10 über alle Ebenen",
+              "Einkaufsliste" in text and "18" in text and "M3×10" in text)
         md = c.get(f"/api/baugruppen/{bid}/export", params={"format": "md"}).text
         csv_text = c.get(f"/api/baugruppen/{bid}/export").text
         check("Export Markdown mit Einkaufsliste über alle Ebenen", "18 Stück Zylinderkopfschraube M3×10" in md)

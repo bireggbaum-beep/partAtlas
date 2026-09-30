@@ -329,3 +329,8 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
 .zeit-balken i.rest { background: var(--accent); }
 .zeit-wert { font: 11px var(--mono); text-align: right; color: var(--ink-2); }
 .chip.aktiv, .knopf.aktiv { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+.mischung i.fertig { opacity: 0.35; }
+.mat-zeile.zeit.fertig { opacity: 0.5; }
+.mat-zeile.zeit .mat-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mat-zeile.zeit.ohne .mat-name { color: var(--ink-3); }

@@ -47,7 +47,7 @@ async function ladeBaugruppenLeiste() {
     ? `<div class="tipp" id="bg-tipp"><b>💡 ${vorschlaege.length} Ordner</b> sehen aus wie Baugruppen — ansehen</div>` : "";
   $("#baugruppen").innerHTML = liste.map((b) => `
     <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
-      <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken(b)}</button>`).join("") + tipp;
+      <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("") + tipp;
   zustand.bgVorschlaege = vorschlaege;
 }
 
@@ -101,8 +101,6 @@ function zeichneBaugruppe(d) {
   const fortschrittZeilen = [
     f.druck_bedarf ? `<div class="fz"><span class="fz-name">Druckteile</span>${balken({ bedarf: f.druck_bedarf, erledigt: f.druck_erledigt })}
       <span class="fz-text"><b>${f.druck_erledigt} von ${f.druck_bedarf}</b> gedruckt${offenDruck ? ` · noch ca. ${zahl(s.offen_gewicht_g, 0)} g${s.offen_zeit_s ? ", " + dauer(s.offen_zeit_s) : ""}` : " ✓"}</span></div>` : "",
-    f.kauf_bedarf ? `<div class="fz"><span class="fz-name">Kaufteile</span>${balken({ bedarf: f.kauf_bedarf, erledigt: f.kauf_erledigt })}
-      <span class="fz-text"><b>${f.kauf_erledigt} von ${f.kauf_bedarf}</b> beschafft${f.kauf_erledigt >= f.kauf_bedarf ? " ✓" : ""}</span></div>` : "",
   ].join("");
   return `
   <div class="bg-kopf">
@@ -111,7 +109,7 @@ function zeichneBaugruppe(d) {
       <h2 class="bg-titel" id="bg-name" title="Klicken zum Umbenennen">${esc(d.name)}</h2>
       <div class="bg-beschreibung" id="bg-beschreibung" title="Klicken zum Bearbeiten">${d.beschreibung ? esc(d.beschreibung) : '<span class="dim">Beschreibung hinzufügen …</span>'}</div>
       ${leer ? "" : `<div class="bg-fortschritt">${fortschrittZeilen}</div>`}
-      ${!leer && offenTeile === 0 ? '<div class="feier">🎉 Alle Teile fertig — Zeit zum Zusammenbauen!</div>' : ""}
+      ${!leer && f.druck_bedarf && offenDruck === 0 ? '<div class="feier">🎉 Alle Teile gedruckt — Zeit zum Zusammenbauen!</div>' : ""}
       ${d.verwendet_in.length ? `<div class="dim" style="margin-top:6px">Steckt in: ${d.verwendet_in.map((b) =>
         `<a href="#" data-baugruppe="${esc(b.id)}">${esc(b.name)}</a> (${b.menge}×)`).join(", ")}${d.exemplare > 1
         ? ` — insgesamt <b>${d.exemplare} Sätze</b>, die Zähler unten gelten für alle zusammen.` : ""}</div>` : ""}
@@ -131,7 +129,7 @@ function zeichneBaugruppe(d) {
   </div>` : `
   <div class="kennzahlen">
     <div class="kennzahl"><small>DRUCKTEILE</small><b>${f.druck_erledigt} / ${f.druck_bedarf}</b><span>gedruckt · ${druck.length} verschiedene</span></div>
-    <div class="kennzahl"><small>KAUFTEILE</small><b>${f.kauf_erledigt} / ${f.kauf_bedarf}</b><span>beschafft · ${s.einkauf.length} Positionen</span></div>
+    <div class="kennzahl"><small>KAUFTEILE</small><b>${f.kauf_bedarf}</b><span>Stück · ${s.einkauf.length} Positionen</span></div>
     <button class="kennzahl klappbar ${aufgeklappt("filament") ? "offen" : ""}" data-klapp="filament" title="Aufschlüsselung ${aufgeklappt("filament") ? "zuklappen" : "zeigen"}">
       <div class="kz-links"><small>FILAMENT ▾</small><b>${zahl(s.gewicht_g, 0)} g</b><span>${s.gewicht_geschaetzt ? "teils geschätzt" : "aus dem Slicer"}</span></div>
       <div class="kz-mini">${s.materialien.slice(0, 4).map((m) => `<div>${m.farben.slice(0, 3).map((x) => tupfer(x.farbe)).join("")}<span>${esc(m.material)}</span><em>${zahl(m.gesamt_g, 0)} g</em></div>`).join("")}</div>
@@ -144,12 +142,13 @@ function zeichneBaugruppe(d) {
   ${aufgeklappt("filament") ? filamentKarte(s) : ""}
   ${aufgeklappt("zeit") ? zeitKarte(s) : ""}
   <div class="bg-aktionen">
-    <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenTeile ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
+    <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
-    <button class="knopf" data-bg-aktion="csv">Stückliste als CSV</button>
-    <button class="knopf" data-bg-aktion="md">… als Markdown</button>
+    <button class="knopf" data-bg-aktion="pdf">📄 Stückliste als PDF</button>
+    <button class="knopf" data-bg-aktion="csv">CSV</button>
+    <button class="knopf" data-bg-aktion="md">Markdown</button>
     <button class="knopf gefahr" data-bg-aktion="loeschen">Baugruppe löschen</button>
   </div>
   ${abschnitt("DRUCKTEILE", druck, "teile", "Noch keine Druckteile.")}
@@ -225,18 +224,25 @@ function filamentKarte(s) {
   </div>`;
 }
 
-// Druckzeit je Teil als Balken: sieht man, was die Zeit frisst. Teile ohne
-// Slicer-Zeit stehen darunter — geschätzt wird hier nichts.
+// Druckzeit im selben Schema wie das Filament: ein Gesamtbalken, jedes Teil
+// ein Stück davon in seiner Farbe, darunter je Teil Stückzahl und Dauer.
+// Teile ohne Slicer-Zeit stehen grau darunter — geschätzt wird nichts.
 function zeitKarte(s) {
   const mit = s.zeiten.filter((z) => z.je_s), ohne = s.zeiten.filter((z) => !z.je_s);
-  const max = Math.max(1, ...mit.map((z) => z.gesamt_s));
+  const gesamt = mit.reduce((a, z) => a + z.gesamt_s, 0) || 1;
+  const segmente = mit.map((z) => `<i style="width:${(100 * z.gesamt_s) / gesamt}%;${z.farbe ? `background:${esc(z.farbe)}` : ""}"
+      class="${z.farbe ? "" : "offen"} ${z.offen ? "" : "fertig"}" title="${esc(z.name)}: ${dauer(z.gesamt_s)}${z.offen ? "" : " (gedruckt)"}"></i>`).join("");
+  const zeilen = mit.map((z) => `<div class="mat-zeile zeit ${z.offen ? "" : "fertig"}">
+      <div class="mat-name" title="${esc(z.name)}">${esc(z.name)}<small>${z.stueck}× à ${dauer(z.je_s)}</small></div>
+      <div class="mat-farben">${tupfer(z.farbe)}${z.offen < z.stueck ? `<small>${z.stueck - z.offen} von ${z.stueck} gedruckt</small>` : ""}</div>
+      <div class="mat-menge"><b>${dauer(z.gesamt_s)}</b>${z.offen && z.offen < z.stueck ? `<small>noch ${dauer(z.offen_s)}</small>` : ""}</div>
+      <div class="mat-rolle"><span class="spule" title="Anteil an der Druckzeit"><i style="width:${Math.round((100 * z.gesamt_s) / gesamt)}%"></i></span><small>${Math.round((100 * z.gesamt_s) / gesamt)} %</small></div>
+    </div>`).join("");
   return `<div class="i-karte filament-karte">
-    <div class="i-titel" style="margin-top:8px">DRUCKZEIT JE TEIL — ${dauer(s.zeit_s)} GESAMT${s.offen_zeit_s < s.zeit_s ? `, NOCH ${dauer(s.offen_zeit_s).toUpperCase()}` : ""}</div>
-    ${mit.map((z) => `<div class="zeit-zeile ${z.offen ? "" : "fertig"}">
-      <span class="zeit-name">${tupfer(z.farbe)}${esc(z.name)}${z.stueck > 1 ? ` <small>${z.stueck}× à ${dauer(z.je_s)}</small>` : ""}</span>
-      <span class="zeit-balken"><i style="width:${(100 * z.gesamt_s) / max}%"></i><i class="rest" style="width:${(100 * z.offen_s) / max}%"></i></span>
-      <span class="zeit-wert">${dauer(z.gesamt_s)}</span></div>`).join("") || '<div class="dim" style="padding:6px 0">Keine Slicer-Zeiten.</div>'}
-    ${ohne.length ? `<div class="dim" style="padding:8px 0 2px">Ohne Slicer-Zeit (${ohne.length}): ${ohne.slice(0, 12).map((z) => esc(z.name)).join(", ")}${ohne.length > 12 ? " …" : ""} — Zeit kommt mit dem G-Code (Phase 2).</div>` : ""}
+    <div class="i-titel" style="margin-top:8px">DRUCKZEIT NACH TEIL · ${dauer(s.zeit_s)}${s.offen_zeit_s < s.zeit_s ? ` · NOCH ${dauer(s.offen_zeit_s)}` : ""}</div>
+    ${mit.length ? `<div class="mischung">${segmente}</div>${zeilen}` : '<div class="dim" style="padding:6px 0">Noch keine Slicer-Zeiten.</div>'}
+    ${ohne.length ? `<div class="mat-zeile zeit ohne"><div class="mat-name">Ohne Zeit<small>${ohne.length} Teile</small></div>
+      <div class="mat-farben dim" style="grid-column: span 3">${ohne.slice(0, 10).map((z) => esc(z.name)).join(", ")}${ohne.length > 10 ? " …" : ""} — die Zeit kommt mit dem G-Code (Phase 2)</div></div>` : ""}
   </div>`;
 }
 
@@ -397,6 +403,7 @@ async function bgAktion(aktion) {
       return toast(`${eingereiht} fehlende Druckteile in der Warteschlange.`);
     }
     case "csv": case "md": return (window.location.href = `/api/baugruppen/${bid()}/export?format=${aktion}`);
+    case "pdf": return window.open(`/api/baugruppen/${bid()}/export?format=pdf`, "_blank", "noopener");
     case "loeschen": {
       const a = await dialog(`<h2>„${esc(d.name)}“ löschen?</h2><p>Nur die Stückliste geht. Modelle, Dateien und Kaufteile bleiben.</p>
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Löschen</button></div>`);

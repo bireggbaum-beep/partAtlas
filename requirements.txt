@@ -5,3 +5,5 @@ fastapi>=0.140
 uvicorn>=0.50
 numpy>=2.0
 pillow>=11.0
+# Stückliste als PDF (nur die App; flatgraph bleibt ohne Abhängigkeiten)
+reportlab>=4.0

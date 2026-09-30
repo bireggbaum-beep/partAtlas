@@ -181,6 +181,11 @@ async def oberflaeche(port):
         await pg.locator("[data-bg-voll]").first.click()
         await pg.wait_for_timeout(800)
         check("„alle“ zählt eine Position voll, Fortschritt oben", "1 von 2" in await pg.inner_text(".bg-fortschritt"))
+        await pg.evaluate("localStorage.setItem('partatlas.klapp.zeit', '0')")
+        await pg.click('[data-klapp="zeit"]')
+        await pg.wait_for_timeout(400)
+        check("Druckzeit-Kachel klappt auf, im selben Schema wie Filament (Gesamtbalken, Zeile je Teil)",
+              await pg.locator(".filament-karte .mat-zeile.zeit").count() >= 1)
         await pg.click('[data-bg-aktion="kaufteile"]')
         await pg.wait_for_selector("#w-liste .w-zeile")
         await pg.fill("#w-suche", "m3x10")
@@ -192,6 +197,7 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(800)
         check("Kaufteil aus dem Katalog mit Menge, erscheint in der Einkaufsliste",
               "fehlen 6 von 6" in await pg.inner_text(".einkauf"))
+        check("Kaufteile stehen nicht im Druckfortschritt oben", "Kaufteile" not in await pg.inner_text(".bg-fortschritt"))
         await pg.locator("[data-bg-voll]").first.click()
         await pg.locator("[data-bg-voll]").first.click()
         await pg.wait_for_timeout(1000)

@@ -188,12 +188,17 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   -farbe und Rollengrösse aus den Einstellungen (⚙, wie in pDMS). Wer
   nur PLA+ druckt, stellt das einmal ein. Angenommenes steht dezent als
   „Standard“ dabei; Material und Farbe je Druckteil per Klick.
-- **Fortschritt getrennt**: „Druckteile 3 von 21 gedruckt“ und
-  „Kaufteile 0 von 24 beschafft“ — zusammengezählt war „3 von 45“
-  unverständlich.
+- **Fortschritt oben nur für den Druck**: „Druckteile 3 von 21
+  gedruckt“. Kaufteile zählen in der Stückliste, nicht im Kopf.
 - **Kacheln statt Dauerplatz**: Filament (Top 4 mit Tupfer) und
-  Druckzeit (längste Teile) klappen per Klick ihre Aufschlüsselung auf:
-  Material mit Farben und Rollenanteil, Zeit je Teil als Balken.
+  Druckzeit (längste Teile) klappen per Klick ihre Aufschlüsselung auf,
+  beide im selben Schema: ein Gesamtbalken aus den Teilen, darunter je
+  Zeile Menge bzw. Dauer und Anteil.
+- **Stückliste als PDF** (A4, Helvetica, keine Schriftdatei nötig):
+  Kopf mit Kennzahlen, Strukturstückliste mit Positionsnummern über die
+  Ebenen (1, 1.1 …) und Abhakkästchen, Mengenübersicht der Druckteile
+  über alle Ebenen, Einkaufsliste der Kaufteile, Filament je Material
+  und Farbe, „Seite x von y“.
 - **Weniger tippen**: aus einem Ordner, einer Sammlung oder der Auswahl
   anlegen; Mengen aus Dateinamen (`Arm_x4`, `4x_Arm`); Ordner, die wie
   Baugruppen aussehen, werden vorgeschlagen. Kacheln auf eine Baugruppe

@@ -25,6 +25,7 @@ from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
 from .scan import Scanner
+from .stueckliste import Stueckliste
 from .version import VERSION
 
 WEB = os.path.join(os.path.dirname(__file__), "web")
@@ -423,9 +424,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     @app.get("/api/baugruppen/{bid}/export")
     def baugruppe_export(bid: str, format: str = "csv"):
-        art = "md" if format == "md" else "csv"
+        art = format if format in ("md", "pdf") else "csv"
         name = B().detail(bid)["name"]
         sicher = "".join(c if (c.isascii() and c.isalnum()) or c in "-_ " else "_" for c in name).strip() or bid
+        if art == "pdf":
+            return Response(Stueckliste(B()).pdf(bid), media_type="application/pdf",
+                            headers={"Content-Disposition": f'inline; filename="Stueckliste {sicher}.pdf"'})
         return Response(B().export(bid, art), media_type="text/csv; charset=utf-8" if art == "csv" else "text/markdown; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{sicher}.{art}"'})
 
