@@ -8,7 +8,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const zustand = {
-  modelle: [], ansicht: "alle", tag: "", ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
+  modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
   auswahl: new Set(), layout: localStorageLesen("layout") === "liste" ? "liste" : "raster",
   sortierung: "name", gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
@@ -43,9 +43,11 @@ const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()
 // ---------------------------------------------------------------- Laden
 
 async function ladeModelle() {
-  const p = new URLSearchParams({ q: zustand.suche, tag: zustand.tag, ordner: zustand.ordner,
-                                  format: zustand.format, ansicht: zustand.ansicht, sammlung: zustand.sammlung });
-  const liste = await api("/api/modelle?" + p);
+  const p = new URLSearchParams({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format,
+                                  ansicht: zustand.ansicht, sammlung: zustand.sammlung, leiste: 1,
+                                  tags: [...zustand.tags].join(","), material: [...zustand.material].join(",") });
+  const { modelle: liste, leiste } = await api("/api/modelle?" + p);
+  zeichneLeiste(leiste);
   const s = (zustand.sammlung || zustand.ansicht === "warteschlange") ? "eigene" : zustand.sortierung;
   if (s === "neu") liste.sort((a, b) => (b.angelegt || "").localeCompare(a.angelegt || ""));
   if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
@@ -75,9 +77,7 @@ async function ladeSeite() {
     `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join("");
   $("#ordner").innerHTML = `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`;
   $("#tag-liste").innerHTML = tags.slice(0, 30).map((t) =>
-    `<button class="eintrag ${zustand.tag === t.name ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("");
-  $("#tagleiste").innerHTML = `<button class="chip ${zustand.tag ? "" : "aktiv"}" data-tag="">#Alle</button>` +
-    tags.slice(0, 14).map((t) => `<button class="chip ${zustand.tag === t.name ? "aktiv" : ""}" data-tag="${esc(t.name)}">#${esc(t.name)}</button>`).join("");
+    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("");
   markiereAnsicht();
 }
 
@@ -93,9 +93,23 @@ function zweig(k, tiefe) {
 
 function markiereAnsicht() {
   document.querySelectorAll("[data-ansicht]").forEach((b) =>
-    b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tag && !zustand.format && !zustand.sammlung));
+    b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tags.size && !zustand.material.size && !zustand.format && !zustand.sammlung));
   document.querySelectorAll(".rail-btn[data-rail]").forEach((b) =>
     b.classList.toggle("aktiv", (b.dataset.rail === "papierkorb") === (zustand.ansicht === "papierkorb")));
+}
+
+// Die Leiste über dem Raster: Material und Tags als Chips, je mit ODER.
+// Gezählt wird vor der Chip-Auswahl (Server), gewählte Chips bleiben
+// sichtbar, auch wenn sie unter die ersten 14 fallen.
+function zeichneLeiste(l) {
+  const chip = (art, wahl, x, text) => `<button class="chip ${wahl.has(x.name) ? "aktiv" : ""}" data-${art}="${esc(x.name)}">${text}<em>${x.anzahl}</em></button>`;
+  const auswahl = (liste, wahl, n) => [...liste.slice(0, n), ...liste.slice(n).filter((x) => wahl.has(x.name))];
+  const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material, x, esc(x.name))).join("");
+  const tags = auswahl(l.tags, zustand.tags, 14).map((x) => chip("tag", zustand.tags, x, "#" + esc(x.name))).join("");
+  const leer = !zustand.tags.size && !zustand.material.size;
+  $("#tagleiste").innerHTML = `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
+    + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
+    + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : "");
 }
 
 function zeichneFilterzeile() {
@@ -104,7 +118,8 @@ function zeichneFilterzeile() {
   if (sammlung) teile.push(`Sammlung <b>${esc(sammlung.name)}</b> <button id="sammlung-umbenennen">umbenennen</button> <button id="sammlung-loeschen">löschen</button> <button id="sammlung-zu-baugruppe">🧩 als Baugruppe</button> <span class="dim">· Reihenfolge per Ziehen</span>`);
   if (zustand.ansicht === "warteschlange") teile.push(`Warteschlange <span class="dim">· Reihenfolge per Ziehen</span>`);
   if (zustand.ordner) teile.push(`Ordner ${esc(zustand.ordner.split("/").slice(1).join("/") || "(Wurzel)")}`);
-  if (zustand.tag) teile.push(`#${esc(zustand.tag)}`);
+  const chips = [...zustand.material, ...[...zustand.tags].map((t) => "#" + t)];
+  if (chips.length) teile.push(`${chips.map(esc).join(" oder ")} <span class="dim">· wer mehr trifft, steht oben</span>`);
   if (zustand.format) teile.push(esc(endung[zustand.format] || zustand.format));
   if (zustand.suche) teile.push(`„${esc(zustand.suche)}“`);
   const z = $("#filterzeile");
@@ -605,13 +620,13 @@ document.addEventListener("click", async (e) => {
   if (k && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(k.dataset.id, e.shiftKey);
   if (k) return waehle(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
-  if (ansicht) { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tag: "", format: "", sammlung: "" }); return neuLaden(); }
+  if (ansicht) { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
   const rail = t.closest("[data-rail]");
-  if (rail) { Object.assign(zustand, { ansicht: rail.dataset.rail === "papierkorb" ? "papierkorb" : "alle", ordner: "", tag: "", format: "", sammlung: "" }); return neuLaden(); }
+  if (rail) { Object.assign(zustand, { ansicht: rail.dataset.rail === "papierkorb" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
   const ordner = t.closest("[data-ordner]");
   if (ordner) { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); }
   const sammlung = t.closest("[data-sammlung]");
-  if (sammlung) { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tag: "", format: "" }); return neuLaden(); }
+  if (sammlung) { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return neuLaden(); }
   const d3 = t.closest("[data-ansicht3d]");
   if (d3) { localStorageSchreiben("ansicht", d3.dataset.ansicht3d); zustand.angezeigt = null; return waehle(zustand.gewaehlt); }
   const wsWeg = t.closest("[data-ws-weg]");
@@ -624,7 +639,15 @@ document.addEventListener("click", async (e) => {
     return;
   }
   const tag = t.closest("[data-tag]");
-  if (tag) { zustand.tag = tag.dataset.tag; if (zustand.ansicht === "papierkorb") zustand.ansicht = "alle"; return neuLaden(); }
+  const mat = t.closest("[data-mat]");
+  if (tag || mat) {
+    const [wahl, wert] = tag ? [zustand.tags, tag.dataset.tag] : [zustand.material, mat.dataset.mat];
+    if (!wert) { zustand.tags.clear(); zustand.material.clear(); }
+    else if (wahl.has(wert)) wahl.delete(wert);
+    else wahl.add(wert);
+    if (zustand.ansicht === "papierkorb") zustand.ansicht = "alle";
+    return neuLaden();
+  }
   const fmt = t.closest("[data-format]");
   if (fmt) { zustand.format = zustand.format === fmt.dataset.format ? "" : fmt.dataset.format; return neuLaden(); }
   const tagWeg = t.closest("[data-tag-weg]");
@@ -635,7 +658,7 @@ document.addEventListener("click", async (e) => {
   }
   const id = $("#inspektor").dataset.id;
   switch (t.id) {
-    case "filter-weg": Object.assign(zustand, { ordner: "", tag: "", format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; return neuLaden();
+    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; return neuLaden();
     case "sammlung-neu": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
       try {

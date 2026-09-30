@@ -118,9 +118,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     @app.get("/api/modelle")
     def modelle(q: str = "", tag: str = "", ordner: str = "", format: str = "", ansicht: str = "alle",
-                sammlung: str = ""):
+                sammlung: str = "", tags: str = "", material: str = "", leiste: bool = False):
+        # tags und material als Komma-Liste: die Chips der Leiste, je mit ODER.
+        liste = lambda s: [x for x in s.split(",") if x]
         return K().modelle(suche=q or None, tag=tag or None, ordner=ordner or None,
-                           fmt=format or None, ansicht=ansicht, sammlung=sammlung or None)
+                           fmt=format or None, ansicht=ansicht, sammlung=sammlung or None,
+                           tags=liste(tags), materialien=liste(material), leiste=leiste)
 
     @app.get("/api/zaehler")
     def zaehler():

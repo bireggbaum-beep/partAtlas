@@ -327,7 +327,9 @@ Transformationen, Bild, Platten aus `slice_info`) und STEP ohne Geometrie,
 Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
 3MF Katalog, Suche wie in pDMS (Teilwörter, alle Wörter, "Wortfolge",
 -wort, Feldfilter tag:/ordner:/baugruppe:/sammlung:/material:/format:/
-designer:/gedruckt:/favorit:, Relevanz nach Feld), Tag-/Ordner-/Format-Filter, Favorit, Gedruckt,
+designer:/gedruckt:/favorit:, Relevanz nach Feld), Leiste über dem
+Raster mit Material- und Tag-Chips (je mit ODER, Anzahl je Chip, wer mehr
+gewählte Chips trifft, steht oben), Ordner-/Format-Filter, Favorit, Gedruckt,
 Umbenennen auf der Platte, Löschen mit Vorschau → Papierkorb →
 Wiederherstellen, „Öffnen in …“ (Slicer, FreeCAD, System; Standard je Format), Live-Oberfläche per SSE,
 virtuelles Raster, Wache gegen fremde Herkunft.

@@ -173,12 +173,13 @@ class Katalog:
         d = d or {}
         platten = d.get("platten") or []
         gewicht = sum(p.get("gewicht_g") or 0 for p in platten) or None
+        materialien = sorted({f["typ"].upper() for p in platten for f in p.get("filamente", []) if f.get("typ")})
         material = next((f["typ"] for p in platten for f in p.get("filamente", []) if f.get("typ")), None)
         orte = d.get("orte", [])
         return {
             "id": mid, "name": m.get("name"), "format": d.get("format"),
             "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None,
-            "material": material, "gedruckt": m.get("gedruckt", False),
+            "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
             "favorit": m.get("favorit", False), "hash": h,
             "vorschau": d.get("vorschau"), "fehlt": not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),
@@ -196,7 +197,33 @@ class Katalog:
         teile = self.db.get_connected(ref(MODELL, mid), rel_type=HAT_DATEI, include_deleted=True)
         return teile[0].split("/", 1)[1] if teile else None
 
-    def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None):
+    def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None,
+                tags=(), materialien=(), leiste=False):
+        """Wie `_modelle`, dazu die Chips der Leiste: Tags und Materialien je
+        mit ODER. Wer mehr gewählte Chips trifft, steht weiter oben; bei
+        Gleichstand bleibt die Reihenfolge davor (Relevanz, Name …).
+
+        Mit `leiste` kommt je Chip die Anzahl dazu — gezählt vor der
+        Chip-Auswahl, damit man sieht, was ein weiterer Chip brächte."""
+        basis = self._modelle(suche, tag, ordner, fmt, ansicht, sammlung)
+        tags, materialien = set(tags), {m.upper() for m in materialien}
+        liste = basis
+        if tags or materialien:
+            def treffer(x):
+                return len(tags.intersection(x.get("tags") or ())) + len(materialien.intersection(x.get("materialien") or ()))
+            liste = sorted((x for x in basis if treffer(x)), key=lambda x: -treffer(x))
+        if not leiste:
+            return liste
+        zaehl_t, zaehl_m = {}, {}
+        for x in basis:
+            for t in x.get("tags") or ():
+                zaehl_t[t] = zaehl_t.get(t, 0) + 1
+            for m in x.get("materialien") or ():
+                zaehl_m[m] = zaehl_m.get(m, 0) + 1
+        ordnen = lambda z: [{"name": k, "anzahl": v} for k, v in sorted(z.items(), key=lambda kv: (-kv[1], kv[0]))]
+        return {"modelle": liste, "leiste": {"tags": ordnen(zaehl_t), "materialien": ordnen(zaehl_m)}}
+
+    def _modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None):
         """Kacheln für das Raster, gefiltert. Suche über den Wortindex (suche.py),
         Tag über die Nachbarschaft in flatgraph, der Rest über die Kacheln selbst."""
         if ansicht == "papierkorb":

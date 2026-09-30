@@ -43,6 +43,22 @@ if __name__ == "__main__":
         check("Unbekanntes feld:wert bleibt ein Suchbegriff statt still nichts zu finden",
               namen("halter:kamera") == ["Kamerahalter"])
 
+        # -- Chips der Leiste: Tags und Material je mit ODER, mehr Treffer weiter oben
+        def chips(**p):
+            return [m["name"] for m in c.get("/api/modelle", params=p).json()]
+
+        check("Chips mit ODER: Tag oder Material, beide erweitern",
+              sorted(chips(tags="prototyp", material="petg")) == ["Deckel", "Platte"])
+        c.post(f"/api/modelle/{ids['Platte']}/tags", json={"tag": "prototyp"})
+        check("Wer mehr gewählte Chips trifft, steht oben (Tag und Material vor nur Tag)",
+              chips(tags="prototyp", material="PETG") == ["Platte", "Deckel"])
+        check("Suche schränkt die Chips ein", chips(q="deckel", tags="prototyp", material="PETG") == ["Deckel"])
+        l = c.get("/api/modelle", params={"material": "PETG", "leiste": 1}).json()
+        mat = {x["name"]: x["anzahl"] for x in l["leiste"]["materialien"]}
+        tag = {x["name"]: x["anzahl"] for x in l["leiste"]["tags"]}
+        check("Leiste zählt vor der Auswahl: mit PETG gewählt trotzdem #prototyp 2 (Deckel hat kein PETG)",
+              mat == {"PETG": 1, "PLA": 1} and tag.get("prototyp") == 2 and [m["name"] for m in l["modelle"]] == ["Platte"])
+
         # -- Nachführen über den Rückruf von flatgraph
         c.patch(f"/api/modelle/{ids['Armatur']}", json={"name": "Ventil", "gedruckt": True})
         check("Umbenannt: unter dem neuen Namen gefunden, unter dem alten nicht",
