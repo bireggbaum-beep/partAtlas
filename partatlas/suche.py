@@ -143,7 +143,8 @@ class Suchindex:
         h = self.k.datei_von(mid)
         d = (self.db.get_node(ref(DATEI, h), readonly=True) if h else None) or {}
         namen = lambda refs: " ".join(norm((self.db.get_node(r, readonly=True) or {}).get("name", "")) for r in refs)
-        material = {f.get("typ") for p in d.get("platten") or [] for f in p.get("filamente", []) if f.get("typ")}
+        mat = self.k.materialien_von(mid, h)
+        material = set(mat["vorgesehen"]) | set(mat["aus_datei"])
         return {
             "name": norm(m.get("name")),
             "tags": " ".join(norm(r.split("/", 1)[1]) for r in

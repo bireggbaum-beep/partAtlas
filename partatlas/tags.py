@@ -46,9 +46,7 @@ def vorschlaege(name, felder):
         elif groesste >= GROSS_MM:
             tags.append("grossformat")
     filamente = [f for p in felder.get("platten") or [] for f in p.get("filamente", [])]
-    for f in filamente:
-        if f.get("typ"):
-            tags.append(f["typ"].lower())
+    # Das Material ist kein Tag mehr, sondern ein eigener Knoten (Katalog.material_*).
     if len({(f.get("farbe") or "").lower() for f in filamente}) > 1:
         tags.append("mehrfarbig")
     return list(dict.fromkeys(normalisiere(t) for t in tags if normalisiere(t)))

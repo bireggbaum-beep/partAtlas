@@ -59,6 +59,30 @@ if __name__ == "__main__":
         check("Leiste zählt vor der Auswahl: mit PETG gewählt trotzdem #prototyp 2 (Deckel hat kein PETG)",
               mat == {"PETG": 1, "PLA": 1} and tag.get("prototyp") == 2 and [m["name"] for m in l["modelle"]] == ["Platte"])
 
+        # -- Material als Knoten: vorgesehen vom Anwender, aus der 3MF über die Datei
+        c.post(f"/api/modelle/{ids['Kamerahalter']}/material", json={"material": "petg"})
+        c.post(f"/api/modelle/{ids['Kamerahalter']}/material", json={"material": "PLA+"})
+        check("STL mit vorgesehenem Material erscheint unter dem Chip, neben der 3MF",
+              sorted(chips(material="PETG")) == ["Kamerahalter", "Platte"])
+        check("Vorgesehen und aus der Datei getrennt im Inspektor",
+              c.get(f"/api/modelle/{ids['Kamerahalter']}").json()["material_herkunft"] == {"vorgesehen": ["PETG", "PLA+"], "aus_datei": []}
+              and c.get(f"/api/modelle/{ids['Platte']}").json()["material_herkunft"]["aus_datei"] == ["PETG", "PLA"])
+        c.delete(f"/api/modelle/{ids['Kamerahalter']}/material/PLA+")
+        check("Vorgesehenes Material wieder weg, Suche zieht nach",
+              chips(material="PLA+") == [] and namen("material:petg") == ["Kamerahalter", "Platte"])
+        c.post("/api/modelle/" + ids["Kamerahalter"] + "/material", json={"material": "Holz-PLA"})
+        check("Neues Material legt seinen Knoten an", "HOLZ-PLA" in c.get("/api/materialien").json())
+        c.delete(f"/api/modelle/{ids['Kamerahalter']}/material/HOLZ-PLA")
+        from partatlas.katalog import Katalog
+        db = z["bestand"].db
+        h = c.get(f"/api/modelle/{ids['Platte']}").json()["hash"]
+        with db.transaction():
+            for kid, _ in db.verwendungen(f"PART_GEOMETRY/{h}", direction="out").get("REQUIRES_MATERIAL", []):
+                db.delete_edge(kid)
+        Katalog(z["bestand"])
+        check("Bestand von vorher: beim Start werden die Dateien mit ihrem Material verbunden",
+              len(db.get_connected(f"PART_GEOMETRY/{h}", rel_type="REQUIRES_MATERIAL")) == 2)
+
         # -- Nachführen über den Rückruf von flatgraph
         c.patch(f"/api/modelle/{ids['Armatur']}", json={"name": "Ventil", "gedruckt": True})
         check("Umbenannt: unter dem neuen Namen gefunden, unter dem alten nicht",
@@ -66,6 +90,9 @@ if __name__ == "__main__":
         check("gedruckt:ja folgt der Änderung", namen("gedruckt:ja") == ["Ventil"])
         bid = c.post("/api/baugruppen", json={"name": "Drohne", "modelle": [ids["Kamerahalter"]]}).json()["id"]
         check("Baugruppe: Teile unter ihrem Namen gefunden", namen("drohne") == ["Kamerahalter"])
+        pos = c.get(f"/api/baugruppen/{bid}").json()["positionen"][0]
+        check("Baugruppe rechnet mit dem vorgesehenen Material statt dem Standard",
+              pos["material"] == "PETG" and not pos["material_angenommen"])
         c.patch(f"/api/baugruppen/{bid}", json={"name": "Rover"})
         check("Baugruppe umbenannt: der Index zieht nach", namen("rover") == ["Kamerahalter"] and namen("drohne") == [])
         c.post(f"/api/modelle/{ids['Deckel']}/loeschen")

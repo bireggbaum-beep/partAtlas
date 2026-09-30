@@ -267,11 +267,30 @@ function zeichneStapel() {
     <select class="knopf" id="stapel-sammlung"><option value="">Zu Sammlung …</option>${zustand.sammlungen.map((x) =>
       `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}<option value="__neu">Neue Sammlung …</option></select>
     <button class="knopf" data-stapel="tag">＃ Tag …</button>
+    <button class="knopf" data-stapel="material">Material …</button>
     <button class="knopf" data-stapel="gedruckt">✓ Gedruckt</button>
     <button class="knopf" data-stapel="favorit">♥ Favorit</button>
     <button class="knopf" data-stapel="verschieben">Verschieben …</button>
     <button class="knopf gefahr" data-stapel="loeschen">Löschen</button>
     <button class="knopf" data-stapel="keine">✕</button>`;
+}
+
+// Vorgesehen setzt der Anwender (entfernbar); aus der Datei kommt aus den
+// Slicer-Daten der 3MF und bleibt, solange die Datei es sagt.
+function materialTeil(m, alle) {
+  const h = m.material_herkunft || { vorgesehen: [], aus_datei: [] };
+  const frei = alle.filter((x) => !h.vorgesehen.includes(x));
+  return `<div class="i-titel">MATERIAL</div>
+    <div class="i-material">${h.vorgesehen.map((x) => `<span class="chip aktiv" title="vorgesehen">${esc(x)}<button data-material-weg="${esc(x)}" title="entfernen">×</button></span>`).join("")}
+      ${h.aus_datei.map((x) => `<span class="chip" title="aus den Slicer-Daten der Datei">${esc(x)} <small>aus 3MF</small></span>`).join("")}
+      <select class="knopf" id="material-dazu"><option value="">＋ Material …</option>${frei.map((x) => `<option>${esc(x)}</option>`).join("")}
+        <option value="__neu">Neues Material …</option></select></div>`;
+}
+
+async function materialFrage(titel) {
+  const a = await dialog(`<h2>${titel}</h2><input type="text" id="s-name" placeholder="z. B. PETG, Holz-PLA">
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
+  return a === "ja" ? $("#s-name").value.trim() : "";
 }
 
 async function stapel(aktion, wert) {
@@ -292,6 +311,16 @@ async function stapelAktion(aktion) {
     case "baugruppe": return zuBaugruppe(modelle);
     case "gedruckt": return stapel("gedruckt", true);
     case "favorit": return stapel("favorit", true);
+    case "material": {
+      const alle = await api("/api/materialien");
+      const a = await dialog(`<h2>Material für ${modelle.length} Modelle</h2>
+        <p class="dim">Wird als „vorgesehen“ ergänzt; vorhandene Angaben bleiben.</p>
+        <div class="kategorien">${alle.map((x) => `<button type="button" class="chip" data-mat-wahl="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+        <input type="text" id="s-name" placeholder="oder neues Material">
+        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
+      if (a === "ja" && $("#s-name").value.trim()) return stapel("material", $("#s-name").value.trim());
+      return;
+    }
     case "tag": {
       const a = await dialog(`<h2>Tag für ${modelle.length} Modelle</h2><input type="text" id="s-name" placeholder="z. B. Funktional">
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
@@ -387,7 +416,7 @@ async function waehle(id) {
   raster.zeichne();
   if (!id && zustand.baugruppe && typeof zeigeBgUebersicht === "function") return zeigeBgUebersicht();
   if (!id) { zustand.angezeigt = null; if (dreiDModul) (await dreiD()).schliessen(); $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`; return; }
-  const [m, prog] = await Promise.all([api(`/api/modelle/${id}`), ladeProgramme()]);
+  const [m, prog, materialien] = await Promise.all([api(`/api/modelle/${id}`), ladeProgramme(), api("/api/materialien")]);
   if (zustand.gewaehlt !== id) return;
   const url = bildUrl(m);
   const zeilen = [
@@ -418,6 +447,7 @@ async function waehle(id) {
         ? `<a href="${esc(m.quelle_url)}" target="_blank" rel="noopener noreferrer">${esc(m.quelle_url.replace(/^https?:\/\//, "").slice(0, 32))}…</a>` : "–"}
         <button class="knopf" id="quelle-aendern" title="Quelle ändern">✎</button></span></div>`}</div>
     ${platten ? `<div class="i-titel">FILAMENTVERBRAUCH (AUS SLICER)</div><div class="i-karte">${platten}</div>` : ""}
+    ${papierkorb ? "" : materialTeil(m, materialien)}
     ${papierkorb ? "" : `<div class="i-titel">HASHTAGS</div>
     <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
       <input id="tag-neu" placeholder="Tag hinzufügen" autocomplete="off"></div>`}
@@ -650,6 +680,14 @@ document.addEventListener("click", async (e) => {
   }
   const fmt = t.closest("[data-format]");
   if (fmt) { zustand.format = zustand.format === fmt.dataset.format ? "" : fmt.dataset.format; return neuLaden(); }
+  const matWahl = t.closest("[data-mat-wahl]");
+  if (matWahl) { $("#s-name").value = matWahl.dataset.matWahl; return; }
+  const matWeg = t.closest("[data-material-weg]");
+  if (matWeg) {
+    const id = $("#inspektor").dataset.id;
+    await api(`/api/modelle/${id}/material/${encodeURIComponent(matWeg.dataset.materialWeg)}`, { method: "DELETE" });
+    return waehle(id);
+  }
   const tagWeg = t.closest("[data-tag-weg]");
   if (tagWeg) {
     const id = $("#inspektor").dataset.id;
@@ -731,6 +769,15 @@ document.addEventListener("click", async (e) => {
 });
 
 document.addEventListener("change", async (e) => {
+  if (e.target.id === "material-dazu" && e.target.value) {
+    const id = $("#inspektor").dataset.id;
+    let wert = e.target.value;
+    e.target.value = "";
+    if (wert === "__neu") wert = await materialFrage("Neues Material");
+    if (!wert) return;
+    try { await api(`/api/modelle/${id}/material`, { method: "POST", body: { material: wert } }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
   if (e.target.id === "oeffnen-mit" && e.target.value) {
     const w = e.target.value;
     e.target.value = "";

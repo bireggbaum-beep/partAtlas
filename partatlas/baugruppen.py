@@ -18,7 +18,7 @@ import io
 import re
 
 from . import standardteile
-from .bestand import MODELL
+from .bestand import MATERIALIEN, MODELL  # noqa: F401 — MATERIALIEN für main
 from .katalog import KatalogFehler, jetzt, ref
 
 BAUGRUPPE = "ASSEMBLY"
@@ -33,7 +33,6 @@ POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
 # Füllung innen. Massiv gerechnet käme ein 10-cm-Klotz auf das Drei- bis
 # Vierfache. Es bleibt eine Schätzung, und die Oberfläche sagt das.
 ROLLE_G = 1000
-MATERIALIEN = ["PLA", "PLA+", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "PLA-CF", "PETG-CF", "PVA", "HIPS"]
 HUELLE_CM = 0.12
 FUELLUNG = 0.15
 DICHTE = {"PLA": 1.24, "PLA+": 1.24, "PETG": 1.27, "ABS": 1.04, "ASA": 1.07, "TPU": 1.21, "PA": 1.14, "PC": 1.20}
@@ -207,7 +206,8 @@ class Baugruppen:
                 if v and not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
                     raise KatalogFehler("Farbe als #RRGGBB angeben.")
             elif k == "material":
-                v = str(v or "").strip().upper()[:20] or None
+                # Die Position nennt den Material-Knoten beim Namen; es gibt ihn danach.
+                v = self.k.material_knoten(v) if str(v or "").strip() else None
             else:
                 v = str(v or "").strip()[:200] or None
             aenderung[k] = v
@@ -219,7 +219,7 @@ class Baugruppen:
         Ebenen — so weit, wie die Filament-Übersicht zählt. Ein Klick statt
         zwanzig."""
         with self.db.transaction():
-            self._material_setzen(bid, material.upper(), farbe, set())
+            self._material_setzen(bid, self.k.material_knoten(material), farbe, set())
 
     def _material_setzen(self, bid, material, farbe, gesehen):
         if bid in gesehen:
@@ -373,7 +373,7 @@ class Baugruppen:
         return {"id": bid, "name": b["name"], "beschreibung": b.get("beschreibung", ""), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(ref(BAUGRUPPE, bid)),
-                "materialien": MATERIALIEN}
+                "materialien": self.k.materialien()}
 
     def summen(self, bid):
         """Was die ganze Baugruppe braucht, über alle Ebenen: Gewicht, Zeit,

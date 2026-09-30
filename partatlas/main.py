@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from . import formate, programme
-from .baugruppen import MATERIALIEN, Baugruppen
+from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
@@ -161,6 +161,22 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     async def tag_neu(mid: str, request: Request):
         daten = await request.json()
         return {"tag": K().tag_setzen(mid, daten.get("tag", ""))}
+
+    @app.get("/api/materialien")
+    def materialien():
+        return K().materialien()
+
+    @app.post("/api/modelle/{mid}/material")
+    async def material_neu(mid: str, request: Request):
+        daten = await request.json()
+        k = K()
+        with k.db.transaction():
+            return {"material": k.material_vorsehen(mid, daten.get("material", ""))}
+
+    @app.delete("/api/modelle/{mid}/material/{name}")
+    def material_weg(mid: str, name: str):
+        K().material_loesen(mid, name)
+        return {"ok": True}
 
     @app.delete("/api/modelle/{mid}/tags/{tag}")
     def tag_weg(mid: str, tag: str):
@@ -334,14 +350,15 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.get("/api/einstellungen")
     def einstellungen():
         return {**zustand["bestand"].einstellungen(), "gilt": B().standard(),
-                "materialien": MATERIALIEN}
+                "materialien": K().materialien()}
 
     @app.put("/api/einstellungen")
     async def einstellungen_setzen(request: Request):
         d = await request.json()
         werte = {}
         if "standard_material" in d:
-            werte["standard_material"] = str(d["standard_material"] or "PLA").strip().upper()[:20] or "PLA"
+            with zustand["bestand"].db.transaction():
+                werte["standard_material"] = K().material_knoten(d["standard_material"] or "PLA")
         if "standard_farbe" in d:
             f = d["standard_farbe"] or None
             if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):

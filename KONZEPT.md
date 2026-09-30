@@ -270,7 +270,7 @@ Sammlungs- und Kantennamen folgen der flatgraph-Namensregel (VERTRAG §7).
 | `PRINTER_DEVICE` | fortlaufend | Name, Anschluss, Adresse, Bett, Düse | `printers`, `printer_connections` |
 | `AMS_SLOT` | fortlaufend | Fach einer Einheit | `material_units` |
 | `MATERIAL_SPOOL` | fortlaufend | Spule/Flasche: Rest, Preis, Lagerort, Farbe | `filament_spools` |
-| `MATERIAL_MASTER` | fortlaufend | Filamenttyp | — |
+| `MATERIAL_MASTER` | Name in Grossbuchstaben (`PETG`, `PLA+`) | Filamenttyp; Grundbestand von zwölf, weitere legt der Anwender an (0.10) | — |
 
 Warteschlange: Feld `queue_position` am Modell wie im 3MF Katalog, bis
 die Flotte (Phase 4) eine eigene Sammlung braucht.
@@ -280,6 +280,8 @@ die Flotte (Phase 4) eine eigene Sammlung braucht.
 ```
 MODEL_ASSET    ─[HAS_PART]──────────▶ PART_GEOMETRY
 MODEL_ASSET    ─[HAS_TAG]───────────▶ TAG_ITEM
+MODEL_ASSET    ─[INTENDED_MATERIAL]─▶ MATERIAL_MASTER   vom Anwender, auch mehrere (0.10)
+PART_GEOMETRY  ─[REQUIRES_MATERIAL]─▶ MATERIAL_MASTER   aus den Slicer-Daten der 3MF (0.10)
 MODEL_ASSET    ─[IN_COLLECTION]─────▶ COLLECTION        meta: position
 MODEL_ASSET    ─[HAS_GCODE]─────────▶ GCODE_ARTIFACT
 GCODE_ARTIFACT ─[SLICED_FROM]───────▶ PART_GEOMETRY     die Quelle im Vault

@@ -17,7 +17,8 @@ import time
 
 from . import archiv, dateien, formate, tags
 from .suche import Suchindex
-from .bestand import DATEI, HAT_DATEI, HAT_TAG, IN_SAMMLUNG, MODELL, SAMMLUNG, TAG, WURZEL
+from .bestand import (BRAUCHT, DATEI, HAT_DATEI, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
+                      TAG, VORGESEHEN, WURZEL)
 
 
 class KatalogFehler(Exception):
@@ -37,6 +38,7 @@ class Katalog:
         self.b = bestand
         self.db = bestand.db
         self.suche = Suchindex(self)
+        self._material_nachziehen()
 
     # ------------------------------------------------------------ Wurzeln
 
@@ -126,6 +128,7 @@ class Katalog:
         self.db.create_edge(ref(MODELL, mid), ref(DATEI, h), HAT_DATEI, cascade_delete=True)
         for t in tags.vorschlaege(name, felder):
             self._tag_verbinden(mid, t)
+        self._datei_materialien(h, felder)
         return mid
 
     def namen_angleichen(self):
@@ -173,8 +176,10 @@ class Katalog:
         d = d or {}
         platten = d.get("platten") or []
         gewicht = sum(p.get("gewicht_g") or 0 for p in platten) or None
-        materialien = sorted({f["typ"].upper() for p in platten for f in p.get("filamente", []) if f.get("typ")})
-        material = next((f["typ"] for p in platten for f in p.get("filamente", []) if f.get("typ")), None)
+        mat = self.materialien_von(mid, h) if not papierkorb else {"vorgesehen": [], "aus_datei": []}
+        materialien = sorted(set(mat["vorgesehen"]) | set(mat["aus_datei"]))
+        # Vorgesehen geht vor: der Anwender weiss, womit er drucken will.
+        material = next(iter(mat["vorgesehen"] + mat["aus_datei"]), None)
         orte = d.get("orte", [])
         return {
             "id": mid, "name": m.get("name"), "format": d.get("format"),
@@ -291,6 +296,7 @@ class Katalog:
             "quelle_url": m.get("quelle_url"), "eingelesen": d.get("eingelesen"),
             "papierkorb_ablage": d.get("papierkorb", []),
             "sammlungen": [] if papierkorb else self.sammlungen_von(mid),
+            "material_herkunft": self.materialien_von(mid, kurz["hash"]) if not papierkorb else None,
         }
 
     def modell_aendern(self, mid, werte):
@@ -502,13 +508,15 @@ class Katalog:
         """Eine Aktion für viele Modelle; reine Graph-Änderungen in einer
         Transaktion, Dateiaktionen einzeln (jede für sich rückgängig)."""
         fehler = []
-        if aktion in ("favorit", "gedruckt", "tag", "sammlung", "warteschlange", "aus_warteschlange"):
+        if aktion in ("favorit", "gedruckt", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange"):
             with self.db.transaction():
                 for mid in modelle:
                     if aktion in ("favorit", "gedruckt"):
                         self.modell_aendern(mid, {aktion: bool(wert)})
                     elif aktion == "tag":
                         self._tag_verbinden(mid, wert)
+                    elif aktion == "material":
+                        self.material_vorsehen(mid, wert)
                     elif aktion == "warteschlange":
                         self.in_warteschlange(mid)
                     elif aktion == "aus_warteschlange":
@@ -665,6 +673,65 @@ class Katalog:
                 self.db.update_node(MODELL, mid, {"warteschlange": pos})
 
     # ------------------------------------------------------------ Tags
+
+    # ------------------------------------------------------------ Material
+
+    def material_knoten(self, name):
+        """Name → Kennung des Material-Knotens; legt ihn an, wenn es ihn nicht gibt."""
+        mat = str(name or "").strip().upper().replace("/", "-")[:20]
+        if not mat:
+            raise KatalogFehler("Kein Material angegeben.")
+        if self.db.get_node(ref(MATERIAL, mat), readonly=True) is None:
+            if self.db.get_node_raw(ref(MATERIAL, mat)) is not None:
+                self.db.restore_node(MATERIAL, mat)
+            else:
+                self.db.create_node(MATERIAL, mat, {"name": mat})
+        return mat
+
+    def _datei_materialien(self, h, felder):
+        for f in {f["typ"] for p in felder.get("platten") or [] for f in p.get("filamente", []) if f.get("typ")}:
+            mat = self.material_knoten(f)
+            if ref(MATERIAL, mat) not in self.db.get_connected(ref(DATEI, h), rel_type=BRAUCHT):
+                self.db.create_edge(ref(DATEI, h), ref(MATERIAL, mat), BRAUCHT)
+
+    def _material_nachziehen(self):
+        """Grundbestand anlegen und Dateien aus der Zeit vor den Material-
+        Knoten verbinden. Schreibt nur, wenn etwas fehlt."""
+        fehlt = [m for m in MATERIALIEN if self.db.get_node(ref(MATERIAL, m), readonly=True) is None]
+        dateien = {h: d for h, d in self.db.list_nodes(DATEI, readonly=True).items()
+                   if any(f.get("typ") for p in d.get("platten") or [] for f in p.get("filamente", []))
+                   and not self.db.get_connected(ref(DATEI, h), rel_type=BRAUCHT)}
+        if not fehlt and not dateien:
+            return
+        with self.db.transaction():
+            for m in fehlt:
+                self.material_knoten(m)
+            for h, d in dateien.items():
+                self._datei_materialien(h, d)
+
+    def materialien_von(self, mid, h=None):
+        h = h if h is not None else self.datei_von(mid)
+        name = lambda r: r.split("/", 1)[1]
+        return {"vorgesehen": sorted(name(r) for r in self.db.get_connected(ref(MODELL, mid), rel_type=VORGESEHEN)),
+                "aus_datei": sorted(name(r) for r in self.db.get_connected(ref(DATEI, h), rel_type=BRAUCHT)) if h else []}
+
+    def material_vorsehen(self, mid, name):
+        if self.db.get_node(ref(MODELL, mid), readonly=True) is None:
+            raise KatalogFehler(f"Modell {mid} gibt es nicht.")
+        mat = self.material_knoten(name)
+        if ref(MATERIAL, mat) not in self.db.get_connected(ref(MODELL, mid), rel_type=VORGESEHEN):
+            self.db.create_edge(ref(MODELL, mid), ref(MATERIAL, mat), VORGESEHEN)
+        return mat
+
+    def material_loesen(self, mid, name):
+        for kid, andere in self.db.verwendungen(ref(MODELL, mid), direction="out").get(VORGESEHEN, []):
+            if andere == ref(MATERIAL, str(name).upper()):
+                self.db.delete_edge(kid)
+
+    def materialien(self):
+        """Alle Material-Knoten, der Grundbestand zuerst."""
+        alle = [k for k in self.db.list_nodes(MATERIAL, readonly=True)]
+        return [m for m in MATERIALIEN if m in alle] + sorted(m for m in alle if m not in MATERIALIEN)
 
     def _tag_verbinden(self, mid, name):
         name = tags.normalisiere(name)

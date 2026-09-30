@@ -26,6 +26,14 @@ HAT_DATEI = "HAS_PART"
 HAT_TAG = "HAS_TAG"
 SAMMLUNG = "COLLECTION"
 IN_SAMMLUNG = "IN_COLLECTION"
+# Material ist ein Knoten, nicht Text: Modell ─[vorgesehen]→ Material vom
+# Anwender, Datei ─[braucht]→ Material aus den Slicer-Daten (später auch
+# der G-Code, KONZEPT §6). Ein Chip „PETG“ ist dann die Nachbarschaft.
+MATERIAL = "MATERIAL_MASTER"
+VORGESEHEN = "INTENDED_MATERIAL"
+BRAUCHT = "REQUIRES_MATERIAL"
+# Grundbestand; weitere legt der Anwender an.
+MATERIALIEN = ["PLA", "PLA+", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "PLA-CF", "PETG-CF", "PVA", "HIPS"]
 
 
 def standard_ort():

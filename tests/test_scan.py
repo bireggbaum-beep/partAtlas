@@ -76,8 +76,12 @@ if __name__ == "__main__":
           alle["Top_Plate"]["gewicht_g"] == 15.75 and alle["Top_Plate"]["material"] == "PETG")
     check("Automatische Tags wie im 3MF Katalog: Wörter aus dem Namen, ohne Versionsnummer",
           alle["Arm_Front_v2"]["tags"] == ["arm", "front", "miniatur"])
-    check("Automatische Tags: mehrteilig, Material, mehrfarbig aus der 3MF",
-          {"mehrteilig", "petg", "pla", "mehrfarbig"} <= set(alle["Top_Plate"]["tags"]))
+    check("Automatische Tags: mehrteilig und mehrfarbig aus der 3MF, das Material nicht als Tag",
+          {"mehrteilig", "mehrfarbig"} <= set(alle["Top_Plate"]["tags"]) and "petg" not in alle["Top_Plate"]["tags"])
+    check("Material aus der 3MF als Knoten: Datei ─[REQUIRES_MATERIAL]→ PETG und PLA",
+          sorted(r.split("/")[1] for r in b.db.get_connected(f'PART_GEOMETRY/{alle["Top_Plate"]["hash"]}',
+                                                              rel_type="REQUIRES_MATERIAL")) == ["PETG", "PLA"]
+          and alle["Top_Plate"]["materialien"] == ["PETG", "PLA"])
 
     anzahl_knoten = len(b.db.list_nodes("PART_GEOMETRY")) + len(b.db.list_nodes("MODEL_ASSET"))
     st = scannen()
