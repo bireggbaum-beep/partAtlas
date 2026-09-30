@@ -109,8 +109,18 @@ async def oberflaeche(port):
             await pg.evaluate(ZIEHEN, [".karte", '[data-ansicht="warteschlange"]'])
             await pg.wait_for_timeout(600)
         await suche("")
+        # Auf den Zustand warten statt Text zu zerlegen: die Live-Aktualisierung
+        # zeichnet die Liste neu, und ein halb gezeichneter Stand warf vorher
+        # einen IndexError statt eines FAIL.
+        erwartet = ["Haken.stl", "Arm.stl", "Vase.stl"]
+        try:
+            await pg.wait_for_function("(e) => [...document.querySelectorAll('#ws-liste [data-ws-waehle]')]"
+                                       ".map((x) => x.textContent).join('|') === e.join('|')", arg=erwartet, timeout=5000)
+        except Exception:
+            pass
         check("Drei Kacheln in die Warteschlange gezogen, Liste links nummeriert",
-              [x.split("\n")[1] for x in await pg.locator("#ws-liste li").all_inner_texts()] == ["Haken.stl", "Arm.stl", "Vase.stl"])
+              await pg.locator("#ws-liste [data-ws-waehle]").all_inner_texts() == erwartet
+              and await pg.locator("#ws-liste li b").all_inner_texts() == ["1", "2", "3"])
         await pg.evaluate(ZIEHEN, ["#ws-liste li:last-child", "#ws-liste li:first-child"])
         await pg.wait_for_timeout(800)
         check("Warteschlange per Ziehen umsortiert",
