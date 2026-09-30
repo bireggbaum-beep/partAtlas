@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from . import formate, slicer
+from . import formate, programme
 from .baugruppen import MATERIALIEN, Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -349,6 +349,20 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
                 werte["rolle_g"] = max(100, min(int(d["rolle_g"]), 10_000))
             except (TypeError, ValueError):
                 raise KatalogFehler("Rollengrösse in Gramm.")
+        if "programme" in d:
+            eigene = []
+            for p in d["programme"] or []:
+                name, pfad = str(p.get("name") or "").strip()[:60], str(p.get("pfad") or "").strip()
+                if not name or not programme.ausfuehrbar(pfad):
+                    raise KatalogFehler(f"Kein ausführbares Programm: {pfad or '(leer)'}")
+                art = p.get("art") if p.get("art") in programme.ARTEN else programme.CAD
+                formate = [f for f in p.get("formate") or programme.FORMATE if f in programme.FORMATE]
+                eigene.append({"name": name, "pfad": pfad, "art": art, "formate": formate})
+            werte["programme"] = eigene
+            werte["slicer"] = []
+        if "standard_programm" in d:
+            werte["standard_programm"] = {f: str(v) for f, v in (d["standard_programm"] or {}).items()
+                                          if f in programme.FORMATE and v}
         zustand["bestand"].einstellungen_setzen(**werte)
         verteiler.senden("einstellungen", werte)
         return B().standard()
@@ -460,25 +474,37 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         return FileResponse(pfad, media_type="image/png",
                             headers={"Cache-Control": "max-age=31536000, immutable"})
 
-    # ---------------------------------------------------------------- Slicer
+    # ---------------------------------------------------------------- Öffnen in …
 
-    @app.get("/api/slicer")
-    def slicer_liste():
-        return slicer.alle(zustand["bestand"].einstellungen())
+    def _programme():
+        e = zustand["bestand"].einstellungen()
+        liste = programme.alle(e)
+        return liste, programme.standard(liste, e)
 
-    @app.post("/api/modelle/{mid}/slicer")
-    async def slicer_oeffnen(mid: str, request: Request):
+    @app.get("/api/programme")
+    def programme_liste():
+        liste, std = _programme()
+        return {"programme": liste, "standard": std, "arten": programme.ARTEN}
+
+    @app.post("/api/modelle/{mid}/oeffnen")
+    async def modell_oeffnen(mid: str, request: Request):
         daten = await request.json()
-        erlaubt = {s["pfad"] for s in slicer.alle(zustand["bestand"].einstellungen())}
-        programm = daten.get("pfad")
-        if programm not in erlaubt:
-            raise KatalogFehler("Diesen Slicer kennt partAtlas nicht.")
         m = K().modell(mid)
         datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
         if not datei:
             raise KatalogFehler("Die Datei ist nicht da.")
-        slicer.oeffnen(programm, datei)
-        return {"ok": True}
+        if daten.get("system"):
+            try:
+                programme.mit_system(datei)
+            except OSError as e:
+                raise KatalogFehler(f"Mit dem System öffnen ging nicht: {e}")
+            return {"ok": True}
+        liste, std = _programme()
+        pfad = daten.get("pfad") or std.get(m["format"])
+        if pfad not in {p["pfad"] for p in liste}:
+            raise KatalogFehler("Dieses Programm kennt partAtlas nicht.")
+        programme.oeffnen(pfad, datei)
+        return {"ok": True, "programm": next(p["name"] for p in liste if p["pfad"] == pfad)}
 
     # ---------------------------------------------------------------- Oberfläche
 

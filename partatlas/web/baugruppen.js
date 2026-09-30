@@ -495,8 +495,11 @@ ladeBaugruppenLeiste();
 // einmal ein und muss nie wieder ein Teil anfassen.
 
 async function einstellungen() {
-  const e = await api("/api/einstellungen");
+  const [e, prog] = await Promise.all([api("/api/einstellungen"), api("/api/programme")]);
+  Object.assign(progWahl, { erkannt: prog.programme.filter((p) => !p.eigen), eigene: prog.programme.filter((p) => p.eigen),
+                            arten: prog.arten, standard: { ...(e.standard_programm || {}) } });
   Object.assign(mwWahl, { material: e.gilt.material, farbe: e.gilt.farbe });
+  $("#dialog").classList.add("breit");
   const a = await dialog(`<h2>Einstellungen</h2>
     <p class="dim">Was partAtlas annimmt, wenn ein Druckteil keine Angabe hat (kein Slicer-Wert, nichts festgelegt).</p>
     <div class="i-titel">STANDARDMATERIAL</div>
@@ -506,13 +509,59 @@ async function einstellungen() {
       <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
     <div class="i-titel">ROLLENGRÖSSE</div>
     <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>
+    <div class="i-titel">PROGRAMME ZUM ÖFFNEN</div>
+    <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
+    <div id="prog-teil">${progTeil()}</div>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Speichern</button></div>`);
+  $("#dialog").classList.remove("breit");
   if (a !== "ja") return;
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
-                                                          rolle_g: Number($("#ein-rolle").value) } });
+                                                          rolle_g: Number($("#ein-rolle").value),
+                                                          programme: progWahl.eigene, standard_programm: progWahl.standard } });
     toast("Gespeichert.");
+    programmCache = null;
     ladeBaugruppe();
+    if ($("#inspektor").dataset.id) waehle($("#inspektor").dataset.id);
   } catch (err) { toast(err.message); }
 }
+
+const progWahl = { erkannt: [], eigene: [], arten: {}, standard: {} };
+const FORMAT_NAMEN = { "3mf": "3MF", stl: "STL", obj: "OBJ", step: "STEP" };
+
+function progTeil() {
+  const alle = [...progWahl.eigene, ...progWahl.erkannt];
+  const zeile = (p, i) => `<div class="prog-zeile"><b>${esc(p.name)}</b><small>${esc(progWahl.arten[p.art] || p.art)}</small>
+      <code title="${esc(p.pfad)}">${esc(p.pfad)}</code>${i != null ? `<button type="button" class="weg" data-prog-weg="${i}" title="Eintrag entfernen">×</button>` : "<span></span>"}</div>`;
+  return `${alle.length ? "" : '<p class="dim">Nichts gefunden.</p>'}
+    ${progWahl.eigene.map((p, i) => zeile(p, i)).join("")}${progWahl.erkannt.map((p) => zeile(p, null)).join("")}
+    <div class="prog-neu"><input type="text" id="prog-name" placeholder="Name, z. B. Blender">
+      <input type="text" id="prog-pfad" placeholder="/pfad/zum/programm">
+      <select id="prog-art">${Object.entries(progWahl.arten).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select>
+      <button type="button" class="knopf" data-prog-dazu>Eintragen</button></div>
+    <div class="i-titel">STANDARD JE FORMAT</div>
+    <div class="prog-standard">${Object.entries(FORMAT_NAMEN).map(([f, n]) => {
+      const passend = alle.filter((p) => !p.formate || p.formate.includes(f));
+      return `<label>${n}<select data-prog-std="${f}"><option value="">automatisch</option>${passend.map((p) =>
+        `<option value="${esc(p.pfad)}" ${progWahl.standard[f] === p.pfad ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>`;
+    }).join("")}</div>`;
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (!t.closest?.("#prog-teil")) return;
+  const weg = t.closest("[data-prog-weg]");
+  if (weg) progWahl.eigene.splice(Number(weg.dataset.progWeg), 1);
+  else if (t.closest("[data-prog-dazu]")) {
+    const name = $("#prog-name").value.trim(), pfad = $("#prog-pfad").value.trim();
+    if (!name || !pfad) return toast("Name und Pfad angeben.");
+    // Geprüft wird beim Speichern: der Server weiss, ob es die Datei gibt.
+    progWahl.eigene.push({ name, pfad, art: $("#prog-art").value, formate: Object.keys(FORMAT_NAMEN), eigen: true });
+  } else return;
+  $("#prog-teil").innerHTML = progTeil();
+});
+document.addEventListener("change", (e) => {
+  const f = e.target.dataset?.progStd;
+  if (f) { if (e.target.value) progWahl.standard[f] = e.target.value; else delete progWahl.standard[f]; }
+});
 document.addEventListener("click", (e) => { if (e.target.closest?.("#einstellungen")) einstellungen(); });

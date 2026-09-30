@@ -63,9 +63,14 @@ Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
 - **Tauri** als optionale Desktop-Hülle um dieselbe Oberfläche: Fenster
   wie ein Programm, Ziehen aus dem Dateimanager. Der Browser bleibt, auch
   für Tablet und Handy im Heimnetz.
-- **„Im Slicer öffnen“** startet der Server direkt (`orcaslicer <datei>`),
-  weil Server und Slicer auf demselben Rechner laufen. Erkennung der
-  Slicer wie im 3MF Katalog.
+- **„Öffnen in …“** startet der Server direkt (`orcaslicer <datei>`,
+  `freecad <datei>`), weil Server und Programme auf demselben Rechner
+  laufen. Erkannt werden Slicer wie im 3MF Katalog und FreeCAD (PATH,
+  Flatpak, AppImage, /opt; unter Windows Programme\FreeCAD*). Je Format
+  ein Standard: STEP ins CAD, sonst in den Slicer, in den Einstellungen
+  umstellbar; eigene Programme dort eintragen. „Mit dem System öffnen“
+  (xdg-open) geht immer. Gestartet wird nur ein bekanntes Programm, nie
+  ein Pfad aus der Anfrage.
 - **Ein Prozess besitzt den Bestand** (flatgraph: eine offene Instanz je
   Bestand, `BestandBelegt`). Renderer und Einlesen dürfen eigene Prozesse
   sein, liefern aber nur Ergebnisse zu; geschrieben wird im Hauptprozess.
@@ -317,7 +322,7 @@ Transformationen, Bild, Platten aus `slice_info`) und STEP ohne Geometrie,
 Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
 3MF Katalog, Suche, Tag-/Ordner-/Format-Filter, Favorit, Gedruckt,
 Umbenennen auf der Platte, Löschen mit Vorschau → Papierkorb →
-Wiederherstellen, „Im Slicer öffnen“, Live-Oberfläche per SSE,
+Wiederherstellen, „Öffnen in …“ (Slicer, FreeCAD, System; Standard je Format), Live-Oberfläche per SSE,
 virtuelles Raster, Wache gegen fremde Herkunft.
 3D-Ansicht direkt im Inspektor (three.js r170 aus dem npm-Paket, vom
 eigenen Server ausgeliefert; umschaltbar auf das Bild, ohne WebGL nur das

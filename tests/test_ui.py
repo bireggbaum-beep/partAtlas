@@ -95,6 +95,22 @@ async def oberflaeche(port):
         check("… und die 3D-Ansicht wurde dabei nicht neu aufgebaut",
               await pg.evaluate("(c) => c.isConnected", canvas))
 
+        # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
+        check("Hauptknopf nennt den Standard fürs Format (STL → Slicer)",
+              "In PrusaSlicer öffnen" in await pg.inner_text("#oeffnen"))
+        await pg.click("#oeffnen")
+        await pg.wait_for_timeout(1000)
+        check("… und startet ihn mit der Datei des Modells",
+              os.path.exists(PROTOKOLL) and "prusa-slicer " in open(PROTOKOLL).read() and "Vase.stl" in open(PROTOKOLL).read())
+        await pg.click("#einstellungen")
+        await pg.wait_for_selector('[data-prog-std="stl"]')
+        freecad = await pg.locator('[data-prog-std="stl"] option', has_text="FreeCAD").get_attribute("value")
+        await pg.select_option('[data-prog-std="stl"]', freecad)
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_timeout(1000)
+        check("Einstellungen: STL auf FreeCAD umgestellt, der Hauptknopf folgt",
+              "In FreeCAD öffnen" in await pg.inner_text("#oeffnen"))
+
         global WID
         WID = api(port, "/api/wurzeln")[0]["id"]
         sid = api(port, "/api/sammlungen", {"name": "Drohne V2"})["id"]
@@ -248,8 +264,17 @@ if __name__ == "__main__":
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
+    # Attrappen für Slicer und CAD: schreiben nur auf, womit sie gestartet wurden.
+    global PROTOKOLL
+    attrappen, PROTOKOLL = os.path.join(tmp, "bin"), os.path.join(tmp, "gestartet.txt")
+    os.makedirs(attrappen)
+    for name in ("freecad", "prusa-slicer"):
+        with open(os.path.join(attrappen, name), "w") as f:
+            f.write(f'#!/bin/sh\necho "{name} $*" >> "{PROTOKOLL}"\n')
+        os.chmod(os.path.join(attrappen, name), 0o755)
     umgebung = {**os.environ, "PARTATLAS_BESTAND": os.path.join(tmp, "bestand"), "PARTATLAS_PORT": str(port),
-                "PYTHONPATH": os.environ.get("PARTATLAS_QUELLE") or WURZEL}
+                "PYTHONPATH": os.environ.get("PARTATLAS_QUELLE") or WURZEL,
+                "PATH": attrappen + os.pathsep + os.environ["PATH"]}
     # cwd nicht im Repo: `python -m` setzt das Arbeitsverzeichnis vor
     # PYTHONPATH, und die Gegenprobe prüfte sonst das echte Paket.
     server = subprocess.Popen([sys.executable, "-m", "partatlas"], env=umgebung, cwd=tmp,

@@ -372,7 +372,7 @@ async function waehle(id) {
   raster.zeichne();
   if (!id && zustand.baugruppe && typeof zeigeBgUebersicht === "function") return zeigeBgUebersicht();
   if (!id) { zustand.angezeigt = null; if (dreiDModul) (await dreiD()).schliessen(); $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`; return; }
-  const [m, slicer] = await Promise.all([api(`/api/modelle/${id}`), ladeSlicer()]);
+  const [m, prog] = await Promise.all([api(`/api/modelle/${id}`), ladeProgramme()]);
   if (zustand.gewaehlt !== id) return;
   const url = bildUrl(m);
   const zeilen = [
@@ -421,8 +421,7 @@ async function waehle(id) {
       : `<button class="knopf ${m.gedruckt ? "akzent" : ""}" id="gedruckt">${m.gedruckt ? "✓ Gedruckt" : "Nicht gedruckt"}</button>
          <button class="knopf ${m.favorit ? "akzent" : ""}" id="favorit">♥</button>
          <button class="knopf" id="ws-knopf">${m.warteschlange != null ? "Aus Warteschlange entfernen" : "☰ In Warteschlange"}</button>
-         ${slicer.length ? `<select class="knopf" id="slicer"><option value="">↗ Im Slicer öffnen …</option>${slicer.map((s) =>
-            `<option value="${esc(s.pfad)}">${esc(s.name)}</option>`).join("")}</select>` : `<span class="dim">Kein Slicer gefunden</span>`}
+         ${oeffnenKnoepfe(m, prog)}
          <button class="knopf" id="umbenennen">Umbenennen</button>
          <button class="knopf" id="verschieben">Verschieben …</button>
          <button class="knopf" id="bild-hoch">Bild hochladen</button>
@@ -473,10 +472,38 @@ async function zeigeBild(m, url) {
   }
 }
 
-let slicerCache = null;
-async function ladeSlicer() {
-  if (!slicerCache) slicerCache = api("/api/slicer").catch(() => []);
-  return slicerCache;
+let programmCache = null;
+function ladeProgramme() {
+  if (!programmCache) programmCache = api("/api/programme").catch(() => ({ programme: [], standard: {}, arten: {} }));
+  return programmCache;
+}
+
+// Hauptknopf mit dem Standardprogramm des Formats, daneben die übrigen,
+// die das Format können, und immer „mit dem System“ — so bleibt keine
+// Datei ohne Weg nach draussen, auch wenn nichts erkannt wurde.
+function oeffnenKnoepfe(m, prog) {
+  const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);
+  const passend = prog.programme.filter((p) => p.formate.includes(m.format) && p !== std);
+  const haupt = std
+    ? `<button class="knopf akzent" id="oeffnen" data-pfad="${esc(std.pfad)}" title="${esc(std.pfad)}">↗ In ${esc(std.name)} öffnen</button>`
+    : `<button class="knopf" id="oeffnen" data-system="1">↗ Mit dem System öffnen</button>`;
+  const gruppen = Object.entries(prog.arten).map(([art, titel]) => {
+    const g = passend.filter((p) => p.art === art);
+    return g.length ? `<optgroup label="${esc(titel)}">${g.map((p) => `<option value="${esc(p.pfad)}">${esc(p.name)}</option>`).join("")}</optgroup>` : "";
+  }).join("");
+  const menue = std || passend.length
+    ? `<select class="knopf" id="oeffnen-mit" title="Öffnen mit …"><option value="">Öffnen mit …</option>${gruppen}
+        ${std ? '<option value="__system">Mit dem System öffnen</option>' : ""}<option value="__einstellungen">Programme einstellen …</option></select>`
+    : "";
+  return haupt + menue;
+}
+
+async function modellOeffnen(body) {
+  const id = $("#inspektor").dataset.id;
+  try {
+    const r = await api(`/api/modelle/${id}/oeffnen`, { method: "POST", body });
+    toast(r.programm ? `${r.programm} wird geöffnet …` : "Wird geöffnet …");
+  } catch (err) { toast(err.message); }
 }
 
 async function aendern(id, werte) {
@@ -663,6 +690,7 @@ document.addEventListener("click", async (e) => {
     case "neu-einlesen": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
     case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
+    case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.pfad }); }
     case "umbenennen": return umbenennen(id);
     case "loeschen": return loeschen(id);
     case "wiederherstellen":
@@ -680,11 +708,11 @@ document.addEventListener("click", async (e) => {
 });
 
 document.addEventListener("change", async (e) => {
-  if (e.target.id === "slicer" && e.target.value) {
-    const id = $("#inspektor").dataset.id;
-    try { await api(`/api/modelle/${id}/slicer`, { method: "POST", body: { pfad: e.target.value } }); toast("Slicer wird geöffnet …"); }
-    catch (err) { toast(err.message); }
+  if (e.target.id === "oeffnen-mit" && e.target.value) {
+    const w = e.target.value;
     e.target.value = "";
+    if (w === "__einstellungen") return einstellungen();
+    return modellOeffnen(w === "__system" ? { system: true } : { pfad: w });
   }
   if (e.target.id === "sammlung-dazu" && e.target.value) {
     const id = $("#inspektor").dataset.id, sid = e.target.value;

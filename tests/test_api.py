@@ -1,6 +1,8 @@
 """Die Schnittstelle, wie die Oberfläche sie benutzt — und die Wache davor."""
 import os
+import stat
 import tempfile
+import time
 
 import muster
 from muster import check
@@ -13,6 +15,23 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(sammlung, "Technik"))
     muster.dreimf(os.path.join(sammlung, "Technik", "Zahnrad.3mf"))
     muster.stl_binaer(os.path.join(sammlung, "Haken.stl"))
+
+    # Attrappen statt echter Programme: sie schreiben nur auf, womit sie
+    # gestartet wurden. Vorne im PATH, damit die Erkennung sie findet.
+    attrappen, protokoll = os.path.join(tmp, "bin"), os.path.join(tmp, "gestartet.txt")
+    os.makedirs(attrappen)
+    for name in ("freecad", "prusa-slicer", "xdg-open", "meincad"):
+        with open(os.path.join(attrappen, name), "w") as f:
+            f.write(f'#!/bin/sh\necho "{name} $*" >> "{protokoll}"\n')
+        os.chmod(os.path.join(attrappen, name), 0o755)
+    os.environ["PATH"] = attrappen + os.pathsep + os.environ["PATH"]
+
+    def gestartet(erwartet):
+        for _ in range(50):
+            if os.path.exists(protokoll) and erwartet in open(protokoll).read():
+                return True
+            time.sleep(0.1)
+        return False
 
     with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=2)) as c:
         z = c.app.state.zustand
@@ -54,8 +73,30 @@ if __name__ == "__main__":
         check("Wache: Sec-Fetch-Site cross-site abgelehnt", fremd.status_code == 403)
         check("… und das Modell ist noch da", c.get(f"/api/modelle/{zahnrad['id']}").json()["papierkorb"] is False)
 
-        r = c.post(f"/api/modelle/{zahnrad['id']}/slicer", json={"pfad": "/bin/sh"})
-        check("Slicer: nur bekannte Programme, kein beliebiger Pfad", r.status_code == 400)
+        # -- Öffnen in …
+        prog = c.get("/api/programme").json()
+        art = {p["name"]: p["art"] for p in prog["programme"]}
+        check("Erkennung: FreeCAD als CAD, PrusaSlicer als Slicer", art.get("FreeCAD") == "cad" and art.get("PrusaSlicer") == "slicer")
+        fc = next(p["pfad"] for p in prog["programme"] if p["name"] == "FreeCAD")
+        check("Standard ohne Einstellung: STEP ins CAD, 3MF und STL in den Slicer",
+              prog["standard"]["step"] == fc and "prusa-slicer" in prog["standard"]["3mf"] and "prusa-slicer" in prog["standard"]["stl"])
+        haken = next(m for m in liste if m["name"] == "Haken")
+        r = c.post(f"/api/modelle/{zahnrad['id']}/oeffnen", json={})
+        check("Hauptknopf: Standardprogramm bekommt die Datei des Modells",
+              r.json().get("programm") == "PrusaSlicer" and gestartet("prusa-slicer " + os.path.join(sammlung, "Technik", "Zahnrad.3mf")))
+        c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"pfad": fc})
+        check("Öffnen mit: gewähltes Programm", gestartet("freecad " + os.path.join(sammlung, "Haken.stl")))
+        c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"system": True})
+        check("Mit dem System öffnen: xdg-open", gestartet("xdg-open " + os.path.join(sammlung, "Haken.stl")))
+        r = c.post(f"/api/modelle/{zahnrad['id']}/oeffnen", json={"pfad": "/bin/sh"})
+        check("Öffnen: nur bekannte Programme, kein beliebiger Pfad", r.status_code == 400)
+        r = c.put("/api/einstellungen", json={"programme": [{"name": "Kaputt", "pfad": os.path.join(tmp, "gibtsnicht")}]})
+        check("Eigenes Programm: nur was es gibt und ausführbar ist", r.status_code == 400)
+        mein = os.path.join(attrappen, "meincad")
+        c.put("/api/einstellungen", json={"programme": [{"name": "Mein CAD", "pfad": mein, "art": "cad"}],
+                                           "standard_programm": {"stl": mein}})
+        c.post(f"/api/modelle/{haken['id']}/oeffnen", json={})
+        check("Eigenes Programm als Standard für STL übernimmt den Hauptknopf", gestartet("meincad " + os.path.join(sammlung, "Haken.stl")))
 
         # -- Löschen über die API
         v = c.get(f"/api/modelle/{zahnrad['id']}/loeschen").json()
