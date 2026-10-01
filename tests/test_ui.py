@@ -131,6 +131,20 @@ async def oberflaeche(port):
         check("Blättern mit Pfeiltaste und Pfeil: vom Titelbild rückwärts ans Ende (Vorschau, 4 / 4)",
               (await pg.inner_text(".gal-etikett")).startswith("Vorschau · 4 / 4"))
 
+        # -- Blättern zeichnet nicht neu: Pfeil und Leiste bleiben dieselben Elemente
+        await pg.hover("#i-bild")
+        await pg.evaluate("window.__pfeil = document.querySelector('.gal-pfeil.rechts'); window.__leiste = document.querySelector('.gal-leiste')")
+        await pg.click(".gal-pfeil.rechts")
+        await pg.click(".gal-pfeil.rechts")
+        check("Mehrfach blättern: Pfeile und Leiste bleiben stehen (kein Neuzeichnen, sonst Flackern und verlorene Klicks)",
+              await pg.evaluate("window.__pfeil.isConnected && window.__leiste.isConnected"))
+        # -- Rechtsklick auf das Bild
+        await pg.locator(".gal-mini[data-art=eigen]").nth(1).click()
+        await pg.click("#i-bild img", button="right")
+        check("Rechtsklick auf ein eigenes Bild: Vorschaubild festlegen und Bild entfernen",
+              "Vorschaubild" in await pg.inner_text("#kontext") and "entfernen" in await pg.inner_text("#kontext"))
+        await pg.keyboard.press("Escape")
+
         # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
         check("Hauptknopf nennt den Standard fürs Format (STL → Slicer), daneben der CAD-Knopf",
               "PrusaSlicer" in await pg.inner_text("#oeffnen")
@@ -312,6 +326,8 @@ async def oberflaeche(port):
             ids = [await pg.locator(".karte").nth(i).get_attribute("data-id") for i in range(3)]
             check(f"Drei Kacheln schnell nacheinander angeklickt (Runde {runde + 1}): die letzte ist gewählt",
                   await pg.locator(".karte.gewaehlt").count() == 1 and await pg.locator("#inspektor").get_attribute("data-id") == ids[2])
+        if await pg.locator('.sektion[data-sektion="tags"][data-zu="1"]').count():
+            await pg.click('.sektion[data-sektion="tags"] .sk-kopf')
         for tag in [t["name"] for t in api(port, "/api/tags")][:3]:
             await pg.click(f'#tag-liste [data-tag="{tag}"]', no_wait_after=True)
         await pg.wait_for_timeout(800)

@@ -266,6 +266,7 @@ const raster = (() => {
 
 function bildUrl(m) {
   if (m.bild) return `/api/modelle/${m.id}/bild?v=${m.bild}`;
+  if (m.vorschau_art && m.hash) return `/api/vorschau/${m.hash}.${m.vorschau_art}.png`;
   return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png` : null;
 }
 
@@ -532,8 +533,8 @@ async function waehle(id, live = false) {
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
   $("#inspektor").innerHTML = `
-    ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
     <div class="i-fix">
+      ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
       <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
     </div>
@@ -630,7 +631,43 @@ function galerieZeigen(i) {
   const f = galerie.folien[i];
   if (f.art === "3d") localStorageSchreiben("ansicht", "3d");
   else if (f.art !== "eigen") localStorageSchreiben("ansicht", "bild");
-  zeichneGalerie();
+  umschalten();
+}
+
+const hauptHtml = (m, f, darf) => !f
+  ? `<div class="gal-leer"><span>${m.format === "step" ? "STEP · nur CAD" : "Keine Vorschau"}</span>
+      ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`
+  : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
+  : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
+
+const aktionenHtml = (f, darf) => f && f.art === "eigen" && darf
+  ? `${f.ist_vorschaubild ? "" : `<button data-gal-titel="eigen:${esc(f.k)}" title="Dieses Bild auf der Kachel zeigen">★ Als Vorschaubild</button>`}
+    <button data-gal-weg="${esc(f.k)}" title="Bild entfernen">Entfernen</button>`
+  : f && f.art !== "3d" && darf && !f.ist_vorschaubild
+    ? `<button data-gal-titel="${esc(f.art)}" title="Dieses Bild auf der Kachel zeigen">★ Als Vorschaubild</button>` : "";
+
+const etikettText = (f, i, n) => `${f.titel}${n > 1 ? ` · ${i + 1} / ${n}` : ""}`;
+
+// Beim Blättern bleiben Pfeile, Leiste und Aktionen stehen — nur das Bild
+// wechselt. Wer sie neu zeichnet, nimmt der Maus das Ziel zwischen Drücken
+// und Loslassen: der Klick geht verloren, das Bild flackert.
+async function umschalten() {
+  const { m, folien, i } = galerie;
+  const bild = $("#i-bild");
+  if (!bild || !m) return;
+  const f = folien[i];
+  if (dreiDModul) (await dreiD()).schliessen();
+  viewer = null;
+  if (galerie.i !== i || $("#i-bild") !== bild) return;
+  const haupt = bild.querySelector(".gal-haupt");
+  const img = haupt.firstElementChild;
+  if (f && f.art !== "3d" && img?.tagName === "IMG") { img.src = f.url; img.alt = f.titel; }
+  else haupt.innerHTML = hauptHtml(m, f, !m.papierkorb);
+  const et = bild.querySelector(".gal-etikett");
+  if (et && f) et.textContent = etikettText(f, i, folien.length);
+  bild.querySelector(".gal-aktionen").innerHTML = aktionenHtml(f, !m.papierkorb);
+  document.querySelectorAll("#i-galerie .gal-mini[data-gal-i]").forEach((x) => x.classList.toggle("an", Number(x.dataset.galI) === i));
+  if (f && f.art === "3d") lade3d(m);
 }
 
 async function zeichneGalerie() {
@@ -644,19 +681,10 @@ async function zeichneGalerie() {
   viewer = null;
   const pfeile = n > 1 ? `<button class="gal-pfeil links" data-gal="-1" title="Vorheriges (←)">‹</button>
     <button class="gal-pfeil rechts" data-gal="1" title="Nächstes (→)">›</button>` : "";
-  const ersteEigene = folien.findIndex((x) => x.art === "eigen");
-  const aktionen = f && f.art === "eigen" && darf ? `<div class="gal-aktionen">
-    ${i !== ersteEigene ? `<button data-gal-titel="${esc(f.k)}" title="Dieses Bild auf der Kachel zeigen">★ Als Titelbild</button>` : ""}
-    <button data-gal-weg="${esc(f.k)}" title="Bild entfernen">Entfernen</button></div>` : "";
-  const leer = `<div class="gal-leer"><span>${m.format === "step" ? "STEP · nur CAD" : "Keine Vorschau"}</span>
-    ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`;
-  const haupt = !f ? leer
-    : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
-    : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
   const minis = folien.map((x, j) => `<button class="gal-mini ${j === i ? "an" : ""}" data-gal-i="${j}" data-art="${x.art}" title="${esc(x.titel)}">
-      ${x.art === "3d" ? "<span>3D</span>" : `<img src="${esc(x.url)}" alt="" loading="lazy">`}</button>`).join("");
-  feld.innerHTML = `<div class="i-bild" id="i-bild">${haupt}${pfeile}
-      ${f ? `<span class="gal-etikett">${esc(f.titel)}${n > 1 ? ` · ${i + 1} / ${n}` : ""}</span>` : ""}${aktionen}
+      ${x.art === "3d" ? "<span>3D</span>" : `<img src="${esc(x.url)}" alt="" loading="lazy" draggable="false">`}</button>`).join("");
+  feld.innerHTML = `<div class="i-bild" id="i-bild"><div class="gal-haupt">${hauptHtml(m, f, darf)}</div>${pfeile}
+      <span class="gal-etikett">${f ? esc(etikettText(f, i, n)) : ""}</span><div class="gal-aktionen">${aktionenHtml(f, darf)}</div>
       <div class="gal-abwurf">Als Bild zu „${esc(m.name)}“ hinzufügen</div></div>
     ${f && (n > 1 || darf) ? `<div class="gal-leiste">${minis}${darf ? `<button class="gal-mini plus" data-gal-plus title="Eigene Bilder hinzufügen (oder hineinziehen, Strg+V)">＋</button>` : ""}</div>` : ""}`;
   if (f && f.art === "3d") lade3d(m);
@@ -708,22 +736,51 @@ document.addEventListener("click", async (e) => {
   if (mini) return galerieZeigen(Number(mini.dataset.galI));
   if (t.closest("[data-gal-plus]")) return $("#bild-wahl").click();
   const titel = t.closest("[data-gal-titel]");
-  if (titel) {
-    await api(`/api/modelle/${m.id}/bilder/${titel.dataset.galTitel}/titel`, { method: "POST" });
-    toast("Titelbild gesetzt.");
-    galerie.ziel = titel.dataset.galTitel;
-    zustand.angezeigt = null;
-    return waehle(m.id);
-  }
+  if (titel) return vorschauSetzen(titel.dataset.galTitel);
   const weg = t.closest("[data-gal-weg]");
-  if (weg) {
+  if (weg) return bildEntfernen(weg.dataset.galWeg);
+});
+
+// „eigen:<k>“ = eigenes Bild, sonst die Art (extrahiert, berechnet).
+async function vorschauSetzen(wahl) {
+  const m = galerie.m;
+  const eigen = wahl.startsWith("eigen:");
+  await api(eigen ? `/api/modelle/${m.id}/bilder/${wahl.slice(6)}/titel` : `/api/modelle/${m.id}/vorschau/${wahl}/titel`, { method: "POST" });
+  toast("Vorschaubild gesetzt.");
+  galerie.ziel = eigen ? wahl.slice(6) : null;
+  zustand.angezeigt = null;
+  waehle(m.id);
+}
+
+async function bildEntfernen(k) {
+  const m = galerie.m;
+  {
     const a = await dialog(`<h2>Bild entfernen?</h2><p class="dim">Es verschwindet aus partAtlas. Die Datei bleibt im Archiv des Bestands (<code>vault_archive</code>).</p>
       <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
     if (a !== "ja") return;
-    await api(`/api/modelle/${m.id}/bilder/${weg.dataset.galWeg}`, { method: "DELETE" });
+    await api(`/api/modelle/${m.id}/bilder/${k}`, { method: "DELETE" });
     zustand.angezeigt = null;
     return waehle(m.id);
   }
+}
+
+// Rechtsklick auf das Bild: dasselbe wie die Knöpfe, an der Stelle der Maus.
+document.addEventListener("contextmenu", (e) => {
+  if (!e.target.closest?.("#i-bild") || !galerie.m || galerie.m.papierkorb) return;
+  const f = galerie.folien[galerie.i];
+  if (!f || f.art === "3d") return;
+  e.preventDefault();
+  const eintraege = [];
+  if (!f.ist_vorschaubild) eintraege.push(["gal-titel", "★ Als Vorschaubild festlegen"]);
+  if (f.art === "eigen") eintraege.push(["gal-weg", "Bild entfernen …", "gefahr"]);
+  eintraege.push(["gal-plus", "Eigenes Bild hinzufügen …"]);
+  const menu = $("#kontext");
+  menu.innerHTML = eintraege.map(([k, t, kl]) => `<button type="button" data-km="${k}" class="${kl || ""}">${t}</button>`).join("");
+  kontextMenu.ziel = { galerie: f };
+  menu.hidden = false;
+  const b = menu.getBoundingClientRect();
+  menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
+  menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
 });
 
 // Wischen auf dem Bild (Tablet, Touchpad-Klick-Ziehen) — nicht auf der 3D-Ansicht, die dreht.
@@ -1287,7 +1344,12 @@ live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
 let abwurfZaehler = 0;
-const vonAussen = (e) => !gezogen && [...(e.dataTransfer?.types || [])].includes("Files");
+// Ein Bild aus der eigenen Leiste hat Dateityp „Files“, kommt aber nicht von
+// aussen — sonst entstünde vom Original eine Kopie als eigenes Bild.
+let vonGalerie = false;
+document.addEventListener("dragstart", (e) => { vonGalerie = !!e.target.closest?.("#i-galerie"); }, true);
+document.addEventListener("dragend", () => { vonGalerie = false; }, true);
+const vonAussen = (e) => !gezogen && !vonGalerie && [...(e.dataTransfer?.types || [])].includes("Files");
 window.addEventListener("dragenter", (e) => { if (vonAussen(e)) { abwurfZaehler++; $("#abwurf").hidden = false; } });
 window.addEventListener("dragleave", (e) => {
   if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; $("#i-galerie")?.classList.remove("abwurf-ziel"); }
@@ -1410,8 +1472,15 @@ async function kontextMenu(e, id) {
 }
 
 async function kontextAktion(k, knopf) {
-  const { id, modelle, m } = kontextMenu.ziel;
   $("#kontext").hidden = true;
+  const f = kontextMenu.ziel.galerie;
+  if (f) {
+    if (k === "gal-titel") return vorschauSetzen(f.art === "eigen" ? `eigen:${f.k}` : f.art);
+    if (k === "gal-weg") return bildEntfernen(f.k);
+    if (k === "gal-plus") return $("#bild-wahl").click();
+    return;
+  }
+  const { id, modelle, m } = kontextMenu.ziel;
   switch (k) {
     case "oeffnen": return modellOeffnen({ pfad: knopf.dataset.pfad }, id);
     case "system": return modellOeffnen({ system: true }, id);

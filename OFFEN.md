@@ -11,11 +11,7 @@ aktualisieren.
   angehängt wurde (öffentlich reicht nicht; ohne Anhängen: HTTP 403).
   Ohne flatgraph lassen sich weder die Suiten noch `tests/test_ui.py`
   ausführen. Erst prüfen: `python3 -c "import flatgraph"`.
-- **Nie geprüft, weil flatgraph fehlte:** die neuen Prüfungen in
-  `tests/test_ui.py` (Runde 1 und 2). Bei der ersten Gelegenheit laufen
-  lassen und Fehler beheben. Geprüft wurden nur der DOM-Abgleich
-  (`abgleichen()` in `app.js`) und das fixierte Kopfstück des Inspektors,
-  je isoliert in Chromium.
+- `flatgraph` liegt als Nachbar-Repo: `PYTHONPATH=/home/user/flatgraphdb`.
 - Arbeitsweise: `CLAUDE.md` (eine Sache pro Antwort, Tests sparsam).
 
 ## Erledigt
@@ -31,6 +27,14 @@ ziehbar, schmale Scrollleisten, Zähler „Neu hinzugefügt“.
 Runde 2: **c)** Inspektor: Vorschau und Name bleiben oben fest, die
 technischen Daten heissen „Modelldaten“, stehen unter „Zum Drucken“ und
 sind standardmässig offen.
+
+Runde 3 (Galerie im Inspektor): Blättern zeichnet nur noch das Bild neu —
+Pfeile, Leiste und Aktionen bleiben stehen (vorher: Flackern, verlorene
+Klicks). Rechtsklick auf das Bild: „Als Vorschaubild festlegen“, „Bild
+entfernen“, „Eigenes Bild hinzufügen“. Das Original (aus der Datei /
+berechnet) kann Vorschaubild der Kachel sein (Feld `vorschau_art`). Ziehen
+aus der Leiste legt keine Kopie mehr an. „← Baugruppe“ lag unter dem festen
+Kopfstück und ist jetzt darin. `test_ui.py` läuft mit flatgraph: 51/51.
 
 ## Offen, in dieser Reihenfolge
 

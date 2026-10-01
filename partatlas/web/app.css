@@ -517,3 +517,6 @@ body.bg-offen .nur-katalog { display: none; }
 .i-fix .gal-leiste { margin-top: 6px; }
 .i-kopf { margin-top: 10px; }
 .i-details { margin-top: 12px; }
+.gal-haupt { display: contents; }
+.gal-etikett:empty { display: none; }
+.gal-aktionen:empty { display: none; }

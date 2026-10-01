@@ -245,7 +245,8 @@ class Katalog:
             # die Adresse im Browser-Cache eindeutig.
             # Kennung des Titelbilds (das erste der Liste) — ändert sich mit
             # dem Bild und macht die Adresse im Browser-Cache eindeutig.
-            "bild": (m.get("bilder") or [{}])[0].get("k"),
+            "bild": None if m.get("vorschau_art") else (m.get("bilder") or [{}])[0].get("k"),
+            "vorschau_art": m.get("vorschau_art"),
             "groesse": sum(o.get("groesse") or 0 for o in orte[:1]) or None,
         }
 
@@ -528,7 +529,18 @@ class Katalog:
         _, bilder = self._bilder(mid)
         if not any(b["k"] == k for b in bilder):
             raise KatalogFehler("Dieses Bild gibt es nicht.")
-        self.db.update_node(MODELL, mid, {"bilder": sorted(bilder, key=lambda b: b["k"] != k)})
+        self.db.update_node(MODELL, mid, {"bilder": sorted(bilder, key=lambda b: b["k"] != k), "vorschau_art": None})
+
+    def vorschau_als_titel(self, mid, art):
+        """Das Bild aus der Datei oder die berechnete Vorschau soll auf der
+        Kachel stehen, auch wenn eigene Bilder da sind — sonst bliebe ein
+        schlechtes eigenes Bild nur durch Löschen zu überstimmen."""
+        m, _ = self._bilder(mid)
+        h = self.datei_von(mid)
+        d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+        if art not in [a for a, _ in self.vorschauen(d)]:
+            raise KatalogFehler("Dieses Bild gibt es nicht.")
+        self.db.update_node(MODELL, mid, {"vorschau_art": art})
 
     def bild_pfad(self, mid, k=None):
         """Pfad eines Bilds, ohne `k` das Titelbild. Auch im Papierkorb."""
@@ -550,12 +562,17 @@ class Katalog:
         """Was die Galerie im Inspektor durchblättert, in dieser Reihenfolge:
         die Bilder des Anwenders, dann was in der Datei steckt, dann was
         partAtlas berechnet hat. Die 3D-Ansicht fügt die Oberfläche ein."""
+        art_titel = m.get("vorschau_art")
         eigene = [{"art": "eigen", "k": b["k"], "url": f"/api/modelle/{mid}/bilder/{b['k']}",
-                   "titel": "Titelbild" if i == 0 else "Eigenes Bild"} for i, b in enumerate(m.get("bilder") or [])]
+                   "titel": "Vorschaubild" if i == 0 and not art_titel else "Eigenes Bild",
+                   "ist_vorschaubild": i == 0 and not art_titel} for i, b in enumerate(m.get("bilder") or [])]
         h = self.datei_von(mid) or self._datei_im_papierkorb(mid)
         titel = {"extrahiert": "Aus der Datei", "berechnet": "Vorschau"}
-        return eigene + [{"art": art, "url": f"/api/vorschau/{h}.{art}.png", "titel": titel[art]}
-                         for art, _ in self.vorschauen(d)]
+        vorschauen = [a for a, _ in self.vorschauen(d)]
+        # Ohne Wahl und ohne eigenes Bild zeigt die Kachel das beste der Datei.
+        gewaehlt = art_titel or (vorschauen[0] if vorschauen and not eigene else None)
+        return eigene + [{"art": art, "url": f"/api/vorschau/{h}.{art}.png", "titel": titel[art],
+                          "ist_vorschaubild": art == gewaehlt} for art in vorschauen]
 
     # ------------------------------------------------------------ Hochladen und Archive
 

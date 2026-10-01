@@ -353,6 +353,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         K().bild_als_titel(mid, k)
         return {"ok": True}
 
+    @app.post("/api/modelle/{mid}/vorschau/{art}/titel")
+    def vorschau_titel(mid: str, art: str):
+        K().vorschau_als_titel(mid, art)
+        return {"ok": True}
+
     @app.delete("/api/modelle/{mid}/bilder/{k}")
     def bild_weg(mid: str, k: str):
         K().bild_entfernen(mid, k)
