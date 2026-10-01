@@ -55,6 +55,15 @@ Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
 
 ## 2. Anwender und Betrieb
 
+- **Der Anwender:** technikaffin, aber kein Programmierer — Manjaro als
+  Windows-Ersatz, nicht als Terminal. Er optimiert Parameter und will alles
+  kontrollieren, über eine Oberfläche statt über Code: wie bei einer
+  Firewall-Konfiguration.
+- **Ton der Oberfläche: ein Werkzeug, kein Assistent.** Fachbegriffe sind
+  erwünscht (Hash, Wurzelordner, Scan, Slicer-Metadaten), Zahlen genau.
+  Verhalten wird erklärt — sachlich, knapp, ohne Du-Ansprache und ohne
+  Beruhigungsfloskeln. Unterstützung heisst: klare Struktur, sichtbarer
+  Zustand, die richtige Aktion am richtigen Ort.
 - **Rechner:** Manjaro (bevorzugt) und Windows 10. Linux ist Zielsystem,
   Windows soll laufen. (Raspberry Pi war nie Anwenderwunsch — gestrichen.)
 - **Aufbau wie pDMS:** ein Python-Prozess (FastAPI) auf dem Rechner des

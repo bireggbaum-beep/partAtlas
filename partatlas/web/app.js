@@ -142,17 +142,19 @@ function zeichneLeer() {
   const scan = zustand.scan;
   if (erst) {
     leer.innerHTML = `<div class="willkommen">
-      <h2>Willkommen bei partAtlas</h2>
-      <p>Zeig partAtlas, wo deine 3D-Dateien liegen. Es liest den Ordner mit allen Unterordnern ein und baut daraus deinen Katalog.</p>
+      <h2>Kein Wurzelordner konfiguriert</h2>
+      <p>partAtlas indexiert Modelldateien dort, wo sie liegen: rekursiv, Identität per SHA-256.
+        Dateien werden weder kopiert noch verschoben.</p>
       <ul>
-        <li><b>Deine Dateien bleiben, wo sie sind.</b> Nichts wird kopiert oder umsortiert.</li>
-        <li>Gelesen werden 3MF, STL, OBJ und STEP — mit Vorschau, Massen und, wo vorhanden, den Slicer-Daten.</li>
-        <li>Weitere Ordner kannst du jederzeit dazunehmen.</li>
+        <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP (ohne Geometrie)</li>
+        <li><b>Verschieben/Umbenennen</b> im Dateimanager bleibt erkannt — Tags und Verknüpfungen hängen am Inhalt, nicht am Pfad</li>
+        <li><b>Mehrere Wurzeln</b> möglich: Importieren → Ordner hinzufügen</li>
       </ul>
-      <button class="knopf akzent gross" id="wurzel-neu-3">📁 Ordner wählen …</button></div>`;
+      <button class="knopf akzent gross" id="wurzel-neu-3">📁 Wurzelordner wählen …</button></div>`;
   } else if (scan && scan.laeuft && zustand.ansicht === "alle" && !zustand.filterTeile) {
-    leer.innerHTML = `<div class="willkommen"><h2>Wird eingelesen …</h2>
-      <p>${scan.gefunden ? `${scan.gefunden.toLocaleString("de-DE")} Dateien gefunden. ` : ""}Die ersten Modelle erscheinen gleich hier; die Vorschaubilder entstehen danach im Hintergrund.</p>
+    leer.innerHTML = `<div class="willkommen"><h2>Scan läuft</h2>
+      <p>${scan.gefunden ? `${scan.gefunden.toLocaleString("de-DE")} Dateien gefunden · ` : ""}Phase: ${esc(scan.phase || "Start")}${scan.zu_analysieren ? ` ${scan.analysiert || 0}/${scan.zu_analysieren}` : ""}.
+        Modelle erscheinen gruppenweise (je 100); Vorschauen werden anschliessend gerendert.</p>
       <div class="lauf"><i></i></div></div>`;
   } else {
     leer.textContent = zustand.ansicht === "papierkorb" ? "Der Papierkorb ist leer."
@@ -809,8 +811,8 @@ async function wurzelNeu() {
 // auch — für die, die den Pfad schon kennen.
 const ow = { pfad: null };
 async function ordnerWaehler() {
-  const fertig = dialog(`<h2>Ordner hinzufügen</h2>
-    <p class="dim">Wähle den Ordner, in dem deine 3D-Dateien liegen. Unterordner kommen mit.</p>
+  const fertig = dialog(`<h2>Wurzelordner hinzufügen</h2>
+    <p class="dim">Wird rekursiv gescannt; versteckte Ordner (.name) bleiben aussen vor.</p>
     <div id="ow" class="ow"><div class="dim">Lade …</div></div>
     <details class="ow-tippen"><summary>Pfad selbst eingeben</summary>
       <input type="text" id="ow-pfad" placeholder="/home/…/3D-Druck"> <button type="button" class="knopf" data-ow-gehe>Öffnen</button></details>

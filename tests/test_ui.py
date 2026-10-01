@@ -68,7 +68,7 @@ async def oberflaeche(port):
         # -- Erster Start: Willkommenskarte, Ordner wählen durch Klicken statt Tippen
         await pg.wait_for_selector(".willkommen")
         check("Erster Start: Willkommenskarte, leere Rubriken der Seitenleiste ausgeblendet",
-              "Ordner wählen" in await pg.inner_text(".willkommen") and not await pg.locator("text=SAMMLUNGEN").is_visible())
+              "Wurzelordner wählen" in await pg.inner_text(".willkommen") and not await pg.locator("text=SAMMLUNGEN").is_visible())
         await pg.click("#wurzel-neu-3")
         await pg.wait_for_selector(".ow-ordner")
         await pg.click(".ow-tippen summary")
