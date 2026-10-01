@@ -488,6 +488,7 @@ Ungeprüft, zu klären vor der genannten Phase:
 | Bambu Studio: steht die volle Konfiguration im G-Code? | 2 |
 | Wortindex nach flatgraph (VERTRAG, 4.1), dann pDMS und partAtlas darauf | — |
 | Gespeicherte Suchen (pDMS hat sie) | — |
+| Seitenleiste bei grossen Beständen: der Ordnerbaum mit 5 700 Teilen füllt sie allein; Abschnitte helfen nur teilweise | — |
 | Anycubic Slicer: Programmnamen und Orte an einer echten Installation | — |
 | Druck bei ausgeschaltetem PC: Nachtrag aus der Moonraker-Historie beim Start; bei Bambu unbekannt | 2 |
 | Render-Zeit mit echten Modellen auf dem Rechner des Anwenders (hier nur erzeugte Formen gemessen) | 1 |

@@ -189,6 +189,10 @@ async def oberflaeche(port):
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
         check("Tag für alle Gewählten", len(api(port, "/api/modelle?tag=stapel")) == 3)
+        await pg.locator(".karte").nth(1).click(button="right")
+        await pg.wait_for_selector("#kontext:not([hidden])")
+        check("Rechtsklick in eine Auswahl: Menü für alle drei", "3 MODELLE" in (await pg.inner_text("#kontext")).upper())
+        await pg.keyboard.press("Escape")
         await pg.keyboard.press("Escape")
         await pg.wait_for_timeout(300)
 
@@ -201,6 +205,19 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(1200)
         check("Kachel auf Ordner gezogen: Datei auf der Platte verschoben",
               ok and os.path.exists(os.path.join(SAMMLUNG, "Technik", "Arm.stl")) and not os.path.exists(os.path.join(SAMMLUNG, "Arm.stl")))
+
+        # -- Rechtsklick auf eine Kachel
+        await pg.locator(".karte").first.click(button="right")
+        await pg.wait_for_selector("#kontext:not([hidden])")
+        menu = await pg.inner_text("#kontext")
+        mid = await pg.locator(".karte").first.get_attribute("data-id")
+        vorher = next(m for m in api(port, "/api/modelle") if m["id"] == mid)["favorit"]
+        await pg.click('[data-km="favorit1"]')
+        await pg.wait_for_timeout(600)
+        check("Rechtsklick: Öffnen, Im Ordner zeigen, Löschen im Menü; Favorit umschalten wirkt",
+              "Im Ordner zeigen" in menu and "Löschen" in menu and "öffnen" in menu
+              and next(m for m in api(port, "/api/modelle") if m["id"] == mid)["favorit"] != vorher
+              and await pg.locator("#kontext").is_hidden())
 
         # -- Quelle als Link
         await pg.locator(".karte").first.click()

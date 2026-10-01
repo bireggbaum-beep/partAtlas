@@ -10,6 +10,7 @@ import asyncio
 import logging
 import os
 import re
+import subprocess
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -533,6 +534,18 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def programme_liste():
         liste, std = _programme()
         return {"programme": liste, "standard": std, "arten": programme.ARTEN}
+
+    @app.post("/api/modelle/{mid}/im_ordner")
+    def im_ordner(mid: str):
+        m = K().modell(mid)
+        datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
+        if not datei:
+            raise KatalogFehler("Die Datei ist nicht da.")
+        try:
+            programme.im_ordner_zeigen(datei)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True}
 
     @app.post("/api/modelle/{mid}/oeffnen")
     async def modell_oeffnen(mid: str, request: Request):

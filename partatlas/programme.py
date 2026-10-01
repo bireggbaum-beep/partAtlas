@@ -13,6 +13,7 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.parse
 
 SLICER, CAD = "slicer", "cad"
 ARTEN = {SLICER: "Slicer", CAD: "CAD / Modeller"}
@@ -161,3 +162,25 @@ def mit_system(datei):
     if not befehl:
         raise FileNotFoundError("xdg-open fehlt — ohne Desktop kein Standardprogramm.")
     subprocess.Popen([befehl, datei], **_optionen())
+
+
+def im_ordner_zeigen(datei):
+    """Den Dateimanager im Ordner der Datei öffnen, die Datei markiert, wo
+    es geht: Windows per explorer /select, Linux über die Freedesktop-
+    Schnittstelle (Dolphin, Nautilus, Nemo, Thunar …), sonst nur den Ordner."""
+    if sys.platform.startswith("win"):
+        subprocess.Popen(["explorer", f"/select,{datei}"], **_optionen())
+        return
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", datei], **_optionen())
+        return
+    dbus = shutil.which("dbus-send")
+    if dbus:
+        uri = "file://" + urllib.parse.quote(os.path.abspath(datei))
+        r = subprocess.run([dbus, "--session", "--print-reply", "--dest=org.freedesktop.FileManager1", "--type=method_call",
+                            "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1.ShowItems",
+                            f"array:string:{uri}", "string:"],
+                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        if r.returncode == 0:
+            return
+    mit_system(os.path.dirname(datei))

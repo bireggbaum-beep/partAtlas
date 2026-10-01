@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # gestartet wurden. Vorne im PATH, damit die Erkennung sie findet.
     attrappen, protokoll = os.path.join(tmp, "bin"), os.path.join(tmp, "gestartet.txt")
     os.makedirs(attrappen)
-    for name in ("freecad", "prusa-slicer", "xdg-open", "meincad"):
+    for name in ("freecad", "prusa-slicer", "xdg-open", "meincad", "dbus-send"):
         with open(os.path.join(attrappen, name), "w") as f:
             f.write(f'#!/bin/sh\necho "{name} $*" >> "{protokoll}"\n')
         os.chmod(os.path.join(attrappen, name), 0o755)
@@ -101,6 +101,9 @@ if __name__ == "__main__":
         check("Öffnen mit: gewähltes Programm", gestartet("freecad " + os.path.join(sammlung, "Haken.stl")))
         c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"system": True})
         check("Mit dem System öffnen: xdg-open", gestartet("xdg-open " + os.path.join(sammlung, "Haken.stl")))
+        c.post(f"/api/modelle/{haken['id']}/im_ordner")
+        check("Im Ordner zeigen: Dateimanager über ShowItems mit der Datei markiert (file://-Adresse)",
+              gestartet("dbus-send --session") and "ShowItems array:string:file://" + os.path.join(sammlung, "Haken.stl") in open(protokoll).read())
         r = c.post(f"/api/modelle/{zahnrad['id']}/oeffnen", json={"pfad": "/bin/sh"})
         check("Öffnen: nur bekannte Programme, kein beliebiger Pfad", r.status_code == 400)
         r = c.put("/api/einstellungen", json={"programme": [{"name": "Kaputt", "pfad": os.path.join(tmp, "gibtsnicht")}]})

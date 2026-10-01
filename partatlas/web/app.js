@@ -333,8 +333,7 @@ async function materialFrage(titel) {
   return a === "ja" ? $("#s-name").value.trim() : "";
 }
 
-async function stapel(aktion, wert) {
-  const modelle = [...zustand.auswahl];
+async function stapel(aktion, wert, modelle = [...zustand.auswahl]) {
   try {
     const r = await api("/api/stapel", { method: "POST", body: { aktion, modelle, wert } });
     if (r.fehler.length) toast(`${modelle.length - r.fehler.length} erledigt, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
@@ -342,15 +341,14 @@ async function stapel(aktion, wert) {
   } catch (e) { toast(e.message); }
 }
 
-async function stapelAktion(aktion) {
-  const modelle = [...zustand.auswahl];
+async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
   switch (aktion) {
     case "alle": zustand.modelle.forEach((m) => zustand.auswahl.add(m.id)); zeichneStapel(); return raster.zeichne();
     case "keine": zustand.auswahl.clear(); zeichneStapel(); return raster.zeichne();
-    case "warteschlange": return stapel("warteschlange");
+    case "warteschlange": return stapel("warteschlange", null, modelle);
     case "baugruppe": return zuBaugruppe(modelle);
-    case "gedruckt": return stapel("gedruckt", true);
-    case "favorit": return stapel("favorit", true);
+    case "gedruckt": return stapel("gedruckt", true, modelle);
+    case "favorit": return stapel("favorit", true, modelle);
     case "material": {
       const alle = await api("/api/materialien");
       const a = await dialog(`<h2>Material für ${modelle.length} Modelle</h2>
@@ -358,18 +356,18 @@ async function stapelAktion(aktion) {
         <div class="kategorien">${alle.map((x) => `<button type="button" class="chip" data-mat-wahl="${esc(x)}">${esc(x)}</button>`).join("")}</div>
         <input type="text" id="s-name" placeholder="oder neues Material">
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
-      if (a === "ja" && $("#s-name").value.trim()) return stapel("material", $("#s-name").value.trim());
+      if (a === "ja" && $("#s-name").value.trim()) return stapel("material", $("#s-name").value.trim(), modelle);
       return;
     }
     case "tag": {
       const a = await dialog(`<h2>Tag für ${modelle.length} Modelle</h2><input type="text" id="s-name" placeholder="z. B. Funktional">
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
-      if (a === "ja") return stapel("tag", $("#s-name").value);
+      if (a === "ja") return stapel("tag", $("#s-name").value, modelle);
       return;
     }
     case "verschieben": {
       const ziel = await ordnerWahl(`${modelle.length} Modelle verschieben`, "Die Dateien werden auf der Platte verschoben. Nichts wird überschrieben.");
-      if (ziel) { await stapel("verschieben", ziel); }
+      if (ziel) { await stapel("verschieben", ziel, modelle); }
       return;
     }
     case "loeschen": return loeschenViele(modelle);
@@ -723,8 +721,7 @@ function oeffnenKnoepfe(m, prog) {
   return haupt + menue;
 }
 
-async function modellOeffnen(body) {
-  const id = $("#inspektor").dataset.id;
+async function modellOeffnen(body, id = $("#inspektor").dataset.id) {
   try {
     const r = await api(`/api/modelle/${id}/oeffnen`, { method: "POST", body });
     toast(r.programm ? `${r.programm} wird geöffnet …` : "Wird geöffnet …");
@@ -1279,3 +1276,99 @@ document.addEventListener("dragover", (e) => {
   if (!kopf) { clearTimeout(sekZiehZeit); sekZiehZeit = null; return; }
   if (!sekZiehZeit) sekZiehZeit = setTimeout(() => { sektionSetzen(kopf.closest(".sektion"), false); sekZiehZeit = null; }, 600);
 });
+
+// ---------------------------------------------------------------- Rechtsklick-Menü
+//
+// Wie im Dateimanager: Rechtsklick auf eine Kachel wählt sie (oder lässt
+// die Auswahl stehen, wenn sie dazugehört) und zeigt, was man damit tun kann.
+// Für mehrere gilt, was für mehrere Sinn ergibt.
+
+async function kontextMenu(e, id) {
+  e.preventDefault();
+  const mehrere = zustand.auswahl.size > 1 && zustand.auswahl.has(id);
+  const modelle = mehrere ? [...zustand.auswahl] : [id];
+  if (!mehrere && zustand.gewaehlt !== id) waehle(id);
+  const m = zustand.modelle.find((x) => x.id === id) || {};
+  const papierkorb = zustand.ansicht === "papierkorb";
+  let eintraege;
+  if (papierkorb) {
+    eintraege = [["wiederherstellen", `↩ Wiederherstellen${mehrere ? ` (${modelle.length})` : ""}`]];
+  } else if (mehrere) {
+    eintraege = [
+      ["kopf", `${modelle.length} Modelle`],
+      ["warteschlange", "☰ In die Warteschlange"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"],
+      ["-"], ["tag", "＃ Tag …"], ["material", "Material …"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
+      ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
+  } else {
+    const prog = await ladeProgramme();
+    const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);
+    const da = !m.fehlt;
+    eintraege = [
+      ...(da ? [["oeffnen", std ? `↗ In ${std.name} öffnen` : "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
+      ["ws", m.warteschlange != null ? "☰ Aus der Warteschlange" : "☰ In die Warteschlange"],
+      ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],
+      ["favorit1", m.favorit ? "♡ Kein Favorit mehr" : "♥ Favorit"],
+      ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
+      ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
+      ["-"], ["loeschen", "Löschen …", "gefahr"]];
+    kontextMenu.std = std;
+  }
+  const menu = $("#kontext");
+  menu.innerHTML = eintraege.map(([k, t, kl]) => k === "-" ? "<hr>" : k === "kopf" ? `<div class="km-kopf">${esc(t)}</div>`
+    : `<button data-km="${k}" class="${kl || ""}">${t}</button>`).join("");
+  kontextMenu.ziel = { id, modelle, m };
+  menu.hidden = false;
+  // Im Fenster halten: am Rand nach links bzw. oben aufklappen.
+  const b = menu.getBoundingClientRect();
+  menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
+  menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
+}
+
+async function kontextAktion(k) {
+  const { id, modelle, m } = kontextMenu.ziel;
+  $("#kontext").hidden = true;
+  switch (k) {
+    case "oeffnen": return modellOeffnen(kontextMenu.std ? { pfad: kontextMenu.std.pfad } : { system: true }, id);
+    case "ordner":
+      try { await api(`/api/modelle/${id}/im_ordner`, { method: "POST" }); } catch (err) { toast(err.message); }
+      return;
+    case "ws":
+      if (m.warteschlange != null) await api(`/api/warteschlange/${id}`, { method: "DELETE" });
+      else await api("/api/warteschlange", { method: "POST", body: { modelle: [id] } });
+      return;
+    case "gedruckt1": return aendern(id, { gedruckt: !m.gedruckt });
+    case "favorit1": return aendern(id, { favorit: !m.favorit });
+    case "umbenennen": return umbenennen(id);
+    case "loeschen": return modelle.length > 1 ? loeschenViele(modelle) : loeschen(id);
+    case "wiederherstellen":
+      for (const x of modelle) await api(`/api/modelle/${x}/wiederherstellen`, { method: "POST" }).catch((err) => toast(err.message));
+      return;
+    case "sammlung": return sammlungWahl(modelle);
+    default: return stapelAktion(k, modelle);
+  }
+}
+
+async function sammlungWahl(modelle) {
+  const a = await dialog(`<h2>Zu Sammlung${modelle.length > 1 ? ` (${modelle.length} Modelle)` : ""}</h2>
+    <select id="s-wahl">${zustand.sammlungen.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
+      <option value="__neu">Neue Sammlung …</option></select>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Hinzufügen</button></div>`);
+  if (a !== "ja") return;
+  const sid = $("#s-wahl").value;
+  if (sid === "__neu") return sammlungNeu(modelle);
+  await api(`/api/sammlungen/${sid}/modelle`, { method: "POST", body: { modelle } }).catch((err) => toast(err.message));
+  toast("Zur Sammlung hinzugefügt.");
+}
+
+document.addEventListener("contextmenu", (e) => {
+  const k = e.target.closest?.(".karte, .zeile-l");
+  if (k) kontextMenu(e, k.dataset.id);
+});
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("[data-km]");
+  if (b) return kontextAktion(b.dataset.km);
+  if (!e.target.closest?.("#kontext")) $("#kontext").hidden = true;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#kontext").hidden = true; });
+window.addEventListener("blur", () => { $("#kontext").hidden = true; });
+document.addEventListener("scroll", () => { $("#kontext").hidden = true; }, true);

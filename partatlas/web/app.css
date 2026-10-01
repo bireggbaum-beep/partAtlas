@@ -459,3 +459,9 @@ body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .seite .sektion h3:hover { background: var(--panel-2); }
 .seite .sk-inhalt { padding: 4px 8px 8px; }
 .seite .sektion + .sektion h3 { border-top-color: var(--line); }
+
+/* Rechtsklick-Menü */
+.menu.kontext { position: fixed; min-width: 230px; z-index: 60; padding: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.menu.kontext hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.menu.kontext button { font-size: 13px; }
+.km-kopf { font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); padding: 4px 10px 6px; text-transform: uppercase; }
