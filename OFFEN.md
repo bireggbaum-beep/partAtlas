@@ -46,8 +46,9 @@ Baugruppen und „Gedruckt“ bleiben, beides von Hand pflegbar.
 1. **Drucke als eigene Objekte** — Entwurf in `KONZEPT.md` §4.6 (ersetzt
    die Handwerte am Modell): `PRINT_JOB`, hängt an einem oder mehreren
    Modellen, „gedruckt“ und Zähler folgen daraus, Referenzdruck liefert die
-   Modellwerte. Stufe a von Hand (Demo), Stufe b mit G-Code. **Zuerst die
-   drei offenen Fragen am Ende von §4.6 klären**, dann bauen.
+   Modellwerte. Stufe a von Hand (Demo), Stufe b mit G-Code. Fragen geklärt
+   („Druck“, Fehldruck zählt, eigener Reiter). Voraussetzung: Reiter im
+   Inspektor (siehe unten d), Entwurf zuerst.
 2. **Einstellungsdialog neu:** Reiter links, rechts nur, was zum Thema gehört
    (wie pDMS). Materialien dort anlegen.
 3. **Zusammen im Slicer öffnen:** prüfen, ob die Slicer mehrere Dateien in

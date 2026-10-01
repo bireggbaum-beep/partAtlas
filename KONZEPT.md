@@ -333,11 +333,11 @@ an welchen Modellen der Druck hängt; der Anwender bestätigt.
 legen Drucke selbst an, mit `EXECUTED_ON` und Kurven; an der Form des
 Druck-Objekts ändert sich nichts.
 
-**Offen (vor Stufe a):** (1) Wie heisst es auf der Oberfläche — „Druck“
-oder „Druckversuch“? (2) Zählt ein Druck mit Fehlern in „wie oft
-gedruckt“? Vorschlag: ja, er hat stattgefunden, die Kachel zeigt nur
-„gut“ als Haken. (3) Sieht man Drucke als Liste im Inspektor oder als
-eigenen Reiter (§ rechte Seitenleiste, OFFEN.md d)?
+**Entschieden (01.10.2026):** Auf der Oberfläche heisst es **„Druck“**.
+Ein Druck mit Fehlern zählt in „wie oft gedruckt“ (er hat stattgefunden);
+den Haken „gedruckt“ zeigt die Kachel erst bei einem guten. Die Drucke
+stehen im Inspektor in einem **eigenen Reiter** — die rechte Seitenleiste
+bekommt dafür Reiter (OFFEN.md d), zuerst entworfen, dann gebaut.
 
 ---
 
