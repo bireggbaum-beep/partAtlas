@@ -65,13 +65,18 @@ if __name__ == "__main__":
           sorted(alle) == ["Arm_Front_v2", "Haken", "Top_Plate", "Welle", "kaputt"])
     check("Kaputte Datei steht im Katalog, als unlesbar markiert, der Scan lief durch",
           alle["kaputt"]["fehler"] and st["unlesbar"] == 1 and st["phase"] == "fertig")
-    check("3MF mit eingebettetem Bild: Vorschau „eingebettet“, Datei im Cache",
+    check("3MF mit eingebettetem Bild: Vorschau „eingebettet“, Datei im Vault",
           alle["Top_Plate"]["vorschau"] == "eingebettet"
           and os.path.exists(b.vorschau_pfad(alle["Top_Plate"]["hash"])))
     check("STL ohne Bild: Vorschau auf dem Server gerendert",
           alle["Arm_Front_v2"]["vorschau"] == "gerendert"
           and os.path.getsize(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"])) > 500)
     check("STEP: aufgenommen, Vorschau „keine“", alle["Welle"]["vorschau"] == "keine")
+    dat = lambda m: b.db.get_node(f"PART_GEOMETRY/{m['hash']}", readonly=True).get("datei")
+    check("Vorschau ist ein Anhang: Feld `datei` zeigt in den Vault, wo es kein Bild gibt, ins Leere",
+          dat(alle["Top_Plate"]) == f"vault/vorschau/{alle['Top_Plate']['hash']}.png"
+          and dat(alle["Arm_Front_v2"]) == f"vault/vorschau/{alle['Arm_Front_v2']['hash']}.png"
+          and dat(alle["Welle"]) is None and not os.path.exists(b.pfad("cache")))
     check("Gewicht und Material aus dem Slicer an der Kachel",
           alle["Top_Plate"]["gewicht_g"] == 15.75 and alle["Top_Plate"]["material"] == "PETG")
     check("Automatische Tags wie im 3MF Katalog: Wörter aus dem Namen, ohne Versionsnummer",
@@ -194,6 +199,18 @@ if __name__ == "__main__":
     check("Nach Neustart: dieselben Modelle, Tags, Orte",
           sorted(m["name"] for m in k.modelle()) == ["Arm Front", "Belegt", "Haken", "Nachzuegler", "Top_Plate", "Welle", "kaputt"]
           and "funktional" in k.modell(arm["id"])["tags"])
+
+    # -- Bestand von vorher: Vorschau lag in cache/, ohne `datei`
+    alt = b.pfad("cache", "vorschau")
+    os.makedirs(alt)
+    h = arm["hash"]
+    os.replace(b.vorschau_pfad(h), os.path.join(alt, f"{h}.png"))
+    b.db.update_node("PART_GEOMETRY", h, {"datei": None})
+    from partatlas.katalog import Katalog
+    Katalog(b)
+    check("Bestand von vorher: Vorschau zieht aus cache/ in den Vault, `datei` gesetzt, cache/ weg",
+          os.path.exists(b.vorschau_pfad(h)) and not os.path.exists(b.pfad("cache"))
+          and b.db.get_node(f"PART_GEOMETRY/{h}", readonly=True)["datei"] == f"vault/vorschau/{h}.png")
 
     k.loeschen(top_id)
     n = k.papierkorb_leeren()

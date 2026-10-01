@@ -370,7 +370,7 @@ class Baugruppen:
                 eintrag.update(name=u["name"], unter_bedarf=f["bedarf"], unter_erledigt=f["erledigt"],
                                unter_positionen=len(self._positionen(kid)))
             positionen.append(eintrag)
-        return {"id": bid, "name": b["name"], "beschreibung": b.get("beschreibung", ""), "exemplare": exemplare,
+        return {"id": bid, "name": b["name"], "beschreibung": self.db.get_node_full(ref(BAUGRUPPE, bid)).get("beschreibung", ""), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(ref(BAUGRUPPE, bid)),
                 "materialien": self.k.materialien()}

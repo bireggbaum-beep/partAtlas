@@ -30,7 +30,6 @@ from reportlab.platypus import (Image, KeepTogether, Paragraph, SimpleDocTemplat
                                 TableStyle)
 
 from .baugruppen import ARTEN, BAUGRUPPE, KAUFTEIL
-from .bestand import MODELL
 
 AKZENT = colors.HexColor("#c8553d")
 TINTE = colors.HexColor("#222222")
@@ -128,9 +127,8 @@ class Stueckliste:
 
     def _bild(self, kurz, seite=11 * mm):
         pfad = None
-        m = self.k.db.get_node(f"{MODELL}/{kurz['id']}", readonly=True) or {}
-        if m.get("bild"):
-            pfad = self.b.pfad(*m["bild"].split("/"))
+        if kurz.get("bild"):
+            pfad = self.k.bild_pfad(kurz["id"])
         elif kurz.get("hash") and kurz.get("vorschau") in ("eingebettet", "gerendert"):
             pfad = self.b.vorschau_pfad(kurz["hash"])
         if pfad and os.path.exists(pfad):

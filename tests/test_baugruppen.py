@@ -165,6 +165,22 @@ if __name__ == "__main__":
         check("Export Markdown mit Einkaufsliste über alle Ebenen", "18 Stück Zylinderkopfschraube M3×10" in md)
         check("Export CSV mit Semikolon (öffnet in deutschem Excel)", csv_text.splitlines()[0].startswith("Art;Menge;"))
 
+        # -- Lange Beschreibung liegt in vault_text/ und kommt beim Lesen ganz zurück
+        lang = ("Bauanleitung: " + "Teil an Teil schrauben, dann prüfen. " * 60).strip()
+        kurz = "Kurz."
+        c.patch(f"/api/baugruppen/{bid}", json={"beschreibung": lang})
+        z = c.app.state.zustand["bestand"]
+        roh = z.db.get_node_raw(f"ASSEMBLY/{bid}")["beschreibung"]
+        check("Lange Beschreibung: im Knoten nur der Verweis, der Text als Datei in vault_text/",
+              roh.startswith("@vault_text/") and os.path.exists(z.pfad(*roh[len("@vault_text/"):].split("/"))) and len(roh) < 200)
+        check("… Detail, Markdown und PDF bekommen den vollen Text",
+              c.get(f"/api/baugruppen/{bid}").json()["beschreibung"] == lang
+              and lang in c.get(f"/api/baugruppen/{bid}/export", params={"format": "md"}).text
+              and c.get(f"/api/baugruppen/{bid}/export", params={"format": "pdf"}).status_code == 200)
+        c.patch(f"/api/baugruppen/{bid}", json={"beschreibung": kurz})
+        check("Kurze Beschreibung bleibt im Knoten",
+              z.db.get_node_raw(f"ASSEMBLY/{bid}")["beschreibung"] == kurz and c.get(f"/api/baugruppen/{bid}").json()["beschreibung"] == kurz)
+
         c.delete(f"/api/baugruppen/{bid}")
         check("Baugruppe löschen: Modelle und Unterbaugruppe bleiben",
               len(c.get("/api/modelle").json()) == 4 and [b["name"] for b in c.get("/api/baugruppen").json()] == ["Arm-Modul"])

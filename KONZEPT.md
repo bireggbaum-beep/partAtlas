@@ -104,9 +104,19 @@ Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
 | Bereich | Inhalt | Verlust heisst | Sicherung |
 |---|---|---|---|
 | `datenbank/` | flatgraph: Modelle, Tags, Drucke, Spulen, Drucker | alles Eigene weg | ja |
-| `vault/` | G-Code und die Quelldatei, aus der er entstand | nicht wiederherstellbar | ja |
-| `cache/` | Vorschaubilder, Renderings, entpackte Archive | wird neu erzeugt | nein |
+| `vault/` | Anhänge der Knoten (Feld `datei`): Vorschaubilder in `vault/vorschau/`, eigene Bilder in `vault/bilder/`; ab Phase 2 G-Code und die Quelldatei, aus der er entstand | Bilder und G-Code nicht wiederherstellbar, Vorschauen neu erzeugbar (rund eine halbe Stunde, geschätzt) | ja |
+| `vault_text/` | lange Texte (ab 1 000 Zeichen, z. B. die Beschreibung einer Baugruppe), erst beim Lesen geladen | Text weg | ja |
 
+- **Was der Vault ist** (flatgraph): der Ort in der Datenbank für Binärdaten
+  und Langtexte, die nicht im Arbeitsspeicher liegen, sondern erst bei
+  Bedarf gelesen werden. Ein Knoten hält nur den Verweis (Feld `datei`
+  bzw. `@vault_text/…`). Nicht gemeint ist ein allgemeiner Ablageordner:
+  was im Vault liegt, gehört zu einem Knoten, und beim Löschen sieht man es
+  in `loeschfolgen()` (z. B. „1 Bild“).
+- **Vorschaubilder** sind Anhänge von `PART_GEOMETRY`. Löscht man das Modell
+  endgültig, räumt partAtlas die Vorschau selbst weg: flatgraph behält
+  den Anhang eines Kaskaden-Ziels immer (`_weich_loeschen(…, True)`).
+  Eigene Bilder bleiben auch nach dem Müllsammler im Vault.
 - **Vault ist unveränderlich und wächst nur.** Jede Datei über
   Arbeitsdatei, `fsync`, `os.replace`; nie überschrieben.
 - **Name = Titel + Hash**, z. B. `gcode/Arm_Front__3f9a1c2e.gcode`: ohne
@@ -261,6 +271,7 @@ Sammlungs- und Kantennamen folgen der flatgraph-Namensregel (VERTRAG §7).
 | `MODEL_ASSET` | fortlaufend | logisches Modell: Titel, Favorit, Quelle-URL, Druckstatus | `files` (Teil) |
 | `PART_GEOMETRY` | SHA-256 der Datei | Datei: Wurzel, relativer Pfad, Format, Masse, Volumen, Objekte, „fehlt“ | `files` (Teil) |
 | `TAG_ITEM` | Name | Tag, Farbe | `tags` |
+| `MODEL_IMAGE` | fortlaufend | eigenes Bild: `datei` im Vault | — |
 | `COLLECTION` | fortlaufend | Sammlung mit Reihenfolge | `collections` |
 | `GCODE_ARTIFACT` | SHA-256 der Datei | Vault-Pfad, Slicer, Druckzeit, Filament je Material | — |
 | `PRINT_PROFILE` | Hash der Einstellungen | normalisierte Slicer-Konfiguration | — |
@@ -280,6 +291,7 @@ die Flotte (Phase 4) eine eigene Sammlung braucht.
 ```
 MODEL_ASSET    ─[HAS_PART]──────────▶ PART_GEOMETRY
 MODEL_ASSET    ─[HAS_TAG]───────────▶ TAG_ITEM
+MODEL_ASSET    ─[HAS_IMAGE]─────────▶ MODEL_IMAGE        eigenes Bild, mit cascade_delete (0.11)
 MODEL_ASSET    ─[INTENDED_MATERIAL]─▶ MATERIAL_MASTER   vom Anwender, auch mehrere (0.10)
 PART_GEOMETRY  ─[REQUIRES_MATERIAL]─▶ MATERIAL_MASTER   aus den Slicer-Daten der 3MF (0.10)
 MODEL_ASSET    ─[IN_COLLECTION]─────▶ COLLECTION        meta: position
@@ -302,8 +314,13 @@ MODEL_ASSET    ─[SPARE_PART_FOR]────▶ MODEL_ASSET
 MODEL_ASSET    ─[FITS]──────────────  MODEL_ASSET       ungerichtet
 ```
 
-Vorschaubilder stehen nicht im Graphen: `cache/` unter dem Hash der
-Datei.
+Vorschaubilder sind Anhänge: `PART_GEOMETRY.datei` zeigt auf
+`vault/vorschau/<hash>.png`; ohne Bild bleibt das Feld leer.
+
+Das eigene Bild eines Modells ist der Knoten `MODEL_IMAGE` (Feld `datei`
+in `vault/bilder/`), am Modell per `HAS_IMAGE` mit cascade_delete: es geht
+mit dem Modell in den Papierkorb und kommt mit ihm zurück. Ein neues Bild
+ersetzt das alte.
 
 ---
 
@@ -411,7 +428,7 @@ einigen tausend Dreiecken — echte Modelle sind grösser).
 | … alle Vorschauen gerendert | 260 s |
 | Zweiter Scan ohne Änderung | 0,1 s |
 | Server nach dem Scan (RSS) | 127 MB |
-| Bestand: Datenbank / Vorschau-Cache | 11 MB / 43 MB |
+| Bestand: Datenbank / Vorschauen im Vault | 11 MB / 43 MB |
 | `/api/modelle` alle 5 593 Kacheln (2 MB JSON) | 346 ms |
 | Suche „zahnrad“ / Tag-Filter „petg“ | 16 / 54 ms |
 | Wortindex aufbauen (5 593 Modelle, 5 653 Wörter), 0.8.0 | 0,15 s |
@@ -436,6 +453,7 @@ Ungeprüft, zu klären vor der genannten Phase:
 |---|---|
 | Bambu Studio: steht die volle Konfiguration im G-Code? | 2 |
 | Wortindex nach flatgraph (VERTRAG, 4.1), dann pDMS und partAtlas darauf | — |
+| flatgraph: Kaskaden-Ziele behalten ihren Anhang immer (`_keep_asset` True); die Vorschau müsste sonst nicht von Hand weg | — |
 | Gespeicherte Suchen (pDMS hat sie) | — |
 | Anycubic Slicer: Programmnamen und Orte an einer echten Installation | — |
 | Druck bei ausgeschaltetem PC: Nachtrag aus der Moonraker-Historie beim Start; bei Bambu unbekannt | 2 |

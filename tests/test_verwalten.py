@@ -93,8 +93,38 @@ if __name__ == "__main__":
               c.post(f"/api/modelle/{m['Welle']}/bild", content=b"<svg onload=alert(1)>").status_code == 400)
         check("Über 5 MB wird abgelehnt",
               c.post(f"/api/modelle/{m['Welle']}/bild", content=b"\0" * (5 * 1024**2 + 1)).status_code == 400)
+        db = c.app.state.zustand["bestand"].db
+        mref = f"MODEL_ASSET/{m['Welle']}"
+        iid = db.get_connected(mref, rel_type="HAS_IMAGE")[0]
+        datei = db.get_node(iid, readonly=True)["datei"]
+        check("Eigenes Bild ist ein Knoten mit `datei` im Vault, per Kante am Modell",
+              datei.startswith("vault/bilder/") and os.path.exists(os.path.join(tmp, "bestand", datei)) and kachel["bild"] == iid.split("/")[1])
+        puffer2 = io.BytesIO()
+        Image.new("RGB", (300, 300), (20, 200, 50)).save(puffer2, "PNG")
+        c.post(f"/api/modelle/{m['Welle']}/bild", content=puffer2.getvalue())
+        check("Neues Bild ersetzt das alte: ein Bild am Modell, das alte im Papierkorb, seine Datei bleibt",
+              len(db.get_connected(mref, rel_type="HAS_IMAGE")) == 1 and db.get_connected(mref, rel_type="HAS_IMAGE")[0] != iid
+              and db.get_node(iid, readonly=True) is None and os.path.exists(os.path.join(tmp, "bestand", datei)))
+        v = c.get(f"/api/modelle/{m['Welle']}/loeschen").json()
+        check("Löschvorschau nennt das Bild", any(k.startswith("MODEL_IMAGE/") for k in v["knoten"]))
+        c.post(f"/api/modelle/{m['Welle']}/loeschen")
+        check("Mit dem Modell im Papierkorb, sein Bild noch erreichbar (das ersetzte nicht)",
+              c.get(f"/api/modelle/{m['Welle']}/bild").status_code == 200
+              and Image.open(io.BytesIO(c.get(f"/api/modelle/{m['Welle']}/bild").content)).size == (300, 300))
+        c.post(f"/api/modelle/{m['Welle']}/wiederherstellen")
+        check("Wiederhergestellt: das Bild ist wieder dran",
+              next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] is not None)
+        # Bestand von vorher: `bild` als Textfeld am Modell
+        db.update_node("MODEL_ASSET", m["Welle"], {"bild": datei})
         c.delete(f"/api/modelle/{m['Welle']}/bild")
-        check("Bild entfernen", next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] is None)
+        check("Bild entfernen: Kachel hat keins mehr, die Datei bleibt im Vault",
+              next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] is None
+              and not db.get_connected(mref, rel_type="HAS_IMAGE") and os.path.exists(os.path.join(tmp, "bestand", datei)))
+        db.update_node("MODEL_ASSET", m["Welle"], {"bild": datei})
+        from partatlas.katalog import Katalog
+        Katalog(c.app.state.zustand["bestand"])
+        check("Bestand von vorher: das Feld `bild` wird zum Knoten, das Feld ist leer",
+              len(db.get_connected(mref, rel_type="HAS_IMAGE")) == 1 and not db.get_node(mref, readonly=True).get("bild"))
 
         # -- Hochladen
         r = c.post("/api/hochladen", params={"ordner": f"{w}/Deko", "name": "Stern.stl"}, content=stl_bytes())
