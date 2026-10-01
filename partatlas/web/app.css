@@ -520,3 +520,4 @@ body.bg-offen .nur-katalog { display: none; }
 .gal-haupt { display: contents; }
 .gal-etikett:empty { display: none; }
 .gal-aktionen:empty { display: none; }
+html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }

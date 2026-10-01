@@ -36,6 +36,25 @@ berechnet) kann Vorschaubild der Kachel sein (Feld `vorschau_art`). Ziehen
 aus der Leiste legt keine Kopie mehr an. „← Baugruppe“ lag unter dem festen
 Kopfstück und ist jetzt darin. `test_ui.py` läuft mit flatgraph: 51/51.
 
+Runde 4 (Phase 1 ohne Druckmanagement): `PHASE = 1` in `app.js`
+(`?phase=2` in der Adresse schaltet um; die Tests laufen so). Die Warteschlange
+ist überall ausgeblendet (Seitenleiste, Inspektor, Stapel, Menüs, Baugruppe).
+Baugruppen und „Gedruckt“ bleiben, beides von Hand pflegbar.
+
+## Entschieden, noch nicht gebaut (Phase 1)
+
+1. **Druckdaten von Hand:** Gewicht, Druckzeit, Filament, Farbe an der
+   „Zum Drucken“-Karte anklicken und ändern (kleines Dropdown), Herkunft
+   „aus Datei“ / „von Hand“ sichtbar, Hand geht vor, Zurücksetzen möglich.
+   Am Modell speichern, nicht an der Datei; Baugruppensummen rechnen mit dem
+   geltenden Wert. Karte heisst „Zum Drucken“ (bleibt).
+2. **Einstellungsdialog neu:** Reiter links, rechts nur, was zum Thema gehört
+   (wie pDMS). Materialien dort anlegen.
+3. **Drucke als eigene Objekte (Idee, Phase 1 oder 2 klären):** zu einem Modell
+   mehrere „Drucke“ mit Foto, G-Code/Druckprofil, Datum, Notiz, Ergebnis —
+   „so war es gut, so wieder drucken“. Kein Anbindungslayer. Entwerfen vor
+   Bauen; KONZEPT berücksichtigt G-Code im Vault erst ab Phase 2.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

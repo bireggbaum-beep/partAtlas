@@ -199,7 +199,7 @@ function zeichneBaugruppe(d) {
   </div>` : `
 
   <div class="bg-aktionen">
-    <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
+    <button class="knopf akzent" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>

@@ -4,6 +4,13 @@
 // Browser lahmlegen (vermutete Ursache für „nicht gescheit“ bei 5 700).
 "use strict";
 
+// Phase 1: Katalog und Öffnen im Slicer/CAD. Was ein Druckmanagement voraussetzt
+// (Warteschlange), ist ausgeblendet, nicht gelöscht — `data-ab-phase="2"` in der
+// Seitenleiste, Filter bei den Menüs. In Phase 2 genügt PHASE = 2.
+const PHASE = Number(new URLSearchParams(location.search).get("phase")) || 1;   // ?phase=2: zum Testen und Vorzeigen
+document.documentElement.dataset.phase = PHASE;
+const ab2 = (k) => PHASE >= 2 || !["ws", "warteschlange"].includes(k);
+
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -299,7 +306,7 @@ function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
   const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
-  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.gedruckt ? "✓ gedruckt" : (m.warteschlange != null ? "☰ Warteschlange" : "");
+  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.gedruckt ? "✓ gedruckt" : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? `<img loading="lazy" src="${url}" alt="">` : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
@@ -353,7 +360,7 @@ function zeichneStapel() {
     : `<b>${n} ausgewählt</b>
     <button class="knopf" data-stapel="alle">Alle auswählen (${zustand.modelle.length})</button>
     <button class="knopf" data-stapel="baugruppe">🧩 Zu Baugruppe …</button>
-    <button class="knopf" data-stapel="warteschlange">☰ In Warteschlange</button>
+    <button class="knopf" data-ab-phase="2" data-stapel="warteschlange">☰ In Warteschlange</button>
     <select class="knopf" id="stapel-sammlung"><option value="">Zu Sammlung …</option>${zustand.sammlungen.map((x) =>
       `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}<option value="__neu">Neue Sammlung …</option></select>
     <button class="knopf" data-stapel="tag">＃ Tag …</button>
@@ -550,7 +557,7 @@ async function waehle(id, live = false) {
           </div></div>
       </div>
       <div class="i-schalter">
-        <button class="schalter ${m.warteschlange != null ? "an" : ""}" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
+        <button class="schalter ${m.warteschlange != null ? "an" : ""}" data-ab-phase="2" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
         <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="Als gedruckt markieren">${m.gedruckt ? "✓ Gedruckt" : "○ Nicht gedruckt"}</button>
         <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
       </div>`}
@@ -1458,6 +1465,7 @@ async function kontextMenu(e, id) {
       ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
   }
+  eintraege = eintraege.filter(([k]) => ab2(k));
   const menu = $("#kontext");
   menu.innerHTML = eintraege.map(([k, t, kl, extra]) => k === "-" ? "<hr>" : k === "kopf" ? `<div class="km-kopf">${esc(t)}</div>`
     : k === "unter" ? `<div class="km-unter"><button type="button">${t}<span class="km-pfeil">▸</span></button><div class="menu km-flyout">${extra}</div></div>`

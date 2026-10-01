@@ -64,7 +64,7 @@ async def oberflaeche(port):
             await pg.fill("#suche", t)
             await pg.wait_for_timeout(700)
 
-        await pg.goto(f"http://127.0.0.1:{port}/")
+        await pg.goto(f"http://127.0.0.1:{port}/?phase=2")
         # -- Erster Start: Willkommenskarte, Ordner wählen durch Klicken statt Tippen
         await pg.wait_for_selector(".willkommen")
         check("Erster Start: Willkommenskarte, leere Rubriken der Seitenleiste ausgeblendet",
@@ -398,6 +398,18 @@ async def oberflaeche(port):
               "Haken.stl" in text and "Warteschlange" in text and "Tags:" in text and "HAS_TAG" not in text)
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
+        # -- Phase 1 (Vorgabe): keine Warteschlange, Baugruppen bleiben
+        await pg.goto(f"http://127.0.0.1:{port}/")
+        await pg.wait_for_selector(".karte")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector("#gedruckt")
+        await pg.locator(".karte").first.click(button="right")
+        menue = await pg.inner_text("#kontext")
+        check("Phase 1: Warteschlange nirgends zu sehen (Seitenleiste, Inspektor, Rechtsklick), Baugruppen und Gedruckt bleiben",
+              not await pg.locator('[data-ansicht="warteschlange"]').is_visible()
+              and not await pg.locator("#ws-knopf").is_visible() and "Warteschlange" not in menue
+              and await pg.locator("#baugruppen").is_visible() and "gedruckt" in menue)
+        await pg.keyboard.press("Escape")
         check("Keine Fehler in der Browser-Konsole", fehler == [])
         if fehler:
             print("   ", fehler)
