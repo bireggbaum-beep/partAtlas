@@ -82,6 +82,14 @@ Baugruppen-Hinweis ist eine wegklickbare Zeile statt eines Kastens (kommt erst
 wieder bei mehr Vorschlägen). Noch offen aus dem Gespräch: Schrift im Rest der
 Oberfläche (Mono nur für Zahlen), Einstellungsdialog mit Reitern.
 
+Seitenleiste wie VS Code (0.20.0): oben Suche und drei Icon-Knöpfe für die Ansichten
+(Alle, Neu, Favoriten), darunter die Ordner als Explorer (nimmt den freien Platz),
+unten einklappbare Felder (Baugruppen, Sammlungen, Aufräumen, Tags) mit feinen
+Linien und Kopfband; das Feld mit der aktuellen Wahl trägt einen Akzentbalken.
+Unterordner sind 14 px je Ebene eingerückt, mit Führungslinie (der Fehler aus
+0.19.4: eine Regel hatte die Einrückung überschrieben). **Tests:** `test_ui.py`
+nur bei Änderungen an der Oberfläche und nur einmal vor dem Commit.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

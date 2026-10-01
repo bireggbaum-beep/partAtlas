@@ -59,17 +59,15 @@ button, input, select { font: inherit; color: inherit; }
 .menu button:hover { background: var(--panel-2); }
 .scan-status { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 
-.seite { grid-area: seite; overflow-y: auto; border-right: 1px solid var(--line); padding: 10px 8px; }
+.seite { grid-area: seite; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--line); padding: 10px 0 0; min-height: 0; }
+.seite > .suche, .ans-leiste, .seite > div[data-ab-phase] { margin-left: 8px; margin-right: 8px; }
 .suche { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; margin-bottom: 10px; }
-.seite section { margin-bottom: 14px; }
-.seite h3 { font: 500 var(--fs-label)/1 var(--mono); letter-spacing: 0.08em; color: var(--ink-3); margin: 10px 4px 6px; }
 .eintrag { display: flex; justify-content: space-between; width: 100%; background: none; border: 0; padding: 4px 6px;
            border-radius: var(--radius); cursor: pointer; text-align: left; font-size: 13px; }
 .eintrag:hover { background: var(--panel-2); }
 .eintrag.aktiv { background: var(--accent-soft); color: var(--accent); }
 .eintrag em { font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
 .eintrag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.baum .eintrag { padding-left: calc(6px + var(--tiefe, 0) * 12px); }
 .pfeil { display: inline-block; width: 12px; color: var(--ink-3); }
 .gestrichelt { width: 100%; background: none; border: 1px dashed var(--line-strong); border-radius: var(--radius);
                padding: 4px 6px; color: var(--ink-3); font: 12.5px var(--mono); text-align: left; cursor: pointer; margin-top: 4px; }
@@ -440,8 +438,6 @@ body.erststart .tagleiste { display: none; }
 .ow-tippen input { width: 70%; margin-top: 6px; }
 
 /* Seitenleiste: einklappbare Abschnitte, Aktionen an der Überschrift */
-.seite .sektion { margin-bottom: 6px; }
-.seite .sektion h3 { display: flex; align-items: center; margin: 8px 0 4px; }
 .sk-kopf { flex: 1; text-align: left; background: none; border: 0; cursor: pointer; padding: 3px 4px; color: inherit;
            font: inherit; letter-spacing: inherit; border-radius: 4px; }
 .sk-kopf::before { content: "▾"; display: inline-block; width: 12px; color: var(--ink-3); }
@@ -457,16 +453,6 @@ body.erststart .tagleiste { display: none; }
 .sk-inhalt { padding-left: 2px; }
 body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .leer-eintrag { color: var(--ink-3); font-size: 13px; }
-
-/* Abschnitte ruhig: Überschrift klein und grau in normaler Schrift, keine Bänder und Linien — Abstand trennt */
-.seite .sektion { margin: 0 0 2px; }
-.seite .sektion h3 { margin: 0; padding: 14px 6px 3px 2px; background: none; border: 0;
-                     font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; color: var(--ink-3); }
-.seite .sektion h3:hover { color: var(--ink-2); }
-.sk-kopf::before { font-size: 9px; opacity: 0.7; }
-.seite .sektion[data-zu="1"] h3 { border-bottom-color: transparent; }
-.seite .sk-inhalt { padding: 2px 0 4px; }
-.seite .eintrag { padding: 5px 8px; }
 
 /* Rechtsklick-Menü */
 .menu.kontext { position: fixed; min-width: 230px; z-index: 60; padding: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
@@ -584,3 +570,44 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .d-filament { grid-template-columns: 1fr 56px 1fr; }
 .d-dauer { display: flex; align-items: center; gap: 4px; }
 .d-dauer input { width: 100%; min-width: 0; }
+
+/* Seitenleiste wie VS Code: oben die Ordner (der Explorer), darunter einklappbare Felder mit feinen
+   Linien; die unteren sind so hoch wie ihr Inhalt, der Explorer nimmt den Rest. */
+.ans-leiste { display: flex; gap: 4px; margin-bottom: 10px; }
+.ans-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 30px; background: none;
+           border: 1px solid var(--line); border-radius: 6px; color: var(--ink-2); cursor: pointer; }
+.ans-btn:hover { background: var(--panel-2); color: var(--ink); }
+.ans-btn.aktiv { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.ans-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.ans-btn em { font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.ans-btn.aktiv em { color: inherit; }
+.panes { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sektion { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; border-top: 1px solid var(--line); }
+.sektion:last-child { border-bottom: 1px solid var(--line); }
+.sektion[data-sektion="ordner"] { flex: 1 1 0; }
+.sektion[data-zu="1"] { flex: none; }
+.sektion[data-sektion="ordner"][data-zu="1"] { margin-bottom: auto; }
+.sektion h3 { flex: none; display: flex; align-items: center; height: 26px; margin: 0; padding: 0 6px 0 2px;
+              font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+              color: var(--ink-2); background: var(--panel); }
+.sektion h3:hover { background: var(--panel-2); }
+.sektion.hat-wahl > h3 { color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+.sk-kopf { flex: 1; text-align: left; background: none; border: 0; cursor: pointer; padding: 4px 4px; color: inherit;
+           font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.sk-kopf::before { content: "▾"; display: inline-block; width: 14px; font-size: 10px; color: var(--ink-3); }
+.sektion[data-zu="1"] .sk-kopf::before { content: "▸"; }
+.sektion[data-zu="1"] .sk-inhalt { display: none; }
+.sk-akt { display: flex; gap: 2px; opacity: 0; transition: opacity 0.12s; }
+.sektion h3:hover .sk-akt, .sk-akt:focus-within { opacity: 1; }
+.sk-akt button { background: none; border: 0; cursor: pointer; color: var(--ink-3); font-size: 14px; width: 22px; height: 20px; border-radius: 4px; line-height: 1; }
+.sk-akt button:hover { background: var(--panel-2); color: var(--accent); }
+.sk-inhalt { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 0 4px; }
+.seite .eintrag { padding: 3px 8px; border-radius: 0; }
+.seite .eintrag.aktiv { background: var(--accent-soft); color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+/* Ordnerbaum: je Ebene 14 px eingerückt, feine Führungslinien */
+.seite .baum .eintrag { padding-left: calc(4px + var(--tiefe, 0) * 14px);
+  background-image: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 14px);
+  background-size: calc(var(--tiefe, 0) * 14px) 100%; background-position: 11px 0; background-repeat: no-repeat; }
+.seite .baum .eintrag.aktiv { background-color: var(--accent-soft); }
+.pfeil { width: 14px; text-align: center; font-size: 10px; }
+body.erststart .ans-leiste { display: none; }

@@ -159,6 +159,9 @@ function zweig(k, tiefe) {
 }
 
 function markiereAnsicht() {
+  const hat = { ordner: !!zustand.ordner, baugruppen: !!zustand.baugruppe, sammlungen: !!zustand.sammlung, tags: zustand.tags.size > 0,
+                aufraeumen: ["duplikate", "fehlt", "unlesbar"].includes(zustand.ansicht) };
+  document.querySelectorAll(".sektion").forEach((s) => s.classList.toggle("hat-wahl", !!hat[s.dataset.sektion]));
   document.querySelectorAll("[data-ansicht]").forEach((b) =>
     b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tags.size && !zustand.material.size && !zustand.format && !zustand.sammlung));
   document.querySelectorAll(".rail-btn[data-rail]").forEach((b) =>

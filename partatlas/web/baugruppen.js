@@ -51,6 +51,7 @@ async function ladeBaugruppenLeiste() {
       <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("")
     + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="baugruppe-neu-2">＋ Neue Baugruppe</button>`) + tipp);
   zustand.bgVorschlaege = vorschlaege;
+  markiereAnsicht();
 }
 
 // ---------------------------------------------------------------- Ansicht
