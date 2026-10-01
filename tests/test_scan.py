@@ -67,16 +67,17 @@ if __name__ == "__main__":
           alle["kaputt"]["fehler"] and st["unlesbar"] == 1 and st["phase"] == "fertig")
     check("3MF mit eingebettetem Bild: Vorschau „eingebettet“, Datei im Vault",
           alle["Top_Plate"]["vorschau"] == "eingebettet"
-          and os.path.exists(b.vorschau_pfad(alle["Top_Plate"]["hash"])))
+          and os.path.exists(b.vorschau_pfad(alle["Top_Plate"]["hash"], "extrahiert")))
     check("STL ohne Bild: Vorschau auf dem Server gerendert",
           alle["Arm_Front_v2"]["vorschau"] == "gerendert"
-          and os.path.getsize(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"])) > 500)
+          and os.path.getsize(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")) > 500)
     check("STEP: aufgenommen, Vorschau „keine“", alle["Welle"]["vorschau"] == "keine")
-    dat = lambda m: b.db.get_node(f"PART_GEOMETRY/{m['hash']}", readonly=True).get("datei")
-    check("Vorschau ist ein Anhang: Feld `datei` zeigt in den Vault, wo es kein Bild gibt, ins Leere",
-          dat(alle["Top_Plate"]) == f"vault/vorschau/{alle['Top_Plate']['hash']}.png"
-          and dat(alle["Arm_Front_v2"]) == f"vault/vorschau/{alle['Arm_Front_v2']['hash']}.png"
-          and dat(alle["Welle"]) is None and not os.path.exists(b.pfad("cache")))
+    dat = lambda m: {k: v for k, v in b.db.get_node(f"PART_GEOMETRY/{m['hash']}", readonly=True).items()
+                     if k.startswith("vorschau_") and v}
+    check("Vorschau gehört zur Datei, die Art steht im Namen: aus der Datei vs. berechnet, STEP ohne",
+          dat(alle["Top_Plate"]) == {"vorschau_extrahiert": f"vault/vorschau/{alle['Top_Plate']['hash']}.extrahiert.png"}
+          and dat(alle["Arm_Front_v2"]) == {"vorschau_berechnet": f"vault/vorschau/{alle['Arm_Front_v2']['hash']}.berechnet.png"}
+          and dat(alle["Welle"]) == {} and not os.path.exists(b.pfad("cache")))
     check("Gewicht und Material aus dem Slicer an der Kachel",
           alle["Top_Plate"]["gewicht_g"] == 15.75 and alle["Top_Plate"]["material"] == "PETG")
     check("Automatische Tags wie im 3MF Katalog: Wörter aus dem Namen, ohne Versionsnummer",
@@ -200,21 +201,26 @@ if __name__ == "__main__":
           sorted(m["name"] for m in k.modelle()) == ["Arm Front", "Belegt", "Haken", "Nachzuegler", "Top_Plate", "Welle", "kaputt"]
           and "funktional" in k.modell(arm["id"])["tags"])
 
-    # -- Bestand von vorher: Vorschau lag in cache/, ohne `datei`
+    # -- Bestand von vorher: bis 0.10 cache/vorschau/<h>.png, in 0.11 vault/vorschau/<h>.png mit `datei`
+    from partatlas.katalog import Katalog
     alt = b.pfad("cache", "vorschau")
     os.makedirs(alt)
-    h = arm["hash"]
-    os.replace(b.vorschau_pfad(h), os.path.join(alt, f"{h}.png"))
-    b.db.update_node("PART_GEOMETRY", h, {"datei": None})
-    from partatlas.katalog import Katalog
+    h, h2 = arm["hash"], top["hash"]
+    os.replace(b.vorschau_pfad(h, "berechnet"), os.path.join(alt, f"{h}.png"))
+    os.replace(b.vorschau_pfad(h2, "extrahiert"), b.pfad("vault", "vorschau", f"{h2}.png"))
+    b.db.update_node("PART_GEOMETRY", h, {"vorschau_berechnet": None})
+    b.db.update_node("PART_GEOMETRY", h2, {"vorschau_extrahiert": None, "datei": f"vault/vorschau/{h2}.png"})
     Katalog(b)
-    check("Bestand von vorher: Vorschau zieht aus cache/ in den Vault, `datei` gesetzt, cache/ weg",
-          os.path.exists(b.vorschau_pfad(h)) and not os.path.exists(b.pfad("cache"))
-          and b.db.get_node(f"PART_GEOMETRY/{h}", readonly=True)["datei"] == f"vault/vorschau/{h}.png")
+    n1, n2 = (b.db.get_node(f"PART_GEOMETRY/{x}", readonly=True) for x in (h, h2))
+    check("Bestand von vorher: Vorschauen aus cache/ und ohne Art im Namen ziehen um, Art aus dem Status, cache/ weg",
+          os.path.exists(b.vorschau_pfad(h, "berechnet")) and os.path.exists(b.vorschau_pfad(h2, "extrahiert"))
+          and n1["vorschau_berechnet"] == f"vault/vorschau/{h}.berechnet.png"
+          and n2["vorschau_extrahiert"] == f"vault/vorschau/{h2}.extrahiert.png" and not n2.get("datei")
+          and not os.path.exists(b.pfad("cache")))
 
     k.loeschen(top_id)
     n = k.papierkorb_leeren()
     check("Papierkorb leeren: endgültig, Datei und Vorschau weg", n == 1 and os.listdir(b.pfad("papierkorb")) == []
-          and not os.path.exists(b.vorschau_pfad(top["hash"])))
+          and not os.path.exists(b.vorschau_pfad(top["hash"], "extrahiert")))
     b.schliessen()
     muster.ende()

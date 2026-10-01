@@ -156,10 +156,6 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 /* 3D-Ansicht im Inspektor */
 .i-bild { position: relative; }
 .i-bild canvas { width: 100% !important; height: 100% !important; display: block; cursor: grab; }
-.umschalter { position: absolute; top: 8px; right: 8px; display: flex; background: var(--panel); border: 1px solid var(--line);
-              border-radius: 999px; overflow: hidden; z-index: 2; }
-.umschalter button { background: none; border: 0; padding: 3px 10px; font: 11px var(--mono); cursor: pointer; color: var(--ink-2); }
-.umschalter button.an { background: var(--accent); color: var(--accent-ink); }
 .bild-knopf { position: absolute; bottom: 8px; right: 8px; z-index: 2; background: var(--panel); border: 1px solid var(--line);
               border-radius: 999px; padding: 2px 9px; font-size: 12px; cursor: pointer; color: var(--ink-2); }
 .i-bild .laden { font: 11px var(--mono); color: var(--ink-3); }
@@ -325,3 +321,35 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
 .i-material { align-items: center; }
 .i-material .chip small { opacity: 0.6; }
 .i-material .chip.aktiv button { color: var(--accent-ink); }
+
+/* Galerie im Inspektor: blättern wie in einem Shop, eigene Bilder dazu */
+.galerie .i-bild { user-select: none; }
+.gal-pfeil { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 34px; height: 34px; border-radius: 50%;
+             border: 1px solid var(--line); background: color-mix(in oklch, var(--panel) 88%, transparent); color: var(--ink);
+             font-size: 22px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.15s; display: grid; place-items: center; }
+.gal-pfeil.links { left: 8px; } .gal-pfeil.rechts { right: 8px; }
+.i-bild:hover .gal-pfeil, .gal-pfeil:focus-visible { opacity: 1; }
+.gal-pfeil:hover { background: var(--panel); border-color: var(--line-strong); }
+@media (hover: none) { .gal-pfeil { opacity: 0.85; } }
+.gal-etikett { position: absolute; left: 8px; bottom: 8px; z-index: 2; font: 10.5px var(--mono); color: var(--ink-2);
+               background: color-mix(in oklch, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
+.gal-aktionen { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.i-bild:hover .gal-aktionen { opacity: 1; }
+@media (hover: none) { .gal-aktionen { opacity: 1; } }
+.gal-aktionen button { font: 11px var(--mono); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer;
+                       background: color-mix(in oklch, var(--panel) 90%, transparent); color: var(--ink-2); }
+.gal-aktionen button:hover { color: var(--ink); border-color: var(--line-strong); }
+.gal-leiste { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
+.gal-mini { flex: none; width: 52px; height: 52px; border-radius: 5px; border: 2px solid transparent; padding: 0; cursor: pointer;
+            background: linear-gradient(160deg, var(--plate-2), var(--plate)); overflow: hidden; display: grid; place-items: center;
+            outline: 1px solid var(--line); outline-offset: -1px; }
+.gal-mini img { width: 100%; height: 100%; object-fit: cover; }
+.gal-mini span { font: 600 11px var(--mono); color: var(--ink-2); }
+.gal-mini.an { border-color: var(--accent); outline: none; }
+.gal-mini.plus { background: none; outline: 1px dashed var(--line-strong); font-size: 20px; color: var(--ink-3); }
+.gal-mini.plus:hover { color: var(--accent); outline-color: var(--accent); }
+.gal-leer { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--ink-3); font-size: 12px; }
+.gal-abwurf { display: none; }
+.galerie.abwurf-ziel .i-bild { outline: 3px dashed var(--accent); outline-offset: -3px; }
+.galerie.abwurf-ziel .gal-abwurf { display: grid; place-items: center; position: absolute; inset: 0; z-index: 5; padding: 20px; text-align: center;
+                                    background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 14px; }

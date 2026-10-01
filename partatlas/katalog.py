@@ -17,7 +17,7 @@ import time
 
 from . import archiv, dateien, formate, tags
 from .suche import Suchindex
-from .bestand import (BILD, BRAUCHT, DATEI, HAT_BILD, HAT_DATEI, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
+from .bestand import (BRAUCHT, DATEI, HAT_DATEI, VORSCHAU_ARTEN, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
                       TAG, VORGESEHEN, WURZEL)
 
 
@@ -119,7 +119,7 @@ class Katalog:
         name = os.path.splitext(os.path.basename(orte[0]["pfad"]))[0]
         self.db.create_node(DATEI, h, {**felder, "orte": orte, "vorschau": vorschau,
                                        "fehler": fehler, "eingelesen": jetzt(),
-                                       "datei": self.b.vorschau_rel(h) if vorschau == "eingebettet" else None})
+                                       "vorschau_extrahiert": self.b.vorschau_rel(h, "extrahiert") if vorschau == "eingebettet" else None})
         mid = self.db.next_id(MODELL, "m_", 6)
         self.db.create_node(MODELL, mid, {
             "name": name, "favorit": False, "gedruckt": False, "quelle_url": None,
@@ -149,9 +149,18 @@ class Katalog:
 
     def vorschau_setzen(self, h, status):
         if self.db.get_node(ref(DATEI, h), readonly=True) is not None:
-            # Nur wo ein Bild geschrieben wurde, zeigt `datei` auf den Vault.
             self.db.update_node(DATEI, h, {"vorschau": status,
-                                           **({"datei": self.b.vorschau_rel(h)} if status == "gerendert" else {})})
+                                           **({"vorschau_berechnet": self.b.vorschau_rel(h, "berechnet")} if status == "gerendert" else {})})
+
+    def vorschauen(self, d):
+        """Die Vorschaubilder einer Datei: [(art, Pfad im Vault)], aus der Datei zuerst."""
+        return [(art, d[f"vorschau_{art}"]) for art in VORSCHAU_ARTEN if (d or {}).get(f"vorschau_{art}")]
+
+    def vorschau_datei(self, h):
+        """Bestes Vorschaubild als Pfad: aus der Datei vor berechnet."""
+        d = (self.db.get_node(ref(DATEI, h), readonly=True) or self.db.get_node_raw(ref(DATEI, h))) if h else None
+        v = self.vorschauen(d)
+        return self.b.pfad(*v[0][1].split("/")) if v else None
 
     def ausstehende_vorschauen(self):
         return [(h, d) for h, d in self._dateien().items() if d.get("vorschau") == "ausstehend"]
@@ -197,7 +206,9 @@ class Katalog:
             "angelegt": m.get("angelegt"), "warteschlange": m.get("warteschlange"),
             # Kurzer Hash des eigenen Bilds: ändert sich mit dem Bild und macht
             # die Adresse im Browser-Cache eindeutig.
-            "bild": self._bild_knoten(mid, papierkorb),
+            # Kennung des Titelbilds (das erste der Liste) — ändert sich mit
+            # dem Bild und macht die Adresse im Browser-Cache eindeutig.
+            "bild": (m.get("bilder") or [{}])[0].get("k"),
             "groesse": sum(o.get("groesse") or 0 for o in orte[:1]) or None,
         }
 
@@ -301,6 +312,7 @@ class Katalog:
             "papierkorb_ablage": d.get("papierkorb", []),
             "sammlungen": [] if papierkorb else self.sammlungen_von(mid),
             "material_herkunft": self.materialien_von(mid, kurz["hash"]) if not papierkorb else None,
+            "ansichten": self.ansichten(mid, m, d),
         }
 
     def modell_aendern(self, mid, werte):
@@ -417,21 +429,29 @@ class Katalog:
         self.db.update_node(DATEI, h, {"orte": [{"wurzel": wid, "pfad": os.path.relpath(ziel, wpfad).replace(os.sep, "/"),
                                                  "groesse": st.st_size, "mtime": st.st_mtime}]})
 
-    # ------------------------------------------------------------ Eigenes Bild
+    # ------------------------------------------------------------ Bilder des Anwenders
     #
-    # Ein hochgeladenes Bild ist Anwenderdaten, nicht abgeleitet: es gehört in
-    # den Vault (gesichert), nicht in den Cache. Pillow liest und schreibt es
-    # neu als PNG — so kommt nur ein Bild an, keine Metadaten, kein Anhängsel.
+    # Ein Modell kann mehrere Bilder haben (Foto vom Druck, Ansicht von
+    # hinten …). Sie hängen am Modell wie ein PDF am Dokument in pDMS: eine
+    # Liste `bilder` mit Verweisen in den Vault, kein Knoten je Bild. Das
+    # erste ist das Titelbild. Pillow liest und schreibt jedes neu als PNG —
+    # so kommt nur ein Bild an, keine Metadaten, kein Anhängsel.
 
-    MAX_BILD = 5 * 1024**2
+    MAX_BILD = 15 * 1024**2
 
-    def bild_setzen(self, mid, daten):
-        from PIL import Image, UnidentifiedImageError
+    def _bilder(self, mid, papierkorb=False):
         m = self.db.get_node(ref(MODELL, mid), readonly=True)
+        if m is None and papierkorb:
+            m = self.db.get_node_raw(ref(MODELL, mid))
         if m is None:
             raise KatalogFehler(f"Modell {mid} gibt es nicht.")
+        return m, list(m.get("bilder") or [])
+
+    def bild_hinzufuegen(self, mid, daten):
+        from PIL import Image, ImageOps, UnidentifiedImageError
+        m, bilder = self._bilder(mid)
         if len(daten) > self.MAX_BILD:
-            raise KatalogFehler("Bild grösser als 5 MB.")
+            raise KatalogFehler("Bild grösser als 15 MB.")
         try:
             bild = Image.open(io.BytesIO(daten))
             if bild.format not in ("PNG", "JPEG", "WEBP"):
@@ -439,52 +459,66 @@ class Katalog:
             bild.load()
         except (UnidentifiedImageError, OSError) as e:
             raise KatalogFehler("Kein lesbares Bild.") from e
-        bild = bild.convert("RGBA")
-        bild.thumbnail((1024, 1024))
+        # Handyfotos liegen sonst quer: die Drehung steht nur in den Exif-Daten,
+        # und die fallen beim Neuschreiben weg.
+        bild = ImageOps.exif_transpose(bild).convert("RGBA")
+        bild.thumbnail((1600, 1600))
         puffer = io.BytesIO()
         bild.save(puffer, "PNG", optimize=True)
         png = puffer.getvalue()
+        k = hashlib.sha256(png).hexdigest()[:12]
+        if any(b["k"] == k for b in bilder):
+            return k
         titel = re.sub(r"[^\w.-]+", "_", m.get("name") or mid)[:60]
-        rel = f"vault/bilder/{titel}__{mid}__{hashlib.sha256(png).hexdigest()[:12]}.png"
+        rel = f"vault/bilder/{titel}__{k}.png"
         ziel = self.b.pfad(*rel.split("/"))
         if not os.path.exists(ziel):
             dateien.schreibe_atomar(ziel, png)
-        with self.db.transaction():
-            self._bild_anlegen(mid, rel)
+        self.db.update_node(MODELL, mid, {"bilder": bilder + [{"k": k, "datei": rel, "angelegt": jetzt()}]})
+        return k
 
-    def _bild_anlegen(self, mid, rel):
-        """Ein Bild je Modell: ein neues ersetzt das alte (das geht in den Papierkorb)."""
-        self._bild_loesen(mid)
-        iid = self.db.next_id(BILD, "i_", 6)
-        self.db.create_node(BILD, iid, {"name": os.path.basename(rel), "datei": rel, "angelegt": jetzt()})
-        self.db.create_edge(ref(MODELL, mid), ref(BILD, iid), HAT_BILD, cascade_delete=True)
+    def bild_entfernen(self, mid, k):
+        """Aus der Liste; die Datei geht nach vault_archive — wie in pDMS
+        verschwindet nichts, was der Anwender selbst hineingetan hat."""
+        _, bilder = self._bilder(mid)
+        weg = [b for b in bilder if b["k"] == k]
+        if not weg:
+            raise KatalogFehler("Dieses Bild gibt es nicht.")
+        self.db.update_node(MODELL, mid, {"bilder": [b for b in bilder if b["k"] != k]})
+        self._archivieren(weg[0]["datei"])
 
-    def _bild_loesen(self, mid):
-        for r in self.db.get_connected(ref(MODELL, mid), rel_type=HAT_BILD):
-            self.db.soft_delete(BILD, r.split("/", 1)[1])
+    def bild_als_titel(self, mid, k):
+        _, bilder = self._bilder(mid)
+        if not any(b["k"] == k for b in bilder):
+            raise KatalogFehler("Dieses Bild gibt es nicht.")
+        self.db.update_node(MODELL, mid, {"bilder": sorted(bilder, key=lambda b: b["k"] != k)})
 
-    def bild_entfernen(self, mid):
-        # Der Knoten geht in den Papierkorb; die Datei bleibt im Vault, auch
-        # nach dem Müllsammler — Bilder des Anwenders gehen nie verloren
-        # (flatgraph archiviert nur, wenn man es beim Löschen verlangt).
-        with self.db.transaction():
-            self._bild_loesen(mid)
-
-    def _bild_knoten(self, mid, papierkorb=False):
-        for r in self.db.get_connected(ref(MODELL, mid), rel_type=HAT_BILD, include_deleted=papierkorb):
-            if not papierkorb:
-                return r.split("/", 1)[1]
-            # Im Papierkorb zählt nur, was mit dem Modell dorthin ging — ein
-            # früher ersetztes Bild liegt ebenfalls dort, gehört aber nicht mehr dazu.
-            b = self.db.get_node_raw(r) or {}
-            if not b.get("_deletion_flag") or b.get("_geloescht_durch") == ref(MODELL, mid):
-                return r.split("/", 1)[1]
-        return None
-
-    def bild_pfad(self, mid):
-        iid = self._bild_knoten(mid, papierkorb=True)
-        b = (self.db.get_node(ref(BILD, iid), readonly=True) or self.db.get_node_raw(ref(BILD, iid))) if iid else None
+    def bild_pfad(self, mid, k=None):
+        """Pfad eines Bilds, ohne `k` das Titelbild. Auch im Papierkorb."""
+        try:
+            _, bilder = self._bilder(mid, papierkorb=True)
+        except KatalogFehler:
+            return None
+        b = next((b for b in bilder if k is None or b["k"] == k), None)
         return self.b.pfad(*b["datei"].split("/")) if b else None
+
+    def _archivieren(self, rel):
+        quelle = self.b.pfad(*rel.split("/"))
+        if os.path.exists(quelle):
+            ziel = dateien.freier_name(self.b.pfad("vault_archive", os.path.basename(rel)))
+            os.makedirs(os.path.dirname(ziel), exist_ok=True)
+            dateien.verschiebe(quelle, ziel)
+
+    def ansichten(self, mid, m, d):
+        """Was die Galerie im Inspektor durchblättert, in dieser Reihenfolge:
+        die Bilder des Anwenders, dann was in der Datei steckt, dann was
+        partAtlas berechnet hat. Die 3D-Ansicht fügt die Oberfläche ein."""
+        eigene = [{"art": "eigen", "k": b["k"], "url": f"/api/modelle/{mid}/bilder/{b['k']}",
+                   "titel": "Titelbild" if i == 0 else "Eigenes Bild"} for i, b in enumerate(m.get("bilder") or [])]
+        h = self.datei_von(mid) or self._datei_im_papierkorb(mid)
+        titel = {"extrahiert": "Aus der Datei", "berechnet": "Vorschau"}
+        return eigene + [{"art": art, "url": f"/api/vorschau/{h}.{art}.png", "titel": titel[art]}
+                         for art, _ in self.vorschauen(d)]
 
     # ------------------------------------------------------------ Hochladen und Archive
 
@@ -566,11 +600,12 @@ class Katalog:
         return {"fehler": fehler}
 
     def loeschvorschau_viele(self, modelle):
-        ergebnis = {"knoten": [], "kanten": {}, "dateien": []}
+        ergebnis = {"knoten": [], "kanten": {}, "dateien": [], "bilder": 0}
         for mid in modelle:
             v = self.loeschvorschau(mid)
             ergebnis["knoten"] += v["knoten"]
             ergebnis["dateien"] += v["dateien"]
+            ergebnis["bilder"] += v["bilder"]
             for k, n in v["kanten"].items():
                 ergebnis["kanten"][k] = ergebnis["kanten"].get(k, 0) + n
         return ergebnis
@@ -741,28 +776,56 @@ class Katalog:
                 self._datei_materialien(h, d)
 
     def _vault_nachziehen(self):
-        """Bestände von vorher: Vorschauen aus cache/ in den Vault (Feld
-        `datei`), eigene Bilder als Knoten. Erst die Dateien, dann die Knoten:
-        bricht es dazwischen ab, holt der nächste Start den Rest nach."""
-        alt = self.b.pfad("cache", "vorschau")
-        offen = {h: d for h, d in self.db.list_nodes(DATEI, include_deleted=True, readonly=True).items()
-                 if d.get("vorschau") in ("eingebettet", "gerendert") and not d.get("datei")}
-        bilder = {mid: m["bild"] for mid, m in self.db.list_nodes(MODELL, include_deleted=True, readonly=True).items()
-                  if m.get("bild")}
-        for h in offen:
-            ziel, quelle = self.b.vorschau_pfad(h), os.path.join(alt, f"{h}.png")
-            if not os.path.exists(ziel) and os.path.exists(quelle):
-                os.replace(quelle, ziel)
-        if offen or bilder:
+        """Bestände von vorher in die heutige Form bringen. Schreibt nur, wenn
+        etwas fehlt. Erst die Dateien, dann die Knoten: bricht es dazwischen
+        ab, holt der nächste Start den Rest nach.
+
+        - Vorschau ohne Art im Namen: `cache/vorschau/<h>.png` (bis 0.10)
+          oder `vault/vorschau/<h>.png` (0.11) → `<h>.<art>.png`, Feld dazu.
+        - Eigenes Bild als Feld `bild` (bis 0.10) oder als Knoten
+          MODEL_IMAGE (0.11) → Liste `bilder` am Modell.
+        """
+        alt_cache = self.b.pfad("cache", "vorschau")
+        art_von = {"eingebettet": "extrahiert", "gerendert": "berechnet"}
+        dateien_alt = {h: art_von[d["vorschau"]]
+                       for h, d in self.db.list_nodes(DATEI, include_deleted=True, readonly=True).items()
+                       if d.get("vorschau") in art_von and not d.get(f"vorschau_{art_von[d['vorschau']]}")}
+        for h, art in dateien_alt.items():
+            ziel = self.b.vorschau_pfad(h, art)
+            for quelle in (self.b.pfad("vault", "vorschau", f"{h}.png"), os.path.join(alt_cache, f"{h}.png")):
+                if not os.path.exists(ziel) and os.path.exists(quelle):
+                    os.replace(quelle, ziel)
+        modelle = self.db.list_nodes(MODELL, include_deleted=True, readonly=True)
+        feld_bild = {mid: m["bild"] for mid, m in modelle.items() if m.get("bild")}
+        knoten_bild = {}
+        for mid in modelle:
+            for kid, ziel in self.db.verwendungen(ref(MODELL, mid), direction="out").get("HAS_IMAGE", []):
+                knoten_bild.setdefault(mid, []).append((kid, ziel))
+        if dateien_alt or feld_bild or knoten_bild:
             with self.db.transaction():
-                for h in offen:
-                    if os.path.exists(self.b.vorschau_pfad(h)):
-                        self.db.update_node(DATEI, h, {"datei": self.b.vorschau_rel(h)})
-                for mid, rel in bilder.items():
-                    if os.path.exists(self.b.pfad(*rel.split("/"))):
-                        self._bild_anlegen(mid, rel)
-                    self.db.update_node(MODELL, mid, {"bild": None})
-        for ordner in (alt, os.path.dirname(alt)):
+                for h, art in dateien_alt.items():
+                    if os.path.exists(self.b.vorschau_pfad(h, art)):
+                        self.db.update_node(DATEI, h, {f"vorschau_{art}": self.b.vorschau_rel(h, art), "datei": None})
+                for mid in set(feld_bild) | set(knoten_bild):
+                    bilder = list(modelle[mid].get("bilder") or [])
+                    pfade = [feld_bild[mid]] if mid in feld_bild else []
+                    for _, ziel in knoten_bild.get(mid, []):
+                        b = self.db.get_node_raw(ziel) or {}
+                        # Ein in 0.11 ersetztes Bild lag schon im Papierkorb: nicht mehr dabei.
+                        if b.get("datei") and (not b.get("_deletion_flag") or b.get("_geloescht_durch") == ref(MODELL, mid)):
+                            pfade.append(b["datei"])
+                        # soft_delete nimmt die Kante mit; ein schon gelöschter Knoten hat keine sichtbare mehr.
+                        if not b.get("_deletion_flag"):
+                            self.db.soft_delete(*ziel.split("/", 1))
+                    for rel in pfade:
+                        pfad = self.b.pfad(*rel.split("/"))
+                        if os.path.exists(pfad):
+                            with open(pfad, "rb") as f:
+                                k = hashlib.sha256(f.read()).hexdigest()[:12]
+                            if not any(x["k"] == k for x in bilder):
+                                bilder.append({"k": k, "datei": rel, "angelegt": jetzt()})
+                    self.db.update_node(MODELL, mid, {"bilder": bilder, "bild": None})
+        for ordner in (alt_cache, os.path.dirname(alt_cache)):
             try:
                 os.rmdir(ordner)
             except OSError:
@@ -862,6 +925,7 @@ class Katalog:
             "knoten": folgen["knoten"],
             "kanten": kanten,
             "dateien": [self.absoluter_pfad(o) for o in (d or {}).get("orte", [])],
+            "bilder": len((self.db.get_node(ref(MODELL, mid), readonly=True) or {}).get("bilder") or []),
         }
 
     def loeschen(self, mid):
@@ -929,12 +993,15 @@ class Katalog:
                     pass
             if h:
                 weg.append(h)
+            # Bilder des Anwenders gehen ins Archiv, nicht ins Nichts.
+            for b in (self.db.get_node_raw(ref(MODELL, mid)) or {}).get("bilder") or []:
+                self._archivieren(b["datei"])
         self.db.run_garbage_collection()
         for h in weg:
-            try:
-                # Kaskaden-Ziele behalten ihren Anhang (flatgraph, _weich_loeschen),
-                # und eine neu erzeugbare Vorschau soll nicht liegen bleiben.
-                os.unlink(self.b.vorschau_pfad(h))
-            except FileNotFoundError:
-                pass
+            for art in VORSCHAU_ARTEN:
+                try:
+                    # Vorschauen sind abgeleitet: mit der Datei weg.
+                    os.unlink(self.b.vorschau_pfad(h, art))
+                except FileNotFoundError:
+                    pass
         return len(weg)

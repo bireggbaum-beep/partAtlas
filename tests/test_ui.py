@@ -71,11 +71,11 @@ async def oberflaeche(port):
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
         check("Klick auf eine Kachel: 3D-Ansicht im Inspektor", await pg.locator("#i-bild canvas").count() == 1)
-        await pg.click('[data-ansicht3d="bild"]')
+        await pg.click('.gal-mini[data-art="berechnet"]')
         await pg.wait_for_timeout(500)
-        check("Umschalten auf Bild: gerenderte Vorschau statt 3D",
+        check("Galerie: Kachel „Vorschau“ zeigt das gerenderte Bild statt 3D",
               await pg.locator("#i-bild img").count() == 1 and await pg.locator("#i-bild canvas").count() == 0)
-        await pg.click('[data-ansicht3d="3d"]')
+        await pg.click('.gal-mini[data-art="3d"]')
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
 
         # Tag setzen: die 3D-Ansicht bleibt stehen (kein neues Netz).
@@ -86,6 +86,26 @@ async def oberflaeche(port):
         check("Tag im Inspektor gesetzt, Chip sichtbar", "#deko" in await pg.inner_text(".i-tags"))
         check("… und die 3D-Ansicht wurde dabei nicht neu aufgebaut",
               await pg.evaluate("(c) => c.isConnected", canvas))
+
+        # -- Eigene Bilder: zwei auf einmal hinzufügen, das zuletzt geladene wird gezeigt, blättern
+        from PIL import Image
+        fotos = []
+        for i, farbe in enumerate([(200, 40, 40), (40, 40, 200)]):
+            fotos.append(os.path.join(os.path.dirname(SAMMLUNG), f"foto{i}.png"))
+            Image.new("RGB", (64, 48), farbe).save(fotos[-1])
+        await pg.set_input_files("#bild-wahl", fotos)
+        await pg.wait_for_function("document.querySelectorAll('.gal-mini[data-art=eigen]').length === 2", timeout=10000)
+        await pg.wait_for_timeout(500)
+        etikett = await pg.inner_text(".gal-etikett")
+        check("Zwei eigene Bilder: vorn in der Leiste, das zuletzt geladene ist zu sehen (2 / 4)",
+              etikett.startswith("Eigenes Bild") and "2 / 4" in etikett and await pg.locator("#i-bild img").count() == 1)
+        await pg.hover("#i-bild")
+        await pg.keyboard.press("ArrowLeft")
+        await pg.wait_for_timeout(300)
+        await pg.click(".gal-pfeil.links")
+        await pg.wait_for_timeout(300)
+        check("Blättern mit Pfeiltaste und Pfeil: vom Titelbild rückwärts ans Ende (Vorschau, 4 / 4)",
+              (await pg.inner_text(".gal-etikett")).startswith("Vorschau · 4 / 4"))
 
         # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
         check("Hauptknopf nennt den Standard fürs Format (STL → Slicer)",

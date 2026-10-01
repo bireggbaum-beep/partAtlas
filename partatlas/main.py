@@ -315,23 +315,34 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         zustand["scanner"].starten()
         return ergebnis
 
-    # ---------------------------------------------------------------- Eigenes Bild
+    # ---------------------------------------------------------------- Bilder des Anwenders
 
-    @app.get("/api/modelle/{mid}/bild")
-    def bild(mid: str):
-        pfad = K().bild_pfad(mid)
+    def _bild_antwort(pfad):
         if not pfad or not os.path.exists(pfad):
             raise HTTPException(404)
+        # Die Kennung ist der Hash des Inhalts: ein anderes Bild hat eine andere Adresse.
         return FileResponse(pfad, media_type="image/png", headers={"Cache-Control": "max-age=31536000, immutable"})
 
-    @app.post("/api/modelle/{mid}/bild")
-    async def bild_setzen(mid: str, request: Request):
-        K().bild_setzen(mid, await request.body())
+    @app.get("/api/modelle/{mid}/bild")
+    def titelbild(mid: str):
+        return _bild_antwort(K().bild_pfad(mid))
+
+    @app.get("/api/modelle/{mid}/bilder/{k}")
+    def bild(mid: str, k: str):
+        return _bild_antwort(K().bild_pfad(mid, k))
+
+    @app.post("/api/modelle/{mid}/bilder")
+    async def bild_dazu(mid: str, request: Request):
+        return {"k": K().bild_hinzufuegen(mid, await request.body())}
+
+    @app.post("/api/modelle/{mid}/bilder/{k}/titel")
+    def bild_titel(mid: str, k: str):
+        K().bild_als_titel(mid, k)
         return {"ok": True}
 
-    @app.delete("/api/modelle/{mid}/bild")
-    def bild_weg(mid: str):
-        K().bild_entfernen(mid)
+    @app.delete("/api/modelle/{mid}/bilder/{k}")
+    def bild_weg(mid: str, k: str):
+        K().bild_entfernen(mid, k)
         return {"ok": True}
 
     # ---------------------------------------------------------------- Mehrere auf einmal
@@ -484,11 +495,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def ordner():
         return K().ordnerbaum()
 
-    @app.get("/api/vorschau/{h}.png")
-    def vorschaubild(h: str):
-        if not all(c in "0123456789abcdef" for c in h) or len(h) != 64:
+    @app.get("/api/vorschau/{name}")
+    def vorschaubild(name: str):
+        # <hash>.png = das beste Bild (für die Kachel), <hash>.<art>.png = genau dieses.
+        m = re.fullmatch(r"([0-9a-f]{64})(?:\.(extrahiert|berechnet))?\.png", name)
+        if not m:
             raise HTTPException(404)
-        pfad = zustand["bestand"].vorschau_pfad(h)
+        h, art = m.groups()
+        pfad = zustand["bestand"].vorschau_pfad(h, art) if art else K().vorschau_datei(h)
+        if not pfad:
+            raise HTTPException(404)
         if not os.path.exists(pfad):
             raise HTTPException(404)
         return FileResponse(pfad, media_type="image/png",

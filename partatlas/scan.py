@@ -42,7 +42,7 @@ def _hash(pfad):
 
 def _analyse(pfad, vorschau_ziel):
     """Felder für den Graphen und den Vorschau-Status. Schreibt ein
-    eingebettetes Bild gleich selbst in den Cache."""
+    eingebettetes Bild gleich selbst in den Vault."""
     try:
         a = formate.analysiere(pfad)
     except formate.FormatFehler as e:
@@ -164,7 +164,7 @@ class Scanner:
             self._setze(verschoben=sum(1 for o in ortwechsel if o[0]), phase="analysieren",
                         zu_analysieren=len(neu_je_hash), analysiert=0)
 
-            auftraege = {pool.submit(_analyse, faelle[0][1], self.b.vorschau_pfad(h)): h
+            auftraege = {pool.submit(_analyse, faelle[0][1], self.b.vorschau_pfad(h, "extrahiert")): h
                          for h, faelle in neu_je_hash.items()}
             gruppe = []
             for fertig in as_completed(auftraege):
@@ -210,7 +210,7 @@ class Scanner:
             farbe = next((f.get("farbe") for p in d.get("platten") or [] for f in p.get("filamente", [])
                           if f.get("farbe")), None)
             if pfad:
-                auftraege[pool.submit(_rendern, pfad, self.b.vorschau_pfad(h), farbe)] = h
+                auftraege[pool.submit(_rendern, pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)] = h
         rest = len(auftraege)
         for fertig in as_completed(auftraege):
             status, fehler = fertig.result()

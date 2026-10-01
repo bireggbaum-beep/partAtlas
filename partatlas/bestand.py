@@ -2,8 +2,10 @@
 Der Bestand von partAtlas: Ort, Aufteilung, flatgraph-Instanz.
 
     <bestand>/datenbank/   flatgraph                        gesichert
-    <bestand>/vault/       Anhänge der Knoten, Feld `datei`  gesichert
-                           (Vorschaubilder, eigene Bilder; Phase 2: G-Code)
+    <bestand>/vault/       Anhänge der Knoten                gesichert
+      vorschau/<hash>.extrahiert.png  Bild aus der Datei (3MF)  ─┐ gehören zur Datei
+      vorschau/<hash>.berechnet.png   von partAtlas gerendert   ─┘ (PART_GEOMETRY)
+      bilder/<Name>__<k>.png          Bilder des Anwenders, Liste am Modell
     <bestand>/vault_text/  lange Texte (ab LANGTEXT_AB Zeichen)  gesichert
     <bestand>/papierkorb/  gelöschte Modelldateien           bis zum Leeren
     <bestand>/arbeit/      Arbeitsdateien, nie /tmp
@@ -30,10 +32,7 @@ IN_SAMMLUNG = "IN_COLLECTION"
 # Texte ab so vielen Zeichen liegen als Datei in vault_text/ und werden erst
 # gelesen, wenn man sie braucht (get_node_full) — nicht mit jedem Knoten im RAM.
 LANGTEXT_AB = 1000
-# Eigenes Bild eines Modells: ein Knoten mit `datei` im Vault, per Kante mit
-# cascade_delete — es geht mit dem Modell in den Papierkorb und zurück.
-BILD = "MODEL_IMAGE"
-HAT_BILD = "HAS_IMAGE"
+VORSCHAU_ARTEN = ("extrahiert", "berechnet")
 # Material ist ein Knoten, nicht Text: Modell ─[vorgesehen]→ Material vom
 # Anwender, Datei ─[braucht]→ Material aus den Slicer-Daten (später auch
 # der G-Code, KONZEPT §6). Ein Chip „PETG“ ist dann die Nachbarschaft.
@@ -80,13 +79,15 @@ class Bestand:
     def pfad(self, *teile):
         return os.path.join(self.wurzel, *teile)
 
-    def vorschau_pfad(self, datei_hash):
-        return self.pfad("vault", "vorschau", f"{datei_hash}.png")
+    def vorschau_pfad(self, datei_hash, art):
+        return self.pfad(*self.vorschau_rel(datei_hash, art).split("/"))
 
     @staticmethod
-    def vorschau_rel(datei_hash):
-        # Das Feld `datei` ist vault-relativ zur Wurzel — so liest es flatgraph.
-        return f"vault/vorschau/{datei_hash}.png"
+    def vorschau_rel(datei_hash, art):
+        # Die Art steht im Namen: ein neu gerendertes Bild überschreibt nie
+        # das aus der Datei, und man sieht im Vault, was wovon kommt.
+        assert art in VORSCHAU_ARTEN
+        return f"vault/vorschau/{datei_hash}.{art}.png"
 
     # -- Einstellungen: klein, selten geändert, kein Teil des Graphen.
 

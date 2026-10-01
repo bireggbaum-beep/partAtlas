@@ -78,53 +78,77 @@ if __name__ == "__main__":
         c.patch(f"/api/modelle/{m['Welle']}", json={"quelle_url": ""})
         check("Leere Quelle entfernt sie", c.get(f"/api/modelle/{m['Welle']}").json()["quelle_url"] is None)
 
-        # -- Eigenes Bild
-        puffer = io.BytesIO()
-        Image.new("RGB", (2000, 1000), (200, 50, 50)).save(puffer, "JPEG")
-        r = c.post(f"/api/modelle/{m['Welle']}/bild", content=puffer.getvalue())
-        kachel = next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])
-        bild = c.get(f"/api/modelle/{m['Welle']}/bild")
-        gross = Image.open(io.BytesIO(bild.content))
-        check("Eigenes Bild: als PNG neu geschrieben, höchstens 1024 px, Kachel kennt es",
-              r.status_code == 200 and kachel["bild"] and gross.format == "PNG" and max(gross.size) == 1024)
-        check("… liegt im Vault (gesichert), nicht im Cache",
-              any(n.endswith(".png") for n in os.listdir(os.path.join(tmp, "bestand", "vault", "bilder"))))
-        check("Kein Bild (Text) wird abgelehnt",
-              c.post(f"/api/modelle/{m['Welle']}/bild", content=b"<svg onload=alert(1)>").status_code == 400)
-        check("Über 5 MB wird abgelehnt",
-              c.post(f"/api/modelle/{m['Welle']}/bild", content=b"\0" * (5 * 1024**2 + 1)).status_code == 400)
+        # -- Bilder des Anwenders: Liste am Modell, Dateien im Vault
+        def jpeg(farbe, gross=(2000, 1000)):
+            p = io.BytesIO()
+            Image.new("RGB", gross, farbe).save(p, "JPEG")
+            return p.getvalue()
+
         db = c.app.state.zustand["bestand"].db
         mref = f"MODEL_ASSET/{m['Welle']}"
-        iid = db.get_connected(mref, rel_type="HAS_IMAGE")[0]
-        datei = db.get_node(iid, readonly=True)["datei"]
-        check("Eigenes Bild ist ein Knoten mit `datei` im Vault, per Kante am Modell",
-              datei.startswith("vault/bilder/") and os.path.exists(os.path.join(tmp, "bestand", datei)) and kachel["bild"] == iid.split("/")[1])
-        puffer2 = io.BytesIO()
-        Image.new("RGB", (300, 300), (20, 200, 50)).save(puffer2, "PNG")
-        c.post(f"/api/modelle/{m['Welle']}/bild", content=puffer2.getvalue())
-        check("Neues Bild ersetzt das alte: ein Bild am Modell, das alte im Papierkorb, seine Datei bleibt",
-              len(db.get_connected(mref, rel_type="HAS_IMAGE")) == 1 and db.get_connected(mref, rel_type="HAS_IMAGE")[0] != iid
-              and db.get_node(iid, readonly=True) is None and os.path.exists(os.path.join(tmp, "bestand", datei)))
+        k1 = c.post(f"/api/modelle/{m['Welle']}/bilder", content=jpeg((200, 50, 50))).json()["k"]
+        k2 = c.post(f"/api/modelle/{m['Welle']}/bilder", content=jpeg((20, 200, 50), (300, 300))).json()["k"]
+        kachel = next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])
+        gross = Image.open(io.BytesIO(c.get(f"/api/modelle/{m['Welle']}/bilder/{k1}").content))
+        bilder = db.get_node(mref, readonly=True)["bilder"]
+        check("Zwei eigene Bilder als Liste am Modell (kein Knoten je Bild), Dateien im Vault",
+              [b["k"] for b in bilder] == [k1, k2] and all(os.path.exists(os.path.join(tmp, "bestand", b["datei"])) for b in bilder)
+              and all(b["datei"].startswith("vault/bilder/") for b in bilder) and "MODEL_IMAGE" not in db.list_collections())
+        check("Als PNG neu geschrieben, höchstens 1600 px; die Kachel zeigt das erste als Titelbild",
+              gross.format == "PNG" and max(gross.size) == 1600 and kachel["bild"] == k1)
+        ans = c.get(f"/api/modelle/{m['Welle']}").json()["ansichten"]
+        check("Galerie: eigene Bilder zuerst (das erste heisst Titelbild), dann die berechnete Vorschau",
+              [(a["art"], a.get("k"), a["titel"]) for a in ans]
+              == [("eigen", k1, "Titelbild"), ("eigen", k2, "Eigenes Bild"), ("berechnet", None, "Vorschau")]
+              and c.get(ans[2]["url"]).status_code == 200)
+        c.post(f"/api/modelle/{m['Welle']}/bilder/{k2}/titel")
+        check("Als Titelbild: rückt nach vorn, die Kachel folgt",
+              [b["k"] for b in db.get_node(mref, readonly=True)["bilder"]] == [k2, k1]
+              and next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] == k2)
+        check("Dasselbe Bild zweimal wird nicht doppelt",
+              c.post(f"/api/modelle/{m['Welle']}/bilder", content=jpeg((20, 200, 50), (300, 300))).json()["k"] == k2
+              and len(db.get_node(mref, readonly=True)["bilder"]) == 2)
+        check("Kein Bild (Text) wird abgelehnt",
+              c.post(f"/api/modelle/{m['Welle']}/bilder", content=b"<svg onload=alert(1)>").status_code == 400)
+        check("Über 15 MB wird abgelehnt",
+              c.post(f"/api/modelle/{m['Welle']}/bilder", content=b"\0" * (15 * 1024**2 + 1)).status_code == 400)
+        hoch = io.BytesIO()
+        foto = Image.new("RGB", (40, 20), (1, 2, 3))
+        exif = foto.getexif()
+        exif[0x0112] = 6   # Handy hochkant: Drehung nur in den Exif-Daten
+        foto.save(hoch, "JPEG", exif=exif)
+        k3 = c.post(f"/api/modelle/{m['Welle']}/bilder", content=hoch.getvalue()).json()["k"]
+        check("Handyfoto mit Drehung in den Exif-Daten steht aufrecht",
+              Image.open(io.BytesIO(c.get(f"/api/modelle/{m['Welle']}/bilder/{k3}").content)).size == (20, 40))
+        datei3 = next(b["datei"] for b in db.get_node(mref, readonly=True)["bilder"] if b["k"] == k3)
+        c.delete(f"/api/modelle/{m['Welle']}/bilder/{k3}")
+        archiv = os.path.join(tmp, "bestand", "vault_archive")
+        check("Bild entfernen: aus der Liste, die Datei geht ins Archiv, nicht ins Nichts",
+              [b["k"] for b in db.get_node(mref, readonly=True)["bilder"]] == [k2, k1]
+              and not os.path.exists(os.path.join(tmp, "bestand", datei3))
+              and os.path.basename(datei3) in os.listdir(archiv))
         v = c.get(f"/api/modelle/{m['Welle']}/loeschen").json()
-        check("Löschvorschau nennt das Bild", any(k.startswith("MODEL_IMAGE/") for k in v["knoten"]))
+        check("Löschvorschau nennt die Bilder", v["bilder"] == 2)
         c.post(f"/api/modelle/{m['Welle']}/loeschen")
-        check("Mit dem Modell im Papierkorb, sein Bild noch erreichbar (das ersetzte nicht)",
-              c.get(f"/api/modelle/{m['Welle']}/bild").status_code == 200
-              and Image.open(io.BytesIO(c.get(f"/api/modelle/{m['Welle']}/bild").content)).size == (300, 300))
+        check("Mit dem Modell im Papierkorb: Titelbild noch erreichbar",
+              Image.open(io.BytesIO(c.get(f"/api/modelle/{m['Welle']}/bild").content)).size == (300, 300))
         c.post(f"/api/modelle/{m['Welle']}/wiederherstellen")
-        check("Wiederhergestellt: das Bild ist wieder dran",
-              next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] is not None)
-        # Bestand von vorher: `bild` als Textfeld am Modell
-        db.update_node("MODEL_ASSET", m["Welle"], {"bild": datei})
-        c.delete(f"/api/modelle/{m['Welle']}/bild")
-        check("Bild entfernen: Kachel hat keins mehr, die Datei bleibt im Vault",
-              next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] is None
-              and not db.get_connected(mref, rel_type="HAS_IMAGE") and os.path.exists(os.path.join(tmp, "bestand", datei)))
-        db.update_node("MODEL_ASSET", m["Welle"], {"bild": datei})
+        check("Wiederhergestellt: beide Bilder wieder da",
+              [a.get("k") for a in c.get(f"/api/modelle/{m['Welle']}").json()["ansichten"] if a["art"] == "eigen"] == [k2, k1])
+
+        # -- Bestand von vorher: Feld `bild` (bis 0.10) und Knoten MODEL_IMAGE (0.11)
         from partatlas.katalog import Katalog
+        alt1 = db.get_node(mref, readonly=True)["bilder"][1]["datei"]
+        alt2 = db.get_node(mref, readonly=True)["bilder"][0]["datei"]
+        with db.transaction():
+            db.update_node("MODEL_ASSET", m["Welle"], {"bilder": None, "bild": alt1})
+            db.create_node("MODEL_IMAGE", "i_000001", {"datei": alt2})
+            db.create_edge(mref, "MODEL_IMAGE/i_000001", "HAS_IMAGE", cascade_delete=True)
         Katalog(c.app.state.zustand["bestand"])
-        check("Bestand von vorher: das Feld `bild` wird zum Knoten, das Feld ist leer",
-              len(db.get_connected(mref, rel_type="HAS_IMAGE")) == 1 and not db.get_node(mref, readonly=True).get("bild"))
+        n = db.get_node(mref, readonly=True)
+        check("Bestand von vorher: Feld und Bildknoten werden zur Liste, Kante weg, Feld leer",
+              [b["datei"] for b in n["bilder"]] == [alt1, alt2] and not n.get("bild")
+              and not db.verwendungen(mref, direction="out").get("HAS_IMAGE") and db.get_node("MODEL_IMAGE/i_000001") is None)
 
         # -- Hochladen
         r = c.post("/api/hochladen", params={"ordner": f"{w}/Deko", "name": "Stern.stl"}, content=stl_bytes())

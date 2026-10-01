@@ -346,6 +346,7 @@ async function loeschenViele(modelle) {
   const a = await dialog(`<h2>${modelle.length} Modelle löschen?</h2>
     <p>${v.dateien.length} Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihren Ordnern.</p>
     <ul>${v.dateien.slice(0, 8).map((d) => `<li>${esc(d)}</li>`).join("")}${v.dateien.length > 8 ? `<li>… und ${v.dateien.length - 8} weitere</li>` : ""}</ul>
+    ${v.bilder ? `<p>Mit dabei: ${v.bilder} eigene Bilder.</p>` : ""}
     <p class="dim">Mit in den Papierkorb (flatgraph <code>loeschfolgen</code>): ${v.knoten.length} Datei-Knoten${kanten ? "; Verknüpfungen: " + kanten : ""}.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">In den Papierkorb</button></div>`);
   if (a !== "ja") return;
@@ -418,7 +419,6 @@ async function waehle(id) {
   if (!id) { zustand.angezeigt = null; if (dreiDModul) (await dreiD()).schliessen(); $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`; return; }
   const [m, prog, materialien] = await Promise.all([api(`/api/modelle/${id}`), ladeProgramme(), api("/api/materialien")]);
   if (zustand.gewaehlt !== id) return;
-  const url = bildUrl(m);
   const zeilen = [
     ["Grösse", masse(m.masse) || "–"],
     ["Volumen", m.volumen_cm3 != null ? zahl(m.volumen_cm3) + " cm³" : "–"],
@@ -433,12 +433,13 @@ async function waehle(id) {
   const platten = m.platten.map((p) => `<div class="zeile"><span>Platte ${p.nr}</span><span>${p.filamente.map((f) =>
     `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 2)} g`).join("<br>")}</span></div>`).join("");
   const papierkorb = m.papierkorb;
-  // Dasselbe Modell neu gezeichnet (Tag dazu, Live-Meldung): die 3D-Ansicht
-  // bleibt stehen, statt das Netz neu zu laden.
-  const altesBild = zustand.angezeigt === id ? $("#i-bild") : null;
+  // Dasselbe Modell neu gezeichnet (Tag dazu, Live-Meldung): die Galerie
+  // bleibt stehen, samt 3D-Ansicht — ausser es kam ein Bild dazu oder weg.
+  const sig = JSON.stringify([m.papierkorb, m.ansichten.map((a) => a.url)]);
+  const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
   $("#inspektor").innerHTML = `
     ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
-    <div class="i-bild" id="i-bild"></div>
+    <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
     <div class="i-name">${esc(m.name)}${esc(endung[m.format] || "")}</div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? `<p class="fehler">Die Datei ist an keinem bekannten Ort mehr. Tags und Historie bleiben erhalten.</p>` : ""}
@@ -469,53 +470,171 @@ async function waehle(id) {
          ${oeffnenKnoepfe(m, prog)}
          <button class="knopf" id="umbenennen">Umbenennen</button>
          <button class="knopf" id="verschieben">Verschieben …</button>
-         <button class="knopf" id="bild-hoch">Bild hochladen</button>
-         ${m.bild ? `<button class="knopf" id="bild-weg">Eigenes Bild entfernen</button>` : ""}
          <button class="knopf gefahr" id="loeschen">Löschen</button>`}</div>`;
   $("#inspektor").dataset.id = id;
-  if (altesBild) { $("#i-bild").replaceWith(altesBild); return; }
+  if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }
   zustand.angezeigt = id;
-  zeigeBild(m, url);
+  zeigeGalerie(m);
 }
 
-// ---------------------------------------------------------------- 3D oder Bild
+// ---------------------------------------------------------------- Galerie
 //
-// Wie im 3MF Katalog umschaltbar; die Wahl bleibt gespeichert. Ohne WebGL
-// (alte Hardware) gibt es nur das Bild — das rendert der Server.
+// Alles, was es zu einem Modell zu sehen gibt, zum Durchblättern: die
+// eigenen Bilder (das erste ist das Titelbild), die 3D-Ansicht, das Bild aus
+// der Datei, die berechnete Vorschau. Blättern mit Pfeilen, Kacheln,
+// Pfeiltasten oder Wischen; eigene Bilder per ＋, Hineinziehen oder Strg+V.
+// Ohne WebGL fehlt nur die 3D-Ansicht.
 
 let viewer = null, dreiDModul = null;
+const galerie = { m: null, folien: [], i: 0, ziel: null };
 async function dreiD() {
   if (!dreiDModul) dreiDModul = import("/web/viewer.js");
   return dreiDModul;
 }
 
-async function zeigeBild(m, url) {
-  const feld = $("#i-bild");
-  if (!feld) return;
+async function zeigeGalerie(m) {
   const hatNetz = !m.papierkorb && !m.fehlt && !m.fehler_text && m.format !== "step";
   const v = await dreiD().catch(() => null);
+  if (zustand.gewaehlt !== m.id) return;
   const kann3d = hatNetz && v && v.webglMoeglich();
-  const will3d = kann3d && localStorageLesen("ansicht") !== "bild";
-  if (v) v.schliessen();
+  const eigene = m.ansichten.filter((a) => a.art === "eigen");
+  const folien = [...eigene, ...(kann3d ? [{ art: "3d", titel: "3D-Ansicht" }] : []),
+                  ...m.ansichten.filter((a) => a.art !== "eigen")];
+  // Start: das Titelbild, wenn es eins gibt; sonst was man zuletzt wollte.
+  let i = 0;
+  if (galerie.ziel) i = Math.max(0, folien.findIndex((f) => f.k === galerie.ziel));
+  else if (!eigene.length && kann3d && localStorageLesen("ansicht") === "bild") i = Math.min(folien.length - 1, 1);
+  galerie.ziel = null;
+  Object.assign(galerie, { m, folien, i });
+  zeichneGalerie();
+}
+
+function galerieBlaettern(schritt) {
+  const n = galerie.folien.length;
+  if (n < 2) return;
+  galerieZeigen((galerie.i + schritt + n) % n);
+}
+
+function galerieZeigen(i) {
+  if (i === galerie.i) return;
+  galerie.i = i;
+  const f = galerie.folien[i];
+  if (f.art === "3d") localStorageSchreiben("ansicht", "3d");
+  else if (f.art !== "eigen") localStorageSchreiben("ansicht", "bild");
+  zeichneGalerie();
+}
+
+async function zeichneGalerie() {
+  const { m, folien, i } = galerie;
+  const feld = $("#i-galerie");
+  if (!feld || !m) return;
+  const f = folien[i];
+  const n = folien.length;
+  const darf = !m.papierkorb;
+  if (dreiDModul) (await dreiD()).schliessen();
   viewer = null;
-  const umschalter = kann3d ? `<div class="umschalter"><button data-ansicht3d="3d" class="${will3d ? "an" : ""}">3D-Ansicht</button><button data-ansicht3d="bild" class="${will3d ? "" : "an"}">Bild</button></div>` : "";
-  if (!will3d) {
-    feld.innerHTML = umschalter + (url ? `<img src="${url}" alt="">` : `<span class="dim">${m.format === "step" ? "STEP · nur CAD" : "keine Vorschau"}</span>`);
-    return;
-  }
-  feld.innerHTML = umschalter + `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`;
+  const pfeile = n > 1 ? `<button class="gal-pfeil links" data-gal="-1" title="Vorheriges (←)">‹</button>
+    <button class="gal-pfeil rechts" data-gal="1" title="Nächstes (→)">›</button>` : "";
+  const ersteEigene = folien.findIndex((x) => x.art === "eigen");
+  const aktionen = f && f.art === "eigen" && darf ? `<div class="gal-aktionen">
+    ${i !== ersteEigene ? `<button data-gal-titel="${esc(f.k)}" title="Dieses Bild auf der Kachel zeigen">★ Als Titelbild</button>` : ""}
+    <button data-gal-weg="${esc(f.k)}" title="Bild entfernen">Entfernen</button></div>` : "";
+  const leer = `<div class="gal-leer"><span>${m.format === "step" ? "STEP · nur CAD" : "Keine Vorschau"}</span>
+    ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`;
+  const haupt = !f ? leer
+    : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
+    : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
+  const minis = folien.map((x, j) => `<button class="gal-mini ${j === i ? "an" : ""}" data-gal-i="${j}" data-art="${x.art}" title="${esc(x.titel)}">
+      ${x.art === "3d" ? "<span>3D</span>" : `<img src="${esc(x.url)}" alt="" loading="lazy">`}</button>`).join("");
+  feld.innerHTML = `<div class="i-bild" id="i-bild">${haupt}${pfeile}
+      ${f ? `<span class="gal-etikett">${esc(f.titel)}${n > 1 ? ` · ${i + 1} / ${n}` : ""}</span>` : ""}${aktionen}
+      <div class="gal-abwurf">Als Bild zu „${esc(m.name)}“ hinzufügen</div></div>
+    ${f && (n > 1 || darf) ? `<div class="gal-leiste">${minis}${darf ? `<button class="gal-mini plus" data-gal-plus title="Eigene Bilder hinzufügen (oder hineinziehen, Strg+V)">＋</button>` : ""}</div>` : ""}`;
+  if (f && f.art === "3d") lade3d(m);
+}
+
+async function lade3d(m) {
+  const feld = $("#i-bild");
   try {
+    const v = await dreiD();
     const antwort = await fetch(`/api/modelle/${m.id}/netz`);
     if (!antwort.ok) throw new Error((await antwort.json().catch(() => ({}))).detail || "Netz nicht lesbar");
     const puffer = await antwort.arrayBuffer();
-    if (zustand.gewaehlt !== m.id || !$("#i-bild")) return;
+    if (zustand.gewaehlt !== m.id || galerie.folien[galerie.i]?.art !== "3d" || !feld.isConnected) return;
     feld.querySelector(".laden")?.remove();
     const farbe = m.platten.flatMap((p) => p.filamente).map((f) => f.farbe).find(Boolean) || null;
     viewer = v.zeige(feld, puffer, farbe);
   } catch (e) {
-    feld.innerHTML = umschalter + (url ? `<img src="${url}" alt="">` : "") + `<span class="dim">${esc(e.message)}</span>`;
+    const laden = feld.querySelector(".laden");
+    if (laden) laden.textContent = e.message;
   }
 }
+
+async function bilderHochladen(dateien) {
+  const id = galerie.m?.id;
+  const bilder = [...dateien].filter((f) => /^image\/(png|jpeg|webp)$/.test(f.type));
+  if (!id || galerie.m.papierkorb) return;
+  if (!bilder.length) return toast("Nur PNG, JPG oder WebP.");
+  let letztes = null;
+  for (const f of bilder) {
+    const r = await fetch(`/api/modelle/${id}/bilder`, { method: "POST", body: f });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(d.fehler || "Bild nicht gespeichert."); continue; }
+    letztes = d.k;
+  }
+  if (!letztes) return;
+  toast(bilder.length > 1 ? `${bilder.length} Bilder hinzugefügt.` : "Bild hinzugefügt.");
+  galerie.ziel = letztes;
+  zustand.angezeigt = null;
+  if (zustand.gewaehlt === id) waehle(id);
+}
+
+document.addEventListener("click", async (e) => {
+  const t = e.target;
+  if (!t.closest?.("#i-galerie")) return;
+  const m = galerie.m;
+  const schritt = t.closest("[data-gal]");
+  if (schritt) return galerieBlaettern(Number(schritt.dataset.gal));
+  const mini = t.closest("[data-gal-i]");
+  if (mini) return galerieZeigen(Number(mini.dataset.galI));
+  if (t.closest("[data-gal-plus]")) return $("#bild-wahl").click();
+  const titel = t.closest("[data-gal-titel]");
+  if (titel) {
+    await api(`/api/modelle/${m.id}/bilder/${titel.dataset.galTitel}/titel`, { method: "POST" });
+    toast("Titelbild gesetzt.");
+    galerie.ziel = titel.dataset.galTitel;
+    zustand.angezeigt = null;
+    return waehle(m.id);
+  }
+  const weg = t.closest("[data-gal-weg]");
+  if (weg) {
+    const a = await dialog(`<h2>Bild entfernen?</h2><p class="dim">Es verschwindet aus partAtlas. Die Datei bleibt im Archiv des Bestands (<code>vault_archive</code>).</p>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
+    if (a !== "ja") return;
+    await api(`/api/modelle/${m.id}/bilder/${weg.dataset.galWeg}`, { method: "DELETE" });
+    zustand.angezeigt = null;
+    return waehle(m.id);
+  }
+});
+
+// Wischen auf dem Bild (Tablet, Touchpad-Klick-Ziehen) — nicht auf der 3D-Ansicht, die dreht.
+let wischStart = null;
+document.addEventListener("pointerdown", (e) => { wischStart = e.target.closest?.("#i-bild img") ? e.clientX : null; });
+document.addEventListener("pointerup", (e) => {
+  if (wischStart == null) return;
+  const dx = e.clientX - wischStart;
+  wischStart = null;
+  if (Math.abs(dx) > 40) galerieBlaettern(dx < 0 ? 1 : -1);
+});
+
+// Bild aus der Zwischenablage: Bildschirmfoto, Bild aus dem Browser kopiert.
+document.addEventListener("paste", (e) => {
+  const tippt = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "");
+  const bilder = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
+  if (tippt || !bilder.length || !zustand.gewaehlt || !$("#i-galerie")) return;
+  e.preventDefault();
+  bilderHochladen(bilder);
+});
 
 let programmCache = null;
 function ladeProgramme() {
@@ -580,6 +699,7 @@ async function loeschen(id) {
   const antwort = await dialog(`<h2>„${esc(m.name)}“ löschen?</h2>
     <p>Diese Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihrem Ordner:</p>
     <ul>${v.dateien.map((d) => `<li>${esc(d)}</li>`).join("") || "<li>keine (Datei fehlt schon)</li>"}</ul>
+    ${v.bilder ? `<p>${v.bilder === 1 ? "Sein eigenes Bild geht mit und kommt" : `Seine ${v.bilder} eigenen Bilder gehen mit und kommen`} beim Wiederherstellen zurück.</p>` : ""}
     <p class="dim">Mit in den Papierkorb (flatgraph <code>loeschfolgen</code>): ${v.knoten.length} Datei-Knoten${kanten ? "; Verknüpfungen: " + kanten : ""}.
     Wiederherstellen legt alles zurück an seinen Ort.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">In den Papierkorb</button></div>`);
@@ -657,8 +777,6 @@ document.addEventListener("click", async (e) => {
   if (ordner) { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); }
   const sammlung = t.closest("[data-sammlung]");
   if (sammlung) { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return neuLaden(); }
-  const d3 = t.closest("[data-ansicht3d]");
-  if (d3) { localStorageSchreiben("ansicht", d3.dataset.ansicht3d); zustand.angezeigt = null; return waehle(zustand.gewaehlt); }
   const wsWeg = t.closest("[data-ws-weg]");
   if (wsWeg) { await api(`/api/warteschlange/${wsWeg.dataset.wsWeg}`, { method: "DELETE" }); return; }
   const wsWaehle = t.closest("[data-ws-waehle]");
@@ -738,8 +856,6 @@ document.addEventListener("click", async (e) => {
       if (ziel) await api(`/api/modelle/${id}/verschieben`, { method: "POST", body: { ordner: ziel } }).then(() => toast("Verschoben.")).catch((e2) => toast(e2.message));
       return;
     }
-    case "bild-hoch": return $("#bild-wahl").click();
-    case "bild-weg": await api(`/api/modelle/${id}/bild`, { method: "DELETE" }); return;
     case "quelle-aendern": {
       const m = await api(`/api/modelle/${id}`);
       const a = await dialog(`<h2>Quelle</h2><p class="dim">Woher das Modell stammt, z. B. Printables oder MakerWorld.</p>
@@ -797,12 +913,10 @@ document.addEventListener("change", async (e) => {
     return stapel("sammlung", sid);
   }
   if (e.target.id === "datei-wahl") { const f = e.target.files; await hochladen(f); e.target.value = ""; return; }
-  if (e.target.id === "bild-wahl" && e.target.files[0]) {
-    const id = $("#inspektor").dataset.id, f = e.target.files[0];
+  if (e.target.id === "bild-wahl" && e.target.files.length) {
+    const dateien = [...e.target.files];
     e.target.value = "";
-    const r = await fetch(`/api/modelle/${id}/bild`, { method: "POST", body: f });
-    if (!r.ok) toast((await r.json()).fehler); else toast("Bild gespeichert.");
-    return;
+    return bilderHochladen(dateien);
   }
   if (e.target.id === "sortierung") { zustand.sortierung = e.target.value; ladeModelle(); }
 });
@@ -816,6 +930,10 @@ document.addEventListener("keydown", async (e) => {
   }
   const tippt = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || $("#dialog").open;
   if (e.key === "/" && !tippt) { e.preventDefault(); $("#suche").focus(); }
+  if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !tippt && !$("#dialog").open && $("#i-galerie")?.matches(":hover")) {
+    e.preventDefault();
+    galerieBlaettern(e.key === "ArrowRight" ? 1 : -1);
+  }
   // Escape hebt die Auswahl auch aus dem Suchfeld heraus auf — nur ein
   // offener Dialog schliesst zuerst sich selbst.
   if (e.key === "Escape" && zustand.auswahl.size && !$("#dialog").open) stapelAktion("keine");
@@ -961,13 +1079,24 @@ live();
 let abwurfZaehler = 0;
 const vonAussen = (e) => !gezogen && [...(e.dataTransfer?.types || [])].includes("Files");
 window.addEventListener("dragenter", (e) => { if (vonAussen(e)) { abwurfZaehler++; $("#abwurf").hidden = false; } });
-window.addEventListener("dragleave", (e) => { if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; } });
-window.addEventListener("dragover", (e) => { if (vonAussen(e)) e.preventDefault(); });
+window.addEventListener("dragleave", (e) => {
+  if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; $("#i-galerie")?.classList.remove("abwurf-ziel"); }
+});
+window.addEventListener("dragover", (e) => {
+  if (!vonAussen(e)) return;
+  e.preventDefault();
+  const aufGalerie = !!(e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb);
+  $("#i-galerie")?.classList.toggle("abwurf-ziel", aufGalerie);
+  $("#abwurf").hidden = aufGalerie;
+});
 window.addEventListener("drop", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
   abwurfZaehler = 0;
   $("#abwurf").hidden = true;
+  $("#i-galerie")?.classList.remove("abwurf-ziel");
+  // Auf die Galerie gezogen: Bilder zum Modell, keine neuen Modelldateien.
+  if (e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb) return bilderHochladen(e.dataTransfer.files);
   hochladen(e.dataTransfer.files);
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));

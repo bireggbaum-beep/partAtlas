@@ -129,8 +129,8 @@ class Stueckliste:
         pfad = None
         if kurz.get("bild"):
             pfad = self.k.bild_pfad(kurz["id"])
-        elif kurz.get("hash") and kurz.get("vorschau") in ("eingebettet", "gerendert"):
-            pfad = self.b.vorschau_pfad(kurz["hash"])
+        elif kurz.get("hash"):
+            pfad = self.k.vorschau_datei(kurz["hash"])
         if pfad and os.path.exists(pfad):
             # reportlab liest das Bild erst beim Zusammenbauen — ein kaputtes
             # eingebettetes Vorschaubild liesse dann das ganze PDF scheitern.
