@@ -43,8 +43,9 @@ const balken = (f) => `<div class="balken ${f.bedarf && f.erledigt >= f.bedarf ?
 async function ladeBaugruppenLeiste() {
   const [liste, vorschlaege] = await Promise.all([api("/api/baugruppen"), api("/api/baugruppen/vorschlaege")]);
   zustand.baugruppen = liste;
-  const tipp = vorschlaege.length
-    ? `<div class="tipp" id="bg-tipp"><b>💡 ${vorschlaege.length} Ordner</b> sehen aus wie Baugruppen — ansehen</div>` : "";
+  // Ein Hinweis, kein Kasten: wegklickbar, kommt erst wieder, wenn es mehr Vorschläge gibt.
+  const tipp = vorschlaege.length > Number(localStorageLesen("bgtipp") || 0)
+    ? `<div class="tipp" id="bg-tipp"><span>${vorschlaege.length} Ordner sehen aus wie Baugruppen</span><button class="tipp-x" id="bg-tipp-x" title="Ausblenden">×</button></div>` : "";
   abgleichen($("#baugruppen"), liste.map((b) => `
     <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
       <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("")
@@ -433,6 +434,7 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("click", async (e) => {
   const t = e.target;
+  if (t.closest("#bg-tipp-x")) { localStorageSchreiben("bgtipp", String((zustand.bgVorschlaege || []).length)); return ladeBaugruppenLeiste(); }
   if (t.closest("#bg-tipp") || t.id === "baugruppe-neu" || t.id === "baugruppe-neu-2") return neueBaugruppe();
   const vor = t.closest("[data-vorschlag]");
   if (vor) return ausVorschlag(vor.dataset.vorschlag);

@@ -76,6 +76,12 @@ wie im 3MF Katalog) im Einstellungsdialog; gilt für neu Eingelesenes, Vorhanden
 bleibt. Nicht gebaut: „Auto-Tags entfernen“ für den Bestand (Aufwand 2).
 Verworfen: Filter-Dropdowns mit Kaskade — für wenige Werte nicht nötig.
 
+Seitenleiste ruhig (0.19.4): Abschnittsüberschriften klein, grau, in normaler
+Schrift und ohne Bänder/Linien (Abstand trennt), etwas luftigere Einträge, der
+Baugruppen-Hinweis ist eine wegklickbare Zeile statt eines Kastens (kommt erst
+wieder bei mehr Vorschlägen). Noch offen aus dem Gespräch: Schrift im Rest der
+Oberfläche (Mono nur für Zahlen), Einstellungsdialog mit Reitern.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

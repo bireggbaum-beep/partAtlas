@@ -207,9 +207,11 @@ dialog label { display: flex; gap: 8px; align-items: center; font-size: 13px; ma
 .balken { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 4px; }
 .balken i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 .balken.fertig i { background: var(--good); }
-.tipp { font-size: 12.5px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent);
-        border-radius: var(--radius); padding: 6px 8px; margin: 6px 0; cursor: pointer; }
-.tipp b { color: var(--accent); }
+.tipp { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-3); border-radius: 6px;
+        padding: 4px 8px; margin: 2px 0; cursor: pointer; }
+.tipp:hover { color: var(--accent); background: var(--panel-2); }
+.tipp-x { margin-left: auto; background: none; border: 0; cursor: pointer; color: inherit; font-size: 14px; line-height: 1; padding: 0 2px; opacity: 0; }
+.tipp:hover .tipp-x { opacity: 1; }
 
 .bg-ansicht { flex: 1; overflow-y: auto; padding: 18px 22px 40px; }
 .bg-kopf { display: flex; gap: 18px; align-items: flex-start; }
@@ -456,14 +458,15 @@ body.erststart .tagleiste { display: none; }
 body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .leer-eintrag { color: var(--ink-3); font-size: 13px; }
 
-/* Abschnittsüberschrift als durchgehendes Band (wie VS Code): klare Trennung */
-.seite .sektion { margin: 0 -8px; }
-.seite .sektion h3 { margin: 0; padding: 3px 8px 3px 4px; background: var(--panel); border-top: 1px solid var(--line);
-                     border-bottom: 1px solid var(--line); position: sticky; top: -10px; z-index: 2; }
+/* Abschnitte ruhig: Überschrift klein und grau in normaler Schrift, keine Bänder und Linien — Abstand trennt */
+.seite .sektion { margin: 0 0 2px; }
+.seite .sektion h3 { margin: 0; padding: 14px 6px 3px 2px; background: none; border: 0;
+                     font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; color: var(--ink-3); }
+.seite .sektion h3:hover { color: var(--ink-2); }
+.sk-kopf::before { font-size: 9px; opacity: 0.7; }
 .seite .sektion[data-zu="1"] h3 { border-bottom-color: transparent; }
-.seite .sektion h3:hover { background: var(--panel-2); }
-.seite .sk-inhalt { padding: 4px 8px 8px; }
-.seite .sektion + .sektion h3 { border-top-color: var(--line); }
+.seite .sk-inhalt { padding: 2px 0 4px; }
+.seite .eintrag { padding: 5px 8px; }
 
 /* Rechtsklick-Menü */
 .menu.kontext { position: fixed; min-width: 230px; z-index: 60; padding: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
