@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from . import formate, programme
+from . import durchsuchen, formate, programme
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -288,6 +288,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         return {"ok": True}
 
     # ---------------------------------------------------------------- Ordner, Verschieben, Hochladen
+
+    @app.get("/api/durchsuchen")
+    def durchsuchen_route(pfad: str = ""):
+        try:
+            return durchsuchen.auflisten(pfad or None)
+        except (FileNotFoundError, NotADirectoryError):
+            raise KatalogFehler(f"Kein Ordner: {pfad}")
 
     @app.get("/api/verzeichnisse")
     def verzeichnisse():

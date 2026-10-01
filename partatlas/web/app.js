@@ -76,6 +76,8 @@ async function ladeSeite() {
   $("#formate").innerHTML = Object.entries(z.formate).sort().map(([f, n]) =>
     `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join("");
   $("#ordner").innerHTML = `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`;
+  zustand.hatWurzeln = ordner.length > 0;
+  zeichneLeer();
   $("#tag-liste").innerHTML = tags.slice(0, 30).map((t) =>
     `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("");
   markiereAnsicht();
@@ -125,10 +127,37 @@ function zeichneFilterzeile() {
   const z = $("#filterzeile");
   z.hidden = teile.length === 0;
   z.innerHTML = teile.join(" · ") + ` <button id="filter-weg">✕ Filter aufheben</button>`;
+  zustand.filterTeile = teile.length;
+  zeichneLeer();
+}
+
+// Wenn nichts zu sehen ist, sagen warum — und beim ersten Start an die Hand
+// nehmen: ein Ordner, ein Klick, dann sieht man das Einlesen laufen.
+function zeichneLeer() {
   const leer = $("#leer");
+  const erst = zustand.hatWurzeln === false;
+  document.body.classList.toggle("erststart", erst);
   leer.hidden = zustand.modelle.length > 0;
-  leer.textContent = zustand.ansicht === "papierkorb" ? "Der Papierkorb ist leer."
-    : (teile.length ? "Keine Treffer." : "Noch keine Modelle. Über „Importieren“ einen Ordner hinzufügen.");
+  if (leer.hidden) return;
+  const scan = zustand.scan;
+  if (erst) {
+    leer.innerHTML = `<div class="willkommen">
+      <h2>Willkommen bei partAtlas</h2>
+      <p>Zeig partAtlas, wo deine 3D-Dateien liegen. Es liest den Ordner mit allen Unterordnern ein und baut daraus deinen Katalog.</p>
+      <ul>
+        <li><b>Deine Dateien bleiben, wo sie sind.</b> Nichts wird kopiert oder umsortiert.</li>
+        <li>Gelesen werden 3MF, STL, OBJ und STEP — mit Vorschau, Massen und, wo vorhanden, den Slicer-Daten.</li>
+        <li>Weitere Ordner kannst du jederzeit dazunehmen.</li>
+      </ul>
+      <button class="knopf akzent gross" id="wurzel-neu-3">📁 Ordner wählen …</button></div>`;
+  } else if (scan && scan.laeuft && zustand.ansicht === "alle" && !zustand.filterTeile) {
+    leer.innerHTML = `<div class="willkommen"><h2>Wird eingelesen …</h2>
+      <p>${scan.gefunden ? `${scan.gefunden.toLocaleString("de-DE")} Dateien gefunden. ` : ""}Die ersten Modelle erscheinen gleich hier; die Vorschaubilder entstehen danach im Hintergrund.</p>
+      <div class="lauf"><i></i></div></div>`;
+  } else {
+    leer.textContent = zustand.ansicht === "papierkorb" ? "Der Papierkorb ist leer."
+      : (zustand.filterTeile ? "Keine Treffer." : "Noch keine Modelle in diesem Ordner.");
+  }
 }
 
 // ---------------------------------------------------------------- Virtuelles Raster und Liste
@@ -763,14 +792,59 @@ async function umbenennen(id) {
 
 async function wurzelNeu() {
   $("#import-menu").hidden = true;
-  const antwort = await dialog(`<h2>Ordner hinzufügen</h2>
-    <p class="dim">Pfad auf diesem Rechner, z. B. <code>~/3D-Druck</code>. Die Struktur bleibt, wie sie ist.</p>
-    <input type="text" id="wurzel-pfad" placeholder="/home/…/3D-Druck">
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Hinzufügen und einlesen</button></div>`);
-  if (antwort !== "ja") return;
-  try { await api("/api/wurzeln", { method: "POST", body: { pfad: $("#wurzel-pfad").value } }); toast("Ordner wird eingelesen …"); }
-  catch (e) { toast(e.message); }
+  const pfad = await ordnerWaehler();
+  if (!pfad) return;
+  try {
+    await api("/api/wurzeln", { method: "POST", body: { pfad } });
+    zustand.hatWurzeln = true;
+    zustand.scan = { laeuft: true };
+    zeichneLeer();
+    toast("Ordner wird eingelesen …");
+    ladeSeite();
+  } catch (e) { toast(e.message); }
 }
+
+// Ordner wählen wie im Dateimanager: Sprungziele links, Unterordner zum
+// Hineinklicken, unten wie viele Modelldateien darin liegen. Tippen geht
+// auch — für die, die den Pfad schon kennen.
+const ow = { pfad: null };
+async function ordnerWaehler() {
+  const fertig = dialog(`<h2>Ordner hinzufügen</h2>
+    <p class="dim">Wähle den Ordner, in dem deine 3D-Dateien liegen. Unterordner kommen mit.</p>
+    <div id="ow" class="ow"><div class="dim">Lade …</div></div>
+    <details class="ow-tippen"><summary>Pfad selbst eingeben</summary>
+      <input type="text" id="ow-pfad" placeholder="/home/…/3D-Druck"> <button type="button" class="knopf" data-ow-gehe>Öffnen</button></details>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja" id="ow-ok" disabled>Diesen Ordner hinzufügen</button></div>`);
+  $("#dialog").classList.add("breit");
+  owLaden(null);
+  const a = await fertig;
+  $("#dialog").classList.remove("breit");
+  return a === "ja" ? ow.pfad : null;
+}
+
+async function owLaden(pfad) {
+  let d;
+  try { d = await api("/api/durchsuchen" + (pfad ? "?pfad=" + encodeURIComponent(pfad) : "")); }
+  catch (e) { return toast(e.message); }
+  ow.pfad = d.pfad;
+  const anzahl = d.modelle ? `<b>${d.vollstaendig ? "" : "mehr als "}${d.modelle.toLocaleString("de-DE")} Modelldateien</b> in diesem Ordner und seinen Unterordnern`
+    : `<span class="dim">Keine Modelldateien in diesem Ordner.</span>`;
+  $("#ow").innerHTML = `<div class="ow-grid">
+      <div class="ow-ziele">${d.sprungziele.map((z) => `<button type="button" class="${z.pfad === d.pfad ? "an" : ""}" data-ow-pfad="${esc(z.pfad)}">
+        ${z.art === "home" ? "🏠" : z.art === "laufwerk" ? "💽" : "📁"} ${esc(z.name)}</button>`).join("")}</div>
+      <div class="ow-liste">
+        <div class="ow-pfad">${d.eltern ? `<button type="button" class="knopf klein" data-ow-pfad="${esc(d.eltern)}" title="Übergeordneter Ordner">⬆</button>` : ""}<code>${esc(d.pfad)}</code></div>
+        <div class="ow-ordner">${d.ordner.map((o) => `<button type="button" data-ow-pfad="${esc(o.pfad)}">📁 ${esc(o.name)}</button>`).join("") || '<div class="dim">Keine Unterordner.</div>'}</div>
+      </div></div>
+    <div class="ow-fuss">${anzahl}</div>`;
+  $("#ow-ok").disabled = false;
+}
+
+document.addEventListener("click", (e) => {
+  const z = e.target.closest?.("[data-ow-pfad]");
+  if (z) return owLaden(z.dataset.owPfad);
+  if (e.target.closest?.("[data-ow-gehe]") && $("#ow-pfad").value.trim()) owLaden($("#ow-pfad").value.trim());
+});
 
 // ---------------------------------------------------------------- Ereignisse
 
@@ -890,7 +964,7 @@ document.addEventListener("click", async (e) => {
       return;
     }
     case "import-knopf": $("#import-menu").hidden = !$("#import-menu").hidden; return;
-    case "wurzel-neu": case "wurzel-neu-2": return wurzelNeu();
+    case "wurzel-neu": case "wurzel-neu-2": case "wurzel-neu-3": return wurzelNeu();
     case "hochladen-knopf": $("#import-menu").hidden = true; return $("#datei-wahl").click();
     case "archive-knopf": return archiveEntpacken();
     case "verschieben": {
@@ -1098,6 +1172,8 @@ function live() {
   q.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.art === "scan") {
+      zustand.scan = m;
+      if (!zustand.modelle.length) zeichneLeer();
       $("#scan-status").textContent = m.laeuft
         ? `Einlesen: ${m.phase}${m.analysiert != null && m.zu_analysieren ? ` ${m.analysiert}/${m.zu_analysieren}` : ""}`
         : (m.vorschauen_offen ? "" : "");

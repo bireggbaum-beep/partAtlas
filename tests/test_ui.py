@@ -65,7 +65,25 @@ async def oberflaeche(port):
             await pg.wait_for_timeout(700)
 
         await pg.goto(f"http://127.0.0.1:{port}/")
-        await pg.wait_for_selector(".karte")
+        # -- Erster Start: Willkommenskarte, Ordner wählen durch Klicken statt Tippen
+        await pg.wait_for_selector(".willkommen")
+        check("Erster Start: Willkommenskarte, leere Rubriken der Seitenleiste ausgeblendet",
+              "Ordner wählen" in await pg.inner_text(".willkommen") and not await pg.locator("text=SAMMLUNGEN").is_visible())
+        await pg.click("#wurzel-neu-3")
+        await pg.wait_for_selector(".ow-ordner")
+        await pg.click(".ow-tippen summary")
+        await pg.fill("#ow-pfad", os.path.dirname(SAMMLUNG))
+        await pg.click("[data-ow-gehe]")
+        await pg.click(f'[data-ow-pfad="{SAMMLUNG}"]')
+        await pg.wait_for_function("document.querySelector('.ow-fuss')?.textContent.includes('3 Modelldateien')", timeout=5000)
+        check("Ordner-Wähler: hineinklicken, vor dem Bestätigen steht, wie viele Modelldateien drin liegen",
+              "3 Modelldateien" in await pg.inner_text(".ow-fuss"))
+        await pg.click("#ow-ok")
+        await pg.wait_for_selector(".karte", timeout=60000)
+        check("Nach dem Bestätigen wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
+              await pg.locator("text=SAMMLUNGEN").is_visible())
+        while api(port, "/api/stand")["scan"].get("laeuft"):
+            await asyncio.sleep(0.3)
 
         await suche("Vase")
         await pg.locator(".karte").first.click()
@@ -293,9 +311,6 @@ if __name__ == "__main__":
                 break
             except OSError:
                 time.sleep(0.1)
-        api(port, "/api/wurzeln", {"pfad": sammlung})
-        while api(port, "/api/stand")["scan"].get("laeuft"):
-            time.sleep(0.3)
         asyncio.run(oberflaeche(port))
     finally:
         server.terminate()

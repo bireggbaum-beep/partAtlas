@@ -66,6 +66,19 @@ if __name__ == "__main__":
         check("Favorit und Gedruckt setzen", r.json()["favorit"] and r.json()["gedruckt"])
         check("Unbekanntes Feld wird abgelehnt", c.patch(f"/api/modelle/{zahnrad['id']}", json={"hash": "x"}).status_code == 400)
 
+        # -- Ordner wählen: durchsuchen statt Pfad tippen
+        os.makedirs(os.path.join(tmp, ".versteckt"))
+        d = c.get("/api/durchsuchen", params={"pfad": tmp}).json()
+        check("Durchsuchen: Unterordner sichtbar, versteckte nicht, Eltern-Ordner bekannt",
+              "3D-Druck" in [o["name"] for o in d["ordner"]] and ".versteckt" not in [o["name"] for o in d["ordner"]]
+              and d["eltern"] == os.path.dirname(tmp))
+        d = c.get("/api/durchsuchen", params={"pfad": sammlung}).json()
+        check("… zählt die Modelldateien samt Unterordnern, bevor man wählt", d["modelle"] == 2 and d["vollstaendig"])
+        check("… mit dem persönlichen Ordner als Sprungziel",
+              d["sprungziele"][0]["pfad"] == os.path.expanduser("~"))
+        check("Kein Ordner: verständliche Meldung",
+              c.get("/api/durchsuchen", params={"pfad": "/gibt/es/nicht"}).json().get("fehler", "").startswith("Kein Ordner"))
+
         # -- Wache
         fremd = c.post(f"/api/modelle/{zahnrad['id']}/loeschen", headers={"Origin": "http://boese.example"})
         check("Wache: Löschen von fremder Seite abgelehnt (403)", fremd.status_code == 403)
