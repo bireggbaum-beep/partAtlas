@@ -97,6 +97,15 @@ Tag-Feld verdrängt die Ordner nicht mehr. Suchfeld mit × (und Esc). Unten eine
 Statuszeile „57 Modelle · 3 ausgewählt“ statt der Zahl in der Kopfzeile.
 Geprüft nur mit einem Playwright-Skript, nicht mit `test_ui.py`.
 
+Seitenleiste als Split View (0.20.2): alle Höhen rechnet `seitenLayout()` in `app.js`,
+nicht mehr das CSS. Jedes offene Feld hat dieselbe Mindesthöhe (110 px, bei sehr
+niedrigem Fenster gemeinsam kleiner), eingeklappt nur die Kopfzeile. Das erste offene
+Feld (Ordner) ist das biegsame. Griff an der Oberkante jedes Feldes verschiebt die
+Grenze: das eine wächst, die auf der anderen Seite schrumpfen der Reihe nach bis zur
+Mindesthöhe. Höhen gemerkt (`localStorage` „felder“). Zeilen 24 px, Köpfe 24 px.
+Geprüft mit Skript (Summe = Höhe, Mindesthöhe, Ziehen in beide Richtungen),
+nicht mit `test_ui.py`.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

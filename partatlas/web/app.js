@@ -1774,38 +1774,98 @@ document.querySelectorAll("[data-griff]").forEach((g) => {
 });
 
 
-// ---------------------------------------------------------------- Felder der Seitenleiste ziehen
+// ---------------------------------------------------------------- Felder der Seitenleiste (Split View)
 //
-// Wie in VS Code: an der oberen Kante jedes unteren Feldes lässt sich dessen Höhe ziehen; der
-// Explorer (Ordner) gibt her, was er hat, bleibt aber bei einem Mindestmass stehen. Die Höhe
-// bleibt gemerkt, ein Doppelklick stellt „so hoch wie der Inhalt“ wieder her.
-const ORDNER_MIN = 120, FELD_MIN = 56;
-document.querySelectorAll(".panes > .sektion:not([data-sektion='ordner'])").forEach((sek) => {
-  const name = sek.dataset.sektion;
-  const setze = (px) => {
-    sek.style.flex = px == null ? "" : `0 1 ${px}px`;
-    sek.classList.toggle("hat-hoehe", px != null);
-  };
-  const gemerkt = Number(localStorageLesen("feld." + name));
-  if (gemerkt) setze(gemerkt);
+// Wie in VS Code: jedes Feld hat dieselbe Mindesthöhe, ein eingeklapptes nur die Kopfzeile. Das erste
+// offene Feld (der Explorer, solange er offen ist) nimmt auf, was frei wird, und gibt her, was fehlt —
+// zuerst es selbst, dann von unten nach oben. Ein Griff an der Oberkante eines Feldes verschiebt die
+// Grenze zu dem darüber: das eine wächst, die auf der anderen Seite schrumpfen der Reihe nach bis zu
+// ihrer Mindesthöhe. Alle Höhen rechnet seitenLayout(); das CSS setzt sie nur.
+const KOPF = 25, FELD_MIN = 110, FELD_START = 140;
+const feldRaum = $(".panes");
+const felder = [...feldRaum.children].filter((x) => x.classList.contains("sektion"));
+let gemerkteHoehen = {};
+try { gemerkteHoehen = JSON.parse(localStorageLesen("felder") || "{}") || {}; } catch { gemerkteHoehen = {}; }
+const feldSichtbar = () => felder.filter((f) => !f.hidden);
+const feldOffen = (f) => !f.dataset.zu;
+// Gleiche Mindesthöhe für alle offenen Felder; wird das Fenster so niedrig, dass sie nicht reicht, schrumpft sie gemeinsam.
+function feldMin() {
+  const liste = feldSichtbar(), offene = liste.filter(feldOffen).length;
+  if (!offene) return FELD_MIN;
+  return Math.max(KOPF + 36, Math.min(FELD_MIN, Math.floor((feldRaum.clientHeight - (liste.length - offene) * KOPF) / offene)));
+}
+const setzeHoehen = (karte) => karte.forEach((h, f) => { f.style.height = h + "px"; });
+
+function seitenLayout() {
+  const T = feldRaum.clientHeight;
+  const liste = feldSichtbar();
+  if (T <= 0 || !liste.length) return;
+  const min = feldMin();
+  const g = new Map(liste.map((f) => [f, feldOffen(f) ? Math.max(min, gemerkteHoehen[f.dataset.sektion] || FELD_START) : KOPF]));
+  const offene = liste.filter(feldOffen);
+  let delta = T - [...g.values()].reduce((a, b) => a + b, 0);
+  if (offene.length) {
+    const biegsam = offene[0];
+    if (delta > 0) g.set(biegsam, g.get(biegsam) + delta);
+    else for (const f of [biegsam, ...offene.slice(1).reverse()]) {
+      const nimm = Math.min(g.get(f) - min, -delta);
+      g.set(f, g.get(f) - nimm);
+      delta += nimm;
+      if (delta >= 0) break;
+    }
+  }
+  setzeHoehen(g);
+  // Ein Griff nur dort, wo oberhalb und unterhalb je ein offenes Feld liegt.
+  liste.forEach((f, i) => {
+    const griff = f.querySelector(":scope > .sash");
+    const weg = !(liste.slice(0, i).some(feldOffen) && liste.slice(i).some(feldOffen));
+    if (griff && griff.hidden !== weg) griff.hidden = weg;     // nur bei Änderung: sonst weckt es den Beobachter wieder auf
+  });
+}
+
+felder.slice(1).forEach((f) => {
   const griff = document.createElement("div");
   griff.className = "sash";
-  griff.title = "Höhe ziehen, Doppelklick: so hoch wie der Inhalt";
-  sek.prepend(griff);
-  griff.addEventListener("dblclick", () => { setze(null); localStorageSchreiben("feld." + name, ""); });
+  griff.title = "Höhe ziehen";
+  f.prepend(griff);
   griff.addEventListener("pointerdown", (e) => {
     e.preventDefault();
+    const liste = feldSichtbar();
+    const i = liste.indexOf(f);
+    const min = feldMin();
+    const start = new Map(liste.map((x) => [x, x.offsetHeight]));
+    const ueber = liste.slice(0, i).filter(feldOffen).reverse();   // das nächste zuerst
+    const unter = liste.slice(i).filter(feldOffen);
+    if (!ueber.length || !unter.length) return;
     griff.setPointerCapture(e.pointerId);
-    const y0 = e.clientY, h0 = sek.offsetHeight, ordner = $('.sektion[data-sektion="ordner"]');
-    // So hoch darf das Feld werden: seine Höhe plus alles, was der Explorer über seinem Mindestmass hat.
-    const hoechst = h0 + Math.max(0, ordner.offsetHeight - ORDNER_MIN);
-    const bewegt = (m) => setze(Math.round(Math.min(hoechst, Math.max(FELD_MIN, h0 + (y0 - m.clientY)))));
+    griff.classList.add("zieht");
+    const y0 = e.clientY;
+    // `waechst` wächst um d, die `gibt` schrumpfen der Reihe nach um zusammen d (jedes höchstens bis FELD_MIN).
+    const verschiebe = (waechst, gibt, d) => {
+      const g = new Map(start);
+      d = Math.max(0, Math.min(d, gibt.reduce((s, x) => s + start.get(x) - min, 0)));
+      g.set(waechst, start.get(waechst) + d);
+      let rest = d;
+      for (const x of gibt) { const nimm = Math.min(start.get(x) - min, rest); g.set(x, start.get(x) - nimm); rest -= nimm; }
+      setzeHoehen(g);
+    };
+    const bewegt = (m) => {
+      const d = m.clientY - y0;
+      if (d >= 0) verschiebe(ueber[0], unter, d); else verschiebe(unter[0], ueber, -d);
+    };
     const fertig = () => {
+      griff.classList.remove("zieht");
       griff.removeEventListener("pointermove", bewegt);
       griff.removeEventListener("pointerup", fertig);
-      localStorageSchreiben("feld." + name, String(Math.round(sek.offsetHeight)));
+      griff.removeEventListener("pointercancel", fertig);
+      for (const x of feldSichtbar().filter(feldOffen)) gemerkteHoehen[x.dataset.sektion] = x.offsetHeight;
+      localStorageSchreiben("felder", JSON.stringify(gemerkteHoehen));
     };
     griff.addEventListener("pointermove", bewegt);
     griff.addEventListener("pointerup", fertig);
+    griff.addEventListener("pointercancel", fertig);
   });
 });
+new ResizeObserver(seitenLayout).observe(feldRaum);
+new MutationObserver(seitenLayout).observe(feldRaum, { attributes: true, subtree: true, attributeFilter: ["data-zu", "hidden"] });
+requestAnimationFrame(seitenLayout);

@@ -198,7 +198,7 @@ dialog label { display: flex; gap: 8px; align-items: center; font-size: 13px; ma
 .quelle a { color: var(--accent); }
 
 /* ---------------------------------------------------------------- Baugruppen */
-.bg-eintrag { display: block; width: 100%; background: none; border: 0; padding: 5px 6px 6px; border-radius: var(--radius); cursor: pointer; text-align: left; }
+.bg-eintrag { display: block; width: 100%; background: none; border: 0; padding: 3px 8px 5px; border-radius: var(--radius); cursor: pointer; text-align: left; }
 .bg-eintrag:hover { background: var(--panel-2); }
 .bg-eintrag.aktiv { background: var(--accent-soft); }
 .bg-eintrag .kopfzeile { display: flex; justify-content: space-between; font-size: 13px; }
@@ -582,14 +582,11 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .ans-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .ans-btn em { font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
 .ans-btn.aktiv em { color: inherit; }
-.panes { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.sektion { position: relative; display: flex; flex-direction: column; min-height: 26px; flex: 0 1 auto; max-height: 40%; border-top: 1px solid var(--line); }
-.sektion.hat-hoehe { max-height: none; }
+.panes { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
+/* Die Höhen setzt seitenLayout() in app.js (Split View wie VS Code); hier nur Aufbau. */
+.sektion { position: relative; display: flex; flex-direction: column; overflow: hidden; border-top: 1px solid var(--line); }
 .sektion:last-child { border-bottom: 1px solid var(--line); }
-.sektion[data-sektion="ordner"] { flex: 1 1 0; min-height: 120px; max-height: none; }
-.sektion[data-zu="1"] { flex: none !important; min-height: 0; }
-.sektion[data-sektion="ordner"][data-zu="1"] { margin-bottom: auto; }
-.sektion h3 { flex: none; display: flex; align-items: center; height: 26px; margin: 0; padding: 0 6px 0 2px;
+.sektion h3 { flex: none; display: flex; align-items: center; height: 24px; margin: 0; padding: 0 6px 0 2px;
               font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
               color: var(--ink-2); background: var(--panel); }
 .sektion h3:hover { background: var(--panel-2); }
@@ -603,8 +600,8 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .sektion h3:hover .sk-akt, .sk-akt:focus-within { opacity: 1; }
 .sk-akt button { background: none; border: 0; cursor: pointer; color: var(--ink-3); font-size: 14px; width: 22px; height: 20px; border-radius: 4px; line-height: 1; }
 .sk-akt button:hover { background: var(--panel-2); color: var(--accent); }
-.sk-inhalt { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 0 4px; }
-.seite .eintrag { padding: 3px 8px; border-radius: 0; }
+.sk-inhalt { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 0; }
+.seite .eintrag { height: 24px; padding: 0 8px; align-items: center; font-size: 13px; border-radius: 0; }
 .seite .eintrag.aktiv { background: var(--accent-soft); color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
 /* Ordnerbaum: je Ebene 14 px eingerückt, feine Führungslinien */
 .seite .baum .eintrag { padding-left: calc(4px + var(--tiefe, 0) * 14px);
@@ -614,8 +611,7 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .pfeil { width: 14px; text-align: center; font-size: 10px; }
 body.erststart .ans-leiste { display: none; }
 .sash { position: absolute; left: 0; right: 0; top: -3px; height: 6px; cursor: ns-resize; z-index: 4; }
-.sash:hover, .sash:active { background: var(--accent); opacity: 0.6; }
-.sektion[data-zu="1"] .sash, .sektion[data-sektion="ordner"] .sash { display: none; }
+.sash:hover, .sash.zieht { background: var(--accent); opacity: 0.6; }
 .suche-x { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 0; border-radius: 4px;
            background: none; color: var(--ink-3); cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
 .suche-x:hover { background: var(--panel-2); color: var(--ink); }
