@@ -238,10 +238,15 @@ async def oberflaeche(port):
 
         # -- Quelle als Link
         await pg.locator(".karte").first.click()
-        await pg.wait_for_selector("#i-details[open] #quelle-aendern")
-        check("Inspektor: Vorschau und Name oben fest, Modelldaten sofort sichtbar und offen",
+        await pg.wait_for_selector(".i-reiter")
+        check("Inspektor: Vorschau, Name, Öffnen und Reiter oben fest; drei Reiter, die Übersicht zuerst",
               await pg.evaluate("getComputedStyle(document.querySelector('.i-fix')).position") == "sticky"
-              and "MODELLDATEN" in await pg.inner_text("#i-details summary"))
+              and await pg.locator(".i-reiter button").count() == 3
+              and await pg.get_attribute("#inspektor", "data-reiter") == "uebersicht"
+              and await pg.locator("#quelle-aendern").is_hidden())
+        await pg.click('.i-reiter [data-reiter="datei"]')
+        check("Reiter Datei zeigt die Modelldaten, und der Reiter bleibt beim nächsten Modell gewählt",
+              "MODELLDATEN" in await pg.inner_text(".i-tafel[data-reiter=datei]") and await pg.locator("#quelle-aendern").is_visible())
         await pg.click("#quelle-aendern")
         await pg.fill("#quelle-url", "https://www.printables.com/model/42")
         await pg.click('dialog button[value="ja"]')
@@ -402,6 +407,46 @@ async def oberflaeche(port):
         await pg.goto(f"http://127.0.0.1:{port}/")
         await pg.wait_for_selector(".karte")
         await pg.locator(".karte").first.click()
+        await pg.wait_for_selector(".i-reiter")
+
+        # -- Drucke: Reiter, Formular, Karte, Referenz, Foto, Zähler auf der Kachel
+        await pg.click('.i-reiter [data-reiter="drucke"]')
+        await pg.click("[data-druck-neu]")
+        await pg.wait_for_selector("#df-g")
+        await pg.fill("#df-g", "12.5")
+        await pg.fill("#df-h", "1")
+        await pg.fill("#df-min", "30")
+        await pg.select_option("#df-typ", "PETG")
+        await pg.fill("#df-notiz", "Brim an, Düse 240")
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_selector(".druck")
+        karte = await pg.inner_text(".druck")
+        check("Druck anlegen: Karte mit Gewicht, Dauer, Material und Notiz; Zähler auf dem Reiter",
+              "12,5 g" in karte and "1 h 30 min" in karte and "PETG" in karte and "Brim an" in karte
+              and "1" in await pg.inner_text('.i-reiter [data-reiter="drucke"]'))
+        await pg.click("[data-druck-ref]")
+        await pg.wait_for_selector(".druck.ref")
+        async with pg.expect_file_chooser() as wahl:
+            await pg.click("[data-druck-foto]")
+        await (await wahl.value).set_files(fotos[0])
+        await pg.wait_for_selector(".d-foto img")
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')
+        uebersicht = await pg.inner_text('.i-tafel[data-reiter="uebersicht"]')
+        check("Referenzdruck liefert Gewicht und Zeit der Übersicht, mit Herkunft; „1× gedruckt“ statt „Nicht gedruckt“",
+              "12,5" in uebersicht and "Referenzdruck" in uebersicht and "1× gedruckt" in uebersicht)
+        try:
+            await pg.wait_for_function("document.querySelector('.karte.gewaehlt')?.innerText.includes('12,5 g')", timeout=6000)
+        except Exception:
+            pass
+        check("Die Kachel zeigt das Gewicht des Referenzdrucks",
+              "12,5 g" in await pg.locator(".karte.gewaehlt").inner_text())
+        await pg.click('.i-reiter [data-reiter="drucke"]')
+        await pg.click("[data-druck-weg]")
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_selector(".d-leer")
+        check("Druck entfernen: der Reiter ist wieder leer, das Modell wieder „noch nicht gedruckt“",
+              "Noch nicht gedruckt" in await pg.inner_text(".d-oben"))
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')
         await pg.wait_for_selector("#gedruckt")
         await pg.locator(".karte").first.click(button="right")
         menue = await pg.inner_text("#kontext")

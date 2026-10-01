@@ -280,7 +280,7 @@ function bildUrl(m) {
 function statusBadge(m) {
   return m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
     : m.fehler ? `<span class="badge warn">unlesbar</span>`
-    : m.gedruckt ? `<span class="badge gedruckt">✓ Gedruckt${m.gewicht_g ? " · " + zahl(m.gewicht_g, 2) + " g" : ""}</span>` : "";
+    : m.drucke_n ? `<span class="badge gedruckt">✓ ${m.drucke_n}× gedruckt${m.gewicht_g ? " · " + zahl(m.gewicht_g, 2) + " g" : ""}</span>` : "";
 }
 
 function karte(m, x, y) {
@@ -306,7 +306,7 @@ function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
   const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
-  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.gedruckt ? "✓ gedruckt" : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
+  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? `<img loading="lazy" src="${url}" alt="">` : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
@@ -509,17 +509,20 @@ async function waehle(id, live = false) {
   if (live && zustand.angezeigt === id && imInspektorAmTippen()) { zustand.nachholen = true; return; }
   const papierkorb = m.papierkorb;
   const zeile = ([a, b]) => `<div class="zeile"><span>${a}</span><span>${b}</span></div>`;
-  const zeit = m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
-  // Zum Drucken: was man vor dem Slicen wissen will. Modelldaten: Masse, Quelle, Orte —
-  // offen, solange man sie nicht selbst zuklappt (der Zustand bleibt gemerkt).
+  // Gewicht, Zeit, Filament: vom Referenzdruck, sonst aus der Datei (KONZEPT §4.6).
+  const rw = m.ref_werte;
+  const zeit = rw?.dauer_s || m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
+  const zeitQuelle = rw?.dauer_s ? "Referenzdruck" : "Slicer";
   const drucken = [
     ["Grösse", esc(masse(m.masse) || "–")],
-    ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + " g <small class=\"dim\">aus Slicer</small>" : "–"],
-    ...(zeit ? [["Druckzeit", esc(dauer(zeit))]] : []),
+    ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + ` g <small class="dim">${m.gewicht_herkunft === "druck" ? "Referenzdruck" : "aus Slicer"}</small>` : "–"],
+    ...(zeit ? [["Druckzeit", esc(dauer(zeit)) + ` <small class="dim">${zeitQuelle}</small>`]] : []),
     ...(m.platten.length > 1 ? [["Druckplatten", m.platten.length]] : []),
   ];
-  const platten = m.platten.map((p) => `<div class="zeile"><span>${m.platten.length > 1 ? `Platte ${p.nr}` : "Filament"}</span><span>${p.filamente.map((f) =>
-    `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 1)} g`).join("<br>")}</span></div>`).join("");
+  const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><span>${liste.map((f) =>
+    `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 1)} g`).join("<br>")}</span></div>`;
+  const platten = rw?.filament?.length ? filamentZeile("Filament", rw.filament)
+    : m.platten.map((p) => filamentZeile(m.platten.length > 1 ? `Platte ${p.nr}` : "Filament", p.filamente)).join("");
   const details = [
     ["Volumen", m.volumen_cm3 != null ? esc(zahl(m.volumen_cm3)) + " cm³" : "–"],
     ["Objekte", m.objekte ?? "–"],
@@ -536,16 +539,18 @@ async function waehle(id, live = false) {
   // bleibt stehen, samt 3D-Ansicht — ausser es kam ein Bild dazu oder weg.
   const sig = JSON.stringify([m.papierkorb, m.ansichten.map((a) => a.url)]);
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
-  const detailsOffen = localStorageLesen("details") !== "0";
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
+  const reiter = papierkorb ? "datei" : ["uebersicht", "drucke", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
+  const reiterKopf = papierkorb ? "" : `<div class="i-reiter" role="tablist">
+      <button role="tab" data-reiter="uebersicht">Übersicht</button>
+      <button role="tab" data-reiter="drucke">Drucke${m.drucke_n ? ` <span class="d-zahl">${m.drucke_n}</span>` : ""}</button>
+      <button role="tab" data-reiter="datei">Datei</button></div>`;
   $("#inspektor").innerHTML = `
     <div class="i-fix">
       ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
       <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
-    </div>
-    <div class="i-kopf">
       ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button></div>`
         : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
         <div class="mehr"><button class="schalter" id="mehr-knopf" title="Weitere Aktionen">⋯</button>
@@ -555,26 +560,21 @@ async function waehle(id, live = false) {
             <button id="gal-plus-menu">Bild hinzufügen …</button>
             <hr><button id="loeschen" class="gefahr">Löschen …</button>
           </div></div>
-      </div>
-      <div class="i-schalter">
-        <button class="schalter ${m.warteschlange != null ? "an" : ""}" data-ab-phase="2" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
-        <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="Als gedruckt markieren">${m.gedruckt ? "✓ Gedruckt" : "○ Nicht gedruckt"}</button>
-        <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
       </div>`}
+      ${reiterKopf}
     </div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? `<p class="fehler"><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr — gelöscht, umbenannt ausserhalb der Ordner von partAtlas oder auf einem Laufwerk, das gerade fehlt. Tags, Bilder und Verknüpfungen sind noch da: legt man die Datei zurück, ist beim nächsten Einlesen alles wieder verbunden. Braucht man das Modell nicht mehr: „Löschen“.</p>` : ""}
 
+    <div class="i-tafel" data-reiter="uebersicht">
+    ${papierkorb ? "" : `<div class="i-schalter">
+        <button class="schalter ${m.warteschlange != null ? "an" : ""}" data-ab-phase="2" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
+        <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="${m.drucke_n ? "Zu den Drucken" : "Als gedruckt markieren"}">${m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : "○ Noch nicht gedruckt"}</button>
+        <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
+      </div>`}
     <div class="i-titel">ZUM DRUCKEN</div>
     <div class="i-karte">${drucken.map(zeile).join("")}${platten}</div>
-    <details class="i-details" id="i-details" ${detailsOffen ? "open" : ""}>
-      <summary>MODELLDATEN</summary>
-      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
-      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
-      ${orte}
-    </details>
     ${papierkorb ? "" : materialTeil(m, materialien)}
-
     ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
     <div class="i-gruppe"><span class="i-label">Tags</span>
       <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
@@ -586,13 +586,175 @@ async function waehle(id, live = false) {
       <div class="i-sammlungen">${m.sammlungen.map((x) => `<span class="chip">${esc(x.name)}<button data-sammlung-weg="${esc(x.id)}" title="aus der Sammlung">×</button></span>`).join("")}
         <select class="knopf klein" id="sammlung-dazu"><option value="">＋ Sammlung …</option>${zustand.sammlungen
           .filter((x) => !m.sammlungen.some((y) => y.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
-          <option value="__neu">Neue Sammlung …</option></select></div></div>`}`;
+          <option value="__neu">Neue Sammlung …</option></select></div></div>`}
+    </div>
+
+    ${papierkorb ? "" : `<div class="i-tafel" data-reiter="drucke">${druckeTafel(m)}</div>`}
+
+    <div class="i-tafel" data-reiter="datei">
+      <div class="i-titel">MODELLDATEN</div>
+      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
+      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
+      ${orte}
+    </div>`;
+  $("#inspektor").dataset.reiter = reiter;
   $("#inspektor").dataset.id = id;
   if (menuOffen) $("#mehr-menu").hidden = false;
   if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }
   zustand.angezeigt = id;
   zeigeGalerie(m);
 }
+
+// ---------------------------------------------------------------- Drucke
+//
+// Ein Druck ist ein einzelnes Mal, dass das Modell auf dem Drucker lag: mit
+// Gewicht, Dauer, Filament, Foto, Ergebnis, Notiz. „Gedruckt“ und der
+// Zähler folgen daraus (KONZEPT §4.6). Ein Druck kann an mehreren Modellen
+// hängen — eine Platte mit drei Teilen —, dann steht „zusammen mit …“ dabei.
+
+const ERGEBNIS = { gut: ["✓ Gut", "gut"], fehler: ["⚠ Mit Fehlern", "fehler"], abgebrochen: ["✕ Abgebrochen", "abbruch"] };
+const datumDe = (d) => d ? new Date(d + "T00:00").toLocaleDateString("de-DE") : "Datum unbekannt";
+
+function druckeTafel(m) {
+  const liste = m.drucke || [];
+  const kopf = `<div class="d-oben"><button class="knopf akzent" data-druck-neu>＋ Druck</button>
+    <span class="dim">${m.drucke_n ? `${m.drucke_n}× gedruckt` : "Noch nicht gedruckt"}</span></div>`;
+  if (!liste.length) return kopf + `<p class="d-leer">Hier stehen die Drucke dieses Modells — mit Einstellungen, Foto und Ergebnis.
+    Wenn einer gut wurde, markierst du ihn als Referenz und weisst beim nächsten Mal, wie es ging.</p>`;
+  return kopf + liste.map((d) => {
+    const [text, art] = ERGEBNIS[d.ergebnis] || ERGEBNIS.gut;
+    const werte = [d.gewicht_g != null ? `${zahl(d.gewicht_g, 1)} g` : "", d.dauer_s ? dauer(d.dauer_s) : ""].filter(Boolean).join(" · ");
+    const fil = d.filament.map((f) => `<span class="chip"><span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")}${f.g != null ? " " + zahl(f.g, 1) + " g" : ""}</span>`).join("");
+    return `<div class="druck ${d.referenz ? "ref" : ""}" data-druck="${esc(d.id)}">
+      <div class="d-kopf"><span class="d-erg ${art}">${text}</span><b>${esc(datumDe(d.datum))}</b>
+        ${d.referenz ? `<span class="d-refmarke" title="So war es gut — Referenz für dieses Modell">★ Referenz</span>` : ""}</div>
+      ${werte || fil ? `<div class="d-werte">${werte ? `<span class="mono">${esc(werte)}</span>` : ""}${fil}</div>` : ""}
+      ${d.notiz ? `<p class="d-notiz">${esc(d.notiz)}</p>` : ""}
+      ${d.zusammen_mit.length ? `<div class="d-zusammen">zusammen mit ${d.zusammen_mit.map((x) => `<button class="link" data-gefaehrte="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</div>` : ""}
+      <div class="d-fotos">${d.bilder.map((b) => `<span class="d-foto"><a href="${esc(b.url)}" target="_blank" rel="noopener"><img src="${esc(b.url)}" alt="" loading="lazy"></a>
+        <button data-druck-bild-weg="${esc(d.id)}|${esc(b.k)}" title="Foto entfernen">×</button></span>`).join("")}
+        <button class="d-fotoplus" data-druck-foto="${esc(d.id)}" title="Foto zum Druck hinzufügen">＋ Foto</button></div>
+      <div class="d-aktionen"><button class="link" data-druck-ref="${esc(d.id)}" data-an="${d.referenz ? "0" : "1"}">${d.referenz ? "★ Keine Referenz mehr" : "☆ Als Referenz"}</button>
+        <button class="link" data-druck-aendern="${esc(d.id)}">Bearbeiten …</button>
+        <button class="link gefahr" data-druck-weg="${esc(d.id)}">Entfernen …</button></div>
+    </div>`;
+  }).join("");
+}
+
+// Ein Formular für „neu“ und „bearbeiten“. Gibt die Felder zurück oder null.
+async function druckDialog({ titel, namen, druck }) {
+  const mats = await api("/api/materialien");
+  const d = druck || {};
+  const f0 = (d.filament && d.filament[0]) || {};
+  const std = d.dauer_s ? [Math.floor(d.dauer_s / 3600), Math.round((d.dauer_s % 3600) / 60)] : ["", ""];
+  const heute = new Date().toISOString().slice(0, 10);
+  const a = await dialog(`<h2>${esc(titel)}</h2>
+    ${namen.length > 1 ? `<p class="dim">Gilt für: ${namen.map(esc).join(", ")}</p>` : ""}
+    <div class="d-form">
+      <div class="d-ergebnis">${Object.entries(ERGEBNIS).map(([k, [t]]) =>
+        `<label><input type="radio" name="df-erg" value="${k}" ${(d.ergebnis || "gut") === k ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
+      <label>Datum <input type="date" id="df-datum" value="${esc(druck ? (d.datum || "") : heute)}"></label>
+      <div class="d-zweier">
+        <label>Gewicht (g) <input type="number" id="df-g" min="0" step="0.1" value="${d.gewicht_g ?? ""}"></label>
+        <label>Dauer <span class="d-dauer"><input type="number" id="df-h" min="0" value="${std[0]}"> h <input type="number" id="df-min" min="0" max="59" value="${std[1]}"> min</span></label>
+      </div>
+      <div class="d-filament">
+        <label>Material <select id="df-typ"><option value="">–</option>${mats.map((x) => `<option ${f0.typ === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
+        <label>Farbe <input type="color" id="df-farbe" value="${esc(f0.farbe || "#cccccc")}" data-gesetzt="${f0.farbe ? "1" : ""}"></label>
+        <label>Verbrauch (g) <input type="number" id="df-fg" min="0" step="0.1" value="${f0.g ?? ""}"></label>
+      </div>
+      <label>Notiz <textarea id="df-notiz" rows="3" placeholder="z. B. Düse 215 °C, Lüfter 60 %, Brim an">${esc(d.notiz || "")}</textarea></label>
+    </div>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" id="df-ok" value="ja">Speichern</button></div>`);
+  if (a !== "ja") return null;
+  const zahlOderNull = (id) => { const v = $(id).value; return v === "" ? null : Number(v); };
+  const h = zahlOderNull("#df-h"), mi = zahlOderNull("#df-min");
+  const typ = $("#df-typ").value, farbe = $("#df-farbe").dataset.gesetzt ? $("#df-farbe").value : null, fg = zahlOderNull("#df-fg");
+  // Weitere Filamente (aus einer G-Code-Datei, später) bleiben unberührt.
+  const rest = (d.filament || []).slice(1);
+  const erstes = typ || farbe || fg != null ? [{ typ: typ || null, farbe, g: fg }] : [];
+  return {
+    ergebnis: document.querySelector('input[name="df-erg"]:checked').value,
+    datum: $("#df-datum").value || null,
+    gewicht_g: zahlOderNull("#df-g"),
+    dauer_s: h == null && mi == null ? null : (h || 0) * 3600 + (mi || 0) * 60,
+    filament: [...erstes, ...rest],
+    notiz: $("#df-notiz").value,
+  };
+}
+document.addEventListener("input", (e) => { if (e.target.id === "df-farbe") e.target.dataset.gesetzt = "1"; });
+
+async function druckAnlegen(modelle) {
+  const namen = modelle.map((id) => zustand.modelle.find((x) => x.id === id)?.name || id);
+  const felder = await druckDialog({ titel: modelle.length > 1 ? "Zusammen gedruckt" : "Neuer Druck", namen });
+  if (!felder) return;
+  try {
+    await api("/api/drucke", { method: "POST", body: { modelle, felder } });
+    toast("Druck angelegt.");
+  } catch (e) { toast(e.message); return; }
+  localStorageSchreiben("reiter", "drucke");
+  if (zustand.gewaehlt && modelle.includes(zustand.gewaehlt)) waehle(zustand.gewaehlt);
+}
+
+function reiterWaehlen(r) {
+  localStorageSchreiben("reiter", r);
+  $("#inspektor").dataset.reiter = r;
+}
+
+let druckFotoZiel = null;
+document.addEventListener("click", async (e) => {
+  const t = e.target;
+  if (!t.closest?.("#inspektor")) return;
+  const id = zustand.gewaehlt;
+  const tab = t.closest(".i-reiter [data-reiter]");
+  if (tab) return reiterWaehlen(tab.dataset.reiter);
+  if (t.closest("[data-druck-neu]")) return druckAnlegen([id]);
+  const gef = t.closest("[data-gefaehrte]");
+  if (gef) return waehle(gef.dataset.gefaehrte);
+  const bearb = t.closest("[data-druck-aendern]");
+  if (bearb) {
+    const m = await api(`/api/modelle/${id}`);
+    const d = m.drucke.find((x) => x.id === bearb.dataset.druckAendern);
+    if (!d) return;
+    const felder = await druckDialog({ titel: "Druck bearbeiten", namen: [m.name, ...d.zusammen_mit.map((x) => x.name)], druck: d });
+    if (!felder) return;
+    try { await api(`/api/drucke/${d.id}`, { method: "PATCH", body: felder }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+  const rf = t.closest("[data-druck-ref]");
+  if (rf) {
+    try { await api(`/api/drucke/${rf.dataset.druckRef}/referenz`, { method: "POST", body: { modell: id, an: rf.dataset.an === "1" } }); }
+    catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+  const weg = t.closest("[data-druck-weg]");
+  if (weg) {
+    const a = await dialog(`<h2>Druck entfernen?</h2><p class="dim">Der Eintrag und seine Fotos verschwinden aus partAtlas; die Fotos bleiben im Archiv des Bestands (<code>vault_archive</code>). Hängt der Druck an mehreren Modellen, verschwindet er bei allen.</p>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
+    if (a !== "ja") return;
+    try { await api(`/api/drucke/${weg.dataset.druckWeg}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+  const foto = t.closest("[data-druck-foto]");
+  if (foto) { druckFotoZiel = foto.dataset.druckFoto; return $("#druck-bild-wahl").click(); }
+  const fw = t.closest("[data-druck-bild-weg]");
+  if (fw) {
+    const [did, k] = fw.dataset.druckBildWeg.split("|");
+    try { await api(`/api/drucke/${did}/bilder/${k}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+});
+$("#druck-bild-wahl").addEventListener("change", async (e) => {
+  const did = druckFotoZiel;
+  const bilder = [...e.target.files];
+  e.target.value = "";
+  if (!did) return;
+  for (const f of bilder) {
+    const r = await fetch(`/api/drucke/${did}/bilder`, { method: "POST", body: f });
+    if (!r.ok) toast((await r.json().catch(() => ({}))).fehler || "Foto nicht gespeichert.");
+  }
+  if (zustand.gewaehlt) waehle(zustand.gewaehlt);
+});
 
 // ---------------------------------------------------------------- Galerie
 //
@@ -1133,7 +1295,13 @@ document.addEventListener("click", async (e) => {
       return;
     }
     case "neu-einlesen": case "neu-einlesen-2": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
-    case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
+    case "gedruckt": {
+      // Mit Drucken führt der Knopf zu ihnen; ohne legt er einen leeren an.
+      const m = zustand.modelle.find((x) => x.id === id);
+      if (m && m.drucke_n) return reiterWaehlen("drucke");
+      await aendern(id, { gedruckt: true });
+      return waehle(id);
+    }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
     case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.oeffnePfad }); }
     case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
@@ -1382,7 +1550,6 @@ document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an
 
 // Datei-Details auf- oder zugeklappt lassen, wie man es zuletzt wollte.
 document.addEventListener("toggle", (e) => {
-  if (e.target.id === "i-details") localStorageSchreiben("details", e.target.open ? "1" : "0");
 }, true);
 
 function imInspektorAmTippen() {
@@ -1441,7 +1608,7 @@ async function kontextMenu(e, id) {
   } else if (mehrere) {
     eintraege = [
       ["kopf", `${modelle.length} Modelle`],
-      ["warteschlange", "☰ In die Warteschlange"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"],
+      ["warteschlange", "☰ In die Warteschlange"], ["druck", "🖨 Zusammen gedruckt …"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"],
       ["-"], ["tag", "＃ Tag …"], ["material", "Material …"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
   } else {
@@ -1459,6 +1626,7 @@ async function kontextMenu(e, id) {
     eintraege = [
       ...(da ? [...oeffnen, ["system", "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
       ["ws", m.warteschlange != null ? "☰ Aus der Warteschlange" : "☰ In die Warteschlange"],
+      ["druck1", "🖨 Druck anlegen …"],
       ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],
       ["favorit1", m.favorit ? "♡ Kein Favorit mehr" : "♥ Favorit"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
@@ -1500,6 +1668,7 @@ async function kontextAktion(k, knopf) {
       if (m.warteschlange != null) await api(`/api/warteschlange/${id}`, { method: "DELETE" });
       else await api("/api/warteschlange", { method: "POST", body: { modelle: [id] } });
       return;
+    case "druck1": return druckAnlegen([id]);
     case "gedruckt1": return aendern(id, { gedruckt: !m.gedruckt });
     case "favorit1": return aendern(id, { favorit: !m.favorit });
     case "umbenennen": return umbenennen(id);
@@ -1508,6 +1677,7 @@ async function kontextAktion(k, knopf) {
       for (const x of modelle) await api(`/api/modelle/${x}/wiederherstellen`, { method: "POST" }).catch((err) => toast(err.message));
       return;
     case "sammlung": return sammlungWahl(modelle);
+    case "druck": return druckAnlegen(modelle);
     default: return stapelAktion(k, modelle);
   }
 }

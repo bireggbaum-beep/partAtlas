@@ -266,7 +266,7 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
 
 ### 4.6 Drucke in Phase 1 (Entwurf, ohne Drucker)
 
-*Entwurf vom 01.10.2026, noch nicht gebaut. Gebaut wird in zwei Stufen.*
+*Entwurf vom 01.10.2026. Stufe a ist gebaut (0.19), Stufe b offen.*
 
 **Grundgedanke.** Das Modell ist die Geometrie. Ein **Druck** ist ein
 einzelnes Mal, dass sie auf dem Drucker lag — mit allem, was dazu gehört:
@@ -317,13 +317,13 @@ ist dafür nicht nötig; er füllt diese Drucke ab Phase 2 nur von selbst.
   Kommandozeile in **einem** Fenster aufnehmen, oder ob sie je Datei eine
   Instanz starten (heute übergibt `programme.oeffnen` genau eine Datei).
 
-**Stufe a — Drucke von Hand.** Druck anlegen (an einem Modell oder an
+**Stufe a — Drucke von Hand (gebaut, 0.19).** Druck anlegen (an einem Modell oder an
 einer Auswahl), Felder und Fotos von Hand, Referenz markieren, Zähler und
 Status auf Kachel und Inspektor. Kein G-Code. Das ist die Demo für den
 Piloten. Bestehende Haken „gedruckt“ werden beim Umzug je zu einem
 leeren Druck (wie die Umstellung der eigenen Bilder in 0.11).
 
-**Stufe b — Datei zum Druck.** G-Code oder Slicer-Projekt auf einen Druck
+**Stufe b — Datei zum Druck (offen).** G-Code oder Slicer-Projekt auf einen Druck
 ziehen: im Vault abgelegt (`GCODE_ARTIFACT`, Kennung = Hash),
 Einstellungen und Filament ausgelesen (§4.1), `PRINT_PROFILE` per Hash,
 Vergleich zweier Drucke. Aus einer Datei mit mehreren Objekten wird vorgeschlagen,

@@ -365,6 +365,42 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     # ---------------------------------------------------------------- Mehrere auf einmal
 
+    # ---------------------------------------------------------------- Drucke (KONZEPT §4.6)
+
+    @app.post("/api/drucke")
+    async def druck_neu(request: Request):
+        d = await request.json()
+        return {"id": K().drucke.anlegen(d.get("modelle"), d.get("felder"))}
+
+    @app.patch("/api/drucke/{did}")
+    async def druck_aendern(did: str, request: Request):
+        K().drucke.aendern(did, await request.json())
+        return {"ok": True}
+
+    @app.delete("/api/drucke/{did}")
+    def druck_weg(did: str):
+        K().drucke.loeschen(did)
+        return {"ok": True}
+
+    @app.post("/api/drucke/{did}/referenz")
+    async def druck_referenz(did: str, request: Request):
+        d = await request.json()
+        K().drucke.referenz(did, d.get("modell"), bool(d.get("an", True)))
+        return {"ok": True}
+
+    @app.post("/api/drucke/{did}/bilder")
+    async def druck_bild_dazu(did: str, request: Request):
+        return {"k": K().drucke.bild_hinzufuegen(did, await request.body())}
+
+    @app.get("/api/drucke/{did}/bilder/{k}")
+    def druck_bild(did: str, k: str):
+        return _bild_antwort(K().drucke.bild_pfad(did, k))
+
+    @app.delete("/api/drucke/{did}/bilder/{k}")
+    def druck_bild_weg(did: str, k: str):
+        K().drucke.bild_entfernen(did, k)
+        return {"ok": True}
+
     @app.post("/api/stapel")
     async def stapel(request: Request):
         d = await request.json()

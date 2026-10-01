@@ -96,5 +96,6 @@ if [ -z "${PARTATLAS_OHNE_DEMO:-}" ]; then
     curl -fsS -m 10 -X POST -H 'Content-Type: application/json' \
       -d "{\"pfad\": \"$DEMO\"}" "http://127.0.0.1:$PORT/api/wurzeln" >/dev/null \
       && echo "Demo-Sammlung eingetragen: $DEMO"
+    python werkzeuge/demo_drucke.py --port "$PORT" >/dev/null 2>&1 &
   fi
 fi

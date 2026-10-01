@@ -41,14 +41,24 @@ Runde 4 (Phase 1 ohne Druckmanagement): `PHASE = 1` in `app.js`
 ist überall ausgeblendet (Seitenleiste, Inspektor, Stapel, Menüs, Baugruppe).
 Baugruppen und „Gedruckt“ bleiben, beides von Hand pflegbar.
 
+Runde 5 (Drucke, 0.19.0): Inspektor mit Reitern **Übersicht / Drucke / Datei**
+(Vorschau, Name, Öffnen und Reiterleiste bleiben oben fest, der Reiter wird
+gemerkt). Drucke Stufe a (KONZEPT §4.6): `PRINT_JOB` an einem oder mehreren
+Modellen, Zähler und „gedruckt“ abgeleitet (am Modell vorgehalten:
+`drucke_n`, `gedruckt`, `ref_werte`), Referenzdruck liefert Gewicht/Zeit/
+Filament der Kachel und Übersicht, Fotos je Druck, Formular zum Anlegen und
+Bearbeiten, „Zusammen gedruckt …“ im Menü bei mehreren gewählten Modellen,
+alte Haken werden zu leeren Drucken. Demo: `werkzeuge/demo_drucke.py`
+(`./start.sh --demo` und der Codespace rufen es auf). Start für Tester:
+`./start.sh` (Manjaro).
+Noch nicht: Baugruppensummen nehmen den Referenzdruck nicht (Dateiwert);
+die Löschvorschau nennt Drucke nicht; Plattenwerte werden nicht verteilt.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
-1. **Drucke als eigene Objekte** — Entwurf in `KONZEPT.md` §4.6 (ersetzt
-   die Handwerte am Modell): `PRINT_JOB`, hängt an einem oder mehreren
-   Modellen, „gedruckt“ und Zähler folgen daraus, Referenzdruck liefert die
-   Modellwerte. Stufe a von Hand (Demo), Stufe b mit G-Code. Fragen geklärt
-   („Druck“, Fehldruck zählt, eigener Reiter). Voraussetzung: Reiter im
-   Inspektor (siehe unten d), Entwurf zuerst.
+1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,
+   Einstellungen auslesen (`GCODE_ARTIFACT`, `PRINT_PROFILE`), Vergleich
+   zweier Drucke (KONZEPT §4.6). Danach Löschvorschau und Baugruppensummen.
 2. **Einstellungsdialog neu:** Reiter links, rechts nur, was zum Thema gehört
    (wie pDMS). Materialien dort anlegen.
 3. **Zusammen im Slicer öffnen:** prüfen, ob die Slicer mehrere Dateien in

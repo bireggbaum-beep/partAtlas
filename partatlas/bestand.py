@@ -27,6 +27,9 @@ DATEI = "PART_GEOMETRY"
 TAG = "TAG_ITEM"
 HAT_DATEI = "HAS_PART"
 HAT_TAG = "HAS_TAG"
+DRUCK = "PRINT_JOB"
+GEDRUCKT_IN = "PRINTED_IN"       # Modell ─→ Druck; ein Druck an einem oder mehreren Modellen (KONZEPT §4.6)
+REFERENZ = "REFERENCE"           # Modell ─→ Druck: „so war es gut“, höchstens einer je Modell
 SAMMLUNG = "COLLECTION"
 IN_SAMMLUNG = "IN_COLLECTION"
 # Texte ab so vielen Zeichen liegen als Datei in vault_text/ und werden erst

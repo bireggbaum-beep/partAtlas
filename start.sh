@@ -30,11 +30,17 @@ if [ "$(cat .venv/.stand 2>/dev/null)" != "$STAND" ]; then
   echo "$STAND" > .venv/.stand
 fi
 
-if [ "${1:-}" = "--demo" ] && [ ! -d "$HOME/partatlas-demo" ]; then
-  .venv/bin/python werkzeuge/demo_sammlung.py "$HOME/partatlas-demo" --anzahl 60
-  echo "Demo-Sammlung liegt in ~/partatlas-demo — in der Oberfläche unter Importieren → Ordner hinzufügen."
+DEMO="$HOME/partatlas-demo"
+if [ "${1:-}" = "--demo" ] && [ ! -d "$DEMO" ]; then
+  .venv/bin/python werkzeuge/demo_sammlung.py "$DEMO" --anzahl 60
 fi
 
-( for _ in $(seq 1 40); do curl -fs "$URL/" >/dev/null 2>&1 && { xdg-open "$URL" >/dev/null 2>&1 || true; break; }; sleep 0.5; done ) &
+( for _ in $(seq 1 40); do curl -fs "$URL/" >/dev/null 2>&1 && break; sleep 0.5; done
+  # Demo: Sammlung als Wurzelordner eintragen (einmal) und erfundene Drucke dazu.
+  if [ "${1:-}" = "--demo" ] && [ "$(curl -fs "$URL/api/wurzeln")" = "[]" ]; then
+    curl -fs -X POST -H 'Content-Type: application/json' -d "{\"pfad\": \"$DEMO\"}" "$URL/api/wurzeln" >/dev/null
+    .venv/bin/python werkzeuge/demo_drucke.py --port "$PORT" >/dev/null 2>&1 &
+  fi
+  xdg-open "$URL" >/dev/null 2>&1 || true ) &
 echo "partAtlas: $URL   (beenden mit Strg+C)"
 exec .venv/bin/python -m partatlas
