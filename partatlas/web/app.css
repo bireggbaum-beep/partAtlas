@@ -85,25 +85,31 @@ button, input, select { font: inherit; color: inherit; }
 .raster-innen { position: relative; }
 .leer { padding: 60px; text-align: center; color: var(--ink-3); }
 
-.karte { position: absolute; width: 164px; height: 262px; background: var(--panel); border: 1px solid var(--line);
-         border-radius: var(--radius); overflow: hidden; cursor: pointer; box-shadow: var(--shadow); }
-.karte.gewaehlt { outline: 2px solid var(--accent); }
+.karte { position: absolute; width: 164px; height: 246px; background: var(--panel); border: 1px solid transparent;
+         border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s; }
+.karte:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+.karte.gewaehlt { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .karte .bild { height: 164px; position: relative; background: linear-gradient(160deg, var(--plate-2), var(--plate)); }
 .karte img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .karte .platzhalter { position: absolute; inset: 0; display: grid; place-items: center; font: 12.5px var(--mono); color: var(--ink-3); }
-.badge { position: absolute; font: 11px var(--mono); padding: 1px 5px; border-radius: 3px; }
-.badge.neu { top: 6px; left: 6px; background: var(--ink); color: var(--bg); }
-.badge.format { top: 6px; right: 28px; background: var(--panel); color: var(--ink-2); border: 1px solid var(--line); }
-.badge.gedruckt { bottom: 6px; right: 6px; border: 1px solid var(--accent); color: var(--accent); background: var(--panel); }
-.badge.warn { bottom: 6px; right: 6px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
-.herz { position: absolute; bottom: 6px; left: 6px; width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--line-strong);
-        background: var(--panel); color: var(--ink-3); font-size: 12.5px; line-height: 16px; text-align: center; padding: 0; cursor: pointer; }
-.herz.an { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.karte .text { padding: 6px 8px; }
+.badge { position: absolute; font: 11px var(--mono); padding: 1px 6px; border-radius: 999px; }
+.badge.gedruckt { bottom: 8px; right: 8px; color: var(--accent); background: var(--panel); }
+.badge.warn { bottom: 8px; right: 8px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
+.neu-punkt { position: absolute; top: 9px; left: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+/* Schalter auf der Kachel erst beim Darüberfahren — oder ständig, wenn schon etwas gewählt ist */
+.karte .wahl, .karte .herz { opacity: 0; transition: opacity 0.12s; }
+.karte:hover .wahl, .karte:hover .herz, .karte.mit-auswahl .wahl, .karte.markiert .wahl, .karte .herz.an { opacity: 1; }
+.herz { position: absolute; bottom: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; border: 0;
+        background: transparent; color: var(--ink-2); font-size: 15px; line-height: 24px; text-align: center; padding: 0; cursor: pointer; }
+.herz:hover { color: var(--accent); }
+.herz.an { color: var(--accent); }
+.karte .text { padding: 8px 10px 0; }
 .karte .name { font-weight: 600; font-size: var(--fs-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.karte .masse { font: 11px var(--mono); color: var(--ink-3); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.karte .tags { display: flex; flex-wrap: wrap; gap: 3px; max-height: 36px; overflow: hidden; }
-.karte .tags span { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); }
+.karte .name .endung { font-weight: 400; color: var(--ink-3); margin-left: 1px; }
+.karte .masse { font-size: 12px; color: var(--ink-3); margin: 2px 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karte .tags { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.karte .tags .tt { overflow: hidden; text-overflow: ellipsis; }
+.karte .tags .g { flex: none; }
 
 .inspektor { grid-area: inspektor; border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
 .hinweis { color: var(--ink-3); text-align: center; margin-top: 45vh; font-size: 13px; }
@@ -164,8 +170,8 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 .i-sammlungen select { font-size: 12.5px; }
 
 /* Mehrfachauswahl */
-.wahl { position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
-.karte.markiert { outline: 2px solid var(--accent); outline-offset: -1px; }
+.wahl { position: absolute; top: 8px; right: 8px; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.karte.markiert { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .stapel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 14px; border-bottom: 1px solid var(--line);
           background: var(--accent-soft); font-size: 13px; }
 .stapel b { margin-right: 6px; }

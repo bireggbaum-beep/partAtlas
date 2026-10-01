@@ -59,6 +59,14 @@ Fliesstext 13 → 14 px), Kacheln 246 → 262 px, Listenzeilen 36 → 38 px. Wer
 weitere Stellen zu klein findet: die Stufen stehen als Variablen
 `--fs-*` in `app.css`.
 
+Kachel beruhigt (0.19.2): Checkbox und ♥ nur beim Darüberfahren (♥ bleibt, wenn
+gesetzt; Checkboxen bleiben, sobald etwas gewählt ist), NEU als Punkt,
+Gedruckt als „✓ 2×“, Mass gerundet, Gewicht rechts neben höchstens zwei
+Tags, Ecken 10 px, Rahmen nur bei Hover/Auswahl. Richtung: etwas Apple,
+„einfach an der Oberfläche, viel darunter“. Als Nächstes aus dem Gespräch:
+Filterleiste (Tags nur wo Platz ist), Seitenleiste (Tipp wegklickbar, leere
+Abschnitte nur Titel), Schrift (Mono nur für Zahlen).
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,
