@@ -8,5 +8,5 @@
 - **Eine Sache pro Antwort.** Nicht fünf Aspekte in einer Frage-Antwort
   bündeln; ein Verhalten durchdenken, bauen oder vorschlagen, dann das
   nächste.
-- **Ton der Oberfläche:** Werkzeug, kein Assistent (KONZEPT §2).
-  Fachbegriffe ja, sachlich und knapp; keine Wohlfühltexte.
+- **Ton der Oberfläche:** ein gutes Werkzeug (KONZEPT §2) — freundlich,
+  den Anwender ernst nehmend, weder kindisch noch übertechnisch.

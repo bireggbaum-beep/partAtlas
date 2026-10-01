@@ -142,13 +142,13 @@ function zeichneLeer() {
   const scan = zustand.scan;
   if (erst) {
     leer.innerHTML = `<div class="willkommen">
-      <h2>Kein Wurzelordner konfiguriert</h2>
-      <p>partAtlas indexiert Modelldateien dort, wo sie liegen: rekursiv, Identität per SHA-256.
-        Dateien werden weder kopiert noch verschoben.</p>
+      <h2>Willkommen bei partAtlas</h2>
+      <p>Wähle den Ordner mit deinen 3D-Dateien. partAtlas liest ihn samt Unterordnern ein und
+        katalogisiert die Dateien dort, wo sie liegen — nichts wird kopiert oder verschoben.</p>
       <ul>
         <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP (ohne Geometrie)</li>
         <li><b>Verschieben/Umbenennen</b> im Dateimanager bleibt erkannt — Tags und Verknüpfungen hängen am Inhalt, nicht am Pfad</li>
-        <li><b>Mehrere Wurzeln</b> möglich: Importieren → Ordner hinzufügen</li>
+        <li><b>Weitere Ordner</b> jederzeit über Importieren → Ordner hinzufügen</li>
       </ul>
       <button class="knopf akzent gross" id="wurzel-neu-3">📁 Wurzelordner wählen …</button></div>`;
   } else if (scan && scan.laeuft && zustand.ansicht === "alle" && !zustand.filterTeile) {
