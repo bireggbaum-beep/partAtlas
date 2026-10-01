@@ -507,3 +507,13 @@ body.bg-offen .nur-katalog { display: none; }
 .waehler .plus.ok:hover { background: var(--crit); }
 .waehler .plus.ok:hover .a { display: none; }
 .waehler .plus.ok:hover .b { display: inline; }
+
+/* Inspektor: Vorschau und Name bleiben beim Scrollen stehen */
+.i-fix { position: sticky; top: -14px; z-index: 6; margin: -14px -14px 0; padding: 14px 14px 8px; background: var(--bg);
+         border-bottom: 1px solid var(--line); }
+.i-fix .i-bild { aspect-ratio: 4 / 3; max-height: 34vh; margin: 0 auto; }
+.i-fix .i-name { margin: 10px 0 0; font-size: 16px; }
+.i-fix .i-name .dim { font-weight: 400; margin-left: 1px; }
+.i-fix .gal-leiste { margin-top: 6px; }
+.i-kopf { margin-top: 10px; }
+.i-details { margin-top: 12px; }

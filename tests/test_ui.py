@@ -224,8 +224,10 @@ async def oberflaeche(port):
 
         # -- Quelle als Link
         await pg.locator(".karte").first.click()
-        await pg.wait_for_selector("#i-details summary")
-        await pg.click("#i-details summary")
+        await pg.wait_for_selector("#i-details[open] #quelle-aendern")
+        check("Inspektor: Vorschau und Name oben fest, Modelldaten sofort sichtbar und offen",
+              await pg.evaluate("getComputedStyle(document.querySelector('.i-fix')).position") == "sticky"
+              and "MODELLDATEN" in await pg.inner_text("#i-details summary"))
         await pg.click("#quelle-aendern")
         await pg.fill("#quelle-url", "https://www.printables.com/model/42")
         await pg.click('dialog button[value="ja"]')

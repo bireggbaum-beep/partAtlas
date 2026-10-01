@@ -502,8 +502,8 @@ async function waehle(id, live = false) {
   const papierkorb = m.papierkorb;
   const zeile = ([a, b]) => `<div class="zeile"><span>${a}</span><span>${b}</span></div>`;
   const zeit = m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
-  // Zum Drucken: was man vor dem Slicen wissen will. Datei-Details: was man
-  // nur manchmal braucht — zugeklappt, der Zustand bleibt gemerkt.
+  // Zum Drucken: was man vor dem Slicen wissen will. Modelldaten: Masse, Quelle, Orte —
+  // offen, solange man sie nicht selbst zuklappt (der Zustand bleibt gemerkt).
   const drucken = [
     ["Grösse", esc(masse(m.masse) || "–")],
     ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + " g <small class=\"dim\">aus Slicer</small>" : "–"],
@@ -528,14 +528,16 @@ async function waehle(id, live = false) {
   // bleibt stehen, samt 3D-Ansicht — ausser es kam ein Bild dazu oder weg.
   const sig = JSON.stringify([m.papierkorb, m.ansichten.map((a) => a.url)]);
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
-  const detailsOffen = localStorageLesen("details") === "1";
+  const detailsOffen = localStorageLesen("details") !== "0";
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
   $("#inspektor").innerHTML = `
     ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
-    <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
-    <div class="i-kopf">
+    <div class="i-fix">
+      <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
+    </div>
+    <div class="i-kopf">
       ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button></div>`
         : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
         <div class="mehr"><button class="schalter" id="mehr-knopf" title="Weitere Aktionen">⋯</button>
@@ -557,6 +559,12 @@ async function waehle(id, live = false) {
 
     <div class="i-titel">ZUM DRUCKEN</div>
     <div class="i-karte">${drucken.map(zeile).join("")}${platten}</div>
+    <details class="i-details" id="i-details" ${detailsOffen ? "open" : ""}>
+      <summary>MODELLDATEN</summary>
+      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
+      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
+      ${orte}
+    </details>
     ${papierkorb ? "" : materialTeil(m, materialien)}
 
     ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
@@ -570,14 +578,7 @@ async function waehle(id, live = false) {
       <div class="i-sammlungen">${m.sammlungen.map((x) => `<span class="chip">${esc(x.name)}<button data-sammlung-weg="${esc(x.id)}" title="aus der Sammlung">×</button></span>`).join("")}
         <select class="knopf klein" id="sammlung-dazu"><option value="">＋ Sammlung …</option>${zustand.sammlungen
           .filter((x) => !m.sammlungen.some((y) => y.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
-          <option value="__neu">Neue Sammlung …</option></select></div></div>`}
-
-    <details class="i-details" id="i-details" ${detailsOffen ? "open" : ""}>
-      <summary>DATEI-DETAILS</summary>
-      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
-      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
-      ${orte}
-    </details>`;
+          <option value="__neu">Neue Sammlung …</option></select></div></div>`}`;
   $("#inspektor").dataset.id = id;
   if (menuOffen) $("#mehr-menu").hidden = false;
   if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }
