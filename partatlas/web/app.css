@@ -353,3 +353,14 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
 .galerie.abwurf-ziel .i-bild { outline: 3px dashed var(--accent); outline-offset: -3px; }
 .galerie.abwurf-ziel .gal-abwurf { display: grid; place-items: center; position: absolute; inset: 0; z-index: 5; padding: 20px; text-align: center;
                                     background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 14px; }
+
+/* Löschdialog: was am Modell hängt */
+.loesch-liste { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; max-height: 55vh; overflow-y: auto; }
+.lz { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.lz-s { text-align: center; color: var(--ink-3); }
+.lz ul { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: var(--ink-2); }
+.lz ul li { overflow-wrap: anywhere; }
+.lz label { display: inline; font-size: 12px; }
+.lz-wahl { margin-top: 6px; }
+.lz-warn { color: var(--warn); font-size: 12px; margin: 4px 0 0; }
+.lz .chip .dim { font-size: 10px; }

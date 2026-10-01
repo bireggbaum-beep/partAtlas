@@ -228,7 +228,8 @@ async def oberflaeche(port):
         await pg.click("#loeschen")
         await pg.wait_for_selector("dialog[open]")
         text = await pg.inner_text("dialog")
-        check("Löschdialog nennt Datei und Verknüpfungen (loeschfolgen)", "Haken.stl" in text and "HAS_TAG" in text)
+        check("Löschdialog in Klartext: Datei, Warteschlange, Tags — kein Technikwort",
+              "Haken.stl" in text and "Warteschlange" in text and "Tags:" in text and "HAS_TAG" not in text)
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
         check("Keine Fehler in der Browser-Konsole", fehler == [])

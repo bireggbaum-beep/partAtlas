@@ -124,6 +124,13 @@ Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
 - **Endgültig löschen:** Vorschauen gehen mit der Datei weg (abgeleitet).
   Eigene Bilder gehen nach `vault_archive/`, auch beim Entfernen eines
   einzelnen Bilds — was der Anwender hineingetan hat, verschwindet nie.
+- **Löschen mit informierter Entscheidung:** der Dialog zeigt aus der
+  Nachbarschaft im Graphen, was am Modell hängt — Dateien, eigene Bilder,
+  Baugruppen (fehlt dort in der Stückliste), Warteschlange, Sammlungen und
+  Tags, je mit der Zahl der anderen Modelle daran. Ankreuzen lässt sich nur,
+  was eine echte Wahl ist: Tags und Sammlungen, an denen sonst nichts hängt
+  („ganz löschen“, Tags mit Warnung). Der Server prüft das noch einmal.
+  Gleicher Dialog für mehrere Modelle.
 - **Galerie im Inspektor:** eigene Bilder, 3D-Ansicht, Bild aus der Datei,
   Vorschau zum Durchblättern (Pfeile, Kacheln, ←/→, Wischen); eigene Bilder
   per ＋, Hineinziehen oder Strg+V, mehrere auf einmal; „Als Titelbild“.

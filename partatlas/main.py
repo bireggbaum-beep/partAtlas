@@ -188,8 +188,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         return K().loeschvorschau(mid)
 
     @app.post("/api/modelle/{mid}/loeschen")
-    def loeschen(mid: str):
-        K().loeschen(mid)
+    async def loeschen(mid: str, request: Request):
+        # Ohne Körper: nur das Modell. Mit {"tags": [...], "sammlungen": [...]}:
+        # was nur an ihm hing, auf Wunsch mit.
+        d = await request.json() if await request.body() else {}
+        fehler = K().loeschen_mit([mid], d.get("tags") or (), d.get("sammlungen") or ())
+        if fehler:
+            raise KatalogFehler(fehler[0]["fehler"])
         return {"ok": True}
 
     @app.post("/api/modelle/{mid}/wiederherstellen")

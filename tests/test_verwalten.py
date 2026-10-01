@@ -218,11 +218,28 @@ if __name__ == "__main__":
               and len(c.get("/api/modelle", params={"tag": "projekt x"}).json()) == 3
               and len(c.get("/api/modelle", params={"sammlung": sid}).json()) == 3
               and len(c.get("/api/warteschlange").json()) == 3)
+        c.post("/api/stapel", json={"aktion": "tag", "modelle": drei[:2], "wert": "nur-zwei"})
+        s2 = c.post("/api/sammlungen", json={"name": "Nur zwei", "modelle": drei[:2]}).json()["id"]
+        bid = c.post("/api/baugruppen", json={"name": "Rahmen", "modelle": [drei[0]]}).json()["id"]
         v = c.post("/api/stapel/loeschvorschau", json={"modelle": drei[:2]}).json()
-        check("Löschvorschau für mehrere: Dateien und Verknüpfungen zusammengezählt",
-              len(v["dateien"]) == 2 and v["kanten"].get("HAS_TAG", 0) >= 2 and v["kanten"].get("IN_COLLECTION") == 2)
-        r = c.post("/api/stapel", json={"aktion": "loeschen", "modelle": drei[:2]}).json()
-        check("Stapel löschen: beide im Papierkorb", r["fehler"] == [] and c.get("/api/zaehler").json()["papierkorb"] == 2)
+        tag = {t["name"]: t for t in v["tags"]}
+        sml = {x["name"]: x for x in v["sammlungen"]}
+        check("Löschvorschau für mehrere: Dateien, Warteschlange und Baugruppe aus der Nachbarschaft",
+              len(v["dateien"]) == 2 and v["warteschlange"] == 2
+              and [(b["name"], b["menge"]) for b in v["baugruppen"]] == [("Rahmen", 1)])
+        check("… je Tag und Sammlung, ob sonst noch ein Modell daran hängt",
+              tag["projekt x"]["sonst"] == 1 and tag["nur-zwei"]["sonst"] == 0 and tag["nur-zwei"]["betroffen"] == 2
+              and sml["Auswahl"]["sonst"] == 1 and sml["Nur zwei"]["sonst"] == 0)
+        r = c.post("/api/stapel", json={"aktion": "loeschen", "modelle": drei[:2], "wert": {"tags": ["projekt x"]}})
+        check("Ein Tag, der noch an einem anderen Modell hängt, wird nicht mitgelöscht — und dann gar nichts",
+              r.status_code == 400 and c.get("/api/zaehler").json()["papierkorb"] == 0)
+        r = c.post("/api/stapel", json={"aktion": "loeschen", "modelle": drei[:2],
+                                        "wert": {"tags": ["nur-zwei"], "sammlungen": [s2]}}).json()
+        check("Stapel löschen: beide im Papierkorb, der Tag und die leere Sammlung auf Wunsch mit, der Rest bleibt",
+              r["fehler"] == [] and c.get("/api/zaehler").json()["papierkorb"] == 2
+              and "nur-zwei" not in {t["name"] for t in c.get("/api/tags").json()}
+              and "projekt x" in {t["name"] for t in c.get("/api/tags").json()}
+              and [x["name"] for x in c.get("/api/sammlungen").json()] == ["Auswahl"])
         r = c.post("/api/stapel", json={"aktion": "verschieben", "modelle": [m["Stern (2)"], m["Doppel"]], "wert": f"{w}/Leer"}).json()
         check("Stapel verschieben: was geht, geht; das Duplikat meldet seinen Grund",
               os.path.exists(os.path.join(samm, "Leer", "Stern (2).stl"))

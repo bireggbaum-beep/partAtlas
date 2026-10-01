@@ -589,26 +589,18 @@ class Katalog:
                 if aktion == "sammlung":
                     self._sammlung_pruefen(wert)
                     self._hinzufuegen(wert, modelle)
-        elif aktion in ("loeschen", "verschieben"):
+        elif aktion == "loeschen":
+            wert = wert if isinstance(wert, dict) else {}
+            fehler = self.loeschen_mit(modelle, wert.get("tags") or (), wert.get("sammlungen") or ())
+        elif aktion == "verschieben":
             for mid in modelle:
                 try:
-                    self.loeschen(mid) if aktion == "loeschen" else self.verschieben(mid, wert)
+                    self.verschieben(mid, wert)
                 except (KatalogFehler, OSError) as e:
                     fehler.append({"id": mid, "fehler": str(e)})
         else:
             raise KatalogFehler(f"Unbekannte Aktion {aktion!r}.")
         return {"fehler": fehler}
-
-    def loeschvorschau_viele(self, modelle):
-        ergebnis = {"knoten": [], "kanten": {}, "dateien": [], "bilder": 0}
-        for mid in modelle:
-            v = self.loeschvorschau(mid)
-            ergebnis["knoten"] += v["knoten"]
-            ergebnis["dateien"] += v["dateien"]
-            ergebnis["bilder"] += v["bilder"]
-            for k, n in v["kanten"].items():
-                ergebnis["kanten"][k] = ergebnis["kanten"].get(k, 0) + n
-        return ergebnis
 
     @staticmethod
     def _zurueck(erledigt):
@@ -912,21 +904,88 @@ class Katalog:
     # ------------------------------------------------------------ Löschen
 
     def loeschvorschau(self, mid):
-        """Was mit dem Modell verschwindet — ohne etwas zu ändern (VERTRAG §2.4)."""
-        folgen = self.db.loeschfolgen(ref(MODELL, mid))
-        h = self.datei_von(mid)
-        d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
-        kanten = {}
-        for kid in folgen["kanten"]:
-            e = self.db.get_edge(kid)
-            if e:
-                kanten[e["type"]] = kanten.get(e["type"], 0) + 1
+        return self.loeschvorschau_viele([mid])
+
+    def loeschvorschau_viele(self, modelle):
+        """Was am Modell hängt, damit man informiert entscheidet — ohne etwas
+        zu ändern. Alles ist ein Schritt in der Nachbarschaft (flatgraph):
+        Tags, Sammlungen und Baugruppen je mit der Frage, ob noch andere
+        Modelle daran hängen. `loeschfolgen` (VERTRAG §2.4) sagt, was der
+        Papierkorb mitnimmt."""
+        from .baugruppen import ENTHAELT
+        weg = set(modelle)
+        knoten, kanten, pfade, bilder, schlange = [], {}, [], 0, 0
+        tags, sammlungen, baugruppen = {}, {}, {}
+        for mid in modelle:
+            m = self.db.get_node(ref(MODELL, mid), readonly=True)
+            if m is None:
+                continue
+            folgen = self.db.loeschfolgen(ref(MODELL, mid))
+            knoten += folgen["knoten"]
+            for kid in folgen["kanten"]:
+                e = self.db.get_edge(kid)
+                if e:
+                    kanten[e["type"]] = kanten.get(e["type"], 0) + 1
+            h = self.datei_von(mid)
+            d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+            pfade += [self.absoluter_pfad(o) for o in (d or {}).get("orte", [])]
+            bilder += len(m.get("bilder") or [])
+            schlange += m.get("warteschlange") is not None
+            for r in self.db.get_connected(ref(MODELL, mid), rel_type=HAT_TAG):
+                tags.setdefault(r.split("/", 1)[1], set()).add(mid)
+            for r in self.db.get_connected(ref(MODELL, mid), rel_type=IN_SAMMLUNG):
+                sammlungen.setdefault(r, set()).add(mid)
+            for _, e in self.db.get_connected_edges(ref(MODELL, mid), direction="in", rel_type=ENTHAELT):
+                if self.db.get_node(e["source"], readonly=True) is not None:
+                    b = baugruppen.setdefault(e["source"], {"menge": 0, "teile": []})
+                    b["menge"] += e.get("menge", 1)
+                    b["teile"].append(m.get("name"))
+
+        def andere(r, richtung, art):
+            return sum(1 for x in self.db.get_connected(r, direction=richtung, rel_type=art)
+                       if x.startswith(MODELL + "/") and x.split("/", 1)[1] not in weg)
         return {
-            "knoten": folgen["knoten"],
-            "kanten": kanten,
-            "dateien": [self.absoluter_pfad(o) for o in (d or {}).get("orte", [])],
-            "bilder": len((self.db.get_node(ref(MODELL, mid), readonly=True) or {}).get("bilder") or []),
+            "knoten": knoten, "kanten": kanten, "dateien": pfade, "bilder": bilder, "warteschlange": schlange,
+            # sonst = wie viele ANDERE Modelle noch daran hängen; 0 heisst: nur hier.
+            "tags": sorted(({"name": t, "betroffen": len(v), "sonst": andere(ref(TAG, t), "in", HAT_TAG)}
+                            for t, v in tags.items()), key=lambda x: (x["sonst"], x["name"])),
+            "sammlungen": sorted(({"id": r.split("/", 1)[1], "name": self.db.get_node(r, readonly=True)["name"],
+                                   "betroffen": len(v), "sonst": andere(r, "in", IN_SAMMLUNG)}
+                                  for r, v in sammlungen.items() if self.db.get_node(r, readonly=True)),
+                                 key=lambda x: x["name"].lower()),
+            "baugruppen": sorted(({"id": r.split("/", 1)[1], "name": self.db.get_node(r, readonly=True)["name"], **v}
+                                  for r, v in baugruppen.items()), key=lambda x: x["name"].lower()),
         }
+
+    def _mitloeschen_pruefen(self, modelle, tags=(), sammlungen=()):
+        """Nach dem Löschen der Modelle: Tags und Sammlungen, die nur an ihnen
+        hingen, auf Wunsch mit in den Papierkorb. Was noch an einem anderen
+        Modell hängt, bleibt — das prüft der Server, nicht die Oberfläche."""
+        v = self.loeschvorschau_viele(modelle)
+        nur_hier_t = {t["name"] for t in v["tags"] if t["sonst"] == 0}
+        nur_hier_s = {x["id"] for x in v["sammlungen"] if x["sonst"] == 0}
+        falsch = [t for t in tags if t not in nur_hier_t] + [x for x in sammlungen if x not in nur_hier_s]
+        if falsch:
+            raise KatalogFehler(f"Hängt noch an anderen Modellen: {', '.join(falsch)}")
+        return set(tags), set(sammlungen)
+
+    def loeschen_mit(self, modelle, tags=(), sammlungen=()):
+        """Modelle löschen und danach, was nur an ihnen hing. Geprüft wird
+        vorher; gelöscht wird erst, wenn alles passt."""
+        tags, sammlungen = self._mitloeschen_pruefen(modelle, tags, sammlungen)
+        fehler = []
+        for mid in modelle:
+            try:
+                self.loeschen(mid)
+            except (KatalogFehler, OSError) as e:
+                fehler.append({"id": mid, "fehler": str(e)})
+        if tags or sammlungen:
+            with self.db.transaction():
+                for t in tags:
+                    self.db.soft_delete(TAG, t)
+                for sid in sammlungen:
+                    self.db.soft_delete(SAMMLUNG, sid)
+        return fehler
 
     def loeschen(self, mid):
         """Dateien in den Papierkorb von partAtlas, Modell samt Datei-Knoten in

@@ -341,18 +341,7 @@ async function stapelAktion(aktion) {
 }
 
 async function loeschenViele(modelle) {
-  const v = await api("/api/stapel/loeschvorschau", { method: "POST", body: { modelle } });
-  const kanten = kantenText(v.kanten);
-  const a = await dialog(`<h2>${modelle.length} Modelle löschen?</h2>
-    <p>${v.dateien.length} Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihren Ordnern.</p>
-    <ul>${v.dateien.slice(0, 8).map((d) => `<li>${esc(d)}</li>`).join("")}${v.dateien.length > 8 ? `<li>… und ${v.dateien.length - 8} weitere</li>` : ""}</ul>
-    ${v.bilder ? `<p>Mit dabei: ${v.bilder} eigene Bilder.</p>` : ""}
-    <p class="dim">Mit in den Papierkorb (flatgraph <code>loeschfolgen</code>): ${v.knoten.length} Datei-Knoten${kanten ? "; Verknüpfungen: " + kanten : ""}.</p>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">In den Papierkorb</button></div>`);
-  if (a !== "ja") return;
-  await stapel("loeschen");
-  zustand.auswahl.clear();
-  waehle(null);
+  if (await loeschDialog(modelle, `${modelle.length} Modelle löschen?`)) { zustand.auswahl.clear(); waehle(null); }
 }
 
 // ---------------------------------------------------------------- Ordner wählen, Hochladen, Archive
@@ -679,13 +668,6 @@ async function aendern(id, werte) {
 
 // Was an einem Modell hängt, in Worten statt Kantennamen; der Name der
 // Kante steht dahinter, damit man sieht, dass es flatgraph ist, der zählt.
-function kantenText(kanten) {
-  const worte = { HAS_TAG: "Tag", IN_COLLECTION: "Sammlung", CONTAINS: "Baugruppe", HAS_PART: "Datei" };
-  return Object.entries(kanten).map(([art, n]) =>
-    art === "CONTAINS" ? `<b>steckt in ${n} Baugruppe${n > 1 ? "n" : ""}</b> <code>${art}</code>`
-      : `${n} × ${esc(worte[art] || art)} <code>${esc(art)}</code>`).join(", ");
-}
-
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;
@@ -694,18 +676,50 @@ function dialog(html) {
 }
 
 async function loeschen(id) {
-  const [m, v] = await Promise.all([api(`/api/modelle/${id}`), api(`/api/modelle/${id}/loeschen`)]);
-  const kanten = kantenText(v.kanten);
-  const antwort = await dialog(`<h2>„${esc(m.name)}“ löschen?</h2>
-    <p>Diese Dateien kommen in den Papierkorb von partAtlas und verschwinden aus ihrem Ordner:</p>
-    <ul>${v.dateien.map((d) => `<li>${esc(d)}</li>`).join("") || "<li>keine (Datei fehlt schon)</li>"}</ul>
-    ${v.bilder ? `<p>${v.bilder === 1 ? "Sein eigenes Bild geht mit und kommt" : `Seine ${v.bilder} eigenen Bilder gehen mit und kommen`} beim Wiederherstellen zurück.</p>` : ""}
-    <p class="dim">Mit in den Papierkorb (flatgraph <code>loeschfolgen</code>): ${v.knoten.length} Datei-Knoten${kanten ? "; Verknüpfungen: " + kanten : ""}.
-    Wiederherstellen legt alles zurück an seinen Ort.</p>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">In den Papierkorb</button></div>`);
-  if (antwort !== "ja") return;
-  try { await api(`/api/modelle/${id}/loeschen`, { method: "POST" }); waehle(null); toast("In den Papierkorb gelegt."); }
-  catch (e) { toast(e.message); }
+  const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${id}`);
+  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ löschen?`)) waehle(null);
+}
+
+// Was am Modell hängt, aus der Nachbarschaft im Graphen — damit man weiss,
+// was man tut. Ankreuzen lässt sich nur, was wirklich eine Wahl ist: Tags
+// und Sammlungen, an denen sonst nichts mehr hängt. Alles andere geht mit in
+// den Papierkorb und kommt beim Wiederherstellen zurück.
+async function loeschDialog(modelle, titel) {
+  const v = await api("/api/stapel/loeschvorschau", { method: "POST", body: { modelle } });
+  const viele = modelle.length > 1;
+  const nurT = v.tags.filter((t) => !t.sonst), andereT = v.tags.filter((t) => t.sonst);
+  const nurS = v.sammlungen.filter((x) => !x.sonst), andereS = v.sammlungen.filter((x) => x.sonst);
+  const zeile = (symbol, html) => `<div class="lz"><span class="lz-s">${symbol}</span><div>${html}</div></div>`;
+  const dateien = v.dateien.length
+    ? zeile("📄", `${v.dateien.length === 1 ? "<b>Die Datei</b> verschwindet aus ihrem Ordner" : `<b>${v.dateien.length} Dateien</b> verschwinden aus ihren Ordnern`}:
+        <ul>${v.dateien.slice(0, 6).map((d) => `<li>${esc(d)}</li>`).join("")}${v.dateien.length > 6 ? `<li>… und ${v.dateien.length - 6} weitere</li>` : ""}</ul>`)
+    : zeile("📄", "Keine Datei auf der Platte (fehlt schon).");
+  const bilder = v.bilder ? zeile("🖼", `<b>${v.bilder} eigene${v.bilder === 1 ? "s Bild" : " Bilder"}</b> gehen mit.`) : "";
+  const baugruppen = v.baugruppen.length ? zeile("⚠", `<b>Steckt in ${v.baugruppen.length === 1 ? "einer Baugruppe" : `${v.baugruppen.length} Baugruppen`}</b> — fehlt dort in der Stückliste, bis es zurückkommt:
+      <ul>${v.baugruppen.map((b) => `<li>🧩 ${esc(b.name)} · ${b.menge}×${viele ? ` (${b.teile.map(esc).join(", ")})` : ""}</li>`).join("")}</ul>`) : "";
+  const schlange = v.warteschlange ? zeile("☰", `${viele ? `${v.warteschlange} davon stehen` : "Steht"} in der Warteschlange und ${viele ? "fallen" : "fällt"} heraus.`) : "";
+  const sammlungen = v.sammlungen.length ? zeile("▤", `${viele ? "In" : "Steht in"} ${v.sammlungen.length === 1 ? "einer Sammlung" : `${v.sammlungen.length} Sammlungen`}:
+      <ul>${andereS.map((x) => `<li>${esc(x.name)} <span class="dim">· ${x.sonst} weitere Modelle bleiben</span></li>`).join("")}
+        ${nurS.map((x) => `<li><label><input type="checkbox" data-mit-sammlung="${esc(x.id)}"> ${esc(x.name)} <span class="dim">· danach leer — Sammlung auch löschen</span></label></li>`).join("")}</ul>`) : "";
+  const tags = v.tags.length ? zeile("#", `Tags: ${andereT.map((t) => `<span class="chip">#${esc(t.name)} <span class="dim">${t.sonst}</span></span>`).join(" ")}
+      ${nurT.length ? `<div class="lz-wahl"><label><input type="checkbox" id="mit-tags"> Tags, die nur ${viele ? "diese Modelle haben" : "dieses Modell hat"}, ganz löschen:
+        ${nurT.map((t) => `<span class="chip">#${esc(t.name)}</span>`).join(" ")}</label>
+        <p class="lz-warn" hidden>Kommen beim Wiederherstellen nicht mit zurück.</p></div>` : ""}`) : "";
+  const a = await dialog(`<h2>${titel}</h2>
+    <p class="dim">Alles kommt in den Papierkorb von partAtlas. „Wiederherstellen“ legt es an seinen Ort zurück; endgültig weg ist es erst, wenn der Papierkorb geleert wird.</p>
+    <div class="loesch-liste">${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">In den Papierkorb</button></div>`);
+  if (a !== "ja") return false;
+  const wahl = {
+    tags: $("#mit-tags")?.checked ? nurT.map((t) => t.name) : [],
+    sammlungen: [...document.querySelectorAll("[data-mit-sammlung]:checked")].map((x) => x.dataset.mitSammlung),
+  };
+  try {
+    const r = await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } });
+    if (r.fehler.length) toast(`${modelle.length - r.fehler.length} gelöscht, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
+    else toast(viele ? `${modelle.length} Modelle im Papierkorb.` : "In den Papierkorb gelegt.");
+    return true;
+  } catch (e) { toast(e.message); return false; }
 }
 
 async function umbenennen(id) {
@@ -885,6 +899,7 @@ document.addEventListener("click", async (e) => {
 });
 
 document.addEventListener("change", async (e) => {
+  if (e.target.id === "mit-tags") { $(".lz-warn").hidden = !e.target.checked; return; }
   if (e.target.id === "material-dazu" && e.target.value) {
     const id = $("#inspektor").dataset.id;
     let wert = e.target.value;
