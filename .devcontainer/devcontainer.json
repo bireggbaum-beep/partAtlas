@@ -19,6 +19,19 @@
     }
   },
   "customizations": {
+    // Das Token eines Codespace gilt nur für das eigene Repo — auch öffentliche
+    // andere Repos weist GitHub damit ab (403 „Write access … not granted“).
+    // Diese Anforderung löst beim Anlegen die Rückfrage aus und gibt dem
+    // Token Lesezugriff auf flatgraphdb (requirements.txt, git+https).
+    "codespaces": {
+      "repositories": {
+        "bireggbaum-beep/flatgraphdb": {
+          "permissions": {
+            "contents": "read"
+          }
+        }
+      }
+    },
     "vscode": {
       "extensions": [
         "ms-python.python"
