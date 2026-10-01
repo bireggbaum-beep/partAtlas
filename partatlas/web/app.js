@@ -280,11 +280,11 @@ function zeichneStapel() {
 function materialTeil(m, alle) {
   const h = m.material_herkunft || { vorgesehen: [], aus_datei: [] };
   const frei = alle.filter((x) => !h.vorgesehen.includes(x));
-  return `<div class="i-titel">MATERIAL</div>
+  return `<div class="i-gruppe"><span class="i-label" title="Vorgesehen legst du fest; „aus 3MF“ steht in der Datei">Material</span>
     <div class="i-material">${h.vorgesehen.map((x) => `<span class="chip aktiv" title="vorgesehen">${esc(x)}<button data-material-weg="${esc(x)}" title="entfernen">×</button></span>`).join("")}
       ${h.aus_datei.map((x) => `<span class="chip" title="aus den Slicer-Daten der Datei">${esc(x)} <small>aus 3MF</small></span>`).join("")}
-      <select class="knopf" id="material-dazu"><option value="">＋ Material …</option>${frei.map((x) => `<option>${esc(x)}</option>`).join("")}
-        <option value="__neu">Neues Material …</option></select></div>`;
+      <select class="knopf klein" id="material-dazu"><option value="">＋ Material …</option>${frei.map((x) => `<option>${esc(x)}</option>`).join("")}
+        <option value="__neu">Neues Material …</option></select></div></div>`;
 }
 
 async function materialFrage(titel) {
@@ -408,59 +408,87 @@ async function waehle(id) {
   if (!id) { zustand.angezeigt = null; if (dreiDModul) (await dreiD()).schliessen(); $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`; return; }
   const [m, prog, materialien] = await Promise.all([api(`/api/modelle/${id}`), ladeProgramme(), api("/api/materialien")]);
   if (zustand.gewaehlt !== id) return;
-  const zeilen = [
-    ["Grösse", masse(m.masse) || "–"],
-    ["Volumen", m.volumen_cm3 != null ? zahl(m.volumen_cm3) + " cm³" : "–"],
-    ["Gewicht (aus Slicer)", m.gewicht_g ? zahl(m.gewicht_g, 2) + " g" : "–"],
+  const papierkorb = m.papierkorb;
+  const zeile = ([a, b]) => `<div class="zeile"><span>${a}</span><span>${b}</span></div>`;
+  const zeit = m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
+  // Zum Drucken: was man vor dem Slicen wissen will. Datei-Details: was man
+  // nur manchmal braucht — zugeklappt, der Zustand bleibt gemerkt.
+  const drucken = [
+    ["Grösse", esc(masse(m.masse) || "–")],
+    ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + " g <small class=\"dim\">aus Slicer</small>" : "–"],
+    ...(zeit ? [["Druckzeit", esc(dauer(zeit))]] : []),
+    ...(m.platten.length > 1 ? [["Druckplatten", m.platten.length]] : []),
+  ];
+  const platten = m.platten.map((p) => `<div class="zeile"><span>${m.platten.length > 1 ? `Platte ${p.nr}` : "Filament"}</span><span>${p.filamente.map((f) =>
+    `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 1)} g`).join("<br>")}</span></div>`).join("");
+  const details = [
+    ["Volumen", m.volumen_cm3 != null ? esc(zahl(m.volumen_cm3)) + " cm³" : "–"],
     ["Objekte", m.objekte ?? "–"],
-    ["Druckplatten", m.platten.length || "–"],
-    ["Dreiecke", m.dreiecke != null ? zahl(m.dreiecke, 0) : "–"],
-    ["Ersteller", m.designer || "–"],
-    ["Dateigrösse", m.groesse ? zahl(m.groesse / 1024, 0) + " KB" : "–"],
+    ["Dreiecke", m.dreiecke != null ? esc(zahl(m.dreiecke, 0)) : "–"],
+    ["Ersteller", esc(m.designer || "–")],
+    ["Dateigrösse", m.groesse ? esc(zahl(m.groesse / 1024, 0)) + " KB" : "–"],
     ["Eingelesen", m.eingelesen ? new Date(m.eingelesen).toLocaleDateString("de-DE") : "–"],
   ];
-  const platten = m.platten.map((p) => `<div class="zeile"><span>Platte ${p.nr}</span><span>${p.filamente.map((f) =>
-    `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 2)} g`).join("<br>")}</span></div>`).join("");
-  const papierkorb = m.papierkorb;
+  const orte = (papierkorb ? m.papierkorb_ablage : m.orte).map((o) => `<div class="ort">${esc(o.absolut || o.pfad)}</div>`).join("") || '<div class="dim">–</div>';
+  const quelle = `<div class="zeile quelle"><span>Quelle</span><span>${m.quelle_url
+    ? `<a href="${esc(m.quelle_url)}" target="_blank" rel="noopener noreferrer">${esc(m.quelle_url.replace(/^https?:\/\//, "").slice(0, 32))}…</a>` : "–"}
+    ${papierkorb ? "" : `<button class="knopf" id="quelle-aendern" title="Quelle ändern">✎</button>`}</span></div>`;
   // Dasselbe Modell neu gezeichnet (Tag dazu, Live-Meldung): die Galerie
   // bleibt stehen, samt 3D-Ansicht — ausser es kam ein Bild dazu oder weg.
   const sig = JSON.stringify([m.papierkorb, m.ansichten.map((a) => a.url)]);
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
+  const detailsOffen = localStorageLesen("details") === "1";
+  // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
+  const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
   $("#inspektor").innerHTML = `
     ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
     <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
-    <div class="i-name">${esc(m.name)}${esc(endung[m.format] || "")}</div>
+    <div class="i-kopf">
+      <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
+      ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button></div>`
+        : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
+        <div class="mehr"><button class="schalter" id="mehr-knopf" title="Weitere Aktionen">⋯</button>
+          <div class="menu" id="mehr-menu" hidden>
+            <button id="umbenennen">Umbenennen …</button>
+            <button id="verschieben">In anderen Ordner verschieben …</button>
+            <button id="gal-plus-menu">Bild hinzufügen …</button>
+            <hr><button id="loeschen" class="gefahr">Löschen …</button>
+          </div></div>
+      </div>
+      <div class="i-schalter">
+        <button class="schalter ${m.warteschlange != null ? "an" : ""}" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
+        <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="Als gedruckt markieren">${m.gedruckt ? "✓ Gedruckt" : "○ Nicht gedruckt"}</button>
+        <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
+      </div>`}
+    </div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? `<p class="fehler"><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr — gelöscht, umbenannt ausserhalb der Ordner von partAtlas oder auf einem Laufwerk, das gerade fehlt. Tags, Bilder und Verknüpfungen sind noch da: legt man die Datei zurück, ist beim nächsten Einlesen alles wieder verbunden. Braucht man das Modell nicht mehr: „Löschen“.</p>` : ""}
-    <div class="i-karte">${zeilen.map(([a, b]) => `<div class="zeile"><span>${a}</span><span>${esc(b)}</span></div>`).join("")}
-      ${papierkorb ? "" : `<div class="zeile quelle"><span>Quelle</span><span>${m.quelle_url
-        ? `<a href="${esc(m.quelle_url)}" target="_blank" rel="noopener noreferrer">${esc(m.quelle_url.replace(/^https?:\/\//, "").slice(0, 32))}…</a>` : "–"}
-        <button class="knopf" id="quelle-aendern" title="Quelle ändern">✎</button></span></div>`}</div>
-    ${platten ? `<div class="i-titel">FILAMENTVERBRAUCH (AUS SLICER)</div><div class="i-karte">${platten}</div>` : ""}
+
+    <div class="i-titel">ZUM DRUCKEN</div>
+    <div class="i-karte">${drucken.map(zeile).join("")}${platten}</div>
     ${papierkorb ? "" : materialTeil(m, materialien)}
-    ${papierkorb ? "" : `<div class="i-titel">HASHTAGS</div>
-    <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
-      <input id="tag-neu" placeholder="Tag hinzufügen" autocomplete="off"></div>`}
-    ${papierkorb ? "" : `<div class="i-titel">BAUGRUPPEN</div>
-    <div class="i-sammlungen">${(m.baugruppen || []).map((b) => `<button class="chip" data-baugruppe="${esc(b.id)}">🧩 ${esc(b.name)} · ${b.menge}×</button>`).join("")}
-      <button class="knopf" id="zu-baugruppe">＋ Zu Baugruppe …</button></div>`}
-    ${papierkorb ? "" : `<div class="i-titel">SAMMLUNGEN</div>
-    <div class="i-sammlungen">${m.sammlungen.map((x) => `<span class="chip">${esc(x.name)}<button data-sammlung-weg="${esc(x.id)}" title="aus der Sammlung">×</button></span>`).join("")}
-      <select class="knopf" id="sammlung-dazu"><option value="">＋ Zu Sammlung …</option>${zustand.sammlungen
-        .filter((x) => !m.sammlungen.some((y) => y.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
-        <option value="__neu">Neue Sammlung …</option></select></div>`}
-    <div class="i-titel">${papierkorb ? "LAG ZULETZT IN" : "ORT" + (m.orte.length > 1 ? "E (" + m.orte.length + ")" : "")}</div>
-    ${(papierkorb ? m.papierkorb_ablage : m.orte).map((o) => `<div class="ort">${esc(o.absolut || o.pfad)}</div>`).join("") || '<div class="dim">–</div>'}
-    <div class="i-knoepfe">${papierkorb
-      ? `<button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button>`
-      : `<button class="knopf ${m.gedruckt ? "akzent" : ""}" id="gedruckt">${m.gedruckt ? "✓ Gedruckt" : "Nicht gedruckt"}</button>
-         <button class="knopf ${m.favorit ? "akzent" : ""}" id="favorit">♥</button>
-         <button class="knopf" id="ws-knopf">${m.warteschlange != null ? "Aus Warteschlange entfernen" : "☰ In Warteschlange"}</button>
-         ${oeffnenKnoepfe(m, prog)}
-         <button class="knopf" id="umbenennen">Umbenennen</button>
-         <button class="knopf" id="verschieben">Verschieben …</button>
-         <button class="knopf gefahr" id="loeschen">Löschen</button>`}</div>`;
+
+    ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
+    <div class="i-gruppe"><span class="i-label">Tags</span>
+      <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
+        <input id="tag-neu" placeholder="＋ Tag" autocomplete="off"></div></div>
+    <div class="i-gruppe"><span class="i-label">Baugruppen</span>
+      <div class="i-sammlungen">${(m.baugruppen || []).map((b) => `<button class="chip" data-baugruppe="${esc(b.id)}">🧩 ${esc(b.name)} · ${b.menge}×</button>`).join("")}
+        <button class="knopf klein" id="zu-baugruppe">＋ Baugruppe …</button></div></div>
+    <div class="i-gruppe"><span class="i-label">Sammlungen</span>
+      <div class="i-sammlungen">${m.sammlungen.map((x) => `<span class="chip">${esc(x.name)}<button data-sammlung-weg="${esc(x.id)}" title="aus der Sammlung">×</button></span>`).join("")}
+        <select class="knopf klein" id="sammlung-dazu"><option value="">＋ Sammlung …</option>${zustand.sammlungen
+          .filter((x) => !m.sammlungen.some((y) => y.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
+          <option value="__neu">Neue Sammlung …</option></select></div></div>`}
+
+    <details class="i-details" id="i-details" ${detailsOffen ? "open" : ""}>
+      <summary>DATEI-DETAILS</summary>
+      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
+      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
+      ${orte}
+    </details>`;
   $("#inspektor").dataset.id = id;
+  if (menuOffen) $("#mehr-menu").hidden = false;
   if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }
   zustand.angezeigt = id;
   zeigeGalerie(m);
@@ -882,6 +910,8 @@ document.addEventListener("click", async (e) => {
     case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
     case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.pfad }); }
+    case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
+    case "gal-plus-menu": $("#mehr-menu").hidden = true; return $("#bild-wahl").click();
     case "umbenennen": return umbenennen(id);
     case "loeschen": return loeschen(id);
     case "wiederherstellen":
@@ -896,6 +926,7 @@ document.addEventListener("click", async (e) => {
     }
   }
   if (!t.closest(".import")) $("#import-menu").hidden = true;
+  if (!t.closest(".mehr") && $("#mehr-menu")) $("#mehr-menu").hidden = true;
 });
 
 document.addEventListener("change", async (e) => {
@@ -1115,3 +1146,8 @@ window.addEventListener("drop", (e) => {
   hochladen(e.dataTransfer.files);
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
+
+// Datei-Details auf- oder zugeklappt lassen, wie man es zuletzt wollte.
+document.addEventListener("toggle", (e) => {
+  if (e.target.id === "i-details") localStorageSchreiben("details", e.target.open ? "1" : "0");
+}, true);

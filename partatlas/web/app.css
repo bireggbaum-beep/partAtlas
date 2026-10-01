@@ -373,3 +373,32 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
               background: var(--warn); color: var(--bg); letter-spacing: 0.03em; }
 .zeile-l.fehlt { color: var(--ink-3); }
 .zeile-l.fehlt img { filter: grayscale(1); opacity: 0.4; }
+
+/* Inspektor: Kopf mit Hauptaktionen, dann Zum Drucken, Ordnen, Datei-Details */
+.i-kopf { margin: 12px 0 4px; }
+.i-kopf .i-name { margin: 0 0 8px; font-size: 16px; }
+.i-kopf .i-name .dim { font-weight: 400; margin-left: 1px; }
+.i-haupt { display: flex; gap: 6px; flex-wrap: wrap; }
+.i-haupt .knopf { font-size: 13px; padding: 7px 12px; }
+.i-haupt select.knopf { flex: 1; min-width: 120px; }
+.i-schalter { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.schalter { font-size: 11.5px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); background: none;
+            color: var(--ink-2); cursor: pointer; }
+.schalter:hover { border-color: var(--line-strong); color: var(--ink); }
+.schalter.an { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.mehr { position: relative; margin-left: auto; }
+.i-haupt .mehr .schalter { padding: 7px 11px; font-size: 13px; }
+.mehr .menu { top: 30px; left: auto; right: 0; min-width: 220px; }
+.mehr .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.menu button.gefahr { color: var(--crit); }
+.i-gruppe { display: grid; grid-template-columns: 78px 1fr; gap: 8px; align-items: start; margin: 8px 0; }
+.i-label { font-size: 12px; color: var(--ink-2); padding-top: 3px; }
+.knopf.klein, select.knopf.klein { font-size: 11px; padding: 2px 8px; }
+.i-tags input { width: 80px; }
+.i-details { margin-top: 16px; }
+.i-details summary { font: 500 var(--fs-label)/1 var(--mono); letter-spacing: 0.12em; color: var(--ink-3); cursor: pointer;
+                     list-style: none; padding: 6px 0; }
+.i-details summary::before { content: "▸ "; }
+.i-details[open] summary::before { content: "▾ "; }
+.i-details summary:hover { color: var(--ink-2); }
+.i-details .i-label { margin: 10px 0 4px; }

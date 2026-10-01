@@ -180,7 +180,8 @@ async def oberflaeche(port):
 
         # -- Quelle als Link
         await pg.locator(".karte").first.click()
-        await pg.wait_for_selector("#quelle-aendern")
+        await pg.wait_for_selector("#i-details summary")
+        await pg.click("#i-details summary")
         await pg.click("#quelle-aendern")
         await pg.fill("#quelle-url", "https://www.printables.com/model/42")
         await pg.click('dialog button[value="ja"]')
@@ -234,7 +235,10 @@ async def oberflaeche(port):
 
         await suche("Haken")
         await pg.locator(".karte").first.click()
-        await pg.wait_for_selector("#loeschen")
+        await pg.wait_for_selector("#mehr-knopf")
+        check("Inspektor: Hauptaktion oben, seltene im Menü — Löschen erst nach „⋯“",
+              await pg.locator("#oeffnen").is_visible() and not await pg.locator("#loeschen").is_visible())
+        await pg.click("#mehr-knopf")
         await pg.click("#loeschen")
         await pg.wait_for_selector("dialog[open]")
         text = await pg.inner_text("dialog")
