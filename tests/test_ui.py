@@ -167,12 +167,12 @@ async def oberflaeche(port):
         # einen IndexError statt eines FAIL.
         erwartet = ["Haken.stl", "Arm.stl", "Vase.stl"]
         try:
-            await pg.wait_for_function("(e) => [...document.querySelectorAll('#ws-liste [data-ws-waehle]')]"
+            await pg.wait_for_function("(e) => [...document.querySelectorAll('#ws-liste li > span')]"
                                        ".map((x) => x.textContent).join('|') === e.join('|')", arg=erwartet, timeout=5000)
         except Exception:
             pass
         check("Drei Kacheln in die Warteschlange gezogen, Liste links nummeriert",
-              await pg.locator("#ws-liste [data-ws-waehle]").all_inner_texts() == erwartet
+              await pg.locator("#ws-liste li > span").all_inner_texts() == erwartet
               and await pg.locator("#ws-liste li b").all_inner_texts() == ["1", "2", "3"])
         await pg.evaluate(ZIEHEN, ["#ws-liste li:last-child", "#ws-liste li:first-child"])
         await pg.wait_for_timeout(800)
@@ -255,17 +255,104 @@ async def oberflaeche(port):
               "DRUCKZEIT" in await pg.inner_text("#inspektor"))
         await pg.click('[data-bg-aktion="kaufteile"]')
         await pg.wait_for_selector("#w-liste .w-zeile")
+        check("Kaufteile ohne Filter: alle Kategorien, nicht nur die ersten Schrauben",
+              "Lager" in await pg.inner_text("#w-liste") and "Magnet" in await pg.inner_text("#w-liste"))
+        hoehe = (await pg.locator("#w-liste").bounding_box())["height"]
+        await pg.click('[data-w-kat="Lager"]')
+        await pg.wait_for_timeout(500)
+        check("Wähler bleibt beim Kategoriewechsel gleich gross",
+              abs((await pg.locator("#w-liste").bounding_box())["height"] - hoehe) < 1)
+        await pg.click('[data-w-kat="Lager"]')
         await pg.fill("#w-suche", "m3x10")
         await pg.wait_for_timeout(600)
         await pg.fill('[data-w-menge="PURCHASED_PART/din912-m3x10"]', "6")
         await pg.click('[data-w-plus="PURCHASED_PART/din912-m3x10"]')
         await pg.wait_for_timeout(600)
+        drin = lambda: any(p["ref"] == "PURCHASED_PART/din912-m3x10" for p in api(port, f"/api/baugruppen/{bid}")["positionen"])
+        check("Kaufteil im Wähler hinzugefügt", drin())
+        await pg.click('[data-w-plus="PURCHASED_PART/din912-m3x10"]')
+        await pg.wait_for_timeout(600)
+        check("Nochmal auf ✓ klicken nimmt es wieder heraus", not drin())
+        await pg.click('[data-w-plus="PURCHASED_PART/din912-m3x10"]')
+        await pg.wait_for_timeout(600)
+        await pg.fill("#w-suche", "")
+        await pg.fill("#w-eigen", "Propeller 5 Zoll")
+        await pg.press("#w-eigen", "Enter")
+        await pg.wait_for_timeout(800)
+        check("Enter im Feld „Eigenes Kaufteil“ legt es an und schliesst den Dialog nicht",
+              await pg.locator("dialog[open]").count() == 1
+              and any(k["name"] == "Propeller 5 Zoll" for k in api(port, "/api/kaufteile")))
+        await pg.press("#w-suche", "Enter")
+        check("Enter in der Suche schliesst den Dialog nicht", await pg.locator("dialog[open]").count() == 1)
         await pg.click('dialog button[value="fertig"]')
         await pg.wait_for_timeout(800)
         check("Kaufteil aus dem Katalog mit Menge, erscheint in der Einkaufsliste",
               "KAUFTEILE" in await pg.inner_text("#inspektor") and "6×" in await pg.inner_text("#inspektor"))
         await pg.click('[data-ansicht="alle"]')
         await pg.wait_for_timeout(600)
+
+        # -- Neue Sammlung: Enter legt an, statt den Dialog wegzuwerfen
+        await pg.click("#sammlung-neu")
+        await pg.fill("#s-name", "Per Enter")
+        await pg.press("#s-name", "Enter")
+        await pg.wait_for_timeout(800)
+        check("Neue Sammlung: Name, Enter — angelegt, Dialog zu",
+              any(x["name"] == "Per Enter" for x in api(port, "/api/sammlungen")) and await pg.locator("dialog[open]").count() == 0)
+
+        # -- Schnell hintereinander klicken: keine Auswahl geht verloren
+        await suche("")
+        await pg.wait_for_selector(".karte")
+        for runde in range(2):
+            await pg.locator(".karte").nth(0).click()
+            await pg.locator(".karte").nth(1).click()
+            await pg.locator(".karte").nth(2).click()
+            await pg.wait_for_timeout(700 if runde == 0 else 1500)
+            ids = [await pg.locator(".karte").nth(i).get_attribute("data-id") for i in range(3)]
+            check(f"Drei Kacheln schnell nacheinander angeklickt (Runde {runde + 1}): die letzte ist gewählt",
+                  await pg.locator(".karte.gewaehlt").count() == 1 and await pg.locator("#inspektor").get_attribute("data-id") == ids[2])
+        for tag in [t["name"] for t in api(port, "/api/tags")][:3]:
+            await pg.click(f'#tag-liste [data-tag="{tag}"]', no_wait_after=True)
+        await pg.wait_for_timeout(800)
+        check("Mehrere Tags schnell nacheinander gewählt: alle angenommen",
+              await pg.locator("#tagleiste .chip.aktiv[data-tag]:not([data-tag=''])").count() == min(3, len(api(port, "/api/tags"))))
+        await pg.click("#filter-weg")
+        await pg.wait_for_timeout(500)
+
+        # -- Beschreibung einer Baugruppe: an Ort und Stelle, ohne Fenster
+        leer = api(port, "/api/baugruppen", {"name": "Leere Baugruppe"})["id"]
+        await pg.wait_for_selector(f'#baugruppen [data-baugruppe="{leer}"]')
+        await pg.click(f'#baugruppen [data-baugruppe="{leer}"]')
+        await pg.wait_for_selector("#bg-beschreibung")
+        check("Baugruppe: Raster/Liste und Sortieren gibt es hier nicht",
+              await pg.locator("#ansicht-wahl").is_hidden() and await pg.locator("#sortierung").is_hidden()
+              and await pg.locator("#listenkopf").is_hidden())
+        await pg.click("#bg-beschreibung")
+        await pg.wait_for_selector("textarea.inline-edit")
+        check("Beschreibung: ein Feld an der Stelle, kein Dialog", await pg.locator("dialog[open]").count() == 0)
+        await pg.keyboard.type("Meine Beschreibung")
+        await pg.keyboard.press("Control+Enter")
+        await pg.wait_for_timeout(800)
+        check("Beschreibung gespeichert und als Text angezeigt",
+              api(port, f"/api/baugruppen/{leer}")["beschreibung"] == "Meine Beschreibung"
+              and "Meine Beschreibung" in await pg.inner_text("#bg-beschreibung"))
+        await pg.click('[data-ansicht="alle"]')
+        await pg.wait_for_timeout(400)
+
+        # -- Seitenleisten in der Breite ziehen
+        breite = (await pg.locator(".seite").bounding_box())["width"]
+        g = await pg.locator(".griff.links").bounding_box()
+        await pg.mouse.move(g["x"] + 3, g["y"] + 200)
+        await pg.mouse.down()
+        await pg.mouse.move(g["x"] + 83, g["y"] + 200, steps=4)
+        await pg.mouse.up()
+        check("Linke Seitenleiste lässt sich breiter ziehen", (await pg.locator(".seite").bounding_box())["width"] > breite + 50)
+        breite = (await pg.locator(".inspektor").bounding_box())["width"]
+        g = await pg.locator(".griff.rechts").bounding_box()
+        await pg.mouse.move(g["x"] + 3, g["y"] + 200)
+        await pg.mouse.down()
+        await pg.mouse.move(g["x"] - 77, g["y"] + 200, steps=4)
+        await pg.mouse.up()
+        check("Rechte Seitenleiste lässt sich breiter ziehen", (await pg.locator(".inspektor").bounding_box())["width"] > breite + 50)
 
         # -- Datei im Dateimanager gelöscht: Kachel bleibt, deutlich markiert
         os.remove(os.path.join(SAMMLUNG, "Technik", "Arm.stl"))

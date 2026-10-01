@@ -13,6 +13,55 @@ const zustand = {
   sortierung: "name", gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
 
+// Zeichnet `html` in `ziel`, ohne unveränderte Elemente auszutauschen. Ein
+// Klick besteht aus Drücken und Loslassen; wird das Element dazwischen durch
+// ein gleich aussehendes ersetzt (Live-Meldung, Nachladen), geht der Klick
+// verloren. Deshalb: nur anfassen, was sich geändert hat. Elemente mit
+// data-id (Kacheln, Zeilen) werden über diese Kennung wiedererkannt.
+function abgleichen(ziel, html) {
+  if (ziel._html === html) return;
+  ziel._html = html;
+  const vorlage = document.createElement("template");
+  vorlage.innerHTML = html;
+  kinderAbgleichen(ziel, vorlage.content);
+}
+
+const schluessel = (n) => (n.nodeType === 1 ? n.getAttribute("data-id") : null);
+
+function kinderAbgleichen(alt, neu) {
+  const vorhandene = [...alt.childNodes];
+  const nachKennung = new Map(vorhandene.filter(schluessel).map((n) => [schluessel(n), n]));
+  const frei = vorhandene.filter((n) => !schluessel(n));
+  const gebraucht = new Set();
+  const passend = [];
+  for (const n of neu.childNodes) {
+    const k = schluessel(n);
+    let a = k ? nachKennung.get(k) : null;
+    if (!a && !k) {
+      const i = frei.findIndex((x) => x.nodeType === n.nodeType && x.nodeName === n.nodeName && !gebraucht.has(x));
+      if (i >= 0) a = frei[i];
+    }
+    if (a && !gebraucht.has(a) && a.nodeName === n.nodeName) { gebraucht.add(a); passend.push([a, n]); }
+    else passend.push([null, n]);
+  }
+  for (const n of vorhandene) if (!gebraucht.has(n)) n.remove();
+  let stelle = alt.firstChild;
+  for (const [a, n] of passend) {
+    if (!a) { alt.insertBefore(document.importNode(n, true), stelle); continue; }
+    if (a !== stelle) alt.insertBefore(a, stelle); else stelle = stelle.nextSibling;
+    knotenAbgleichen(a, n);
+  }
+}
+
+function knotenAbgleichen(a, n) {
+  if (a.nodeType !== 1) { if (a.nodeValue !== n.nodeValue) a.nodeValue = n.nodeValue; return; }
+  if (a.isEqualNode(n)) return;
+  for (const at of [...a.attributes]) if (!n.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for (const at of n.attributes) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  if (a.nodeName === "INPUT" && a.type === "checkbox") a.checked = n.hasAttribute("checked");
+  kinderAbgleichen(a, n);
+}
+
 function localStorageLesen(k) { try { return localStorage.getItem("partatlas." + k); } catch { return null; } }
 function localStorageSchreiben(k, v) { try { localStorage.setItem("partatlas." + k, v); } catch { /* egal */ } }
 
@@ -65,12 +114,12 @@ async function ladeSeite() {
   const [z, ordner, tags, sammlungen, ws] = await Promise.all([api("/api/zaehler"), api("/api/ordner"), api("/api/tags"),
                                                               api("/api/sammlungen"), api("/api/warteschlange")]);
   zustand.sammlungen = sammlungen;
-  $("#sammlungen").innerHTML = sammlungen.map((x) =>
+  abgleichen($("#sammlungen"), sammlungen.map((x) =>
     `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("")
-    || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`;
-  $("#ws-liste").innerHTML = ws.map((m, i) =>
-    `<li draggable="true" data-ws="${esc(m.id)}"><b>${i + 1}</b><span data-ws-waehle="${esc(m.id)}" title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join("");
-  for (const k of ["alle", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "warteschlange"]) {
+    || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`);
+  abgleichen($("#ws-liste"), ws.map((m, i) =>
+    `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b><span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
+  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "warteschlange"]) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
@@ -82,13 +131,13 @@ async function ladeSeite() {
     $(`[data-sektion="aufraeumen"] [data-ansicht="${k}"]`).hidden = !n && zustand.ansicht !== k;
   }
   $('[data-sektion="aufraeumen"]').hidden = !aufzuraeumen && !["duplikate", "fehlt", "unlesbar"].includes(zustand.ansicht);
-  $("#formate").innerHTML = Object.entries(z.formate).sort().map(([f, n]) =>
-    `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join("");
-  $("#ordner").innerHTML = `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`;
+  abgleichen($("#formate"), Object.entries(z.formate).sort().map(([f, n]) =>
+    `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join(""));
+  abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
-  $("#tag-liste").innerHTML = tags.slice(0, 30).map((t) =>
-    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("");
+  abgleichen($("#tag-liste"), tags.slice(0, 30).map((t) =>
+    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join(""));
   markiereAnsicht();
 }
 
@@ -118,9 +167,9 @@ function zeichneLeiste(l) {
   const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material, x, esc(x.name))).join("");
   const tags = auswahl(l.tags, zustand.tags, 14).map((x) => chip("tag", zustand.tags, x, "#" + esc(x.name))).join("");
   const leer = !zustand.tags.size && !zustand.material.size;
-  $("#tagleiste").innerHTML = `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
+  abgleichen($("#tagleiste"), `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
-    + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : "");
+    + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : ""));
 }
 
 function zeichneFilterzeile() {
@@ -135,7 +184,7 @@ function zeichneFilterzeile() {
   if (zustand.suche) teile.push(`„${esc(zustand.suche)}“`);
   const z = $("#filterzeile");
   z.hidden = teile.length === 0;
-  z.innerHTML = teile.join(" · ") + ` <button id="filter-weg">✕ Filter aufheben</button>`;
+  abgleichen(z, teile.join(" · ") + ` <button id="filter-weg">✕ Filter aufheben</button>`);
   zustand.filterTeile = teile.length;
   zeichneLeer();
 }
@@ -188,7 +237,7 @@ const raster = (() => {
     spalten = zustand.layout === "liste" ? 1 : Math.max(1, Math.floor((aussen.clientWidth - R * 2 + LUECKE) / (B + LUECKE)));
     const zeilen = Math.ceil(zustand.modelle.length / spalten);
     innen.style.height = `${R * 2 + zeilen * (H + LUECKE)}px`;
-    $("#listenkopf").hidden = zustand.layout !== "liste";
+    $("#listenkopf").hidden = zustand.layout !== "liste" || !!zustand.baugruppe;
     zeichne();
   }
 
@@ -207,7 +256,7 @@ const raster = (() => {
         html.push(zustand.layout === "liste" ? zeileL(m, z * H) : karte(m, R + s * (B + LUECKE), R + z * (H + LUECKE)));
       }
     }
-    innen.innerHTML = html.join("");
+    abgleichen(innen, html.join(""));
   }
 
   aussen.addEventListener("scroll", () => { if (!geplant) { geplant = true; requestAnimationFrame(zeichne); } });
@@ -297,7 +346,7 @@ function zeichneStapel() {
   const st = $("#stapel");
   st.hidden = n === 0;
   if (!n) return;
-  st.innerHTML = zustand.ansicht === "papierkorb"
+  abgleichen(st, zustand.ansicht === "papierkorb"
     ? `<b>${n} ausgewählt</b><button class="knopf" data-stapel="wiederherstellen">Wiederherstellen</button>
        <button class="knopf" data-stapel="alle">Alle auswählen</button><button class="knopf" data-stapel="keine">✕ Auswahl aufheben</button>`
     : `<b>${n} ausgewählt</b>
@@ -312,7 +361,7 @@ function zeichneStapel() {
     <button class="knopf" data-stapel="favorit">♥ Favorit</button>
     <button class="knopf" data-stapel="verschieben">Verschieben …</button>
     <button class="knopf gefahr" data-stapel="loeschen">Löschen</button>
-    <button class="knopf" data-stapel="keine">✕</button>`;
+    <button class="knopf" data-stapel="keine">✕</button>`);
 }
 
 // Vorgesehen setzt der Anwender (entfernbar); aus der Datei kommt aus den
@@ -757,6 +806,18 @@ function dialog(html) {
   d.showModal();
   return new Promise((ok) => d.addEventListener("close", () => ok(d.returnValue), { once: true }));
 }
+
+// Enter in einem Feld löst die Hauptaktion des Dialogs aus (wie ein Klick auf
+// den farbigen Knopf), nie „Abbrechen“. Das Absenden des Formulars würde den
+// ersten Knopf nehmen — und der ist Abbrechen. Felder mit data-enter nennen
+// ihren eigenen Knopf; data-enter="" heisst: Enter tut dort nichts.
+$("#dialog-inhalt").addEventListener("keydown", (e) => {
+  const f = e.target;
+  if (e.key !== "Enter" || e.isComposing || !f.matches?.("input:not([type=checkbox]):not([type=radio]):not([type=color]), select")) return;
+  e.preventDefault();
+  const ziel = f.dataset.enter != null ? f.dataset.enter : ".knoepfe .akzent";
+  if (ziel) $("#dialog-inhalt").querySelector(ziel)?.click();
+});
 
 async function loeschen(id) {
   const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${id}`);
@@ -1401,3 +1462,46 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#kontext").hidden = true; });
 window.addEventListener("blur", () => { $("#kontext").hidden = true; });
 document.addEventListener("scroll", () => { $("#kontext").hidden = true; }, true);
+
+// ---------------------------------------------------------------- Breite der Seitenleisten
+//
+// Die Griffe sitzen auf den Rändern; Ziehen ändert die Spaltenbreite, die
+// Zahl bleibt gemerkt, ein Doppelklick stellt die Vorgabe wieder her.
+
+const BREITE = { seite: { vorgabe: 200, min: 160, max: 480, var: "--seite-b", von: "links" },
+                 inspektor: { vorgabe: 320, min: 260, max: 700, var: "--insp-b", von: "rechts" } };
+function breiteSetzen(name, px, merken = true) {
+  const b = BREITE[name];
+  px = Math.round(Math.max(b.min, Math.min(b.max, px)));
+  document.documentElement.style.setProperty(b.var, px + "px");
+  if (merken) localStorageSchreiben("breite." + name, px);
+  return px;
+}
+for (const name of Object.keys(BREITE)) {
+  const gemerkt = Number(localStorageLesen("breite." + name));
+  if (gemerkt) breiteSetzen(name, gemerkt, false);
+}
+document.querySelectorAll("[data-griff]").forEach((g) => {
+  const name = g.dataset.griff, b = BREITE[name];
+  g.addEventListener("dblclick", () => { breiteSetzen(name, b.vorgabe); raster.neu(); });
+  g.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    g.setPointerCapture(e.pointerId);
+    g.classList.add("zieht");
+    const rand = $(".app").getBoundingClientRect();
+    const bewegen = (ev) => {
+      breiteSetzen(name, b.von === "links" ? ev.clientX - rand.left - 50 : rand.right - ev.clientX, false);
+      requestAnimationFrame(() => raster.neu());
+    };
+    const ende = () => {
+      g.classList.remove("zieht");
+      g.removeEventListener("pointermove", bewegen);
+      g.removeEventListener("pointerup", ende);
+      g.removeEventListener("pointercancel", ende);
+      localStorageSchreiben("breite." + name, parseInt(document.documentElement.style.getPropertyValue(b.var)));
+    };
+    g.addEventListener("pointermove", bewegen);
+    g.addEventListener("pointerup", ende);
+    g.addEventListener("pointercancel", ende);
+  });
+});

@@ -29,14 +29,14 @@
         <button id="neu-einlesen">Alle Ordner neu einlesen</button>
       </div>
     </div>
-    <span class="label">SORTIEREN</span>
-    <select id="sortierung" class="knopf">
+    <span class="label nur-katalog">SORTIEREN</span>
+    <select id="sortierung" class="knopf nur-katalog">
       <option value="name">Name</option>
       <option value="neu">Neueste</option>
       <option value="gewicht">Gewicht</option>
       <option value="groesse">Grösse</option>
     </select>
-    <div class="segment" id="ansicht-wahl"><button data-layout="raster" class="an">Raster</button><button data-layout="liste">Liste</button></div>
+    <div class="segment nur-katalog" id="ansicht-wahl"><button data-layout="raster" class="an">Raster</button><button data-layout="liste">Liste</button></div>
     <span class="kopf-luecke"></span>
     <span class="scan-status" id="scan-status"></span>
     <span class="mono dim" id="anzahl"></span>
@@ -48,7 +48,7 @@
       <h3><button class="sk-kopf" data-sk="ansichten">ANSICHTEN</button></h3>
       <div class="sk-inhalt">
         <button class="eintrag" data-ansicht="alle"><span>Alle Modelle</span><em id="z-alle"></em></button>
-        <button class="eintrag" data-ansicht="neu"><span>⊕ Neu hinzugefügt</span><em></em></button>
+        <button class="eintrag" data-ansicht="neu"><span>⊕ Neu hinzugefügt</span><em id="z-neu"></em></button>
         <button class="eintrag" data-ansicht="favoriten"><span>♡ Favoriten</span><em id="z-favoriten"></em></button>
         <button class="eintrag ablage" data-ansicht="warteschlange"><span>☰ Warteschlange</span><em id="z-warteschlange"></em></button>
         <ol class="ws-liste" id="ws-liste"></ol>
@@ -107,6 +107,8 @@
   <aside class="inspektor" id="inspektor">
     <p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>
   </aside>
+  <div class="griff links" data-griff="seite" title="Breite ändern (Doppelklick: zurücksetzen)"></div>
+  <div class="griff rechts" data-griff="inspektor" title="Breite ändern (Doppelklick: zurücksetzen)"></div>
 </div>
 
 <dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>

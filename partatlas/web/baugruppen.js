@@ -45,16 +45,17 @@ async function ladeBaugruppenLeiste() {
   zustand.baugruppen = liste;
   const tipp = vorschlaege.length
     ? `<div class="tipp" id="bg-tipp"><b>💡 ${vorschlaege.length} Ordner</b> sehen aus wie Baugruppen — ansehen</div>` : "";
-  $("#baugruppen").innerHTML = liste.map((b) => `
+  abgleichen($("#baugruppen"), liste.map((b) => `
     <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
       <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("")
-    + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="baugruppe-neu-2">＋ Neue Baugruppe</button>`) + tipp;
+    + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="baugruppe-neu-2">＋ Neue Baugruppe</button>`) + tipp);
   zustand.bgVorschlaege = vorschlaege;
 }
 
 // ---------------------------------------------------------------- Ansicht
 
 function zeigeBaugruppeFlaeche(an) {
+  document.body.classList.toggle("bg-offen", an);
   for (const s of ["#tagleiste", "#raster"]) $(s).hidden = an;
   if (an) for (const s of ["#filterzeile", "#stapel", "#listenkopf", "#leer"]) $(s).hidden = true;
   $("#bg-ansicht").hidden = !an;
@@ -88,9 +89,9 @@ async function ladeBaugruppe() {
   catch { schliesseBaugruppe(); return; }
   if (zustand.baugruppe !== bid) return;
   bgDaten = d;
-  // Eingabe in einer Notiz nicht unter den Fingern wegzeichnen.
-  if (document.activeElement?.classList.contains("notiz")) return;
-  $("#bg-ansicht").innerHTML = zeichneBaugruppe(d);
+  // Eine Eingabe an Ort und Stelle (Name, Beschreibung) nicht unter den Fingern wegzeichnen.
+  if (document.activeElement?.classList.contains("inline-edit")) return;
+  abgleichen($("#bg-ansicht"), zeichneBaugruppe(d));
   // Rechts steht die Übersicht, solange kein einzelnes Teil gewählt ist.
   if (!zustand.gewaehlt) zeigeBgUebersicht();
 }
@@ -222,7 +223,7 @@ function position(p) {
   if (p.art === "modell") {
     const url = bildUrl(p);
     vorschau = url ? `<img loading="lazy" src="${url}" alt="">` : "🧊";
-    name = `<div class="name" data-bg-modell="${esc(p.id)}" title="Im Inspektor zeigen">${esc(p.name)}${esc(endung[p.format] || "")}</div>`;
+    name = `<div class="name">${esc(p.name)}${esc(endung[p.format] || "")}</div>`;
     unterzeile = [p.fehlt ? "⚠ Datei fehlt" : "", p.je_gewicht_g ? `je ${zahl(p.je_gewicht_g, 1)} g${p.je_geschaetzt ? " (geschätzt)" : ""}` : "", masse(p.masse)].filter(Boolean).join(" · ");
     zaehlerText = "gedruckt";
   } else if (p.art === "kaufteil") {
@@ -232,7 +233,7 @@ function position(p) {
     zaehlerText = "beschafft";
   } else {
     vorschau = "🧩";
-    name = `<div class="name" data-baugruppe="${esc(p.id)}" title="Öffnen">${esc(p.name)} ›</div>`;
+    name = `<div class="name">${esc(p.name)} ›</div>`;
     unterzeile = `${p.unter_positionen} Positionen · ${p.unter_erledigt} von ${p.unter_bedarf} Teilen fertig`;
     zaehlerText = "";
   }
@@ -245,10 +246,11 @@ function position(p) {
     ? `<div class="material"><button class="mat-knopf ${p.material_angenommen ? "standard" : ""}" data-bg-material="${r}"
         title="${p.material_angenommen ? "Keine Angabe — Standard aus den Einstellungen. Klicken zum Festlegen." : "Material und Farbe festlegen"}">
         ${tupfer(p.farbe)}${esc(p.material)}${p.material_angenommen ? " <small>Standard</small>" : ""}</button></div>` : `<div class="material"></div>`;
-  return `<div class="pos ${fertig && p.art !== "baugruppe" ? "erledigt" : ""}">
+  const zeile = p.art === "modell" ? `data-bg-modell="${esc(p.id)}" title="Im Inspektor zeigen"`
+    : p.art === "baugruppe" ? `data-bg-unter="${esc(p.id)}" title="Öffnen"` : "";
+  return `<div class="pos ${fertig && p.art !== "baugruppe" ? "erledigt" : ""} ${p.art === "modell" && zustand.gewaehlt === p.id ? "gewaehlt" : ""}" ${zeile}>
     <div class="vorschau">${vorschau}</div>
-    <div style="min-width:0">${name}<div class="unter">${unterzeile}</div>
-      <input class="notiz" data-bg-notiz="${r}" value="${esc(p.notiz || "")}" placeholder="Notiz …"></div>
+    <div style="min-width:0">${name}<div class="unter">${unterzeile}</div>${p.notiz ? `<div class="notiz-text" title="Notiz">${esc(p.notiz)}</div>` : ""}</div>
     <div><span class="stepper"><button data-bg-menge="-1" data-ref="${r}">−</button><span>${p.menge}×</span><button data-bg-menge="1" data-ref="${r}">＋</button></span></div>
     ${zaehler}
     ${material}
@@ -303,10 +305,10 @@ async function waehler(art) {
   const kategorien = ["Schrauben", "Muttern", "Scheiben", "Gewindeeinsätze", "Magnete", "Lager", "Profil & Linear", "Elektronik", "Kleinteile", "Eigene"];
   const titel = { teile: "Druckteile hinzufügen", kaufteile: "Kaufteile hinzufügen", unter: "Unterbaugruppe hinzufügen" }[art];
   const warten = dialog(`<h2>${titel}</h2>
-    <input type="text" id="w-suche" placeholder="${kaufteile ? "Suchen, z. B. m3x10, Magnet 6x2, 608 …" : "Modell suchen …"}" autocomplete="off">
+    <input type="text" id="w-suche" data-enter="" placeholder="${kaufteile ? "Suchen, z. B. m3x10, Magnet 6x2, 608 …" : "Modell suchen …"}" autocomplete="off">
     ${kaufteile ? `<div class="kategorien">${kategorien.map((k) => `<button type="button" class="chip" data-w-kat="${esc(k)}">${esc(k)}</button>`).join("")}</div>` : ""}
     <div class="waehler" id="w-liste"></div>
-    ${kaufteile ? `<p class="dim" style="margin-top:8px">Nicht dabei? <input type="text" id="w-eigen" placeholder="Eigenes Kaufteil, z. B. Propeller 5 Zoll" style="width:60%"> <button type="button" class="knopf" id="w-eigen-knopf">Anlegen</button></p>` : ""}
+    ${kaufteile ? `<p class="dim" style="margin-top:8px">Nicht dabei? <input type="text" id="w-eigen" data-enter="#w-eigen-knopf" placeholder="Eigenes Kaufteil, z. B. Propeller 5 Zoll" style="width:60%"> <button type="button" class="knopf" id="w-eigen-knopf">Anlegen</button></p>` : ""}
     <div class="knoepfe"><button class="knopf akzent" value="fertig">Fertig</button></div>`);
   let kategorie = "";
   const laden = async () => {
@@ -314,7 +316,8 @@ async function waehler(art) {
     let zeilen = [];
     if (kaufteile) {
       const liste = await api(`/api/kaufteile?q=${encodeURIComponent(q)}&kategorie=${encodeURIComponent(kategorie)}`);
-      zeilen = liste.slice(0, 120).map((t) => ({ ref: `PURCHASED_PART/${t.id}`, name: t.name, klein: [t.kategorie, t.norm].filter(Boolean).join(" · "), bild: null, symbol: symbolFuer(t.kategorie) }));
+      // Ohne Suche und Kategorie alles zeigen: sortiert nach Kategorie würden 120 Zeilen nur Schrauben ergeben.
+      zeilen = liste.map((t) => ({ ref: `PURCHASED_PART/${t.id}`, name: t.name, klein: [t.kategorie, t.norm].filter(Boolean).join(" · "), bild: null, symbol: symbolFuer(t.kategorie) }));
     } else if (art === "unter") {
       zeilen = (await api("/api/baugruppen")).filter((b) => b.id !== bid() && b.name.toLowerCase().includes(q.toLowerCase()))
         .map((b) => ({ ref: `ASSEMBLY/${b.id}`, name: b.name, klein: `${b.positionen} Positionen`, bild: null }));
@@ -327,8 +330,8 @@ async function waehler(art) {
     $("#w-liste").innerHTML = zeilen.map((z) => `<div class="w-zeile">
       ${z.bild ? `<img loading="lazy" src="${z.bild}" alt="">` : `<div class="mini" style="display:grid;place-items:center">${z.symbol || ""}</div>`}
       <div><b>${esc(z.name)}</b><small>${esc(z.klein || "")}</small></div>
-      <input type="number" min="1" value="1" data-w-menge="${esc(z.ref)}">
-      <button type="button" class="plus ${drin.has(z.ref) ? "ok" : ""}" data-w-plus="${esc(z.ref)}" title="${drin.has(z.ref) ? "schon drin — nochmal erhöht die Menge" : "hinzufügen"}">${drin.has(z.ref) ? "✓" : "＋"}</button></div>`).join("")
+      <input type="number" min="1" value="1" data-enter="" data-w-menge="${esc(z.ref)}">
+      <button type="button" class="plus ${drin.has(z.ref) ? "ok" : ""}" data-w-plus="${esc(z.ref)}" title="${drin.has(z.ref) ? "ist drin — Klick nimmt es wieder heraus" : "hinzufügen"}"><span class="a">${drin.has(z.ref) ? "✓" : "＋"}</span><span class="b">−</span></button></div>`).join("")
       || '<div class="pos-leer">Nichts gefunden.</div>';
   };
   let zeit;
@@ -336,13 +339,21 @@ async function waehler(art) {
   $("#w-liste").addEventListener("click", async (e) => {
     const plus = e.target.closest("[data-w-plus]");
     if (!plus) return;
+    if (plus.disabled) return;
     const ref = plus.dataset.wPlus;
+    const drin = plus.classList.contains("ok");
     const menge = Number(document.querySelector(`[data-w-menge="${CSS.escape(ref)}"]`)?.value || 1);
+    plus.disabled = true;
     try {
-      await api(`/api/baugruppen/${bid()}/positionen`, { method: "POST", body: { ref, menge } });
-      plus.classList.add("ok"); plus.textContent = "✓";
+      // Dasselbe Knöpfchen setzt und nimmt zurück: ✓ heisst „ist drin“, nochmal klicken entfernt.
+      if (drin) await api(`/api/baugruppen/${bid()}/positionen?ref=${encodeURIComponent(ref)}`, { method: "DELETE" });
+      else await api(`/api/baugruppen/${bid()}/positionen`, { method: "POST", body: { ref, menge } });
+      plus.classList.toggle("ok", !drin);
+      plus.querySelector(".a").textContent = drin ? "＋" : "✓";
+      plus.title = drin ? "hinzufügen" : "ist drin — Klick nimmt es wieder heraus";
       await ladeBaugruppe();
     } catch (err) { toast(err.message); }
+    plus.disabled = false;
   });
   d.querySelector(".kategorien")?.addEventListener("click", (e) => {
     const k = e.target.closest("[data-w-kat]");
@@ -453,27 +464,51 @@ document.addEventListener("click", async (e) => {
     return;
   }
   const mod = t.closest("[data-bg-modell]");
-  if (mod) return waehle(mod.dataset.bgModell);
+  if (mod) {
+    document.querySelectorAll(".pos[data-bg-modell]").forEach((r) => r.classList.toggle("gewaehlt", r === mod));
+    return waehle(mod.dataset.bgModell);
+  }
+  const unter = t.closest("[data-bg-unter]");
+  if (unter) return oeffneBaugruppe(unter.dataset.bgUnter);
   if (t.closest("#bg-name")) {
-    const a = await dialog(`<h2>Baugruppe umbenennen</h2><input type="text" id="s-name" value="${esc(bgDaten.name)}">
-      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Umbenennen</button></div>`);
-    if (a === "ja") await api(`/api/baugruppen/${bid()}`, { method: "PATCH", body: { name: $("#s-name").value } }).catch((e2) => toast(e2.message));
-    return;
+    return inlineBearbeiten(t.closest("#bg-name"), { wert: bgDaten.name, speichern: (name) => name.trim() && api(`/api/baugruppen/${bid()}`, { method: "PATCH", body: { name } }) });
   }
   if (t.closest("#bg-beschreibung")) {
-    const a = await dialog(`<h2>Beschreibung</h2><textarea id="s-text" rows="5" style="width:100%">${esc(bgDaten.beschreibung || "")}</textarea>
-      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Speichern</button></div>`);
-    if (a === "ja") await api(`/api/baugruppen/${bid()}`, { method: "PATCH", body: { beschreibung: $("#s-text").value } });
+    return inlineBearbeiten(t.closest("#bg-beschreibung"), { wert: bgDaten.beschreibung || "", mehrzeilig: true, platzhalter: "Beschreibung hinzufügen …",
+      speichern: (beschreibung) => api(`/api/baugruppen/${bid()}`, { method: "PATCH", body: { beschreibung } }) });
   }
 });
 
-document.addEventListener("change", (e) => {
-  const n = e.target.closest?.("[data-bg-notiz]");
-  if (n) positionAendern(n.dataset.bgNotiz, { notiz: n.value });
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && e.target.closest?.("[data-bg-notiz]")) e.target.blur();
-});
+// Name und Beschreibung werden dort bearbeitet, wo sie stehen: ein Klick
+// macht aus dem Text ein Feld, Verlassen speichert, Esc verwirft. Die
+// Beschreibung ist mehrzeilig (Enter = neue Zeile, Strg+Enter = fertig).
+function inlineBearbeiten(el, { wert, platzhalter = "", mehrzeilig = false, speichern }) {
+  const feld = document.createElement(mehrzeilig ? "textarea" : "input");
+  feld.className = `inline-edit ${el.className}`.replace("bg-beschreibung", "bg-beschreibung-feld");
+  feld.value = wert;
+  feld.placeholder = platzhalter;
+  const anpassen = () => { if (mehrzeilig) { feld.style.height = "auto"; feld.style.height = feld.scrollHeight + "px"; } };
+  el.replaceWith(feld);
+  anpassen();
+  feld.focus();
+  feld.setSelectionRange(feld.value.length, feld.value.length);
+  let fertig = false;
+  const abschluss = async (sichern) => {
+    if (fertig) return;
+    fertig = true;
+    feld.blur();
+    try { if (sichern && feld.value !== wert) await speichern(feld.value); }
+    catch (err) { toast(err.message); }
+    $("#bg-ansicht")._html = null;      // das Feld steht nicht im gemerkten HTML
+    ladeBaugruppe();
+  };
+  feld.addEventListener("input", anpassen);
+  feld.addEventListener("blur", () => abschluss(true));
+  feld.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); abschluss(false); }
+    else if (e.key === "Enter" && (!mehrzeilig || e.ctrlKey || e.metaKey)) { e.preventDefault(); abschluss(true); }
+  });
+}
 
 // Aus Auswahl, Sammlung, Inspektor — aufgerufen aus app.js.
 async function zuBaugruppe(modelle) {

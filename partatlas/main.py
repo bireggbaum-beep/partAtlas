@@ -139,6 +139,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             "unlesbar": sum(m["fehler"] for m in alle),
             "papierkorb": len(k.modelle(ansicht="papierkorb")), "formate": formate,
             "warteschlange": sum(m["warteschlange"] is not None for m in alle),
+            "neu": len(k.modelle(ansicht="neu")),
         }
 
     @app.get("/api/modelle/{mid}")
@@ -146,7 +147,6 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         k = K()
         daten = k.modell(mid)
         daten["baugruppen"] = B().verwendet_in(f"MODEL_ASSET/{mid}")
-        k.angesehen(mid)
         return daten
 
     @app.patch("/api/modelle/{mid}")
