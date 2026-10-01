@@ -506,7 +506,7 @@ body.bg-offen .nur-katalog { display: none; }
 /* Inspektor: Vorschau und Name bleiben beim Scrollen stehen */
 .i-fix { position: sticky; top: -14px; z-index: 6; margin: -14px -14px 0; padding: 14px 14px 8px; background: var(--bg);
          border-bottom: 1px solid var(--line); }
-.i-fix .i-bild { aspect-ratio: 4 / 3; max-height: 34vh; margin: 0 auto; }
+.i-fix .i-bild { aspect-ratio: auto; height: var(--bild-h, 220px); margin: 0; }
 .i-fix .i-name { margin: 10px 0 0; font-size: 16px; }
 .i-fix .i-name .dim { font-weight: 400; margin-left: 1px; }
 .i-fix .gal-leiste { margin-top: 6px; }
@@ -619,3 +619,8 @@ body.erststart .ans-leiste { display: none; }
 .statuszeile { flex: none; height: 22px; display: flex; align-items: center; padding: 0 14px; border-top: 1px solid var(--line);
                font-size: 11.5px; color: var(--ink-3); }
 body.bg-offen .statuszeile { display: none; }
+.i-griff { height: 8px; margin: 2px 0 -2px; cursor: ns-resize; position: relative; }
+.i-griff::after { content: ""; position: absolute; left: 30%; right: 30%; top: 3px; height: 2px; border-radius: 1px; background: var(--line-strong); opacity: 0; transition: opacity 0.12s; }
+.i-fix:hover .i-griff::after, .i-griff.zieht::after { opacity: 1; }
+.i-griff:hover::after, .i-griff.zieht::after { background: var(--accent); }
+html.bild-klein .i-fix .gal-leiste { display: none; }

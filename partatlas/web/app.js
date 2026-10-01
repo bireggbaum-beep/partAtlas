@@ -559,6 +559,7 @@ async function waehle(id, live = false) {
     <div class="i-fix">
       ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
       <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
+      <div class="i-griff" title="Höhe der Vorschau ziehen (Doppelklick: zurücksetzen)"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
       ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button></div>`
         : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
@@ -1870,3 +1871,45 @@ felder.slice(1).forEach((f) => {
 new ResizeObserver(seitenLayout).observe(feldRaum);
 new MutationObserver(seitenLayout).observe(feldRaum, { attributes: true, subtree: true, attributeFilter: ["data-zu", "hidden"] });
 requestAnimationFrame(seitenLayout);
+
+
+// ---------------------------------------------------------------- Höhe der Vorschau im Inspektor
+//
+// Das Bild braucht man nach dem ersten Hinsehen nicht mehr gross: der Griff unter der Vorschau zieht
+// die Höhe, die Leiste mit den kleinen Bildern entfällt, wenn nur noch wenig bleibt. Gemerkt.
+const BILD_MIN = 48, BILD_KLEIN = 120;
+function setzeBildHoehe(px) {
+  const root = document.documentElement;
+  if (px == null) root.style.removeProperty("--bild-h");
+  else root.style.setProperty("--bild-h", px + "px");
+  root.classList.toggle("bild-klein", px != null && px < BILD_KLEIN);
+}
+{
+  const gemerkt = Number(localStorageLesen("bildhoehe"));
+  if (gemerkt) setzeBildHoehe(gemerkt);
+}
+document.addEventListener("pointerdown", (e) => {
+  const griff = e.target.closest?.(".i-griff");
+  if (!griff) return;
+  e.preventDefault();
+  griff.setPointerCapture(e.pointerId);
+  griff.classList.add("zieht");
+  const y0 = e.clientY, h0 = $("#i-bild")?.offsetHeight || 220;
+  const hoechst = Math.round(innerHeight * 0.6);
+  const bewegt = (m) => setzeBildHoehe(Math.round(Math.min(hoechst, Math.max(BILD_MIN, h0 + m.clientY - y0))));
+  const fertig = () => {
+    griff.classList.remove("zieht");
+    griff.removeEventListener("pointermove", bewegt);
+    griff.removeEventListener("pointerup", fertig);
+    griff.removeEventListener("pointercancel", fertig);
+    localStorageSchreiben("bildhoehe", String($("#i-bild")?.offsetHeight || ""));
+  };
+  griff.addEventListener("pointermove", bewegt);
+  griff.addEventListener("pointerup", fertig);
+  griff.addEventListener("pointercancel", fertig);
+});
+document.addEventListener("dblclick", (e) => {
+  if (!e.target.closest?.(".i-griff")) return;
+  setzeBildHoehe(null);
+  localStorageSchreiben("bildhoehe", "");
+});

@@ -111,6 +111,11 @@ nicht mehr zuklappen (wie der Explorer in VS Code: zu klappen sind nur die Ordne
 darin). Es ist immer das biegsame Feld. Offen: ein Gegenstück für die rechte
 Seitenleiste (Details) — Vorschlag im Gespräch, noch nicht entschieden.
 
+Vorschau im Inspektor ziehbar (0.20.4): Griff unter der Vorschau (erscheint beim Darüberfahren),
+Höhe 48 px bis 60 % der Fensterhöhe, die Leiste mit den kleinen Bildern entfällt unter 120 px,
+gemerkt (`localStorage` „bildhoehe“), Doppelklick = 220 px. Rechte Seitenleiste als Felder
+(Split View wie links): bewusst zurückgestellt.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,
