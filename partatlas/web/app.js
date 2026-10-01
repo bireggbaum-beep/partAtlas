@@ -432,13 +432,17 @@ async function archiveEntpacken() {
 
 // ---------------------------------------------------------------- Inspektor
 
-async function waehle(id) {
+// `live`: aus einer Live-Meldung, nicht vom Anwender. Dann wird nicht neu
+// gezeichnet, solange er im Inspektor tippt — sonst ersetzte das neue Feld
+// seine halbe Eingabe. Beim Verlassen des Feldes wird es nachgeholt.
+async function waehle(id, live = false) {
   zustand.gewaehlt = id;
   raster.zeichne();
   if (!id && zustand.baugruppe && typeof zeigeBgUebersicht === "function") return zeigeBgUebersicht();
   if (!id) { zustand.angezeigt = null; if (dreiDModul) (await dreiD()).schliessen(); $("#inspektor").innerHTML = `<p class="hinweis">Wähle ein Modell aus, um Details, Vorschau und Tags zu sehen.</p>`; return; }
   const [m, prog, materialien] = await Promise.all([api(`/api/modelle/${id}`), ladeProgramme(), api("/api/materialien")]);
   if (zustand.gewaehlt !== id) return;
+  if (live && zustand.angezeigt === id && imInspektorAmTippen()) { zustand.nachholen = true; return; }
   const papierkorb = m.papierkorb;
   const zeile = ([a, b]) => `<div class="zeile"><span>${a}</span><span>${b}</span></div>`;
   const zeit = m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
@@ -1189,7 +1193,7 @@ function live() {
     clearTimeout(liveZeit);
     liveZeit = setTimeout(() => {
       neuLaden();
-      if (liveBetrifft && zustand.gewaehlt && document.activeElement?.id !== "tag-neu") waehle(zustand.gewaehlt);
+      if (liveBetrifft && zustand.gewaehlt) waehle(zustand.gewaehlt, true);
       liveBetrifft = false;
     }, 300);
   };
@@ -1229,3 +1233,15 @@ document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an
 document.addEventListener("toggle", (e) => {
   if (e.target.id === "i-details") localStorageSchreiben("details", e.target.open ? "1" : "0");
 }, true);
+
+function imInspektorAmTippen() {
+  const a = document.activeElement;
+  return !!(a && a.closest?.("#inspektor") && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName));
+}
+document.addEventListener("focusout", (e) => {
+  if (!e.target.closest?.("#inspektor") || !zustand.nachholen) return;
+  // Erst nach dem Wechsel des Fokus prüfen: springt er ins nächste Feld, weiter warten.
+  setTimeout(() => {
+    if (zustand.nachholen && !imInspektorAmTippen() && zustand.gewaehlt) { zustand.nachholen = false; waehle(zustand.gewaehlt, true); }
+  }, 0);
+});
