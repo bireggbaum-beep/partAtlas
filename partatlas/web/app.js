@@ -721,17 +721,17 @@ function programmeFuer(m, prog) {
 function oeffnenKnoepfe(m, prog) {
   const { je, hauptArt } = programmeFuer(m, prog);
   const arten = Object.keys(prog.arten).filter((a) => je[a].length).sort((x, y) => (y === hauptArt) - (x === hauptArt));
-  if (!arten.length) return `<button class="knopf" id="oeffnen" data-system="1">↗ Mit dem System öffnen</button>`;
+  if (!arten.length) return `<button class="knopf" id="oeffnen" data-system="1" title="Mit dem Standardprogramm des Systems öffnen">↗ Öffnen</button>`;
   const knoepfe = arten.map((art, i) => {
     const p = je[art][0];
     return `<button class="knopf ${i === 0 ? "akzent" : ""}" ${i === 0 ? 'id="oeffnen"' : ""} data-oeffne-pfad="${esc(p.pfad)}"
-      title="${esc(prog.arten[art])}: ${esc(p.pfad)}">${ART_SYMBOL[art] || "↗"} In ${esc(p.name)} öffnen</button>`;
+      title="In ${esc(p.name)} öffnen (${esc(prog.arten[art])})">${ART_SYMBOL[art] || "↗"} ${esc(p.name)}</button>`;
   }).join("");
   const weitere = Object.entries(prog.arten).map(([art, titel]) => {
     const g = je[art].slice(1);
     return g.length ? `<optgroup label="${esc(titel)}">${g.map((p) => `<option value="${esc(p.pfad)}">${esc(p.name)}</option>`).join("")}</optgroup>` : "";
   }).join("");
-  return knoepfe + `<select class="knopf" id="oeffnen-mit" title="Öffnen mit …"><option value="">Öffnen mit …</option>${weitere}
+  return knoepfe + `<select class="knopf schmal" id="oeffnen-mit" title="Öffnen mit … (weitere Programme)"><option value="">▾</option>${weitere}
       <option value="__system">Mit dem System öffnen</option><option value="__einstellungen">Programme einstellen …</option></select>`;
 }
 

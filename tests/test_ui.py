@@ -133,8 +133,8 @@ async def oberflaeche(port):
 
         # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
         check("Hauptknopf nennt den Standard fürs Format (STL → Slicer), daneben der CAD-Knopf",
-              "In PrusaSlicer öffnen" in await pg.inner_text("#oeffnen")
-              and "In FreeCAD öffnen" in await pg.inner_text(".i-haupt"))
+              "PrusaSlicer" in await pg.inner_text("#oeffnen")
+              and "FreeCAD" in await pg.inner_text(".i-haupt"))
         await pg.click("#oeffnen")
         await pg.wait_for_timeout(1000)
         check("… und startet ihn mit der Datei des Modells",
@@ -146,7 +146,7 @@ async def oberflaeche(port):
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
         check("Einstellungen: STL auf FreeCAD umgestellt, der Hauptknopf folgt",
-              "In FreeCAD öffnen" in await pg.inner_text("#oeffnen"))
+              "FreeCAD" in await pg.inner_text("#oeffnen"))
 
         global WID
         WID = api(port, "/api/wurzeln")[0]["id"]
