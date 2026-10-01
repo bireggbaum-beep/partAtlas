@@ -106,6 +106,11 @@ Mindesthöhe. Höhen gemerkt (`localStorage` „felder“). Zeilen 24 px, Köpfe
 Geprüft mit Skript (Summe = Höhe, Mindesthöhe, Ziehen in beide Richtungen),
 nicht mit `test_ui.py`.
 
+Bibliothek (0.20.3): das obere Feld der Seitenleiste heisst „Bibliothek“ und lässt sich
+nicht mehr zuklappen (wie der Explorer in VS Code: zu klappen sind nur die Ordner
+darin). Es ist immer das biegsame Feld. Offen: ein Gegenstück für die rechte
+Seitenleiste (Details) — Vorschlag im Gespräch, noch nicht entschieden.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

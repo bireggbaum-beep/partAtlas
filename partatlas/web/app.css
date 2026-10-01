@@ -441,6 +441,7 @@ body.erststart .tagleiste { display: none; }
 /* Seitenleiste: einklappbare Abschnitte, Aktionen an der Überschrift */
 .sk-kopf { flex: 1; text-align: left; background: none; border: 0; cursor: pointer; padding: 3px 4px; color: inherit;
            font: inherit; letter-spacing: inherit; border-radius: 4px; }
+.sk-titel { flex: 1; padding: 4px 8px; }
 .sk-kopf::before { content: "▾"; display: inline-block; width: 12px; color: var(--ink-3); }
 .sektion[data-zu="1"] .sk-kopf::before { content: "▸"; }
 .sektion[data-zu="1"] .sk-inhalt { display: none; }

@@ -1594,6 +1594,7 @@ function sektionSetzen(sek, zu) {
   localStorageSchreiben("sektion." + sek.dataset.sektion, zu ? "1" : "0");
 }
 document.querySelectorAll(".sektion").forEach((sek) => {
+  if (sek.dataset.sektion === "ordner") return;     // die Bibliothek ist immer offen; zu klappen sind nur ihre Ordner
   const gemerkt = localStorageLesen("sektion." + sek.dataset.sektion);
   if (gemerkt != null) sek.dataset.zu = gemerkt === "1" ? "1" : "";
 });
