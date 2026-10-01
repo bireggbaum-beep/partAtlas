@@ -3,6 +3,19 @@
 Katalog für 3D-Druck-Sammlungen auf [flatgraph](https://github.com/bireggbaum-beep/flatgraphdb) —
 Demo-Pilot, Vorbild ist der 3MF Katalog Manager. Führend ist `KONZEPT.md`.
 
+## Ausprobieren (Manjaro / Linux)
+
+Voraussetzung: Python 3.10+ und git (`sudo pacman -S python git`).
+
+```bash
+git clone https://github.com/bireggbaum-beep/partAtlas && cd partAtlas
+./start.sh --demo      # beim ersten Mal: Umgebung anlegen, Demo-Sammlung, Browser
+```
+
+Danach genügt `./start.sh`. Slicer und CAD (PrusaSlicer, Orca, Cura, FreeCAD …)
+findet partAtlas im PATH, bei Flatpak und als AppImage in `~/Applications`
+oder `~/AppImages`; „Öffnen in …“ startet sie auf dem eigenen Rechner.
+
 ## Starten
 
 ```bash
