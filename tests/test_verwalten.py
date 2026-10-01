@@ -161,6 +161,19 @@ if __name__ == "__main__":
               [b["datei"] for b in n["bilder"]] == [alt1, alt2] and not n.get("bild")
               and not db.verwendungen(mref, direction="out").get("HAS_IMAGE") and db.get_node("MODEL_IMAGE/i_000001") is None)
 
+        # -- Tags aus dem Dateinamen abschaltbar (wie im 3MF Katalog vorhanden)
+        check("Einstellung auto_tags ist vorgabemässig an", c.get("/api/einstellungen").json()["auto_tags"] is True)
+        c.put("/api/einstellungen", json={"auto_tags": False})
+        c.post("/api/hochladen", params={"ordner": w, "name": "Kamera_Halter_v3.stl"}, content=stl_bytes(31))
+        warten(c)
+        neu = next(x for x in c.get("/api/modelle").json() if x["name"] == "Kamera_Halter_v3")
+        check("Ohne Auto-Tags: ein neu eingelesenes Modell hat keine Tags aus dem Namen", neu["tags"] == [])
+        c.put("/api/einstellungen", json={"auto_tags": True})
+        c.post("/api/hochladen", params={"ordner": w, "name": "Lampen_Fuss_v2.stl"}, content=stl_bytes(32))
+        warten(c)
+        neu = next(x for x in c.get("/api/modelle").json() if x["name"] == "Lampen_Fuss_v2")
+        check("Wieder an: Tags aus dem Namen kommen zurück", "lampen" in neu["tags"] or "fuss" in neu["tags"])
+
         # -- Hochladen
         r = c.post("/api/hochladen", params={"ordner": f"{w}/Deko", "name": "Stern.stl"}, content=stl_bytes())
         warten(c)

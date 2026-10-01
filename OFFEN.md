@@ -67,6 +67,15 @@ Tags, Ecken 10 px, Rahmen nur bei Hover/Auswahl. Richtung: etwas Apple,
 Filterleiste (Tags nur wo Platz ist), Seitenleiste (Tipp wegklickbar, leere
 Abschnitte nur Titel), Schrift (Mono nur für Zahlen).
 
+Filter ohne Tag-Lärm (0.19.3): Filterleiste = Material und **Format** als Chips
+(Format ist aus der Seitenleiste in die Leiste gezogen), Tags nur als gewählte
+Chips zum Wegnehmen; Tags stehen weiter in der Seitenleiste, im Inspektor und
+in der Suche (`tag:`). Auf der Kachel keine Tags mehr (Zeile 3 = Gewicht).
+Einstellung **„Tags aus dem Dateinamen vorschlagen“** (`auto_tags`, Vorgabe an,
+wie im 3MF Katalog) im Einstellungsdialog; gilt für neu Eingelesenes, Vorhandenes
+bleibt. Nicht gebaut: „Auto-Tags entfernen“ für den Bestand (Aufwand 2).
+Verworfen: Filter-Dropdowns mit Kaskade — für wenige Werte nicht nötig.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

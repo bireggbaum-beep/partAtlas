@@ -414,7 +414,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     @app.get("/api/einstellungen")
     def einstellungen():
-        return {**zustand["bestand"].einstellungen(), "gilt": B().standard(),
+        return {"auto_tags": True, **zustand["bestand"].einstellungen(), "gilt": B().standard(),
                 "materialien": K().materialien()}
 
     @app.put("/api/einstellungen")
@@ -429,6 +429,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
                 raise KatalogFehler("Farbe als #RRGGBB angeben.")
             werte["standard_farbe"] = f
+        if "auto_tags" in d:
+            werte["auto_tags"] = bool(d["auto_tags"])
         if "rolle_g" in d:
             try:
                 werte["rolle_g"] = max(100, min(int(d["rolle_g"]), 10_000))

@@ -138,8 +138,8 @@ async function ladeSeite() {
     $(`[data-sektion="aufraeumen"] [data-ansicht="${k}"]`).hidden = !n && zustand.ansicht !== k;
   }
   $('[data-sektion="aufraeumen"]').hidden = !aufzuraeumen && !["duplikate", "fehlt", "unlesbar"].includes(zustand.ansicht);
-  abgleichen($("#formate"), Object.entries(z.formate).sort().map(([f, n]) =>
-    `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join(""));
+  zustand.formate = z.formate;
+  if (zustand.leiste) zeichneLeiste(zustand.leiste);
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
@@ -165,17 +165,22 @@ function markiereAnsicht() {
     b.classList.toggle("aktiv", (b.dataset.rail === "papierkorb") === (zustand.ansicht === "papierkorb")));
 }
 
-// Die Leiste über dem Raster: Material und Tags als Chips, je mit ODER.
-// Gezählt wird vor der Chip-Auswahl (Server), gewählte Chips bleiben
-// sichtbar, auch wenn sie unter die ersten 14 fallen.
+// Die Leiste über dem Raster: Material und Format als Chips (wenige Werte, die
+// wirklich filtern). Tags stehen in der Seitenleiste und in der Suche; hier
+// erscheinen nur die gewählten, zum Wegnehmen. Material mit ODER; gezählt
+// wird vor der Chip-Auswahl (Server), gewählte Chips bleiben sichtbar, auch
+// wenn sie unter die ersten acht fallen.
 function zeichneLeiste(l) {
-  const chip = (art, wahl, x, text) => `<button class="chip ${wahl.has(x.name) ? "aktiv" : ""}" data-${art}="${esc(x.name)}">${text}<em>${x.anzahl}</em></button>`;
+  zustand.leiste = l;
+  const chip = (art, aktiv, name, text, n) => `<button class="chip ${aktiv ? "aktiv" : ""}" data-${art}="${esc(name)}">${text}${n != null ? `<em>${n}</em>` : ""}</button>`;
   const auswahl = (liste, wahl, n) => [...liste.slice(0, n), ...liste.slice(n).filter((x) => wahl.has(x.name))];
-  const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material, x, esc(x.name))).join("");
-  const tags = auswahl(l.tags, zustand.tags, 14).map((x) => chip("tag", zustand.tags, x, "#" + esc(x.name))).join("");
-  const leer = !zustand.tags.size && !zustand.material.size;
+  const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material.has(x.name), x.name, esc(x.name), x.anzahl)).join("");
+  const fmt = Object.entries(zustand.formate || {}).sort().map(([f, n]) => chip("format", zustand.format === f, f, esc((endung[f] || f).slice(1).toUpperCase()), n)).join("");
+  const tags = [...zustand.tags].map((t) => `<button class="chip aktiv" data-tag="${esc(t)}" title="Filter entfernen">#${esc(t)} ×</button>`).join("");
+  const leer = !zustand.tags.size && !zustand.material.size && !zustand.format;
   abgleichen($("#tagleiste"), `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
+    + (fmt ? `<span class="leiste-titel">FORMAT</span>${fmt}` : "")
     + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : ""));
 }
 
@@ -237,7 +242,7 @@ const raster = (() => {
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
   const mass = () => zustand.layout === "liste"
-    ? { B: 0, H: 38, LUECKE: 0, RAND: 0 } : { B: 164, H: 246, LUECKE: 14, RAND };
+    ? { B: 0, H: 38, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
 
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();
@@ -288,7 +293,6 @@ function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (m.format === "step" ? "STEP · nur CAD" : "keine Vorschau");
   const markiert = zustand.auswahl.has(m.id);
-  const tags = m.tags.slice(0, 2).map((t) => `#${esc(t)}`).join(" ") + (m.tags.length > 2 ? ` +${m.tags.length - 2}` : "");
   return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
     <div class="bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="platzhalter">${platz}</div>`}
       ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
@@ -297,7 +301,7 @@ function karte(m, x, y) {
       ${m.fehlt ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
-      <div class="tags"><span class="tt">${tags || "&nbsp;"}</span>${m.gewicht_g ? `<span class="g">${zahl(m.gewicht_g, 1)} g</span>` : ""}</div></div></div>`;
+      <div class="tags">${m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "&nbsp;"}</div></div></div>`;
 }
 
 const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
@@ -1221,7 +1225,7 @@ document.addEventListener("click", async (e) => {
   const mat = t.closest("[data-mat]");
   if (tag || mat) {
     const [wahl, wert] = tag ? [zustand.tags, tag.dataset.tag] : [zustand.material, mat.dataset.mat];
-    if (!wert) { zustand.tags.clear(); zustand.material.clear(); }
+    if (!wert) { zustand.tags.clear(); zustand.material.clear(); zustand.format = ""; }
     else if (wahl.has(wert)) wahl.delete(wert);
     else wahl.add(wert);
     if (zustand.ansicht === "papierkorb") zustand.ansicht = "alle";

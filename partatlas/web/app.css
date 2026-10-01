@@ -85,7 +85,7 @@ button, input, select { font: inherit; color: inherit; }
 .raster-innen { position: relative; }
 .leer { padding: 60px; text-align: center; color: var(--ink-3); }
 
-.karte { position: absolute; width: 164px; height: 246px; background: var(--panel); border: 1px solid transparent;
+.karte { position: absolute; width: 164px; height: 236px; background: var(--panel); border: 1px solid transparent;
          border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s; }
 .karte:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
 .karte.gewaehlt { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -107,9 +107,7 @@ button, input, select { font: inherit; color: inherit; }
 .karte .name { font-weight: 600; font-size: var(--fs-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .karte .name .endung { font-weight: 400; color: var(--ink-3); margin-left: 1px; }
 .karte .masse { font-size: 12px; color: var(--ink-3); margin: 2px 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.karte .tags { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
-.karte .tags .tt { overflow: hidden; text-overflow: ellipsis; }
-.karte .tags .g { flex: none; }
+.karte .tags { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
 
 .inspektor { grid-area: inspektor; border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
 .hinweis { color: var(--ink-3); text-align: center; margin-top: 45vh; font-size: 13px; }

@@ -146,8 +146,9 @@ class Katalog:
         # cascade_delete: wer das Modell löscht, legt seine Datei mit in den
         # Papierkorb (VERTRAG §2.4) — und loeschfolgen() zeigt das vorher an.
         self.db.create_edge(ref(MODELL, mid), ref(DATEI, h), HAT_DATEI, cascade_delete=True)
-        for t in tags.vorschlaege(name, felder):
-            self._tag_verbinden(mid, t)
+        if self.b.einstellungen().get("auto_tags", True):
+            for t in tags.vorschlaege(name, felder):
+                self._tag_verbinden(mid, t)
         self._datei_materialien(h, felder)
         return mid
 

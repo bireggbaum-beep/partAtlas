@@ -545,6 +545,9 @@ async function einstellungen() {
       <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
     <div class="i-titel">ROLLENGRÖSSE</div>
     <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>
+    <div class="i-titel">TAGS</div>
+    <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
+    <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>
     <div class="i-titel">PROGRAMME ZUM ÖFFNEN</div>
     <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
     <div id="prog-teil">${progTeil()}</div>
@@ -553,7 +556,7 @@ async function einstellungen() {
   if (a !== "ja") return;
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
-                                                          rolle_g: Number($("#ein-rolle").value),
+                                                          rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked,
                                                           programme: progWahl.eigene, standard_programm: progWahl.standard } });
     toast("Gespeichert.");
     programmCache = null;
