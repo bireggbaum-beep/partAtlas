@@ -201,6 +201,44 @@ if __name__ == "__main__":
           sorted(m["name"] for m in k.modelle()) == ["Arm Front", "Belegt", "Haken", "Nachzuegler", "Top_Plate", "Welle", "kaputt"]
           and "funktional" in k.modell(arm["id"])["tags"])
 
+    # -- Überschreiben: die Datei führt, der Container folgt
+    def ueberschreiben(pfad, *masse):
+        alt = os.stat(pfad).st_mtime
+        muster.stl_binaer(pfad, *masse)
+        os.utime(pfad, (alt + 10, alt + 10))   # sicher „geändert“, auch bei grober Zeitauflösung
+
+    walze = os.path.join(sammlung, "Haushalt", "Schleifwalze.stl")
+    muster.stl_binaer(walze, 30, 30, 60)
+    scannen()
+    w = next(m for m in k.modelle() if m["name"] == "Schleifwalze")
+    k.tag_setzen(w["id"], "werkstatt")
+    k.material_vorsehen(w["id"], "PETG")
+    alt_hash = w["hash"]
+    anzahl = len(k.modelle())
+    ueberschreiben(walze, 30, 30, 62)
+    scannen()
+    neu = k.modell(w["id"])
+    check("Überarbeitete Datei am selben Ort: derselbe Container mit Tags und Material, neuer Inhalt, kein zweites Modell",
+          neu["hash"] != alt_hash and "werkstatt" in neu["tags"] and neu["material_herkunft"]["vorgesehen"] == ["PETG"]
+          and abs(neu["masse"][2] - 62) < 0.01 and len(k.modelle()) == anzahl and not neu["fehlt"])
+    check("… die Vorschau der alten Fassung ist weg, die neue gerendert",
+          not os.path.exists(b.vorschau_pfad(alt_hash, "berechnet")) and os.path.exists(b.vorschau_pfad(neu["hash"], "berechnet")))
+    muster.stl_binaer(os.path.join(sammlung, "Haushalt", "Schleifwalze alt.stl"), 30, 30, 60)
+    scannen()
+    check("Die alte Fassung taucht wieder auf: eigenes Modell, nicht als „im Papierkorb“ verschluckt",
+          "Schleifwalze alt" in [m["name"] for m in k.modelle()] and k.modell(w["id"])["hash"] == neu["hash"])
+    kopie_a, kopie_b = os.path.join(sammlung, "Haushalt", "Halter.stl"), os.path.join(sammlung, "Drohne", "Halter.stl")
+    muster.stl_binaer(kopie_a, 11, 12, 13)
+    shutil.copy(kopie_a, kopie_b)
+    scannen()
+    halter = next(m for m in k.modelle() if m["name"] == "Halter")
+    ueberschreiben(kopie_a, 11, 12, 14)
+    scannen()
+    namen = [m["name"] for m in k.modelle()]
+    check("Gibt es den alten Inhalt noch an einem anderen Ort: abgezweigte Kopie, eigenes Modell; das alte behält die andere",
+          namen.count("Halter") == 2 and len(k.modell(halter["id"])["orte"]) == 1
+          and k.modell(halter["id"])["orte"][0]["pfad"] == "Drohne/Halter.stl")
+
     # -- Bestand von vorher: bis 0.10 cache/vorschau/<h>.png, in 0.11 vault/vorschau/<h>.png mit `datei`
     from partatlas.katalog import Katalog
     alt = b.pfad("cache", "vorschau")

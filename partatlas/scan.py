@@ -136,6 +136,7 @@ class Scanner:
         with ProcessPoolExecutor(self.prozesse, mp_context=multiprocessing.get_context("spawn")) as pool:
             nach_pfad = {pfad: (s, st) for s, pfad, st in zu_hashen}
             neu_je_hash = {}                          # hash -> [(schluessel, pfad, st)]
+            vorgaenger = {}                           # neuer hash -> hash, der vorher an diesem Ort lag
             ortwechsel = []                           # (hash, schluessel, st, alter_hash)
             for pfad, h, fehler in pool.map(_hash, list(nach_pfad), chunksize=8):
                 if h is None:
@@ -154,6 +155,7 @@ class Scanner:
                     neu_je_hash.setdefault(h, []).append((s, pfad, st))
                     if alt and alt[0] != h:
                         ortwechsel.append((None, s, st, alt[0]))
+                        vorgaenger[h] = alt[0]
 
             with self.b.db.transaction():
                 for h, s, st, alter_hash in ortwechsel:
@@ -171,9 +173,9 @@ class Scanner:
                 h = auftraege[fertig]
                 gruppe.append((h, *fertig.result()))
                 if len(gruppe) >= GRUPPE:
-                    self._anlegen(gruppe, neu_je_hash)
+                    self._anlegen(gruppe, neu_je_hash, vorgaenger)
                     gruppe = []
-            self._anlegen(gruppe, neu_je_hash)
+            self._anlegen(gruppe, neu_je_hash, vorgaenger)
 
             # Orte, die dieser Lauf nicht mehr gesehen hat.
             weg = [(v[0], s) for s, v in index.items() if s not in gesehen and s[0] in wurzeln]
@@ -186,14 +188,14 @@ class Scanner:
             self._vorschauen(pool)
         self._setze(laeuft=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
 
-    def _anlegen(self, gruppe, neu_je_hash):
+    def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
         if not gruppe:
             return
         with self.b.db.transaction():
             for h, felder, vorschau_status, fehler in gruppe:
                 orte = [{"wurzel": s[0], "pfad": s[1], "groesse": st.st_size, "mtime": st.st_mtime}
                         for s, _, st in neu_je_hash[h]]
-                self.k.neue_datei(h, felder, orte, vorschau_status, fehler)
+                self.k.neue_datei(h, felder, orte, vorschau_status, fehler, vorgaenger.get(h))
         self._setze(neu=self.status["neu"] + len(gruppe),
                     unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
                     analysiert=self.status["analysiert"] + len(gruppe))

@@ -96,8 +96,10 @@ class Katalog:
         """"lebt", "papierkorb" oder None (unbekannt)."""
         if self.db.get_node(ref(DATEI, h), readonly=True) is not None:
             return "lebt"
-        if self.db.get_node_raw(ref(DATEI, h)) is not None:
-            return "papierkorb"
+        roh = self.db.get_node_raw(ref(DATEI, h))
+        if roh is not None:
+            # Durch Überschreiben abgelöst: kommt sie wieder, ist sie neu.
+            return None if roh.get("ersetzt_durch") else "papierkorb"
         return None
 
     def ort_setzen(self, h, wurzel, pfad, groesse, mtime):
@@ -114,12 +116,26 @@ class Katalog:
         orte = [o for o in d.get("orte", []) if (o["wurzel"], o["pfad"]) != (wurzel, pfad)]
         self.db.update_node(DATEI, h, {"orte": orte})
 
-    def neue_datei(self, h, felder, orte, vorschau, fehler=None):
-        """Datei, Modell und automatische Tags in einem Zug. Aufrufer hält die Transaktion."""
+    def neue_datei(self, h, felder, orte, vorschau, fehler=None, vorgaenger=None):
+        """Datei, Modell und automatische Tags in einem Zug. Aufrufer hält die Transaktion.
+
+        Mit `vorgaenger`: am selben Ort lag vorher diese Datei, jetzt liegt
+        dort neuer Inhalt. Die Datei führt, der Container folgt (KONZEPT
+        §3.1): ist die alte an keinem anderen Ort mehr, bekommt ihr Modell
+        den neuen Inhalt — Tags, Bilder, Baugruppen bleiben."""
         name = os.path.splitext(os.path.basename(orte[0]["pfad"]))[0]
-        self.db.create_node(DATEI, h, {**felder, "orte": orte, "vorschau": vorschau,
-                                       "fehler": fehler, "eingelesen": jetzt(),
-                                       "vorschau_extrahiert": self.b.vorschau_rel(h, "extrahiert") if vorschau == "eingebettet" else None})
+        daten = {**felder, "orte": orte, "vorschau": vorschau, "fehler": fehler, "eingelesen": jetzt(),
+                 "vorschau_extrahiert": self.b.vorschau_rel(h, "extrahiert") if vorschau == "eingebettet" else None,
+                 "ersetzt_durch": None}
+        if self.db.get_node_raw(ref(DATEI, h)) is not None:
+            # Eine früher abgelöste Fassung ist zurück: als eigene Datei.
+            self.db.restore_node(DATEI, h)
+            self.db.update_node(DATEI, h, daten)
+        else:
+            self.db.create_node(DATEI, h, daten)
+        mid = self._nachfolger_von(vorgaenger, h) if vorgaenger else None
+        if mid:
+            return mid
         mid = self.db.next_id(MODELL, "m_", 6)
         self.db.create_node(MODELL, mid, {
             "name": name, "favorit": False, "gedruckt": False, "quelle_url": None,
@@ -131,6 +147,27 @@ class Katalog:
         for t in tags.vorschlaege(name, felder):
             self._tag_verbinden(mid, t)
         self._datei_materialien(h, felder)
+        return mid
+
+    def _nachfolger_von(self, alt, h):
+        """Hängt die neue Datei `h` an das Modell der alten, wenn die alte
+        nirgends mehr liegt. Sonst None — dann ist sie eine abgezweigte Kopie."""
+        d = self.db.get_node(ref(DATEI, alt), readonly=True)
+        mid = self.modell_von(alt) if d is not None and not d.get("orte") else None
+        if mid is None or self.db.get_node(ref(MODELL, mid), readonly=True) is None:
+            return None
+        for kid, _ in self.db.verwendungen(ref(MODELL, mid), direction="out").get(HAT_DATEI, []):
+            self.db.delete_edge(kid)
+        self.db.update_node(DATEI, alt, {"ersetzt_durch": h})
+        self.db.soft_delete(DATEI, alt)
+        self.db.create_edge(ref(MODELL, mid), ref(DATEI, h), HAT_DATEI, cascade_delete=True)
+        self._datei_materialien(h, self.db.get_node(ref(DATEI, h), readonly=True))
+        for art in VORSCHAU_ARTEN:
+            # Abgeleitet von einem Inhalt, den es nicht mehr gibt.
+            try:
+                os.unlink(self.b.vorschau_pfad(alt, art))
+            except FileNotFoundError:
+                pass
         return mid
 
     def namen_angleichen(self):

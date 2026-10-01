@@ -90,6 +90,21 @@ Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
   wird eingelesen und bleibt seine.
 - Die Ordneransicht wird **aus den Pfaden abgeleitet**, nicht gespeichert:
   jede Datei trägt Wurzel und relativen Pfad.
+- **Die Datei führt, der Container folgt.** Ein Modell ist ein Container,
+  die Datei liegt darin; im Alltag verhält sich beides wie eins. Der
+  Anwender denkt in Dateien — er legt ab, verschiebt, überschreibt,
+  löscht —, und die Datenbank macht mit. Was nur der Container kennt
+  (Tags, Material, Sammlungen, Baugruppen, eigene Bilder, Quelle, später die
+  Druckhistorie), bearbeitet er bewusst in partAtlas.
+
+  | Mit der Datei | Der Container |
+  |---|---|
+  | neu in einen Ordner gelegt | neuer Container |
+  | verschoben, umbenannt (App oder Dateimanager) | folgt, alles bleibt dran |
+  | Kopie mit gleichem Inhalt | ein Container, zwei Orte („Duplikat“) |
+  | überschrieben (gleicher Ort, neuer Inhalt) | derselbe Container mit neuem Inhalt — sofern der alte Inhalt nirgends mehr liegt; sonst ist es eine abgezweigte Kopie mit eigenem Container (0.14) |
+  | in partAtlas gelöscht | mit in den Papierkorb (Dialog zeigt, was dranhängt) |
+  | im Dateimanager gelöscht | bleibt, auf der Kachel deutlich als „Datei fehlt“ |
 - **Eine Datei wird an ihrem Inhalt erkannt** (SHA-256 als Kennung).
   Verschoben oder umbenannt außerhalb der App → der nächste Scan findet sie
   wieder, Tags und Historie bleiben dran. Verschwunden → Knoten wird als
