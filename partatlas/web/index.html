@@ -39,11 +39,10 @@
     <div class="segment nur-katalog" id="ansicht-wahl"><button data-layout="raster" class="an">Raster</button><button data-layout="liste">Liste</button></div>
     <span class="kopf-luecke"></span>
     <span class="scan-status" id="scan-status"></span>
-    <span class="mono dim" id="anzahl"></span>
   </header>
 
   <aside class="seite">
-    <input class="suche" id="suche" placeholder="⌕  Suchen … z. B. halter tag:pla -alt" title="Alle Wörter müssen vorkommen, auch als Wortteil. &quot;genaue Wortfolge&quot; · -wort schliesst aus · Filter: tag: ordner: baugruppe: sammlung: material: format: designer: gedruckt:ja favorit:ja" autocomplete="off">
+    <div class="suche-feld"><input class="suche" id="suche" placeholder="⌕  Suchen … z. B. halter tag:pla -alt" title="Alle Wörter müssen vorkommen, auch als Wortteil. &quot;genaue Wortfolge&quot; · -wort schliesst aus · Filter: tag: ordner: baugruppe: sammlung: material: format: designer: gedruckt:ja favorit:ja" autocomplete="off"><button class="suche-x" id="suche-x" title="Suche leeren (Esc)" hidden>×</button></div>
     <div class="ans-leiste" id="ansichten">
       <button class="ans-btn" data-ansicht="alle" title="Alle Modelle"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg><em id="z-alle"></em></button>
       <button class="ans-btn" data-ansicht="neu" title="Neu hinzugefügt"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg><em id="z-neu"></em></button>
@@ -97,6 +96,7 @@
     <div class="raster" id="raster"><div class="raster-innen" id="raster-innen"></div></div>
     <div class="leer" id="leer" hidden></div>
     <div class="bg-ansicht" id="bg-ansicht" hidden></div>
+    <div class="statuszeile"><span id="anzahl"></span></div>
   </main>
 
   <aside class="inspektor" id="inspektor">

@@ -109,7 +109,6 @@ async function ladeModelle() {
   if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
   if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
   zustand.modelle = liste;
-  $("#anzahl").textContent = `${liste.length.toLocaleString("de-DE")} Dateien`;
   zeichneFilterzeile();
   zeichneStapel();
   zeichneListenkopf();
@@ -359,6 +358,8 @@ function zeichneStapel() {
   const sichtbar = new Set(zustand.modelle.map((m) => m.id));
   for (const id of [...zustand.auswahl]) if (!sichtbar.has(id)) zustand.auswahl.delete(id);
   const n = zustand.auswahl.size;
+  // Dezent unten: wie viele Modelle die Liste zeigt, und wie viele davon gewählt sind.
+  $("#anzahl").textContent = `${zustand.modelle.length.toLocaleString("de-DE")} Modelle${n ? ` · ${n} ausgewählt` : ""}`;
   const st = $("#stapel");
   st.hidden = n === 0;
   if (!n) return;
@@ -1252,7 +1253,7 @@ document.addEventListener("click", async (e) => {
   }
   const id = $("#inspektor").dataset.id;
   switch (t.id) {
-    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; return neuLaden();
+    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return neuLaden();
     case "sammlung-neu": case "sammlung-neu-2": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
       try {
@@ -1393,9 +1394,19 @@ document.addEventListener("keydown", async (e) => {
 
 let suchZeit;
 $("#suche").addEventListener("input", (e) => {
+  $("#suche-x").hidden = !e.target.value;
   clearTimeout(suchZeit);
   suchZeit = setTimeout(() => { zustand.suche = e.target.value.trim(); ladeModelle(); }, 150);
 });
+
+function sucheLeeren() {
+  const s = $("#suche");
+  s.value = "";
+  s.dispatchEvent(new Event("input"));
+  s.focus();
+}
+$("#suche-x").addEventListener("click", sucheLeeren);
+$("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
 
 function neuLaden() {
   ladeModelle();
@@ -1759,5 +1770,42 @@ document.querySelectorAll("[data-griff]").forEach((g) => {
     g.addEventListener("pointermove", bewegen);
     g.addEventListener("pointerup", ende);
     g.addEventListener("pointercancel", ende);
+  });
+});
+
+
+// ---------------------------------------------------------------- Felder der Seitenleiste ziehen
+//
+// Wie in VS Code: an der oberen Kante jedes unteren Feldes lässt sich dessen Höhe ziehen; der
+// Explorer (Ordner) gibt her, was er hat, bleibt aber bei einem Mindestmass stehen. Die Höhe
+// bleibt gemerkt, ein Doppelklick stellt „so hoch wie der Inhalt“ wieder her.
+const ORDNER_MIN = 120, FELD_MIN = 56;
+document.querySelectorAll(".panes > .sektion:not([data-sektion='ordner'])").forEach((sek) => {
+  const name = sek.dataset.sektion;
+  const setze = (px) => {
+    sek.style.flex = px == null ? "" : `0 1 ${px}px`;
+    sek.classList.toggle("hat-hoehe", px != null);
+  };
+  const gemerkt = Number(localStorageLesen("feld." + name));
+  if (gemerkt) setze(gemerkt);
+  const griff = document.createElement("div");
+  griff.className = "sash";
+  griff.title = "Höhe ziehen, Doppelklick: so hoch wie der Inhalt";
+  sek.prepend(griff);
+  griff.addEventListener("dblclick", () => { setze(null); localStorageSchreiben("feld." + name, ""); });
+  griff.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    griff.setPointerCapture(e.pointerId);
+    const y0 = e.clientY, h0 = sek.offsetHeight, ordner = $('.sektion[data-sektion="ordner"]');
+    // So hoch darf das Feld werden: seine Höhe plus alles, was der Explorer über seinem Mindestmass hat.
+    const hoechst = h0 + Math.max(0, ordner.offsetHeight - ORDNER_MIN);
+    const bewegt = (m) => setze(Math.round(Math.min(hoechst, Math.max(FELD_MIN, h0 + (y0 - m.clientY)))));
+    const fertig = () => {
+      griff.removeEventListener("pointermove", bewegt);
+      griff.removeEventListener("pointerup", fertig);
+      localStorageSchreiben("feld." + name, String(Math.round(sek.offsetHeight)));
+    };
+    griff.addEventListener("pointermove", bewegt);
+    griff.addEventListener("pointerup", fertig);
   });
 });

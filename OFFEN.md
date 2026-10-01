@@ -90,6 +90,13 @@ Unterordner sind 14 px je Ebene eingerückt, mit Führungslinie (der Fehler aus
 0.19.4: eine Regel hatte die Einrückung überschrieben). **Tests:** `test_ui.py`
 nur bei Änderungen an der Oberfläche und nur einmal vor dem Commit.
 
+Seitenleiste nachgebessert (0.20.1): Felder lassen sich an ihrer Oberkante in der Höhe
+ziehen (Höhe gemerkt, Doppelklick = Inhaltshöhe), der Explorer (Ordner) bleibt bei
+mindestens 120 px stehen, unten gedeckelte Felder (40 %) scrollen innen — das volle
+Tag-Feld verdrängt die Ordner nicht mehr. Suchfeld mit × (und Esc). Unten eine
+Statuszeile „57 Modelle · 3 ausgewählt“ statt der Zahl in der Kopfzeile.
+Geprüft nur mit einem Playwright-Skript, nicht mit `test_ui.py`.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,
