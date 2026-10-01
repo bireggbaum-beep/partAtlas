@@ -704,21 +704,35 @@ function ladeProgramme() {
 // Hauptknopf mit dem Standardprogramm des Formats, daneben die übrigen,
 // die das Format können, und immer „mit dem System“ — so bleibt keine
 // Datei ohne Weg nach draussen, auch wenn nichts erkannt wurde.
-function oeffnenKnoepfe(m, prog) {
+// Je Art (Slicer, CAD) die Programme, die das Format öffnen, das
+// Standardprogramm der Art vorn. Slicen und Bearbeiten sind verschiedene
+// Absichten — deshalb zwei Wege statt eines „Öffnen“.
+const ART_SYMBOL = { slicer: "🖨", cad: "📐" };
+function programmeFuer(m, prog) {
   const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);
-  const passend = prog.programme.filter((p) => p.formate.includes(m.format) && p !== std);
-  const haupt = std
-    ? `<button class="knopf akzent" id="oeffnen" data-pfad="${esc(std.pfad)}" title="${esc(std.pfad)}">↗ In ${esc(std.name)} öffnen</button>`
-    : `<button class="knopf" id="oeffnen" data-system="1">↗ Mit dem System öffnen</button>`;
-  const gruppen = Object.entries(prog.arten).map(([art, titel]) => {
-    const g = passend.filter((p) => p.art === art);
+  const je = {};
+  for (const art of Object.keys(prog.arten)) {
+    const liste = prog.programme.filter((p) => p.art === art && p.formate.includes(m.format));
+    je[art] = std && std.art === art ? [std, ...liste.filter((p) => p !== std)] : liste;
+  }
+  return { je, hauptArt: std ? std.art : null };
+}
+
+function oeffnenKnoepfe(m, prog) {
+  const { je, hauptArt } = programmeFuer(m, prog);
+  const arten = Object.keys(prog.arten).filter((a) => je[a].length).sort((x, y) => (y === hauptArt) - (x === hauptArt));
+  if (!arten.length) return `<button class="knopf" id="oeffnen" data-system="1">↗ Mit dem System öffnen</button>`;
+  const knoepfe = arten.map((art, i) => {
+    const p = je[art][0];
+    return `<button class="knopf ${i === 0 ? "akzent" : ""}" ${i === 0 ? 'id="oeffnen"' : ""} data-oeffne-pfad="${esc(p.pfad)}"
+      title="${esc(prog.arten[art])}: ${esc(p.pfad)}">${ART_SYMBOL[art] || "↗"} In ${esc(p.name)} öffnen</button>`;
+  }).join("");
+  const weitere = Object.entries(prog.arten).map(([art, titel]) => {
+    const g = je[art].slice(1);
     return g.length ? `<optgroup label="${esc(titel)}">${g.map((p) => `<option value="${esc(p.pfad)}">${esc(p.name)}</option>`).join("")}</optgroup>` : "";
   }).join("");
-  const menue = std || passend.length
-    ? `<select class="knopf" id="oeffnen-mit" title="Öffnen mit …"><option value="">Öffnen mit …</option>${gruppen}
-        ${std ? '<option value="__system">Mit dem System öffnen</option>' : ""}<option value="__einstellungen">Programme einstellen …</option></select>`
-    : "";
-  return haupt + menue;
+  return knoepfe + `<select class="knopf" id="oeffnen-mit" title="Öffnen mit …"><option value="">Öffnen mit …</option>${weitere}
+      <option value="__system">Mit dem System öffnen</option><option value="__einstellungen">Programme einstellen …</option></select>`;
 }
 
 async function modellOeffnen(body, id = $("#inspektor").dataset.id) {
@@ -995,7 +1009,7 @@ document.addEventListener("click", async (e) => {
     case "neu-einlesen": case "neu-einlesen-2": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
     case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
-    case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.pfad }); }
+    case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.oeffnePfad }); }
     case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
     case "gal-plus-menu": $("#mehr-menu").hidden = true; return $("#bild-wahl").click();
     case "umbenennen": return umbenennen(id);
@@ -1301,34 +1315,45 @@ async function kontextMenu(e, id) {
       ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
   } else {
     const prog = await ladeProgramme();
-    const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);
+    const { je } = programmeFuer(m, prog);
     const da = !m.fehlt;
+    const kein = { slicer: "Kein Slicer für dieses Format", cad: "Kein CAD-Programm für dieses Format" };
+    const oeffnen = Object.keys(prog.arten).map((art) => {
+      const liste = je[art];
+      if (!liste.length) return ["einrichten", `${ART_SYMBOL[art] || "↗"} ${kein[art] || "Kein Programm"} — einrichten …`, "aus"];
+      if (liste.length === 1) return ["oeffnen", `${ART_SYMBOL[art] || "↗"} In ${esc(liste[0].name)} öffnen`, "", liste[0].pfad];
+      return ["unter", `${ART_SYMBOL[art] || "↗"} ${art === "slicer" ? "Im Slicer" : "Im CAD"} öffnen`, "",
+        liste.map((p, i) => `<button data-km="oeffnen" data-pfad="${esc(p.pfad)}">${esc(p.name)}${i === 0 ? ' <small class="dim">Standard</small>' : ""}</button>`).join("")];
+    });
     eintraege = [
-      ...(da ? [["oeffnen", std ? `↗ In ${std.name} öffnen` : "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
+      ...(da ? [...oeffnen, ["system", "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
       ["ws", m.warteschlange != null ? "☰ Aus der Warteschlange" : "☰ In die Warteschlange"],
       ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],
       ["favorit1", m.favorit ? "♡ Kein Favorit mehr" : "♥ Favorit"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
-    kontextMenu.std = std;
   }
   const menu = $("#kontext");
-  menu.innerHTML = eintraege.map(([k, t, kl]) => k === "-" ? "<hr>" : k === "kopf" ? `<div class="km-kopf">${esc(t)}</div>`
-    : `<button data-km="${k}" class="${kl || ""}">${t}</button>`).join("");
+  menu.innerHTML = eintraege.map(([k, t, kl, extra]) => k === "-" ? "<hr>" : k === "kopf" ? `<div class="km-kopf">${esc(t)}</div>`
+    : k === "unter" ? `<div class="km-unter"><button type="button">${t}<span class="km-pfeil">▸</span></button><div class="menu km-flyout">${extra}</div></div>`
+    : `<button data-km="${k}" class="${kl || ""}" ${extra ? `data-pfad="${esc(extra)}"` : ""}>${t}</button>`).join("");
   kontextMenu.ziel = { id, modelle, m };
   menu.hidden = false;
   // Im Fenster halten: am Rand nach links bzw. oben aufklappen.
   const b = menu.getBoundingClientRect();
   menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
   menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
+  menu.classList.toggle("flyout-links", menu.getBoundingClientRect().right + 220 > innerWidth);
 }
 
-async function kontextAktion(k) {
+async function kontextAktion(k, knopf) {
   const { id, modelle, m } = kontextMenu.ziel;
   $("#kontext").hidden = true;
   switch (k) {
-    case "oeffnen": return modellOeffnen(kontextMenu.std ? { pfad: kontextMenu.std.pfad } : { system: true }, id);
+    case "oeffnen": return modellOeffnen({ pfad: knopf.dataset.pfad }, id);
+    case "system": return modellOeffnen({ system: true }, id);
+    case "einrichten": return einstellungen();
     case "ordner":
       try { await api(`/api/modelle/${id}/im_ordner`, { method: "POST" }); } catch (err) { toast(err.message); }
       return;
@@ -1360,13 +1385,17 @@ async function sammlungWahl(modelle) {
   toast("Zur Sammlung hinzugefügt.");
 }
 
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("#inspektor [data-oeffne-pfad]:not(#oeffnen)");
+  if (b) modellOeffnen({ pfad: b.dataset.oeffnePfad });
+});
 document.addEventListener("contextmenu", (e) => {
   const k = e.target.closest?.(".karte, .zeile-l");
   if (k) kontextMenu(e, k.dataset.id);
 });
 document.addEventListener("click", (e) => {
   const b = e.target.closest?.("[data-km]");
-  if (b) return kontextAktion(b.dataset.km);
+  if (b) return kontextAktion(b.dataset.km, b);
   if (!e.target.closest?.("#kontext")) $("#kontext").hidden = true;
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#kontext").hidden = true; });

@@ -465,3 +465,12 @@ body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .menu.kontext hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
 .menu.kontext button { font-size: 13px; }
 .km-kopf { font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); padding: 4px 10px 6px; text-transform: uppercase; }
+.menu.kontext button.aus { color: var(--ink-3); }
+.km-unter { position: relative; }
+.km-unter > button { display: flex; justify-content: space-between; align-items: center; }
+.km-pfeil { color: var(--ink-3); margin-left: 12px; }
+.km-flyout { display: none; position: absolute; left: 100%; top: -5px; min-width: 200px; padding: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.km-unter:hover > .km-flyout, .km-unter:focus-within > .km-flyout { display: block; }
+.km-unter:hover > button { background: var(--panel-2); }
+.i-haupt .knopf { flex: 1 1 auto; }
+.flyout-links .km-flyout { left: auto; right: 100%; }

@@ -132,8 +132,9 @@ async def oberflaeche(port):
               (await pg.inner_text(".gal-etikett")).startswith("Vorschau · 4 / 4"))
 
         # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
-        check("Hauptknopf nennt den Standard fürs Format (STL → Slicer)",
-              "In PrusaSlicer öffnen" in await pg.inner_text("#oeffnen"))
+        check("Hauptknopf nennt den Standard fürs Format (STL → Slicer), daneben der CAD-Knopf",
+              "In PrusaSlicer öffnen" in await pg.inner_text("#oeffnen")
+              and "In FreeCAD öffnen" in await pg.inner_text(".i-haupt"))
         await pg.click("#oeffnen")
         await pg.wait_for_timeout(1000)
         check("… und startet ihn mit der Datei des Modells",
@@ -214,8 +215,10 @@ async def oberflaeche(port):
         vorher = next(m for m in api(port, "/api/modelle") if m["id"] == mid)["favorit"]
         await pg.click('[data-km="favorit1"]')
         await pg.wait_for_timeout(600)
+        check("Rechtsklick: Slicer und CAD getrennt, je mit dem Programm, das das Format kann",
+              "In PrusaSlicer öffnen" in menu and "In FreeCAD öffnen" in menu)
         check("Rechtsklick: Öffnen, Im Ordner zeigen, Löschen im Menü; Favorit umschalten wirkt",
-              "Im Ordner zeigen" in menu and "Löschen" in menu and "öffnen" in menu
+              "Im Ordner zeigen" in menu and "Löschen" in menu
               and next(m for m in api(port, "/api/modelle") if m["id"] == mid)["favorit"] != vorher
               and await pg.locator("#kontext").is_hidden())
 
