@@ -450,3 +450,12 @@ body.erststart .tagleiste { display: none; }
 .sk-inhalt { padding-left: 2px; }
 body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .leer-eintrag { color: var(--ink-3); font-size: 12px; }
+
+/* Abschnittsüberschrift als durchgehendes Band (wie VS Code): klare Trennung */
+.seite .sektion { margin: 0 -8px; }
+.seite .sektion h3 { margin: 0; padding: 3px 8px 3px 4px; background: var(--panel); border-top: 1px solid var(--line);
+                     border-bottom: 1px solid var(--line); position: sticky; top: -10px; z-index: 2; }
+.seite .sektion[data-zu="1"] h3 { border-bottom-color: transparent; }
+.seite .sektion h3:hover { background: var(--panel-2); }
+.seite .sk-inhalt { padding: 4px 8px 8px; }
+.seite .sektion + .sektion h3 { border-top-color: var(--line); }
