@@ -19,6 +19,22 @@ Zum Ausprobieren ohne eigene Sammlung:
 python werkzeuge/demo_sammlung.py ~/partatlas-demo --anzahl 60
 ```
 
+## Im Codespace
+
+`.devcontainer/` richtet alles ein: Pakete installieren, partAtlas bei jedem
+Containerstart starten (nie ein zweiter Prozess), beim ersten Mal eine
+Demo-Sammlung als Wurzelordner eintragen, Port 8765 im Browser öffnen.
+
+```bash
+bash .devcontainer/start.sh --neu                         # neu starten
+PARTATLAS_OHNE_DEMO=1 bash .devcontainer/start.sh --neu   # ohne Demo (erster Start der Oberfläche)
+bash .devcontainer/start.sh --stop
+```
+
+Den Port im Tab „Ports“ **privat** lassen: partAtlas hat noch kein Passwort,
+und der Ordner-Wähler listet das Dateisystem. „Öffnen in Slicer/CAD“ und
+„Im Ordner zeigen“ tun im Codespace nichts (kein Desktop).
+
 ## Testen
 
 ```bash

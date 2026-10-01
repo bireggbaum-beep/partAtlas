@@ -1,0 +1,28 @@
+{
+  "name": "partAtlas",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12",
+  // flatgraph kommt per git+https aus dem Repo flatgraphdb (requirements.txt).
+  // Die Tests der Oberfläche brauchen zusätzlich requirements-test.txt
+  // (Playwright, Chromium) — fürs Ausprobieren ist das nicht nötig.
+  "postCreateCommand": "pip install -r requirements.txt",
+  // Bei JEDEM Containerstart, nicht nur beim Anlegen: ein Codespace wird
+  // angehalten und wieder geweckt. Das Skript startet nichts, wenn schon
+  // etwas läuft — zwei Prozesse auf einem Bestand lässt flatgraph nicht zu.
+  "postStartCommand": "bash .devcontainer/start.sh",
+  "forwardPorts": [
+    8765
+  ],
+  "portsAttributes": {
+    "8765": {
+      "label": "partAtlas (Browser öffnen)",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ]
+    }
+  }
+}
