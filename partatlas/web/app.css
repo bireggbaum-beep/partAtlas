@@ -404,7 +404,7 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
 .i-details .i-label { margin: 10px 0 4px; }
 
 /* Erster Start: eine Sache zu tun, nichts Leeres drumherum */
-body.erststart .seite section:not(:first-of-type), body.erststart .tagleiste { display: none; }
+body.erststart .tagleiste { display: none; }
 .leer:has(.willkommen) { padding: 0; display: grid; place-items: center; min-height: 70vh; }
 .willkommen { max-width: 520px; text-align: left; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line);
               border-radius: 12px; padding: 28px 32px; }
@@ -431,3 +431,22 @@ body.erststart .seite section:not(:first-of-type), body.erststart .tagleiste { d
 .ow-tippen { margin-top: 8px; font-size: 12px; color: var(--ink-3); }
 .ow-tippen summary { cursor: pointer; }
 .ow-tippen input { width: 70%; margin-top: 6px; }
+
+/* Seitenleiste: einklappbare Abschnitte, Aktionen an der Überschrift */
+.seite .sektion { margin-bottom: 6px; }
+.seite .sektion h3 { display: flex; align-items: center; margin: 8px 0 4px; }
+.sk-kopf { flex: 1; text-align: left; background: none; border: 0; cursor: pointer; padding: 3px 4px; color: inherit;
+           font: inherit; letter-spacing: inherit; border-radius: 4px; }
+.sk-kopf::before { content: "▾"; display: inline-block; width: 12px; color: var(--ink-3); }
+.sektion[data-zu="1"] .sk-kopf::before { content: "▸"; }
+.sektion[data-zu="1"] .sk-inhalt { display: none; }
+.sk-kopf:hover { color: var(--ink-2); }
+.sk-akt { display: flex; gap: 2px; opacity: 0; transition: opacity 0.12s; }
+.sektion h3:hover .sk-akt, .sk-akt:focus-within { opacity: 1; }
+@media (hover: none) { .sk-akt { opacity: 1; } }
+.sk-akt button { background: none; border: 0; cursor: pointer; color: var(--ink-3); font-size: 14px; width: 22px; height: 20px;
+                 border-radius: 4px; line-height: 1; }
+.sk-akt button:hover { background: var(--panel-2); color: var(--accent); }
+.sk-inhalt { padding-left: 2px; }
+body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
+.leer-eintrag { color: var(--ink-3); font-size: 12px; }

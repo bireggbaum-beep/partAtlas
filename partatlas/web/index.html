@@ -44,40 +44,53 @@
 
   <aside class="seite">
     <input class="suche" id="suche" placeholder="⌕  Suchen … z. B. halter tag:pla -alt" title="Alle Wörter müssen vorkommen, auch als Wortteil. &quot;genaue Wortfolge&quot; · -wort schliesst aus · Filter: tag: ordner: baugruppe: sammlung: material: format: designer: gedruckt:ja favorit:ja" autocomplete="off">
-    <section>
-      <h3>ORDNER</h3>
-      <button class="eintrag" data-ansicht="alle"><span>Alle Modelle</span><em id="z-alle"></em></button>
-      <div id="ordner"></div>
-      <button class="gestrichelt" id="wurzel-neu-2">＋ Ordner hinzufügen</button>
+    <section class="sektion" data-sektion="ansichten">
+      <h3><button class="sk-kopf" data-sk="ansichten">ANSICHTEN</button></h3>
+      <div class="sk-inhalt">
+        <button class="eintrag" data-ansicht="alle"><span>Alle Modelle</span><em id="z-alle"></em></button>
+        <button class="eintrag" data-ansicht="neu"><span>⊕ Neu hinzugefügt</span><em></em></button>
+        <button class="eintrag" data-ansicht="favoriten"><span>♡ Favoriten</span><em id="z-favoriten"></em></button>
+        <button class="eintrag ablage" data-ansicht="warteschlange"><span>☰ Warteschlange</span><em id="z-warteschlange"></em></button>
+        <ol class="ws-liste" id="ws-liste"></ol>
+      </div>
     </section>
-    <section>
-      <h3>BAUGRUPPEN</h3>
-      <div id="baugruppen"></div>
-      <button class="gestrichelt" id="baugruppe-neu">＋ Neue Baugruppe</button>
+    <section class="sektion" data-sektion="ordner">
+      <h3><button class="sk-kopf" data-sk="ordner">ORDNER</button><span class="sk-akt"><button id="wurzel-neu-2" title="Ordner hinzufügen">＋</button><button id="neu-einlesen-2" title="Alle Ordner neu einlesen">⟳</button></span></h3>
+      <div class="sk-inhalt">
+        <div id="ordner"></div>
+      </div>
     </section>
-    <section>
-      <h3>SAMMLUNGEN</h3>
-      <div id="sammlungen"></div>
-      <button class="gestrichelt" id="sammlung-neu">＋ Neue Sammlung</button>
+    <section class="sektion" data-sektion="baugruppen">
+      <h3><button class="sk-kopf" data-sk="baugruppen">BAUGRUPPEN</button><span class="sk-akt"><button id="baugruppe-neu" title="Neue Baugruppe">＋</button></span></h3>
+      <div class="sk-inhalt">
+        <div id="baugruppen"></div>
+      </div>
     </section>
-    <section>
-      <h3>FORMATE</h3>
-      <div id="formate"></div>
+    <section class="sektion" data-sektion="sammlungen">
+      <h3><button class="sk-kopf" data-sk="sammlungen">SAMMLUNGEN</button><span class="sk-akt"><button id="sammlung-neu" title="Neue Sammlung">＋</button></span></h3>
+      <div class="sk-inhalt">
+        <div id="sammlungen"></div>
+      </div>
     </section>
-    <section>
-      <h3>TAGS</h3>
-      <div id="tag-liste"></div>
+    <section class="sektion" data-sektion="aufraeumen">
+      <h3><button class="sk-kopf" data-sk="aufraeumen">AUFRÄUMEN</button></h3>
+      <div class="sk-inhalt">
+        <button class="eintrag" data-ansicht="duplikate"><span>⧉ Duplikate</span><em id="z-duplikate"></em></button>
+        <button class="eintrag" data-ansicht="fehlt"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
+        <button class="eintrag" data-ansicht="unlesbar"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
+      </div>
     </section>
-    <section>
-      <h3>WERKZEUGE</h3>
-      <button class="eintrag ablage" data-ansicht="warteschlange"><span>☰ Warteschlange</span><em id="z-warteschlange"></em></button>
-      <ol class="ws-liste" id="ws-liste"></ol>
-      <button class="eintrag" data-ansicht="neu"><span>⊕ Neu hinzugefügt</span><em></em></button>
-      <button class="eintrag" data-ansicht="favoriten"><span>♡ Favoriten</span><em id="z-favoriten"></em></button>
-      <button class="eintrag" data-ansicht="duplikate"><span>⧉ Duplikate</span><em id="z-duplikate"></em></button>
-      <button class="eintrag" data-ansicht="fehlt"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
-      <button class="eintrag" data-ansicht="unlesbar"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
-      <button class="eintrag" data-ansicht="papierkorb"><span>🗑 Papierkorb</span><em id="z-papierkorb"></em></button>
+    <section class="sektion" data-sektion="formate" data-zu="1">
+      <h3><button class="sk-kopf" data-sk="formate">FORMATE</button></h3>
+      <div class="sk-inhalt">
+        <div id="formate"></div>
+      </div>
+    </section>
+    <section class="sektion" data-sektion="tags" data-zu="1">
+      <h3><button class="sk-kopf" data-sk="tags">TAGS</button></h3>
+      <div class="sk-inhalt">
+        <div id="tag-liste"></div>
+      </div>
     </section>
   </aside>
 

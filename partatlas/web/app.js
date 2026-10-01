@@ -66,13 +66,22 @@ async function ladeSeite() {
                                                               api("/api/sammlungen"), api("/api/warteschlange")]);
   zustand.sammlungen = sammlungen;
   $("#sammlungen").innerHTML = sammlungen.map((x) =>
-    `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("");
+    `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("")
+    || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`;
   $("#ws-liste").innerHTML = ws.map((m, i) =>
     `<li draggable="true" data-ws="${esc(m.id)}"><b>${i + 1}</b><span data-ws-waehle="${esc(m.id)}" title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join("");
   for (const k of ["alle", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "warteschlange"]) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
+  // Aufräumen nur, wenn es etwas aufzuräumen gibt — dann aber mit Zahl.
+  let aufzuraeumen = 0;
+  for (const k of ["duplikate", "fehlt", "unlesbar"]) {
+    const n = z[k] || 0;
+    aufzuraeumen += n;
+    $(`[data-sektion="aufraeumen"] [data-ansicht="${k}"]`).hidden = !n && zustand.ansicht !== k;
+  }
+  $('[data-sektion="aufraeumen"]').hidden = !aufzuraeumen && !["duplikate", "fehlt", "unlesbar"].includes(zustand.ansicht);
   $("#formate").innerHTML = Object.entries(z.formate).sort().map(([f, n]) =>
     `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join("");
   $("#ordner").innerHTML = `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`;
@@ -937,7 +946,7 @@ document.addEventListener("click", async (e) => {
   const id = $("#inspektor").dataset.id;
   switch (t.id) {
     case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; return neuLaden();
-    case "sammlung-neu": return sammlungNeu([]);
+    case "sammlung-neu": case "sammlung-neu-2": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
       try {
         const neu = await api("/api/baugruppen", { method: "POST", body: { aus_sammlung: zustand.sammlung } });
@@ -986,7 +995,7 @@ document.addEventListener("click", async (e) => {
       if (a === "ja") await aendern(id, { quelle_url: $("#quelle-url").value });
       return;
     }
-    case "neu-einlesen": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
+    case "neu-einlesen": case "neu-einlesen-2": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
     case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
     case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.pfad }); }
@@ -1244,4 +1253,29 @@ document.addEventListener("focusout", (e) => {
   setTimeout(() => {
     if (zustand.nachholen && !imInspektorAmTippen() && zustand.gewaehlt) { zustand.nachholen = false; waehle(zustand.gewaehlt, true); }
   }, 0);
+});
+
+// ---------------------------------------------------------------- Abschnitte der Seitenleiste
+//
+// Einklappbar wie in VS Code; der Zustand bleibt je Abschnitt gemerkt. Beim
+// Ziehen einer Kachel klappt ein zugeklappter Abschnitt auf, wenn man kurz
+// über seiner Überschrift verweilt — so bleibt er Ablageziel.
+
+function sektionSetzen(sek, zu) {
+  sek.dataset.zu = zu ? "1" : "";
+  localStorageSchreiben("sektion." + sek.dataset.sektion, zu ? "1" : "0");
+}
+document.querySelectorAll(".sektion").forEach((sek) => {
+  const gemerkt = localStorageLesen("sektion." + sek.dataset.sektion);
+  if (gemerkt != null) sek.dataset.zu = gemerkt === "1" ? "1" : "";
+});
+document.addEventListener("click", (e) => {
+  const kopf = e.target.closest?.(".sk-kopf");
+  if (kopf) { const sek = kopf.closest(".sektion"); sektionSetzen(sek, !sek.dataset.zu); }
+});
+let sekZiehZeit = null;
+document.addEventListener("dragover", (e) => {
+  const kopf = e.target.closest?.(".sektion[data-zu='1'] h3");
+  if (!kopf) { clearTimeout(sekZiehZeit); sekZiehZeit = null; return; }
+  if (!sekZiehZeit) sekZiehZeit = setTimeout(() => { sektionSetzen(kopf.closest(".sektion"), false); sekZiehZeit = null; }, 600);
 });

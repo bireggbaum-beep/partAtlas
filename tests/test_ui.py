@@ -84,6 +84,12 @@ async def oberflaeche(port):
               await pg.locator("text=SAMMLUNGEN").is_visible())
         while api(port, "/api/stand")["scan"].get("laeuft"):
             await asyncio.sleep(0.3)
+        await pg.wait_for_timeout(500)
+        check("Seitenleiste: „Aufräumen“ fehlt, solange es nichts aufzuräumen gibt",
+              await pg.locator('[data-sektion="aufraeumen"]').is_hidden())
+        await pg.click('[data-sk="tags"]')
+        check("Abschnitt per Überschrift aufklappen (Tags standardmässig zu)", await pg.locator("#tag-liste").is_visible())
+        await pg.click('[data-sk="tags"]')
 
         await suche("Vase")
         await pg.locator(".karte").first.click()
@@ -250,6 +256,9 @@ async def oberflaeche(port):
         await pg.wait_for_selector(".karte.fehlt .fehlt-band", timeout=5000)
         check("Datei fehlt: Kachel bleibt im Raster, mit Band „Datei fehlt“",
               "Datei fehlt" in await pg.inner_text(".karte.fehlt .fehlt-band"))
+        check("… und „Aufräumen“ erscheint mit „Datei fehlt 1“",
+              "Datei fehlt" in await pg.inner_text('[data-sektion="aufraeumen"]')
+              and await pg.locator('[data-sektion="aufraeumen"] [data-ansicht="duplikate"]').is_hidden())
 
         await suche("Haken")
         await pg.locator(".karte").first.click()

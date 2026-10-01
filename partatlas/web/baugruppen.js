@@ -47,7 +47,8 @@ async function ladeBaugruppenLeiste() {
     ? `<div class="tipp" id="bg-tipp"><b>💡 ${vorschlaege.length} Ordner</b> sehen aus wie Baugruppen — ansehen</div>` : "";
   $("#baugruppen").innerHTML = liste.map((b) => `
     <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
-      <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("") + tipp;
+      <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("")
+    + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="baugruppe-neu-2">＋ Neue Baugruppe</button>`) + tipp;
   zustand.bgVorschlaege = vorschlaege;
 }
 
@@ -421,7 +422,7 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("click", async (e) => {
   const t = e.target;
-  if (t.closest("#bg-tipp") || t.id === "baugruppe-neu") return neueBaugruppe();
+  if (t.closest("#bg-tipp") || t.id === "baugruppe-neu" || t.id === "baugruppe-neu-2") return neueBaugruppe();
   const vor = t.closest("[data-vorschlag]");
   if (vor) return ausVorschlag(vor.dataset.vorschlag);
   const b = t.closest("[data-baugruppe]");
