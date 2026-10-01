@@ -54,6 +54,11 @@ alte Haken werden zu leeren Drucken. Demo: `werkzeuge/demo_drucke.py`
 Noch nicht: Baugruppensummen nehmen den Referenzdruck nicht (Dateiwert);
 die Löschvorschau nennt Drucke nicht; Plattenwerte werden nicht verteilt.
 
+Schrift (0.19.1): alle Schriftgrössen gestaffelt grösser (kleinste 9 → 11 px,
+Fliesstext 13 → 14 px), Kacheln 246 → 262 px, Listenzeilen 36 → 38 px. Wer
+weitere Stellen zu klein findet: die Stufen stehen als Variablen
+`--fs-*` in `app.css`.
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

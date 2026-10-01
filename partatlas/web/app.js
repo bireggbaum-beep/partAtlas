@@ -237,7 +237,7 @@ const raster = (() => {
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
   const mass = () => zustand.layout === "liste"
-    ? { B: 0, H: 36, LUECKE: 0, RAND: 0 } : { B: 164, H: 246, LUECKE: 14, RAND };
+    ? { B: 0, H: 38, LUECKE: 0, RAND: 0 } : { B: 164, H: 262, LUECKE: 14, RAND };
 
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();
