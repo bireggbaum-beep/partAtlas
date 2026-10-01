@@ -1,6 +1,8 @@
 # partAtlas — Arbeitsweise
 
 - Führend ist `KONZEPT.md`. Alles auf Deutsch.
+- Stand, Entscheidungen und nächste Schritte: `OFFEN.md` — zu Beginn lesen,
+  nach jeder erledigten Sache aktualisieren.
 - **Tests sparsam:** nach einer Änderung nur die Suite, die sie prüft,
   und deren Gegenprobe. Alle Suiten nur ab und zu (vor einer Fassung).
   `tests/test_ui.py` nur, wenn sich die Oberfläche geändert hat — sie
