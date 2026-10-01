@@ -116,6 +116,11 @@ Höhe 48 px bis 60 % der Fensterhöhe, die Leiste mit den kleinen Bildern entfä
 gemerkt (`localStorage` „bildhoehe“), Doppelklick = 220 px. Rechte Seitenleiste als Felder
 (Split View wie links): bewusst zurückgestellt.
 
+Drucke und Bilder (0.20.5): Bilder lassen sich auf einen Druck ziehen (Foto dazu) oder auf den
+leeren Teil des Reiters „Drucke“ (neuer Druck mit dem Foto); ein Bild irgendwo sonst wird nicht
+mehr als Modelldatei eingelesen (Hinweis statt Fehlversuch). Die 2D-Vorschau schrumpft jetzt
+mit dem Rahmen (vorher bestimmte die Eigengrösse des Bildes die Zeilenhöhe).
+
 ## Entschieden, noch nicht gebaut (Phase 1)
 
 1. **Drucke Stufe b:** G-Code oder Slicer-Projekt auf einen Druck ziehen,

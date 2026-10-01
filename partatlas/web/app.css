@@ -507,6 +507,8 @@ body.bg-offen .nur-katalog { display: none; }
 .i-fix { position: sticky; top: -14px; z-index: 6; margin: -14px -14px 0; padding: 14px 14px 8px; background: var(--bg);
          border-bottom: 1px solid var(--line); }
 .i-fix .i-bild { aspect-ratio: auto; height: var(--bild-h, 220px); margin: 0; }
+/* Das Bild füllt den Rahmen und schrumpft mit ihm; sonst bestimmte seine Eigengrösse die Zeile und der Rahmen schnitte es nur ab. */
+.i-fix .i-bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .i-fix .i-name { margin: 10px 0 0; font-size: 16px; }
 .i-fix .i-name .dim { font-weight: 400; margin-left: 1px; }
 .i-fix .gal-leiste { margin-top: 6px; }
@@ -624,3 +626,4 @@ body.bg-offen .statuszeile { display: none; }
 .i-fix:hover .i-griff::after, .i-griff.zieht::after { opacity: 1; }
 .i-griff:hover::after, .i-griff.zieht::after { background: var(--accent); }
 html.bild-klein .i-fix .gal-leiste { display: none; }
+.druck.druck-ziel, .i-tafel.druck-ziel { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft); }

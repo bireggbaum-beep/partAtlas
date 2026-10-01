@@ -754,6 +754,21 @@ document.addEventListener("click", async (e) => {
     return waehle(id);
   }
 });
+// Fotos auf einen Druck gezogen; ohne Druck (leerer Teil des Reiters) entsteht ein neuer mit diesen Fotos.
+async function druckBilderAblegen(did, dateien) {
+  const id = zustand.gewaehlt;
+  const bilder = [...dateien].filter((f) => /^image\/(png|jpeg|webp)$/.test(f.type));
+  if (!id || !bilder.length) return toast("Nur PNG, JPG oder WebP.");
+  try {
+    if (!did) did = (await api("/api/drucke", { method: "POST", body: { modelle: [id], felder: {} } })).id;
+    for (const f of bilder) {
+      const r = await fetch(`/api/drucke/${did}/bilder`, { method: "POST", body: f });
+      if (!r.ok) toast((await r.json().catch(() => ({}))).fehler || "Foto nicht gespeichert.");
+    }
+  } catch (err) { return toast(err.message); }
+  toast(bilder.length > 1 ? `${bilder.length} Fotos hinzugefügt.` : "Foto hinzugefügt.");
+  if (zustand.gewaehlt === id) waehle(id);
+}
 $("#druck-bild-wahl").addEventListener("change", async (e) => {
   const did = druckFotoZiel;
   const bilder = [...e.target.files];
@@ -1546,24 +1561,35 @@ document.addEventListener("dragstart", (e) => { vonGalerie = !!e.target.closest?
 document.addEventListener("dragend", () => { vonGalerie = false; }, true);
 const vonAussen = (e) => !gezogen && !vonGalerie && [...(e.dataTransfer?.types || [])].includes("Files");
 window.addEventListener("dragenter", (e) => { if (vonAussen(e)) { abwurfZaehler++; $("#abwurf").hidden = false; } });
+// Bilder auf einen Druck (Foto dazu) oder auf den leeren Teil des Reiters „Drucke“ (neuer Druck mit Foto).
+const druckZiel = (e) => (!galerie.m || galerie.m.papierkorb ? null : e.target.closest?.(".druck, .i-tafel[data-reiter='drucke']"));
+const abwurfAufraeumen = () => document.querySelectorAll(".abwurf-ziel, .druck-ziel").forEach((x) => x.classList.remove("abwurf-ziel", "druck-ziel"));
 window.addEventListener("dragleave", (e) => {
-  if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; $("#i-galerie")?.classList.remove("abwurf-ziel"); }
+  if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; abwurfAufraeumen(); }
 });
 window.addEventListener("dragover", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
   const aufGalerie = !!(e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb);
-  $("#i-galerie")?.classList.toggle("abwurf-ziel", aufGalerie);
-  $("#abwurf").hidden = aufGalerie;
+  const dz = aufGalerie ? null : druckZiel(e);
+  abwurfAufraeumen();
+  if (aufGalerie) $("#i-galerie")?.classList.add("abwurf-ziel");
+  if (dz) dz.classList.add("druck-ziel");
+  $("#abwurf").hidden = aufGalerie || !!dz;
 });
 window.addEventListener("drop", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
   abwurfZaehler = 0;
   $("#abwurf").hidden = true;
-  $("#i-galerie")?.classList.remove("abwurf-ziel");
+  const dz = druckZiel(e);
+  abwurfAufraeumen();
   // Auf die Galerie gezogen: Bilder zum Modell, keine neuen Modelldateien.
   if (e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb) return bilderHochladen(e.dataTransfer.files);
+  if (dz) return druckBilderAblegen(dz.closest(".druck")?.dataset.druck || null, e.dataTransfer.files);
+  // Nur Bilder, aber nirgends, wo sie hingehören: nicht als Modelldatei einlesen wollen.
+  const dateien = [...e.dataTransfer.files];
+  if (dateien.length && dateien.every((f) => f.type.startsWith("image/"))) return toast("Bilder gehören auf die Vorschau oder auf einen Druck.");
   hochladen(e.dataTransfer.files);
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
