@@ -264,6 +264,81 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
 - „Fehlende in die Warteschlange“, Export als CSV und Markdown,
   „steckt in …“ an jedem Modell und in der Löschvorschau.
 
+### 4.6 Drucke in Phase 1 (Entwurf, ohne Drucker)
+
+*Entwurf vom 01.10.2026, noch nicht gebaut. Gebaut wird in zwei Stufen.*
+
+**Grundgedanke.** Das Modell ist die Geometrie. Ein **Druck** ist ein
+einzelnes Mal, dass sie auf dem Drucker lag — mit allem, was dazu gehört:
+Einstellungen, Gewicht, Dauer, Filament, Foto, Ergebnis, Notiz. „Gedruckt“
+ist keine Eigenschaft des Modells mehr, sondern folgt aus seinen Drucken;
+ein Modell ist **noch nicht gedruckt**, solange es keinen hat, und die
+Kachel zeigt, **wie oft** es gedruckt wurde. Wie ein Fotomanager: was die
+Kamera nicht liefert, trägt der Anwender selbst ein. Ein Anbindungslayer
+ist dafür nicht nötig; er füllt diese Drucke ab Phase 2 nur von selbst.
+
+- **Ein Druck ist ein `PRINT_JOB`** (§6.1) — derselbe Knoten wie in
+  Phase 2. Neu ist nur, dass er auch ohne Drucker und ohne G-Code
+  entstehen kann. Felder: Datum, Dauer, Gewicht, Filament
+  (`[{typ, farbe, g}]`), Ergebnis (`gut` / `mit Fehlern` / `abgebrochen`),
+  Notiz, Bilder (wie die des Modells, §3.2), Herkunft (`hand` / `datei`).
+- **Ein Druck hängt an einem oder mehreren Modellen** (Kante
+  `PRINTED_IN`, §6.2). Der Normalfall ist ein Modell. Mehrere gibt es
+  bei einer Platte: drei Bibliotheksmodelle nebeneinander im Slicer,
+  ein G-Code, ein Foto, ein Gewicht für alle. Der Zähler jedes der drei
+  Modelle steigt um eins. Das Speichern ist so gebaut, dass es mehrere
+  tragen kann, **auch wenn die Oberfläche zuerst nur den Einzelfall
+  anbietet** — die Speicherform lässt sich später nicht zurückdrehen.
+  Die Oberfläche folgt: Kacheln wählen → „Zusammen gedruckt …“.
+- **Zähler und Status** werden gezählt, nicht gespeichert: Drucke mit
+  Ergebnis `gut` oder `mit Fehlern`; `abgebrochen` zählt nicht. Das alte
+  Feld `gedruckt` am Modell entfällt. Wer ohne Daten „gedruckt“ klickt,
+  legt einen **leeren Druck** an (Datum, höchstens ein Foto) — der
+  Zähler stimmt ohne Sonderfall.
+- **Modellwerte (Gewicht, Zeit, Filament, Farbe)** zeigt die Kachel vom
+  **Referenzdruck**, sonst aus der Datei, wie heute; die Herkunft steht
+  dabei („aus Referenzdruck“ / „aus Datei“). Handwerte am Modell gibt es
+  nicht mehr: wer ein Gewicht von Hand kennt, trägt es im Druck ein.
+  Ohne Drucker gilt die Referenz **je Modell** (eine); ab Phase 2 je
+  Modell und Drucker (§4.3).
+- **Plattenwerte gehören der Platte.** Hängt ein Druck an mehreren
+  Modellen, wird sein Gewicht nicht auf sie verteilt. Baugruppensummen
+  rechnen für diese Modelle weiter mit dem Dateiwert.
+- **Baugruppen bleiben, wie sie sind.** Der Zähler „erledigt“ an der
+  Position (§4.5) ist der Fortschritt der **Baugruppe** („für dieses
+  Projekt vier gebraucht, zwei fertig“) und hängt nicht am Zähler des
+  Modells. Ab Phase 2 zählt die Druckhistorie mit.
+- **„Im Slicer öffnen“** öffnet immer **ein** Programm. Bei einem Modell
+  wie heute. Bei einem Druck mit Datei (G-Code, Slicer-Projekt) öffnet er
+  diese **eine** Datei, auch wenn der Druck an drei Modellen hängt. Bei
+  mehreren gewählten Modellen gibt es „Zusammen im Slicer öffnen“: ein
+  Prozess, alle Dateien als Argumente. *Ungeprüft:* ob PrusaSlicer,
+  OrcaSlicer, Bambu Studio und Cura mehrere Dateien auf der
+  Kommandozeile in **einem** Fenster aufnehmen, oder ob sie je Datei eine
+  Instanz starten (heute übergibt `programme.oeffnen` genau eine Datei).
+
+**Stufe a — Drucke von Hand.** Druck anlegen (an einem Modell oder an
+einer Auswahl), Felder und Fotos von Hand, Referenz markieren, Zähler und
+Status auf Kachel und Inspektor. Kein G-Code. Das ist die Demo für den
+Piloten. Bestehende Haken „gedruckt“ werden beim Umzug je zu einem
+leeren Druck (wie die Umstellung der eigenen Bilder in 0.11).
+
+**Stufe b — Datei zum Druck.** G-Code oder Slicer-Projekt auf einen Druck
+ziehen: im Vault abgelegt (`GCODE_ARTIFACT`, Kennung = Hash),
+Einstellungen und Filament ausgelesen (§4.1), `PRINT_PROFILE` per Hash,
+Vergleich zweier Drucke. Aus einer Datei mit mehreren Objekten wird vorgeschlagen,
+an welchen Modellen der Druck hängt; der Anwender bestätigt.
+
+**Ab Phase 2:** Anbindung, Sensordaten (§4.2), „Nochmal“ (§4.3). Sie
+legen Drucke selbst an, mit `EXECUTED_ON` und Kurven; an der Form des
+Druck-Objekts ändert sich nichts.
+
+**Offen (vor Stufe a):** (1) Wie heisst es auf der Oberfläche — „Druck“
+oder „Druckversuch“? (2) Zählt ein Druck mit Fehlern in „wie oft
+gedruckt“? Vorschlag: ja, er hat stattgefunden, die Kachel zeigt nur
+„gut“ als Haken. (3) Sieht man Drucke als Liste im Inspektor oder als
+eigenen Reiter (§ rechte Seitenleiste, OFFEN.md d)?
+
 ---
 
 ## 5. Was partAtlas an flatgraph zeigt
@@ -314,7 +389,7 @@ Sammlungs- und Kantennamen folgen der flatgraph-Namensregel (VERTRAG §7).
 | `COLLECTION` | fortlaufend | Sammlung mit Reihenfolge | `collections` |
 | `GCODE_ARTIFACT` | SHA-256 der Datei | Vault-Pfad, Slicer, Druckzeit, Filament je Material | — |
 | `PRINT_PROFILE` | Hash der Einstellungen | normalisierte Slicer-Konfiguration | — |
-| `PRINT_JOB` | `next_id`, nie wiederverwendet | Zeit, Dauer, Ergebnis, Notiz, Foto, TSDB-Stream + Zeitraum | `print_log`, `printer_jobs` |
+| `PRINT_JOB` | `next_id`, nie wiederverwendet | Datum, Dauer, Gewicht, Filament, Ergebnis, Notiz, Bilder, Herkunft (`hand`/`datei`); ab Phase 2 TSDB-Stream + Zeitraum (§4.6) | `print_log`, `printer_jobs` |
 | `ASSEMBLY` | fortlaufend | Baugruppe: Name, Beschreibung | — |
 | `PURCHASED_PART` | sprechend (`din912-m3x10`) | Kaufteil: Name, Kategorie, Norm, Einheit | — |
 | `PRINTER_DEVICE` | fortlaufend | Name, Anschluss, Adresse, Bett, Düse | `printers`, `printer_connections` |
@@ -341,7 +416,8 @@ GCODE_ARTIFACT ─[COMPILED_FOR]──────▶ PRINTER_DEVICE
 PRINT_JOB      ─[EXECUTED_GCODE]────▶ GCODE_ARTIFACT
 PRINT_JOB      ─[EXECUTED_ON]───────▶ PRINTER_DEVICE
 PRINT_JOB      ─[USED_SPOOL]────────▶ MATERIAL_SPOOL
-MODEL_ASSET    ─[REFERENCE]─────────▶ PRINT_JOB         höchstens eine je Drucker
+MODEL_ASSET    ─[PRINTED_IN]────────▶ PRINT_JOB         ein Druck an einem oder mehreren Modellen (§4.6)
+MODEL_ASSET    ─[REFERENCE]─────────▶ PRINT_JOB         höchstens eine je Drucker (Phase 1: je Modell)
 PRINTER_DEVICE ─[HAS_SLOT]──────────▶ AMS_SLOT
 AMS_SLOT       ─[LOADED_WITH]───────▶ MATERIAL_SPOOL
 MATERIAL_SPOOL ─[IS_TYPE_OF]────────▶ MATERIAL_MASTER

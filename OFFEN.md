@@ -43,17 +43,15 @@ Baugruppen und „Gedruckt“ bleiben, beides von Hand pflegbar.
 
 ## Entschieden, noch nicht gebaut (Phase 1)
 
-1. **Druckdaten von Hand:** Gewicht, Druckzeit, Filament, Farbe an der
-   „Zum Drucken“-Karte anklicken und ändern (kleines Dropdown), Herkunft
-   „aus Datei“ / „von Hand“ sichtbar, Hand geht vor, Zurücksetzen möglich.
-   Am Modell speichern, nicht an der Datei; Baugruppensummen rechnen mit dem
-   geltenden Wert. Karte heisst „Zum Drucken“ (bleibt).
+1. **Drucke als eigene Objekte** — Entwurf in `KONZEPT.md` §4.6 (ersetzt
+   die Handwerte am Modell): `PRINT_JOB`, hängt an einem oder mehreren
+   Modellen, „gedruckt“ und Zähler folgen daraus, Referenzdruck liefert die
+   Modellwerte. Stufe a von Hand (Demo), Stufe b mit G-Code. **Zuerst die
+   drei offenen Fragen am Ende von §4.6 klären**, dann bauen.
 2. **Einstellungsdialog neu:** Reiter links, rechts nur, was zum Thema gehört
    (wie pDMS). Materialien dort anlegen.
-3. **Drucke als eigene Objekte (Idee, Phase 1 oder 2 klären):** zu einem Modell
-   mehrere „Drucke“ mit Foto, G-Code/Druckprofil, Datum, Notiz, Ergebnis —
-   „so war es gut, so wieder drucken“. Kein Anbindungslayer. Entwerfen vor
-   Bauen; KONZEPT berücksichtigt G-Code im Vault erst ab Phase 2.
+3. **Zusammen im Slicer öffnen:** prüfen, ob die Slicer mehrere Dateien in
+   **einem** Fenster aufnehmen (ungeprüft, §4.6).
 
 ## Offen, in dieser Reihenfolge
 
