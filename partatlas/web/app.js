@@ -191,12 +191,12 @@ function karte(m, x, y) {
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (m.format === "step" ? "STEP · nur CAD" : "keine Vorschau");
   const unter = [masse(m.masse), m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g${m.material ? " | " + esc(m.material) : ""}` : ""].filter(Boolean).join(" · ");
   const markiert = zustand.auswahl.has(m.id);
-  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
+  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
     <div class="bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="platzhalter">${platz}</div>`}
       ${istNeu(m) ? '<span class="badge neu">NEU</span>' : ""}
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
-      ${statusBadge(m)}</div>
+      ${m.fehlt ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</div>
       <div class="masse">${unter || "&nbsp;"}</div>
       <div class="tags">${m.tags.slice(0, 5).map((t) => `<span>#${esc(t)}</span>`).join("")}</div></div></div>`;
@@ -210,7 +210,7 @@ function zeileL(m, y) {
   const markiert = zustand.auswahl.has(m.id);
   const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
   const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.gedruckt ? "✓ gedruckt" : (m.warteschlange != null ? "☰ Warteschlange" : "");
-  return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
+  return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? `<img loading="lazy" src="${url}" alt="">` : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
     <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}</span>
@@ -431,7 +431,7 @@ async function waehle(id) {
     <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
     <div class="i-name">${esc(m.name)}${esc(endung[m.format] || "")}</div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
-    ${m.fehlt ? `<p class="fehler">Die Datei ist an keinem bekannten Ort mehr. Tags und Historie bleiben erhalten.</p>` : ""}
+    ${m.fehlt ? `<p class="fehler"><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr — gelöscht, umbenannt ausserhalb der Ordner von partAtlas oder auf einem Laufwerk, das gerade fehlt. Tags, Bilder und Verknüpfungen sind noch da: legt man die Datei zurück, ist beim nächsten Einlesen alles wieder verbunden. Braucht man das Modell nicht mehr: „Löschen“.</p>` : ""}
     <div class="i-karte">${zeilen.map(([a, b]) => `<div class="zeile"><span>${a}</span><span>${esc(b)}</span></div>`).join("")}
       ${papierkorb ? "" : `<div class="zeile quelle"><span>Quelle</span><span>${m.quelle_url
         ? `<a href="${esc(m.quelle_url)}" target="_blank" rel="noopener noreferrer">${esc(m.quelle_url.replace(/^https?:\/\//, "").slice(0, 32))}…</a>` : "–"}

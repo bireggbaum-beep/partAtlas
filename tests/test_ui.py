@@ -222,6 +222,16 @@ async def oberflaeche(port):
         await pg.click('[data-ansicht="alle"]')
         await pg.wait_for_timeout(600)
 
+        # -- Datei im Dateimanager gelöscht: Kachel bleibt, deutlich markiert
+        os.remove(os.path.join(SAMMLUNG, "Technik", "Arm.stl"))
+        api(port, "/api/scan", {})
+        while api(port, "/api/stand")["scan"].get("laeuft"):
+            time.sleep(0.3)
+        await suche("Arm")
+        await pg.wait_for_selector(".karte.fehlt .fehlt-band", timeout=5000)
+        check("Datei fehlt: Kachel bleibt im Raster, mit Band „Datei fehlt“",
+              "Datei fehlt" in await pg.inner_text(".karte.fehlt .fehlt-band"))
+
         await suche("Haken")
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#loeschen")

@@ -364,3 +364,12 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
 .lz-wahl { margin-top: 6px; }
 .lz-warn { color: var(--warn); font-size: 12px; margin: 4px 0 0; }
 .lz .chip .dim { font-size: 10px; }
+
+/* Datei fehlt: auf einen Blick, nicht erst im Inspektor */
+.karte.fehlt { border: 1px dashed var(--warn); }
+.karte.fehlt .bild img { filter: grayscale(1); opacity: 0.35; }
+.karte.fehlt .name, .karte.fehlt .masse { color: var(--ink-3); }
+.fehlt-band { position: absolute; left: 0; right: 0; bottom: 0; padding: 5px 6px; text-align: center; font: 600 11px var(--mono);
+              background: var(--warn); color: var(--bg); letter-spacing: 0.03em; }
+.zeile-l.fehlt { color: var(--ink-3); }
+.zeile-l.fehlt img { filter: grayscale(1); opacity: 0.4; }
