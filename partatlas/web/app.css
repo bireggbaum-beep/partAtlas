@@ -760,3 +760,12 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
             text-align: center; padding: var(--s5); border: 1px dashed var(--line-strong); border-radius: 10px; color: var(--ink-3); font-size: 13px; }
 .bg-platz b { color: var(--ink-2); font-size: 14px; }
 .bg-platz span { max-width: 55ch; line-height: 1.5; }
+
+/* Gruppenband (Gruppieren): 34 hoch, eine Zeile, volle Breite; Pfeil, Haken, Name, Anzahl rechts. */
+.gruppe { position: absolute; left: 0; right: 0; height: var(--s6); display: flex; align-items: center; gap: var(--s3); padding: 0 var(--s4);
+          border-bottom: 1px solid var(--line-strong); background: var(--bg); cursor: pointer; user-select: none; z-index: 1; }
+.gruppe:hover { background: var(--panel); }
+.gruppe .g-pfeil { width: var(--s4); color: var(--ink-3); font-size: 11px; text-align: center; }
+.gruppe input { margin: 0; accent-color: var(--accent); }
+.gruppe .g-name { font: 600 12.5px var(--mono); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gruppe em { margin-left: auto; font: normal 12px var(--mono); color: var(--ink-3); }

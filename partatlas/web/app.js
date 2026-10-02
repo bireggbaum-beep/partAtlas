@@ -17,7 +17,8 @@ const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
-  sortierung: "name", gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
+  sortierung: "name", gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
+  gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
 
 // Zeichnet `html` in `ziel`, ohne unveränderte Elemente auszutauschen. Ein
@@ -98,6 +99,89 @@ const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()
 
 // ---------------------------------------------------------------- Laden
 
+// ---------------------------------------------------------------- Gruppieren
+//
+// Wie Sortieren, nur mit Bändern dazwischen. Die Liste wird einmal in Gruppenreihenfolge gebracht (innerhalb
+// einer Gruppe bleibt die gewählte Sortierung), danach zählen alle Indizes wie bei einer flachen Liste.
+// Gibt es nur eine Gruppe, steht kein Band da: es gäbe nichts zu trennen (etwa ein Ordner ohne Unterordner).
+
+const natuerlich = (a, b) => a.localeCompare(b, "de", { numeric: true, sensitivity: "base" });
+const wurzelName = (id) => zustand.wurzelNamen.get(id) || id;
+
+// Der Ordner eines Modells hat die Form „Wurzel/Pfad“. Beschriftet wird relativ zu dem, was in der Seitenleiste gewählt ist:
+// dort steht der Ordner selbst schon, also nur der Weg darunter (Unterordner „Deko › Motor“, der Ordner selbst mit seinem Namen).
+function ordnerBeschriftung(key) {
+  const teile = key.split("/").filter(Boolean);
+  const wahl = zustand.ordner ? zustand.ordner.split("/").filter(Boolean) : [];
+  if (wahl.length && wahl.every((t, i) => teile[i] === t)) {
+    const rel = teile.slice(wahl.length);
+    return rel.length ? rel.join(" › ") : (wahl.length > 1 ? wahl[wahl.length - 1] : wurzelName(wahl[0]));
+  }
+  return [wurzelName(teile[0]), ...teile.slice(1)].join(" › ");
+}
+
+function ordnerVergleich(a, b) {
+  const x = a.split("/"), y = b.split("/");
+  const x0 = wurzelName(x[0]), y0 = wurzelName(y[0]);
+  if (x0 !== y0) return natuerlich(x0, y0);
+  if (x[0] !== y[0]) return natuerlich(x[0], y[0]);
+  for (let i = 1; i < Math.max(x.length, y.length); i++) {
+    if (x[i] === undefined) return -1;           // der Ordner vor seinen Unterordnern
+    if (y[i] === undefined) return 1;
+    if (x[i] !== y[i]) return natuerlich(x[i], y[i]);
+  }
+  return 0;
+}
+
+const reihenfolge = (liste) => (a, b) => (liste.indexOf(a) - liste.indexOf(b)) || natuerlich(a, b);
+const zeitraum = (iso) => {
+  if (!iso) return "ohne";
+  const tage = (Date.now() - new Date(iso).getTime()) / 86400000;
+  return tage < 1 ? "heute" : tage < 7 ? "woche" : tage < 31 ? "monat" : "aelter";
+};
+const ZEITRAUM = { heute: "Heute", woche: "Diese Woche", monat: "Diesen Monat", aelter: "Älter", ohne: "Ohne Datum" };
+const STATUS = { offen: "Noch nicht gedruckt", gedruckt: "Gedruckt", fehlt: "Datei fehlt", unlesbar: "Unlesbar" };
+
+const GRUPPEN = {
+  ordner: { schluessel: (m) => m.ordner[0] || "", beschriftung: ordnerBeschriftung, vergleich: ordnerVergleich },
+  format: { schluessel: (m) => m.format || "", beschriftung: (k) => (endung[k] || k).replace(".", "").toUpperCase(),
+            vergleich: reihenfolge(["3mf", "stl", "obj", "step"]) },
+  material: { schluessel: (m) => m.material || "", beschriftung: (k) => k || "Ohne Material",
+              vergleich: (a, b) => (!a) - (!b) || natuerlich(a, b) },
+  status: { schluessel: (m) => (m.fehlt ? "fehlt" : m.fehler ? "unlesbar" : m.drucke_n || m.gedruckt ? "gedruckt" : "offen"),
+            beschriftung: (k) => STATUS[k], vergleich: reihenfolge(["offen", "gedruckt", "fehlt", "unlesbar"]) },
+  angelegt: { schluessel: (m) => zeitraum(m.angelegt), beschriftung: (k) => ZEITRAUM[k],
+              vergleich: reihenfolge(["heute", "woche", "monat", "aelter", "ohne"]) },
+};
+
+function gruppiere(liste) {
+  const art = GRUPPEN[zustand.gruppierung];
+  if (!art) return { liste, gruppen: [] };
+  const je = new Map();
+  for (const m of liste) {
+    const k = art.schluessel(m);
+    if (!je.has(k)) je.set(k, []);
+    je.get(k).push(m);
+  }
+  const gruppen = [], aus = [];
+  for (const k of [...je.keys()].sort(art.vergleich)) {
+    const l = je.get(k);
+    gruppen.push({ key: k, label: art.beschriftung(k), start: aus.length, n: l.length });
+    aus.push(...l);
+  }
+  return { liste: aus, gruppen };
+}
+
+function gruppenKopf(g, y) {
+  const zu = zustand.eingeklappt.has(g.key);
+  const ids = zustand.modelle.slice(g.start, g.start + g.n).map((m) => m.id);
+  const alle = ids.length > 0 && ids.every((id) => zustand.auswahl.has(id));
+  return `<div class="gruppe ${zu ? "zu" : ""}" data-id="g:${esc(g.key)}" data-gruppe="${esc(g.key)}" style="top:${y}px" title="${zu ? "Aufklappen" : "Zuklappen"}">
+    <span class="g-pfeil">${zu ? "▸" : "▾"}</span>
+    <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
+    <span class="g-name">${esc(g.label)}</span><em>${g.n}</em></div>`;
+}
+
 async function ladeModelle() {
   const p = new URLSearchParams({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format,
                                   ansicht: zustand.ansicht, sammlung: zustand.sammlung, leiste: 1,
@@ -108,7 +192,9 @@ async function ladeModelle() {
   if (s === "neu") liste.sort((a, b) => (b.angelegt || "").localeCompare(a.angelegt || ""));
   if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
   if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
-  zustand.modelle = liste;
+  const g = gruppiere(liste);
+  zustand.modelle = g.liste;
+  zustand.gruppen = g.gruppen;
   zeichneFilterzeile();
   zeichneStapel();
   zeichneListenkopf();
@@ -139,6 +225,9 @@ async function ladeSeite() {
   // Zwei Wurzeln gleichen Namens (etwa „3D-Druck“ auf zwei Laufwerken): der übergeordnete Ordner unterscheidet sie.
   const namen = ordner.map((w) => w.name);
   zustand.doppelteWurzeln = new Set(namen.filter((n, i) => namen.indexOf(n) !== i));
+  zustand.wurzelNamen = new Map(ordner.map((w) => [w.id, zustand.doppelteWurzeln.has(w.name)
+    ? `${w.name} · ${(w.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || ""}` : w.name]));
+  if (zustand.gruppierung === "ordner") raster.neu();
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
@@ -247,17 +336,33 @@ function zeichneLeer() {
 
 const raster = (() => {
   const RAND = 13;   // = --s4
+  const KOPF = 34;   // = --s6, das Gruppenband
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
+  let zeilen = [];   // { y, h, kopf: Gruppe } oder { y, h, von, bis } (Indizes in zustand.modelle)
   const mass = () => zustand.layout === "liste" ? { B: 0, H: 34, LUECKE: 0, RAND: 0 }
     : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 144, H: 233, LUECKE: 13, RAND };
 
+  // Alle Zeilen mit Höhe und Lage einmal ausrechnen: Bänder und Zeilen, eingeklappte Gruppen ohne Zeilen.
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();
     spalten = zustand.layout !== "raster" ? 1 : Math.max(1, Math.floor((aussen.clientWidth - R * 2 + LUECKE) / (B + LUECKE)));
-    const zeilen = Math.ceil(zustand.modelle.length / spalten);
-    innen.style.height = `${R * 2 + zeilen * (H + LUECKE)}px`;
+    const gruppen = zustand.gruppen.length > 1 ? zustand.gruppen : [{ start: 0, n: zustand.modelle.length, ohneKopf: true }];
+    const raster_ = zustand.layout === "raster";
+    zeilen = [];
+    let y = R;
+    for (const g of gruppen) {
+      if (!g.ohneKopf) { zeilen.push({ y, h: KOPF, kopf: g }); y += KOPF + (raster_ ? 8 : 0); }
+      if (!g.ohneKopf && zustand.eingeklappt.has(g.key)) { y += raster_ ? 13 : 0; continue; }
+      for (let i = g.start; i < g.start + g.n; i += spalten) {
+        zeilen.push({ y, h: H, von: i, bis: Math.min(i + spalten, g.start + g.n) });
+        y += H + LUECKE;
+      }
+      if (!g.ohneKopf && raster_) y += 8;      // 13 Lücke + 8 = 21 zwischen Gruppen
+    }
+    innen.style.height = `${y + R}px`;
     $("#listenkopf").hidden = zustand.layout !== "liste" || !!zustand.baugruppe;
+    bereich = "";
     zeichne();
   }
 
@@ -267,21 +372,33 @@ const raster = (() => {
   function zeichne(nurBeiNeuemBereich) {
     geplant = false;
     const { B, H, LUECKE, RAND: R } = mass();
-    const oben = aussen.scrollTop, hoehe = aussen.clientHeight;
-    const von = Math.max(0, Math.floor((oben - R) / (H + LUECKE)) - 2);
-    const bis = Math.ceil((oben + hoehe) / (H + LUECKE)) + 2;
+    const rand = 2 * (H + LUECKE);
+    const von = Math.max(0, suche(aussen.scrollTop - rand));
+    let bis = von;
+    const unten = aussen.scrollTop + aussen.clientHeight + rand;
+    while (bis < zeilen.length && zeilen[bis].y < unten) bis++;
     if (nurBeiNeuemBereich === true && bereich === `${von}-${bis}`) return;
     bereich = `${von}-${bis}`;
     const html = [];
     for (let z = von; z < bis; z++) {
-      for (let s = 0; s < spalten; s++) {
-        const i = z * spalten + s;
+      const r = zeilen[z];
+      if (r.kopf) { html.push(gruppenKopf(r.kopf, r.y)); continue; }
+      for (let i = r.von; i < r.bis; i++) {
         const m = zustand.modelle[i];
-        if (!m) break;
-        html.push(zustand.layout === "liste" ? zeileL(m, z * H) : zustand.layout === "karten" ? zeileK(m, z * H) : karte(m, R + s * (B + LUECKE), R + z * (H + LUECKE)));
+        html.push(zustand.layout === "liste" ? zeileL(m, r.y) : zustand.layout === "karten" ? zeileK(m, r.y) : karte(m, R + (i - r.von) * (B + LUECKE), r.y));
       }
     }
     abgleichen(innen, html.join(""));
+  }
+
+  // Die erste Zeile, die bei Höhe `y` noch ins Bild ragt (Zeilen sind nach y geordnet).
+  function suche(y) {
+    let lo = 0, hi = zeilen.length;
+    while (lo < hi) {
+      const mitte = (lo + hi) >> 1;
+      if (zeilen[mitte].y + zeilen[mitte].h < y) lo = mitte + 1; else hi = mitte;
+    }
+    return lo;
   }
 
   // Ein Sprung von mehr als einem Bildschirm je Meldung ist kein Lesen mehr, sondern Suchen.
@@ -1278,6 +1395,25 @@ document.addEventListener("click", async (e) => {
   const t = e.target;
   const wahl = t.closest("[data-wahl]");
   if (wahl) { e.stopPropagation(); return waehleAus(wahl.dataset.wahl, e.shiftKey); }
+  const gw = t.closest("[data-gruppe-wahl]");
+  if (gw) {
+    e.stopPropagation();
+    const g = zustand.gruppen.find((x) => x.key === gw.dataset.gruppeWahl);
+    if (g) {
+      const ids = zustand.modelle.slice(g.start, g.start + g.n).map((m) => m.id);
+      const alle = ids.every((id) => zustand.auswahl.has(id));
+      ids.forEach((id) => (alle ? zustand.auswahl.delete(id) : zustand.auswahl.add(id)));
+      zeichneStapel();
+      raster.zeichne();
+    }
+    return;
+  }
+  const gk = t.closest("[data-gruppe]");
+  if (gk) {
+    const key = gk.dataset.gruppe;
+    if (zustand.eingeklappt.has(key)) zustand.eingeklappt.delete(key); else zustand.eingeklappt.add(key);
+    return raster.neu();
+  }
   const hv = t.closest("[data-hv]");
   if (hv) { e.stopImmediatePropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }
   const st = t.closest("[data-stapel]");
@@ -1287,6 +1423,7 @@ document.addEventListener("click", async (e) => {
     zustand.layout = lay.dataset.layout;
     localStorageSchreiben("layout", zustand.layout);
     document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
+$("#gruppierung").value = zustand.gruppierung;
     $("#raster").scrollTop = 0;
     return raster.neu();
   }
@@ -1473,6 +1610,12 @@ document.addEventListener("change", async (e) => {
     return bilderHochladen(dateien);
   }
   if (e.target.id === "sortierung") { zustand.sortierung = e.target.value; ladeModelle(); }
+  if (e.target.id === "gruppierung") {
+    zustand.gruppierung = e.target.value;
+    zustand.eingeklappt.clear();
+    localStorageSchreiben("gruppierung", zustand.gruppierung);
+    ladeModelle();
+  }
 });
 
 document.addEventListener("keydown", async (e) => {
