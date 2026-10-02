@@ -236,6 +236,11 @@ auf Manjaro — FreeCAD startete (3D-Ansicht nur nicht eingepasst: `V`, `F`), de
 etwa 6 : 1, `--ink-2` etwa 9 : 1 bzw. 8 : 1. Kleine Schrift von 11/11,5 auf 12/12,5 px, Einstellungsdialog 14,5 px.
 Regel steht in `KONZEPT.md` (Gestaltungsregeln, 8). Hell und dunkel im Einstellungsdialog geprüft, nicht überall.
 
+**Aktualisierung prüfbar (0.23.1):** die Fassung steht klein neben dem Logo; Skript und Stile (`/web/…`) werden bei jedem Aufruf
+per ETag neu geprüft, damit nach einer Aktualisierung nicht die alte Oberfläche aus dem Zwischenspeicher kommt (three.js bleibt
+ewig gecacht). Test: `tests/test_api.py`. Beim Tester: Anycubic Slicer wurde **nicht automatisch gefunden**, nach manuellem
+Hinzufügen läuft es — Ort seiner Datei noch offen (würde die Erkennung verbessern).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

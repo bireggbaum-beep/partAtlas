@@ -791,3 +791,4 @@ dialog.einst label { font-size: 14px; }
 .prog-art small { font-size: 13px; line-height: 1.4; }
 .prog-wahl code { font-size: 13px; color: var(--ink-2); }
 .prog-gefunden { font-size: 12px; }
+.logo small { font: 12px var(--mono); color: var(--ink-3); margin-left: var(--s2); }

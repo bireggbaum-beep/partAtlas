@@ -1831,7 +1831,7 @@ function live() {
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
 neuLaden();
 programmeAktualisieren();
-api("/api/stand").then((s) => { if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.

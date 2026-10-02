@@ -159,6 +159,11 @@ if __name__ == "__main__":
         check("„Automatisch“: Slicer ist wieder der gefundene",
               c.get("/api/einstellungen").json()["programm"]["slicer"]["name"] == "PrusaSlicer")
 
+        check("Skript und Stile werden bei jedem Aufruf neu geprüft (kein veralteter Stand nach einer Aktualisierung)",
+              c.get("/web/app.js").headers.get("cache-control") == "no-cache" and c.get("/web/app.css").headers.get("cache-control") == "no-cache")
+        check("… das mitgelieferte three.js dagegen darf ewig im Zwischenspeicher liegen",
+              "immutable" in c.get("/web/vendor/three.module.min.js").headers.get("cache-control", ""))
+
         # -- Erkennung auf einem Linux-Rechner mit AppImage und Flatpak (z. B. Anycubic Slicer Next 1.3.9.4)
         from partatlas import programme as prog_mod
         heim = os.path.join(tmp, "heim")

@@ -662,5 +662,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def start():
         return FileResponse(os.path.join(WEB, "index.html"), headers={"Cache-Control": "no-cache"})
 
-    app.mount("/web", StaticFiles(directory=WEB), name="web")
+    class Web(StaticFiles):
+        """Skript und Stile prüft der Browser bei jedem Aufruf neu (ETag, ein 304 kostet nichts): sonst zeigt er nach einer
+        Aktualisierung stundenlang die alte Oberfläche. Nur das mitgelieferte three.js ändert sich nie."""
+        async def get_response(self, path, scope):
+            antwort = await super().get_response(path, scope)
+            antwort.headers["Cache-Control"] = "max-age=31536000, immutable" if path.startswith("vendor/") else "no-cache"
+            return antwort
+
+    app.mount("/web", Web(directory=WEB), name="web")
     return app
