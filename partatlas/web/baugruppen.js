@@ -555,6 +555,12 @@ async function einstellungen() {
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
       <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>`],
+    ["pdf", "PDF-Export", `
+      <p class="dim">Was die Stückliste einer Baugruppe als PDF enthält („Stückliste als PDF“ in der Baugruppe).</p>
+      <div class="i-titel">ABSCHNITTE</div>
+      ${PDF_FELDER.slice(0, 5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}
+      <div class="i-titel">DARSTELLUNG</div>
+      ${PDF_FELDER.slice(5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}`],
     ["programme", "Programme", `
       <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
       <div id="prog-teil">${progTeil()}</div>`],
@@ -573,13 +579,19 @@ async function einstellungen() {
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
                                                           rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked,
-                                                          programme: progWahl.eigene, standard_programm: progWahl.standard } });
+                                                          programme: progWahl.eigene, standard_programm: progWahl.standard,
+                                                          pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });
     toast("Gespeichert.");
     programmCache = null;
     ladeBaugruppe();
     if ($("#inspektor").dataset.id) waehle($("#inspektor").dataset.id);
   } catch (err) { toast(err.message); }
 }
+
+const PDF_FELDER = [["struktur", "Strukturstückliste (jede Ebene mit Positionsnummer)"], ["mengen", "Mengenübersicht der Druckteile"],
+  ["einkauf", "Einkaufsliste der Kaufteile"], ["filament", "Filament je Material und Farbe"], ["kennzahlen", "Kennzahlen oben (Teile, Filament, Druckzeit)"],
+  ["bilder", "Vorschaubilder"], ["kaestchen", "Abhakkästchen zum Ausdrucken"], ["pfade", "Dateipfade unter den Namen"]];
+const pdfSchalter = (k, t, wert) => `<label><input type="checkbox" data-pdf="${k}" ${wert[k] ? "checked" : ""}> ${t}</label>`;
 
 const progWahl = { erkannt: [], eigene: [], arten: {}, standard: {} };
 const FORMAT_NAMEN = { "3mf": "3MF", stl: "STL", obj: "OBJ", step: "STEP" };

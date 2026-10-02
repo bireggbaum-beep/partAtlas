@@ -160,6 +160,20 @@ if __name__ == "__main__":
               bool(_re.search(r"\d\.\d+\s+Halter\s+[^\n]*Halter\.stl\s+2\s+8\s", struktur)))
         check("PDF: Einkaufsliste mit 18 Schrauben M3×10 über alle Ebenen",
               "Einkaufsliste" in text and "18" in text and "M3×10" in text)
+        # -- PDF einstellbar: Abschnitte und Darstellung kommen aus den Einstellungen
+        c.put("/api/einstellungen", json={"pdf": {"mengen": False, "einkauf": False, "pfade": False, "Unsinn": True}})
+        check("PDF-Einstellungen: nur bekannte Schalter werden gespeichert, Standard bleibt für den Rest",
+              c.get("/api/einstellungen").json()["pdf"] == {"struktur": True, "mengen": False, "einkauf": False, "filament": True,
+                                                            "kennzahlen": True, "bilder": True, "kaestchen": True, "pfade": False})
+        r2 = c.get(f"/api/baugruppen/{bid}/export", params={"format": "pdf"})
+        try:
+            text2 = "\n".join(s.extract_text() for s in PdfReader(io.BytesIO(r2.content)).pages)
+        except Exception:
+            text2 = ""
+        check("PDF: abgeschaltete Abschnitte fehlen, die übrigen bleiben und werden neu nummeriert",
+              "Strukturstückliste" in text2 and "Mengenübersicht" not in text2 and "Einkaufsliste" not in text2
+              and bool(_re.search(r"\n2\s+Filament", text2)) and "Halter.stl" not in text2)
+        c.put("/api/einstellungen", json={"pdf": {}})
         md = c.get(f"/api/baugruppen/{bid}/export", params={"format": "md"}).text
         csv_text = c.get(f"/api/baugruppen/{bid}/export").text
         check("Export Markdown mit Einkaufsliste über alle Ebenen", "18 Stück Zylinderkopfschraube M3×10" in md)

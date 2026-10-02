@@ -119,13 +119,24 @@ class _Seiten(rl_canvas.Canvas):
         super().save()
 
 
+# Was das PDF enthält; der Anwender stellt es in den Einstellungen ein (Abschnitt „PDF-Export“).
+PDF_STANDARD = {"struktur": True, "mengen": True, "einkauf": True, "filament": True,
+                "kennzahlen": True, "bilder": True, "kaestchen": True, "pfade": True}
+
+
 class Stueckliste:
-    def __init__(self, baugruppen):
+    def __init__(self, baugruppen, optionen=None):
+        self.opt = {**PDF_STANDARD, **{k: bool(v) for k, v in (optionen or {}).items() if k in PDF_STANDARD}}
         self.bg = baugruppen
         self.k = baugruppen.k
         self.b = baugruppen.k.b
 
+    def _ok(self, gefuellt=False):
+        return _kaestchen(gefuellt) if self.opt["kaestchen"] else ""
+
     def _bild(self, kurz, seite=11 * mm):
+        if not self.opt["bilder"]:
+            return ""
         pfad = None
         if kurz.get("bild"):
             pfad = self.k.bild_pfad(kurz["id"])
@@ -160,19 +171,20 @@ class Stueckliste:
             if art == "modell":
                 kurz, d = self.bg._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
                 ort = next(iter((self.k.db.get_node(f"PART_GEOMETRY/{kurz['hash']}", readonly=True) or {}).get("orte", [])), None)
-                name = Paragraph(f"{einzug}{_esc(kurz['name'])}<br/>{einzug}<font size='6.5' color='#888888'>"
-                                 f"{_esc(ort['pfad'] if ort else 'Datei fehlt')}</font>", S["zelle"])
+                pfadzeile = (f"<br/>{einzug}<font size='6.5' color='#888888'>{_esc(ort['pfad'] if ort else 'Datei fehlt')}</font>"
+                             if self.opt["pfade"] else "")
+                name = Paragraph(f"{einzug}{_esc(kurz['name'])}{pfadzeile}", S["zelle"])
                 zeilen.append([nr, self._bild(kurz), name, str(menge), str(gesamt),
                                _material(d["material"], d["farbe"], d["material_angenommen"]),
                                Paragraph(f"{_zahl((d['gewicht_g'] or 0) * gesamt, 0)} g" + (" *" if d["geschaetzt"] else ""), S["rechts"]),
                                Paragraph(_dauer((d["zeit_s"] or 0) * gesamt) if d["zeit_s"] else "–", S["rechts"]),
-                               _kaestchen(kante.get("erledigt", 0) >= gesamt)])
+                               self._ok(kante.get("erledigt", 0) >= gesamt)])
             elif art == "kaufteil":
                 t = self.k.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
                 zeilen.append([nr, "", Paragraph(f"{einzug}{_esc(t['name'])}<br/>{einzug}<font size='6.5' color='#888888'>"
                                                  f"Kaufteil{' · ' + _esc(t['norm']) if t.get('norm') else ''}</font>", S["zelle"]),
                                str(menge), f"{gesamt}" + ("" if t.get("einheit", "Stück") == "Stück" else f" {t['einheit']}"), "", "", "",
-                               _kaestchen(kante.get("erledigt", 0) >= gesamt)])
+                               self._ok(kante.get("erledigt", 0) >= gesamt)])
             else:
                 u = self.k.db.get_node(ziel, readonly=True)
                 zeilen.append([nr, "", Paragraph(f"{einzug}<b>{_esc(u['name'])}</b> <font size='6.5' color='#888888'>Baugruppe</font>",
@@ -212,21 +224,22 @@ class Stueckliste:
         inhalt += [t, Spacer(1, 4 * mm)]
 
         # -- Kennzahlen
-        mat_kurz = ", ".join(f"{_zahl(m['gesamt_g'])} g {_esc(m['material'])}" for m in s["materialien"][:4]) or "–"
-        kz = [[Paragraph("DRUCKTEILE", S["kopf"]), Paragraph("KAUFTEILE", S["kopf"]),
-               Paragraph("FILAMENT", S["kopf"]), Paragraph("DRUCKZEIT", S["kopf"])],
-              [Paragraph(f"{f['druck_bedarf']}", S["zahl"]), Paragraph(f"{f['kauf_bedarf']}", S["zahl"]),
-               Paragraph(f"{_zahl(s['gewicht_g'])} g", S["zahl"]), Paragraph(_dauer(s["zeit_s"]), S["zahl"])],
-              [Paragraph(f"Stück, {len({kid for art, kid, _, _ in self.bg._aufloesen(bid) if art == 'modell'})} verschiedene", S["klein"]),
-               Paragraph(f"Stück, {len(s['einkauf'])} verschiedene", S["klein"]),
-               Paragraph(mat_kurz + (" · * teils geschätzt" if s["gewicht_geschaetzt"] else ""), S["klein"]),
-               Paragraph(f"{s['ohne_zeit']} Teile ohne Slicer-Zeit" if s["ohne_zeit"] else "aus dem Slicer", S["klein"])]]
-        t = Table(kz, colWidths=[breite / 4] * 4)
-        t.setStyle(TableStyle([("BOX", (0, 0), (0, -1), 0.5, LINIE), ("BOX", (1, 0), (1, -1), 0.5, LINIE),
-                               ("BOX", (2, 0), (2, -1), 0.5, LINIE), ("BOX", (3, 0), (3, -1), 0.5, LINIE),
-                               ("BACKGROUND", (0, 0), (-1, -1), HELL), ("TOPPADDING", (0, 0), (-1, 0), 5),
-                               ("BOTTOMPADDING", (0, -1), (-1, -1), 6)]))
-        inhalt += [t, Spacer(1, 2 * mm)]
+        if self.opt["kennzahlen"]:
+            mat_kurz = ", ".join(f"{_zahl(m['gesamt_g'])} g {_esc(m['material'])}" for m in s["materialien"][:4]) or "–"
+            kz = [[Paragraph("DRUCKTEILE", S["kopf"]), Paragraph("KAUFTEILE", S["kopf"]),
+                   Paragraph("FILAMENT", S["kopf"]), Paragraph("DRUCKZEIT", S["kopf"])],
+                  [Paragraph(f"{f['druck_bedarf']}", S["zahl"]), Paragraph(f"{f['kauf_bedarf']}", S["zahl"]),
+                   Paragraph(f"{_zahl(s['gewicht_g'])} g", S["zahl"]), Paragraph(_dauer(s["zeit_s"]), S["zahl"])],
+                  [Paragraph(f"Stück, {len({kid for art, kid, _, _ in self.bg._aufloesen(bid) if art == 'modell'})} verschiedene", S["klein"]),
+                   Paragraph(f"Stück, {len(s['einkauf'])} verschiedene", S["klein"]),
+                   Paragraph(mat_kurz + (" · * teils geschätzt" if s["gewicht_geschaetzt"] else ""), S["klein"]),
+                   Paragraph(f"{s['ohne_zeit']} Teile ohne Slicer-Zeit" if s["ohne_zeit"] else "aus dem Slicer", S["klein"])]]
+            t = Table(kz, colWidths=[breite / 4] * 4)
+            t.setStyle(TableStyle([("BOX", (0, 0), (0, -1), 0.5, LINIE), ("BOX", (1, 0), (1, -1), 0.5, LINIE),
+                                   ("BOX", (2, 0), (2, -1), 0.5, LINIE), ("BOX", (3, 0), (3, -1), 0.5, LINIE),
+                                   ("BACKGROUND", (0, 0), (-1, -1), HELL), ("TOPPADDING", (0, 0), (-1, 0), 5),
+                                   ("BOTTOMPADDING", (0, -1), (-1, -1), 6)]))
+            inhalt += [t, Spacer(1, 2 * mm)]
 
         tabellenstil = [
             ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 7), ("TEXTCOLOR", (0, 0), (-1, 0), GRAU),
@@ -236,17 +249,20 @@ class Stueckliste:
             ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]
 
+        nr = iter(range(1, 5))
+        ok = "OK" if self.opt["kaestchen"] else ""
         # -- 1 Strukturstückliste
-        zeilen = [["POS.", "", "BENENNUNG / DATEI", "MENGE", "GESAMT", "MATERIAL", "GEWICHT", "DRUCKZEIT", "OK"]]
-        stil = list(tabellenstil)
-        self._struktur(bid, "", 1, 0, zeilen, stil, standard)
-        inhalt.append(Paragraph("1  Strukturstückliste", S["h"]))
-        inhalt.append(Paragraph("Menge je übergeordneter Einheit, Gesamt über alle Ebenen. "
-                                "Gewicht und Zeit gelten für die Gesamtmenge. * Gewicht ohne Slicer-Daten geschätzt.", S["klein"]))
-        inhalt.append(Spacer(1, 2 * mm))
-        t = Table(zeilen, colWidths=[12 * mm, 13 * mm, None, 13 * mm, 14 * mm, 25 * mm, 17 * mm, 19 * mm, 9 * mm], repeatRows=1)
-        t.setStyle(TableStyle(stil))
-        inhalt.append(t)
+        if self.opt["struktur"]:
+            zeilen = [["POS.", "", "BENENNUNG / DATEI", "MENGE", "GESAMT", "MATERIAL", "GEWICHT", "DRUCKZEIT", ok]]
+            stil = list(tabellenstil)
+            self._struktur(bid, "", 1, 0, zeilen, stil, standard)
+            inhalt.append(Paragraph(f"{next(nr)}  Strukturstückliste", S["h"]))
+            inhalt.append(Paragraph("Menge je übergeordneter Einheit, Gesamt über alle Ebenen. "
+                                    "Gewicht und Zeit gelten für die Gesamtmenge. * Gewicht ohne Slicer-Daten geschätzt.", S["klein"]))
+            inhalt.append(Spacer(1, 2 * mm))
+            t = Table(zeilen, colWidths=[12 * mm, 13 * mm, None, 13 * mm, 14 * mm, 25 * mm, 17 * mm, 19 * mm, 9 * mm], repeatRows=1)
+            t.setStyle(TableStyle(stil))
+            inhalt.append(t)
 
         # -- 2 Mengenübersicht Druckteile
         gesamt = {}
@@ -258,7 +274,7 @@ class Stueckliste:
                                   {"kurz": kurz, "d": dd, "menge": 0, "fertig": 0})
             e["menge"] += bedarf
             e["fertig"] += min(kante.get("erledigt", 0), bedarf)
-        if gesamt:
+        if gesamt and self.opt["mengen"]:
             zeilen = [["MENGE", "", "BENENNUNG", "MATERIAL", "GEWICHT", "DRUCKZEIT", "GEDRUCKT"]]
             for e in sorted(gesamt.values(), key=lambda e: e["kurz"]["name"].lower()):
                 dd = e["d"]
@@ -270,27 +286,27 @@ class Stueckliste:
             t = Table(zeilen, colWidths=[13 * mm, 11 * mm, None, 28 * mm, 20 * mm, 22 * mm, 18 * mm], repeatRows=1)
             t.setStyle(TableStyle(tabellenstil + [("FONT", (0, 1), (0, -1), "Helvetica-Bold", 9), ("ALIGN", (0, 0), (0, -1), "RIGHT"),
                                                   ("ALIGN", (3, 0), (4, -1), "LEFT")]))
-            inhalt += [Paragraph("2  Mengenübersicht Druckteile", S["h"]),
+            inhalt += [Paragraph(f"{next(nr)}  Mengenübersicht Druckteile", S["h"]),
                        Paragraph("Jedes Druckteil einmal, mit der Menge über alle Ebenen — das, was tatsächlich gedruckt wird.", S["klein"]),
                        Spacer(1, 2 * mm), t]
 
         # -- 3 Einkaufsliste
-        if s["einkauf"]:
-            zeilen = [["MENGE", "EINHEIT", "BENENNUNG", "KATEGORIE", "OK"]]
+        if s["einkauf"] and self.opt["einkauf"]:
+            zeilen = [["MENGE", "EINHEIT", "BENENNUNG", "KATEGORIE", ok]]
             for e in s["einkauf"]:
                 t_node = self.k.db.get_node(f"{KAUFTEIL}/{e['id']}", readonly=True) or {}
                 zeilen.append([str(e["bedarf"]), e["einheit"],
                                Paragraph(_esc(e["name"]) + (f" <font size='6.5' color='#888888'>{_esc(t_node.get('norm'))}</font>"
                                                             if t_node.get("norm") else ""), S["zelle"]),
-                               Paragraph(_esc(e.get("kategorie") or ""), S["zelle"]), _kaestchen(e["offen"] == 0)])
+                               Paragraph(_esc(e.get("kategorie") or ""), S["zelle"]), self._ok(e["offen"] == 0)])
             t = Table(zeilen, colWidths=[15 * mm, 16 * mm, None, 35 * mm, 9 * mm], repeatRows=1)
             t.setStyle(TableStyle(tabellenstil + [("FONT", (0, 1), (0, -1), "Helvetica-Bold", 9), ("FONT", (1, 1), (1, -1), "Helvetica", 8),
                                                   ("ALIGN", (0, 0), (1, -1), "LEFT")]))
-            inhalt += [KeepTogether([Paragraph("3  Einkaufsliste Kaufteile", S["h"]),
+            inhalt += [KeepTogether([Paragraph(f"{next(nr)}  Einkaufsliste Kaufteile", S["h"]),
                                      Paragraph("Über alle Ebenen zusammengezählt.", S["klein"]), Spacer(1, 2 * mm), t])]
 
         # -- 4 Filament
-        if s["materialien"]:
+        if s["materialien"] and self.opt["filament"]:
             zeilen = [["MATERIAL", "FARBEN", "GESAMT", "ROLLEN"]]
             for m in s["materialien"]:
                 farben = Table([[_tupfer(x["farbe"]), Paragraph(f"{_zahl(x['gesamt_g'])} g", S["zelle"])] for x in m["farben"]],
@@ -303,7 +319,7 @@ class Stueckliste:
                                Paragraph(f"{_zahl(m['rollen'], 2)} × {s['rolle_g']} g", S["rechts"])])
             t = Table(zeilen, colWidths=[35 * mm, None, 25 * mm, 30 * mm], repeatRows=1)
             t.setStyle(TableStyle(tabellenstil))
-            inhalt += [KeepTogether([Paragraph("4  Filament", S["h"]), t])]
+            inhalt += [KeepTogether([Paragraph(f"{next(nr)}  Filament", S["h"]), t])]
 
         fuss = f"partAtlas · Stückliste {d['name']} · Stand {heute}"
         doc.build(inhalt, canvasmaker=lambda *a, **k: _Seiten(*a, fuss=fuss, **k))

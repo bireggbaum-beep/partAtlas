@@ -26,7 +26,7 @@ from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
 from .scan import Scanner
-from .stueckliste import Stueckliste
+from .stueckliste import PDF_STANDARD, Stueckliste
 from .version import VERSION
 
 WEB = os.path.join(os.path.dirname(__file__), "web")
@@ -417,8 +417,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     @app.get("/api/einstellungen")
     def einstellungen():
-        return {"auto_tags": True, **zustand["bestand"].einstellungen(), "gilt": B().standard(),
-                "materialien": K().materialien()}
+        e = zustand["bestand"].einstellungen()
+        return {"auto_tags": True, **e, "gilt": B().standard(), "materialien": K().materialien(),
+                "pdf": {**PDF_STANDARD, **(e.get("pdf") or {})}}
 
     @app.put("/api/einstellungen")
     async def einstellungen_setzen(request: Request):
@@ -434,6 +435,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             werte["standard_farbe"] = f
         if "auto_tags" in d:
             werte["auto_tags"] = bool(d["auto_tags"])
+        if "pdf" in d:     # nur bekannte Schalter, nur Wahrheitswerte
+            werte["pdf"] = {k: bool(v) for k, v in (d["pdf"] or {}).items() if k in PDF_STANDARD}
         if "rolle_g" in d:
             try:
                 werte["rolle_g"] = max(100, min(int(d["rolle_g"]), 10_000))
@@ -532,7 +535,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         name = B().detail(bid)["name"]
         sicher = "".join(c if (c.isascii() and c.isalnum()) or c in "-_ " else "_" for c in name).strip() or bid
         if art == "pdf":
-            return Response(Stueckliste(B()).pdf(bid), media_type="application/pdf",
+            return Response(Stueckliste(B(), zustand["bestand"].einstellungen().get("pdf")).pdf(bid), media_type="application/pdf",
                             headers={"Content-Disposition": f'inline; filename="Stueckliste {sicher}.pdf"'})
         return Response(B().export(bid, art), media_type="text/csv; charset=utf-8" if art == "csv" else "text/markdown; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{sicher}.{art}"'})

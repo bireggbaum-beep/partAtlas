@@ -166,9 +166,14 @@ vorbauen (heute erst beim ersten Abruf), Thumbs aus Sicherung/Export lassen.
 sind der Preis.
 
 **Einstellungen:** Dialog wie in pDMS — links Abschnitte (Vorgaben · Einlesen ·
-Programme), rechts der Inhalt, ein gemeinsames Speichern; der zuletzt gewählte
+PDF-Export · Programme), rechts der Inhalt, ein gemeinsames Speichern; der zuletzt gewählte
 Abschnitt wird gemerkt. `tests/test_ui.py` klickt vor dem Programm-Wähler auf
 „Programme“ (ungelaufen). Thumbs im Hintergrund vorbauen: wird ein Issue.
+**PDF-Export einstellbar:** Abschnitt „PDF-Export“ im Einstellungsdialog — Strukturstückliste,
+Mengenübersicht, Einkaufsliste, Filament, Kennzahlen je ein/aus; dazu Vorschaubilder,
+Abhakkästchen, Dateipfade. Gespeichert in `einstellungen.json` unter `pdf`
+(`PDF_STANDARD` in `stueckliste.py`); Abschnittsnummern im PDF zählen mit.
+Nicht einstellbar (bisher): Papierformat, Schrift, Logo/Titelzeile.
 
 ## Offen, in dieser Reihenfolge
 
