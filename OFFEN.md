@@ -221,7 +221,7 @@ Quelle der Linux-Pakete: Releases von develonrails/anycubic-slicer-next (AppImag
 
 **Hover-Knöpfe ohne Programm:** Ist kein Slicer bzw. CAD eingerichtet, bleibt der Knopf gedämpft (gestrichelt) da und führt
 in die Einstellungen › Programme; vorher verschwand er still. **Fassung 0.21.0** (die Fassungsnummer war seit 0.20.6 nicht
-mitgezogen worden). Vor der Testfassung: `tests/test_ui.py` ist seit vielen Änderungen nicht gelaufen.
+mitgezogen worden). `tests/test_ui.py` lief am 2.10.2026 durch (58/58, ein Test an die zwei Programm-Plätze angepasst).
 
 ## Offen, in dieser Reihenfolge
 
