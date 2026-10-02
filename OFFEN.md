@@ -137,6 +137,10 @@ fehlt + unlesbar) und schaltet die ganze Seitenleiste um: Papierkorb ·
 Duplikate · Datei fehlt · Unlesbar. Später möglich: Nicht verknüpft, Ohne
 Vorschau.
 
+**Karten:** dritte Ansicht neben Raster und Liste — eine Spalte, 118 px hoch,
+Bild links, rechts Name, Maße · Gewicht · Grösse, Status, Material und Tags
+als Chips, Ordner. Feste Feldauswahl (`zeileK()` in `app.js`).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
@@ -162,3 +166,11 @@ Vorschau.
 
 Hinweis: Bestehende Notizen an Baugruppen-Positionen sind nur noch als Text
 sichtbar, nicht bearbeitbar — bewusst, Testbestand.
+
+## Idee, noch nicht gebaut
+
+- **Hover-Aktionen in Liste und Karten:** Icon-Knöpfe mit Tooltip, die beim
+  Überfahren erscheinen — im Slicer öffnen, im CAD öffnen, direkt drucken;
+  in der Symbolsprache der Ansichtsleiste oben in der Seitenleiste
+  (einfache Strichsymbole, nicht Emoji). „Direkt drucken“ hängt an der
+  Druckanbindung und ist eine eigene Sache.

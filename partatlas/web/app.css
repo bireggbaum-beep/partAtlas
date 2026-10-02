@@ -635,3 +635,23 @@ html.bild-klein .i-fix .gal-leiste { display: none; }
 .rail-btn { position: relative; }
 .rail-abz { position: absolute; right: 0; top: 0; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
             background: var(--accent); color: #fff; font-size: 9px; line-height: 14px; text-align: center; }
+
+/* Karten: eine Spalte, 118 px hoch, Bild links, rechts die Fülle. */
+.zeile-k { position: absolute; left: 0; right: 0; height: 118px; display: grid; grid-template-columns: 26px 100px 1fr; gap: 0 10px;
+           align-items: center; padding: 0 12px 0 4px; border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
+.zeile-k:hover { background: var(--panel); }
+.zeile-k.gewaehlt { background: var(--accent-soft); }
+.zeile-k input { accent-color: var(--accent); justify-self: center; }
+.zeile-k .k-bild img, .zeile-k .k-bild .mini { display: flex; width: 100px; height: 100px; object-fit: contain; border-radius: 6px; background: var(--plate);
+           align-items: center; justify-content: center; font: 500 11px var(--mono); color: var(--ink-3); }
+.zeile-k .k-text { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.zeile-k .k-text > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zeile-k .k-name { font-size: 14.5px; font-weight: 600; }
+.zeile-k .k-fakten { font: 12.5px var(--mono); color: var(--ink-2); }
+.zeile-k .k-status { margin-left: 10px; color: var(--accent); }
+.zeile-k .k-chips { display: flex; gap: 4px; flex-wrap: nowrap; overflow: hidden; }
+.zeile-k .chip-k { flex: none; padding: 1px 7px; border-radius: 9px; background: var(--panel-2); color: var(--ink-2); font: 11.5px var(--mono); }
+.zeile-k .chip-k.mat { background: var(--accent-soft); color: var(--accent); }
+.zeile-k .k-ordner { font: 12px var(--mono); color: var(--ink-3); }
+.zeile-k.fehlt { color: var(--ink-3); }
+.zeile-k.fehlt img { filter: grayscale(1); opacity: 0.4; }

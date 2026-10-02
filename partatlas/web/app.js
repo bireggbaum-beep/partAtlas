@@ -16,7 +16,7 @@ const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
-  auswahl: new Set(), layout: localStorageLesen("layout") === "liste" ? "liste" : "raster",
+  auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
   sortierung: "name", gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
 
@@ -244,12 +244,12 @@ const raster = (() => {
   const RAND = 14;
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
-  const mass = () => zustand.layout === "liste"
-    ? { B: 0, H: 38, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
+  const mass = () => zustand.layout === "liste" ? { B: 0, H: 38, LUECKE: 0, RAND: 0 }
+    : zustand.layout === "karten" ? { B: 0, H: 118, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
 
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();
-    spalten = zustand.layout === "liste" ? 1 : Math.max(1, Math.floor((aussen.clientWidth - R * 2 + LUECKE) / (B + LUECKE)));
+    spalten = zustand.layout !== "raster" ? 1 : Math.max(1, Math.floor((aussen.clientWidth - R * 2 + LUECKE) / (B + LUECKE)));
     const zeilen = Math.ceil(zustand.modelle.length / spalten);
     innen.style.height = `${R * 2 + zeilen * (H + LUECKE)}px`;
     $("#listenkopf").hidden = zustand.layout !== "liste" || !!zustand.baugruppe;
@@ -268,7 +268,7 @@ const raster = (() => {
         const i = z * spalten + s;
         const m = zustand.modelle[i];
         if (!m) break;
-        html.push(zustand.layout === "liste" ? zeileL(m, z * H) : karte(m, R + s * (B + LUECKE), R + z * (H + LUECKE)));
+        html.push(zustand.layout === "liste" ? zeileL(m, z * H) : zustand.layout === "karten" ? zeileK(m, z * H) : karte(m, R + s * (B + LUECKE), R + z * (H + LUECKE)));
       }
     }
     abgleichen(innen, html.join(""));
@@ -305,6 +305,25 @@ function karte(m, x, y) {
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
       <div class="tags">${m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "&nbsp;"}</div></div></div>`;
+}
+
+// Karten: wie eine Liste, aber höher — rechts neben dem Bild ist Platz für mehr vom Modell.
+function zeileK(m, y) {
+  const url = bildUrl(m);
+  const markiert = zustand.auswahl.has(m.id);
+  const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
+  const status = m.fehlt ? "⚠ Datei fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
+  const fakten = [masse(m.masse), m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : "", m.groesse ? zahl(m.groesse / 1024, 0) + " KB" : ""].filter(Boolean).join(" · ");
+  const chips = [...(m.materialien || []).map((x) => `<span class="chip-k mat">${esc(x)}</span>`), ...m.tags.map((t) => `<span class="chip-k">#${esc(t)}</span>`)].join("");
+  return `<div class="zeile-k ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
+    <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
+    <div class="k-bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="mini">${m.format === "step" ? "STEP" : ""}</div>`}</div>
+    <div class="k-text">
+      <div class="k-name" title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
+      <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
+      <div class="k-chips">${chips}</div>
+      <div class="k-ordner" title="${esc(ordner)}">${ordner ? "▸ " + esc(ordner) : ""}</div>
+    </div></div>`;
 }
 
 const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
@@ -1204,7 +1223,7 @@ document.addEventListener("click", async (e) => {
   }
   const sort = t.closest("[data-sortiere]");
   if (sort) { zustand.sortierung = sort.dataset.sortiere; $("#sortierung").value = zustand.sortierung; return ladeModelle(); }
-  const zeileListe = t.closest(".zeile-l");
+  const zeileListe = t.closest(".zeile-l, .zeile-k");
   if (zeileListe && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(zeileListe.dataset.id, e.shiftKey);
   if (zeileListe) return waehle(zeileListe.dataset.id);
   const herz = t.closest("[data-herz]");
@@ -1449,7 +1468,7 @@ async function sammlungNeu(modelle) {
 let gezogen = null;          // {art: "modell"|"ws", id}
 
 document.addEventListener("dragstart", (e) => {
-  const k = e.target.closest?.(".karte, .zeile-l"), w = e.target.closest?.("[data-ws]");
+  const k = e.target.closest?.(".karte, .zeile-l, .zeile-k"), w = e.target.closest?.("[data-ws]");
   if (k) { gezogen = { art: "modell", id: k.dataset.id }; k.classList.add("ziehen"); }
   else if (w) gezogen = { art: "ws", id: w.dataset.ws };
   else return;
@@ -1747,7 +1766,7 @@ document.addEventListener("click", (e) => {
   if (b) modellOeffnen({ pfad: b.dataset.oeffnePfad });
 });
 document.addEventListener("contextmenu", (e) => {
-  const k = e.target.closest?.(".karte, .zeile-l");
+  const k = e.target.closest?.(".karte, .zeile-l, .zeile-k");
   if (k) kontextMenu(e, k.dataset.id);
 });
 document.addEventListener("click", (e) => {
