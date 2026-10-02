@@ -121,3 +121,12 @@ def dreimf(pfad, vorschau=True, slice_info=True, vorschau_als_platte=False):
 def step(pfad):
     with open(pfad, "w") as fh:
         fh.write("ISO-10303-21;\nHEADER;\nFILE_NAME('Welle','2026-09-30',(''),(''),'','','');\nENDSEC;\nEND-ISO-10303-21;\n")
+
+
+# -- Arbeitsfunktionen für die Absturz-Prüfungen des Scans (müssen in einem importierbaren Modul liegen: die Arbeiter starten per spawn)
+def arbeit_test(x):
+    if x == "gift":
+        os._exit(1)                  # wie vom Betriebssystem beendet (Speichermangel): kein Fehler, der Prozess ist einfach weg
+    if x == "kaputt":
+        raise ValueError("kaputt")
+    return x * 2

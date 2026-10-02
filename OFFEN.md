@@ -256,6 +256,14 @@ zu laufen, Zeilen werden nicht mehr gequetscht; im Wurzelverzeichnis wird nicht 
 Systemordner lassen sich nicht als Wurzelordner hinzufügen (Server und Dialog). `start.sh` warnt, wenn zenity/kdialog fehlt; README
 nennt `zenity` als Voraussetzung. Kopfzeile bricht nicht mehr um (Einlese-Zeile kürzt sich, Tooltip zeigt alles).
 
+**Einlesen robuster und schneller (0.25.2):** (1) Vorschau-Status wird in Gruppen zu 100 in einer Transaktion geschrieben statt einzeln mit
+je einem fsync. (2) Stirbt ein Arbeiter hart (Speichermangel) oder wirft er eine Ausnahme, wird nur diese Datei als Fehler/„unlesbar“
+gemeldet und der Lauf geht weiter (`Scanner._verteilen`: erst alles parallel, nach einem Absturz in Wellen, die zerbrochene Welle einzeln).
+Vorher brach der ganze Lauf ab und scheiterte beim nächsten Mal an derselben Datei. Geprüft in `tests/test_scan.py` (42/42) mit
+Gegenprobe. **Nicht gemessen**, wie viel (1) bringt — keine grossen Bestände mehr gemessen. Daten des Testers (351 Dateien, 149 neu, 29,8 s):
+Vorschauen 25 s (84 %), Hashen 2,9 s, Analysieren 1,8 s. **Noch offen:** (3) einmal parsen statt dreimal (Hash, Analyse, Render), sowie
+eine Zeitgrenze je Datei (ein hängender Render hält den Lauf auf) und ein Abbrechen-Knopf.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

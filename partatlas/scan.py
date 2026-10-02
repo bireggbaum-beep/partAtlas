@@ -23,6 +23,7 @@ import os
 import threading
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 
 from . import dateien, formate, vorschau
 
@@ -79,6 +80,61 @@ class Scanner:
         self._nochmal = False
         self.status = {"laeuft": False}
         self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
+        self._pool = None
+
+    def _neuer_pool(self):
+        # spawn statt fork: der Server hat Threads und eine offene Datenbank; ein geforkter Kindprozess erbte beides halb.
+        # Unter Windows gibt es ohnehin nur spawn.
+        return ProcessPoolExecutor(self.prozesse, mp_context=multiprocessing.get_context("spawn"))
+
+    def _pool_neu(self):
+        """Nach einem harten Absturz eines Arbeiters (etwa vom Betriebssystem beendet, weil der Speicher ausging) ist der
+        ganze Pool unbrauchbar: durch einen frischen ersetzen."""
+        alt, self._pool = self._pool, self._neuer_pool()
+        alt.shutdown(wait=False, cancel_futures=True)
+
+    def _verteilen(self, aufgaben, arbeit):
+        """Verteilt `aufgaben` [(Schlüssel, Argumente)] auf die Arbeiter und liefert (Schlüssel, Ergebnis, Fehler) nach und
+        nach. Ein Fehler betrifft nur seine Datei; der Lauf geht weiter.
+
+        Normalfall: alles auf einmal. Stirbt dabei ein Arbeiter, zerbrechen mit ihm alle laufenden Aufträge, und man weiss nicht,
+        welche Datei es war. Dann geht es in Wellen von der Grösse der Arbeiterzahl weiter; zerbricht eine Welle, werden ihre
+        offenen Aufträge einzeln wiederholt — so steht die Datei fest, die es war, und nur sie wird als Fehler gemeldet."""
+        offen = list(aufgaben)
+        welle = None
+        while offen:
+            stueck = offen if welle is None else offen[:welle]
+            auftraege = {self._pool.submit(arbeit, *a): k for k, a in stueck}
+            erledigt, zerbrochen = set(), False
+            for f in as_completed(auftraege):
+                k = auftraege[f]
+                try:
+                    erg = f.result()
+                except BrokenProcessPool:
+                    zerbrochen = True
+                    continue
+                except Exception as e:       # Unvorhergesehenes in einer Datei: sie meldet es, der Lauf geht weiter
+                    erledigt.add(k)
+                    yield k, None, f"{type(e).__name__}: {e}"
+                    continue
+                erledigt.add(k)
+                yield k, erg, None
+            if zerbrochen:
+                self._pool_neu()
+                if welle is None:
+                    welle = self.prozesse
+                else:
+                    for k, a in [(k, a) for k, a in stueck if k not in erledigt]:
+                        try:
+                            erg, fehler = self._pool.submit(arbeit, *a).result(), None
+                        except BrokenProcessPool:
+                            self._pool_neu()
+                            erg, fehler = None, "Arbeitsprozess beendet (vermutlich zu wenig Speicher für diese Datei)"
+                        except Exception as e:
+                            erg, fehler = None, f"{type(e).__name__}: {e}"
+                        erledigt.add(k)
+                        yield k, erg, fehler
+            offen = [(k, a) for k, a in offen if k not in erledigt]
 
     def _setze(self, **werte):
         # Wie lange jede Phase dauerte (Suchen, Hashen, Analysieren, Vorschau): wer einen grossen Bestand einliest,
@@ -142,10 +198,9 @@ class Scanner:
                 zu_hashen.append((schluessel, pfad, st))
         self._setze(gefunden=len(gesehen), phase="hashen", zu_pruefen=len(zu_hashen))
 
-        # spawn statt fork: der Server hat Threads und eine offene Datenbank; ein
-        # geforkter Kindprozess erbte beides halb. Unter Windows gibt es ohnehin
-        # nur spawn.
-        with ProcessPoolExecutor(self.prozesse, mp_context=multiprocessing.get_context("spawn")) as pool:
+        self._pool = self._neuer_pool()
+        try:
+            pool = self._pool
             nach_pfad = {pfad: (s, st) for s, pfad, st in zu_hashen}
             neu_je_hash = {}                          # hash -> [(schluessel, pfad, st)]
             vorgaenger = {}                           # neuer hash -> hash, der vorher an diesem Ort lag
@@ -178,12 +233,14 @@ class Scanner:
             self._setze(verschoben=sum(1 for o in ortwechsel if o[0]), phase="analysieren",
                         zu_analysieren=len(neu_je_hash), analysiert=0)
 
-            auftraege = {pool.submit(_analyse, faelle[0][1], self.b.vorschau_pfad(h, "extrahiert")): h
-                         for h, faelle in neu_je_hash.items()}
+            aufgaben = [(h, (faelle[0][1], self.b.vorschau_pfad(h, "extrahiert"))) for h, faelle in neu_je_hash.items()]
             gruppe = []
-            for fertig in as_completed(auftraege):
-                h = auftraege[fertig]
-                gruppe.append((h, *fertig.result()))
+            for h, erg, fehler in self._verteilen(aufgaben, _analyse):
+                if fehler:      # die Datei liess sich nicht lesen oder riss ihren Arbeiter mit: sie bleibt als „unlesbar“ stehen
+                    pfad = neu_je_hash[h][0][1]
+                    log.warning("Analyse %s: %s", pfad, fehler)
+                    erg = ({"format": formate.format_von(pfad)}, "keine", fehler)
+                gruppe.append((h, *erg))
                 if len(gruppe) >= GRUPPE:
                     self._anlegen(gruppe, neu_je_hash, vorgaenger)
                     gruppe = []
@@ -197,7 +254,9 @@ class Scanner:
                 self.k.namen_angleichen()
             self._setze(entfernt=len(weg), phase="vorschau")
 
-            self._vorschauen(pool)
+            self._vorschauen()
+        finally:
+            self._pool.shutdown(wait=False, cancel_futures=True)
         self._setze(laeuft=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
 
     def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
@@ -212,10 +271,10 @@ class Scanner:
                     unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
                     analysiert=self.status["analysiert"] + len(gruppe))
 
-    def _vorschauen(self, pool):
+    def _vorschauen(self):
         offen = self.k.ausstehende_vorschauen()
         self._setze(vorschauen_offen=len(offen))
-        auftraege = {}
+        aufgaben = []
         for h, d in offen:
             ort = next(iter(d.get("orte", [])), None)
             pfad = self.k.absoluter_pfad(ort) if ort else None
@@ -224,16 +283,28 @@ class Scanner:
             farbe = next((f.get("farbe") for p in d.get("platten") or [] for f in p.get("filamente", [])
                           if f.get("farbe")), None)
             if pfad:
-                auftraege[pool.submit(_rendern, pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)] = h
-        rest = len(auftraege)
-        for fertig in as_completed(auftraege):
-            status, fehler = fertig.result()
+                aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)))
+        rest, stapel = len(aufgaben), []
+        for h, erg, fehler in self._verteilen(aufgaben, _rendern):
+            status, fehler = ("fehler", fehler) if fehler else erg
             if fehler:
-                log.warning("Vorschau %s: %s", auftraege[fertig][:12], fehler)
-            self.k.vorschau_setzen(auftraege[fertig], status)
+                log.warning("Vorschau %s: %s", h[:12], fehler)
+            stapel.append((h, status))
             rest -= 1
-            if rest % 10 == 0:
+            if len(stapel) >= GRUPPE:
+                self._vorschauen_speichern(stapel)
+                stapel = []
                 self._setze(vorschauen_offen=rest)
+        self._vorschauen_speichern(stapel)
+
+    def _vorschauen_speichern(self, stapel):
+        """Gruppenweise in einer Transaktion: jede einzelne Änderung kostet ihren fsync (VERTRAG §5), bei tausenden Vorschauen
+        war das ein grosser Teil der Zeit."""
+        if not stapel:
+            return
+        with self.b.db.transaction():
+            for h, status in stapel:
+                self.k.vorschau_setzen(h, status)
 
     def _ablaufen(self, wurzel):
         """(absolut, relativ mit /, stat) je Modelldatei; versteckte Ordner

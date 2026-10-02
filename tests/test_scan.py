@@ -261,4 +261,19 @@ if __name__ == "__main__":
     check("Papierkorb leeren: endgültig, Datei und Vorschau weg", n == 1 and os.listdir(b.pfad("papierkorb")) == []
           and not os.path.exists(b.vorschau_pfad(top["hash"], "extrahiert")))
     b.schliessen()
+
+    # -- Ein Arbeiter, der hart stirbt, reisst nicht den ganzen Lauf mit
+    from partatlas.scan import Scanner as _S
+    pruef = _S(None, None, prozesse=2)
+    pruef._pool = pruef._neuer_pool()
+    try:
+        namen = [f"n{i}" for i in range(7)] + ["gift"] + [f"m{i}" for i in range(6)] + ["kaputt"]
+        ergebnis = {k: (e, f) for k, e, f in pruef._verteilen([(n, (n,)) for n in namen], muster.arbeit_test)}
+    finally:
+        pruef._pool.shutdown(wait=False, cancel_futures=True)
+    check("Arbeiter stirbt hart: nur diese Datei wird als Fehler gemeldet, alle anderen kommen durch",
+          set(ergebnis) == set(namen) and ergebnis["gift"][0] is None and "Arbeitsprozess beendet" in ergebnis["gift"][1]
+          and all(ergebnis[n] == (n * 2, None) for n in namen if n not in ("gift", "kaputt")))
+    check("Eine Datei mit Ausnahme im Arbeiter wird ebenfalls einzeln gemeldet, der Lauf geht weiter",
+          ergebnis["kaputt"][0] is None and "ValueError" in ergebnis["kaputt"][1])
     muster.ende()
