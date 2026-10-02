@@ -193,6 +193,11 @@ Zeilenende (Liste) zwei Linien-Symbole — Slicer (Schichten) und CAD (Würfel) 
 (`hoverAktionen()` in `app.js`). Raster hat sie nicht. Meine Prüfskripte laufen mit
 `?phase=2` (Warteschlange sichtbar) — im Normalbetrieb bleibt sie ausgeblendet.
 
+**Gestaltungsregeln:** Maßsystem (Fibonacci 3-5-8-13-21-34-55-89), gemeinsame Kanten, Aktionen
+in eigener Spalte auf der Mittellinie — in `KONZEPT.md` („Gestaltungsregeln“) und als `--s1…--s8` in
+`app.css`. Umgesetzt für Karten und Liste; die Liste ist entschlackt (Tags und Ordner raus).
+Als Nächstes nach dem Maßsystem prüfen: Raster-Kachel, Inspektor, Seitenleiste, Dialoge.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

@@ -90,6 +90,29 @@ Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
 
 ---
 
+### Gestaltungsregeln
+
+Ein gutes Werkzeug (§2) sieht geordnet aus, ohne dass man erklären muss, warum. Deshalb gibt es wenige feste
+Regeln statt einzelner Augenmasse-Entscheidungen. Sie stehen als Variablen in `app.css` (`--s1` … `--s8`).
+
+1. **Ein Maßsystem.** Abstände, Höhen und Breiten kommen aus der Fibonacci-Reihe
+   **3 · 5 · 8 · 13 · 21 · 34 · 55 · 89 · 144**. Das Verhältnis benachbarter Glieder nähert sich dem goldenen
+   Schnitt (1,618); so wirken Abstufungen stimmig, ohne dass jemand rechnen muss. Innerhalb einer
+   Gruppe 3–8, zwischen Gruppen 13, zwischen Abschnitten 21–34. Keine Zwischenwerte „nach Gefühl“.
+2. **Gemeinsame Kanten.** Was in einer Zeile steht, teilt Kanten mit dem grössten Element der Zeile: Oberkante
+   und Unterkante des Bildes sind Oberkante der ersten und Unterkante der letzten Textzeile (Karten: 89 hoch,
+   13 Rand oben und unten = 115). Gleicher Rand links und rechts (13).
+3. **Mittellinie.** Aktionen sitzen auf der Mittellinie der Zeile, in einer **eigenen Spalte** am rechten Rand —
+   nie über Text, nie „irgendwo rechts unten“. Ein Knopf ist 26 gross (16 Symbol + 5 Luft rundum), zwei
+   Knöpfe mit 3 Abstand ergeben 55 — in der Liste nebeneinander, in den Karten übereinander.
+4. **Symbole** sind Linie, flach, einfarbig, 16 × 16, 1,4 Strichstärke, runde Enden — wie die Ansichtsleiste.
+5. **Eine Rolle je Ansicht.** Das Raster zeigt Bilder, die **Karten** zeigen die Fülle (Name, Maße, Status, Material,
+   Tags, Ordner), die **Liste** ist die schlanke Tabelle zum Sortieren (Name, Format, Grösse, Gewicht, Status).
+   Was die Karten zeigen, kommt nicht noch einmal in die Liste.
+
+Noch nicht auf das Maßsystem umgestellt: Raster-Kachel (164 × 236), Inspektor, Seitenleiste, Dialoge. Die Kachel
+liesse sich auf 164 × 265 (φ) bringen; das ist eine eigene Entscheidung.
+
 ## 3. Dateien und Bestand
 
 ### 3.1 Die Sammlung des Anwenders

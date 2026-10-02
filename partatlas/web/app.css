@@ -20,7 +20,11 @@
   --good: oklch(0.72 0.14 150); --warn: oklch(0.8 0.15 85); --crit: oklch(0.68 0.19 15);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
-:root { --fs-title: 13.5px; --fs-body: 14px; --fs-meta: 11.5px; --fs-label: 11px; --radius: 4px;
+:root {
+  /* Maßsystem — siehe KONZEPT „Gestaltungsregeln“. Alle Abstände und Masse kommen aus der Fibonacci-Reihe;
+     das Verhältnis benachbarter Glieder nähert sich dem goldenen Schnitt (φ = 1,618). */
+  --s1: 3px; --s2: 5px; --s3: 8px; --s4: 13px; --s5: 21px; --s6: 34px; --s7: 55px; --s8: 89px; --phi: 1.618;
+  --fs-title: 13.5px; --fs-body: 14px; --fs-meta: 11.5px; --fs-label: 11px; --radius: 4px;
         --mono: 'IBM Plex Mono', ui-monospace, 'DejaVu Sans Mono', monospace; }
 
 * { box-sizing: border-box; }
@@ -179,14 +183,14 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 .segment { display: flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .segment button { background: none; border: 0; padding: 3px 10px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
 .segment button.an { background: var(--accent); color: var(--accent-ink); }
-.listenkopf, .zeile-l { display: grid; grid-template-columns: 44px 26px minmax(160px, 2.2fr) 60px 150px 80px 80px minmax(120px, 1.6fr) minmax(120px, 1.3fr);
-                        align-items: center; gap: 8px; padding: 0 14px; font-size: 13px; }
-.listenkopf { height: 28px; border-bottom: 1px solid var(--line); font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+.listenkopf, .zeile-l { display: grid; grid-template-columns: var(--s6) var(--s5) minmax(144px, 1fr) var(--s7) 144px var(--s8) 144px var(--s7);
+                        align-items: center; gap: 0 var(--s3); padding: 0 var(--s4); font-size: 13px; }
+.listenkopf { height: var(--s6); border-bottom: 1px solid var(--line); font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
 .listenkopf button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; padding: 0; }
-.zeile-l { position: absolute; left: 0; right: 0; height: 38px; border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
+.zeile-l { position: absolute; left: 0; right: 0; height: var(--s6); border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
 .zeile-l:hover { background: var(--panel); }
 .zeile-l.gewaehlt { background: var(--accent-soft); }
-.zeile-l img, .zeile-l .mini { width: 30px; height: 30px; object-fit: contain; border-radius: 3px; background: var(--plate); }
+.zeile-l img, .zeile-l .mini { width: 24px; height: 24px; object-fit: contain; border-radius: 3px; background: var(--plate); }
 .zeile-l span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zeile-l .mono { font-size: 12.5px; color: var(--ink-2); }
 .zeile-l input { accent-color: var(--accent); }
@@ -629,23 +633,26 @@ html.bild-klein .i-fix .gal-leiste { display: none; }
 .rail-abz { position: absolute; right: 0; top: 0; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
             background: var(--accent); color: #fff; font-size: 9px; line-height: 14px; text-align: center; }
 
-/* Karten: eine Spalte, 118 px hoch, Bild links, rechts die Fülle. */
-.zeile-k { position: absolute; left: 0; right: 0; height: 118px; display: grid; grid-template-columns: 26px 100px 1fr; gap: 0 10px;
-           align-items: center; padding: 0 12px 0 4px; border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
+/* Karten: eine Spalte. Raster: Rand 13 · Haken 34 · Bild 89 · Abstand 21 · Text · Aktionen 26.
+   Senkrecht: 13 + 89 + 13 = 115. Oberkante Bild = Oberkante Name, Unterkante Bild = Unterkante Ordnerzeile,
+   die Aktionen liegen auf der Mittellinie — Bild und Aktionen teilen sich die Mitte. */
+.zeile-k { position: absolute; left: 0; right: 0; height: calc(var(--s8) + 2 * var(--s4)); display: grid;
+           grid-template-columns: var(--s6) var(--s8) minmax(0, 1fr) 26px; gap: 0 var(--s4);
+           align-items: center; padding: 0 var(--s4) 0 0; border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
 .zeile-k:hover { background: var(--panel); }
 .zeile-k.gewaehlt { background: var(--accent-soft); }
 .zeile-k input { accent-color: var(--accent); justify-self: center; }
-.zeile-k .k-bild img, .zeile-k .k-bild .mini { display: flex; width: 100px; height: 100px; object-fit: contain; border-radius: 6px; background: var(--plate);
+.zeile-k .k-bild img, .zeile-k .k-bild .mini { display: flex; width: var(--s8); height: var(--s8); object-fit: contain; border-radius: 6px; background: var(--plate);
            align-items: center; justify-content: center; font: 500 11px var(--mono); color: var(--ink-3); }
-.zeile-k .k-text { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.zeile-k .k-text > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zeile-k .k-name { font-size: 14.5px; font-weight: 600; }
-.zeile-k .k-fakten { font: 12.5px var(--mono); color: var(--ink-2); }
-.zeile-k .k-status { margin-left: 10px; color: var(--accent); }
-.zeile-k .k-chips { display: flex; gap: 4px; flex-wrap: nowrap; overflow: hidden; }
-.zeile-k .chip-k { flex: none; padding: 1px 7px; border-radius: 9px; background: var(--panel-2); color: var(--ink-2); font: 11.5px var(--mono); }
+.zeile-k .k-text { min-width: 0; height: var(--s8); margin-left: var(--s3); display: flex; flex-direction: column; justify-content: space-between; }
+.zeile-k .k-text > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 18px; }
+.zeile-k .k-name { font-size: 14.5px; font-weight: 600; line-height: var(--s5); }
+.zeile-k .k-fakten { font: 12.5px/18px var(--mono); color: var(--ink-2); }
+.zeile-k .k-status { margin-left: var(--s4); color: var(--accent); }
+.zeile-k .k-chips { display: flex; gap: var(--s2); flex-wrap: nowrap; overflow: hidden; }
+.zeile-k .chip-k { flex: none; padding: 1px var(--s3); border-radius: 9px; background: var(--panel-2); color: var(--ink-2); font: 11.5px/16px var(--mono); }
 .zeile-k .chip-k.mat { background: var(--accent-soft); color: var(--accent); }
-.zeile-k .k-ordner { font: 12px var(--mono); color: var(--ink-3); }
+.zeile-k .k-ordner { font: 12px/18px var(--mono); color: var(--ink-3); min-height: 18px; }
 .zeile-k.fehlt { color: var(--ink-3); }
 .zeile-k.fehlt img { filter: grayscale(1); opacity: 0.4; }
 
@@ -675,10 +682,10 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .eintrag .wz-ort { margin-left: 6px; color: var(--ink-3); font-size: 11.5px; }
 .eintrag .wz-ort::before { content: "· "; }
 
-/* Hover-Knöpfe in Liste und Karten: Slicer, CAD — dieselbe Linienschrift wie die Ansichtsleiste. */
-.hv { position: absolute; right: 10px; display: flex; gap: 4px; opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 2; }
-.zeile-k .hv { bottom: 8px; }
-.zeile-l .hv { top: 50%; transform: translateY(-50%); }
+/* Hover-Knöpfe: eine eigene Spalte am rechten Rand (nie über Text), 26 × 26 mit 3 Abstand = 55 in beiden Richtungen:
+   in der Liste nebeneinander, in den Karten übereinander auf der Mittellinie. Dieselbe Linienschrift wie die Ansichtsleiste. */
+.hv { display: flex; gap: var(--s1); opacity: 0; pointer-events: none; transition: opacity 0.12s; }
+.zeile-k .hv { flex-direction: column; }
 .zeile-k:hover .hv, .zeile-l:hover .hv, .hv:focus-within { opacity: 1; pointer-events: auto; }
 .hv-btn { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 6px;
           background: var(--panel-2); color: var(--ink-2); cursor: pointer; }

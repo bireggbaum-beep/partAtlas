@@ -249,8 +249,8 @@ const raster = (() => {
   const RAND = 14;
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
-  const mass = () => zustand.layout === "liste" ? { B: 0, H: 38, LUECKE: 0, RAND: 0 }
-    : zustand.layout === "karten" ? { B: 0, H: 118, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
+  const mass = () => zustand.layout === "liste" ? { B: 0, H: 34, LUECKE: 0, RAND: 0 }
+    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
 
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();
@@ -352,13 +352,13 @@ function zeileK(m, y) {
     </div>${hoverAktionen(m)}</div>`;
 }
 
+// Die Liste ist die schlanke Tabelle zum Sortieren; Tags, Ordner und Material zeigen die Karten.
 const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
-                       ["STATUS", ""], ["TAGS", ""], ["ORDNER", ""]];
+                       ["STATUS", ""], ["", ""]];
 
 function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
-  const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
   const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
@@ -367,9 +367,7 @@ function zeileL(m, y) {
     <span class="mono">${esc(endung[m.format] || "")}</span>
     <span class="mono">${esc(masse(m.masse))}</span>
     <span class="mono">${m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : ""}</span>
-    <span class="mono">${status}</span>
-    <span class="mono">${m.tags.map((t) => "#" + esc(t)).join(" ")}</span>
-    <span class="mono" title="${esc(ordner)}">${esc(ordner)}</span>${hoverAktionen(m)}</div>`;
+    <span class="mono">${status}</span>${hoverAktionen(m)}</div>`;
 }
 
 function zeichneListenkopf() {
