@@ -19,7 +19,7 @@ tmp = tempfile.mkdtemp(); sam = os.path.join(tmp, "S"); os.makedirs(sam)
 muster.stl_binaer(os.path.join(sam, "A.stl"), 120, 20, 6); muster.stl_binaer(os.path.join(sam, "B.stl"), 10, 30, 40)
 with socket.socket() as s:
     s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]
-env = {**os.environ, "PARTATLAS_BESTAND": os.path.join(tmp, "b"), "PARTATLAS_PORT": str(port), "PYTHONPATH": os.pathsep.join([WURZEL, os.environ.get("FLATGRAPH_REPO", "/home/user/flatgraphdb")])}
+env = {**os.environ, "PARTATLAS_BESTAND": os.path.join(tmp, "b"), "PARTATLAS_PORT": str(port), "PYTHONPATH": os.pathsep.join([os.environ.get("PARTATLAS_QUELLE") or WURZEL, os.environ.get("FLATGRAPH_REPO", "/home/user/flatgraphdb")])}
 srv = subprocess.Popen([sys.executable, "-m", "partatlas"], env=env, cwd=tmp, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 try:
     for _ in range(100):
@@ -49,36 +49,38 @@ try:
                 body = json.dumps({**echt, "modelle": GROSS} if isinstance(echt, dict) else GROSS)
                 await route.fulfill(status=200, content_type="application/json", body=body)
             await pg.route("**/api/modelle?*", modelle); await pg.route("**/api/modelle", modelle)
-            await pg.route("**/api/vorschau/**", lambda r: r.fulfill(status=200, content_type="image/png", body=png))
+            import io
+            from PIL import Image
+            import numpy as np
+            foto = io.BytesIO(); Image.fromarray(np.random.default_rng(1).integers(0, 255, (1200, 1200, 3), dtype=np.uint8)).save(foto, "PNG"); foto = foto.getvalue()
+            print("Foto-Bytes:", len(foto))
+            zaehler = {"n": 0}
+            async def vorschau(r):
+                zaehler["n"] += 1
+                await r.fulfill(status=200, content_type="image/png", body=foto if os.environ.get("FOTOS", "1") == "1" else png)
+            await pg.route("**/api/vorschau/**", vorschau)
             await pg.goto(f"http://127.0.0.1:{port}/?phase=2")
             await pg.wait_for_function("zustand.modelle.length >= %d" % N, timeout=60000)
             print("Modelle im Browser:", await pg.evaluate("zustand.modelle.length"))
-            VAR = {
-              "Ausgangslage": "",
-              "contain je Kachel": ".karte,.zeile-l,.zeile-k{contain:layout paint style}",
-              "contain + Bilder asynchron": ".karte,.zeile-l,.zeile-k{contain:layout paint style}",
-              "ohne Bilder": ".karte img,.zeile-l img,.zeile-k img{display:none}",
-              "ohne Verlauf/Rahmen": ".karte .bild{background:#222!important}.karte{border:0!important;transition:none!important}",
-            }
+            # Das Ziehen an der Scrollleiste: jeder Frame springt weit, 60 Frames, danach Ruhe bis alle Bilder da sind.
             for lay in ["raster", "karten"]:
               await pg.click(f'[data-layout="{lay}"]'); await pg.wait_for_timeout(500)
-              for name, css in VAR.items():
-                await pg.evaluate("(c) => { let s = document.getElementById('v'); if (!s) { s = document.createElement('style'); s.id = 'v'; document.head.append(s); } s.textContent = c; }", css)
-                if "asynchron" in name:
-                    await pg.evaluate("document.querySelectorAll('img').forEach(i => i.decoding = 'async')")
-                await pg.wait_for_timeout(300)
+              for name in [os.environ.get("LABEL", "Stand")]:
+                await pg.evaluate("document.querySelector('#raster').scrollTop = 0"); await pg.wait_for_timeout(800)
+                zaehler["n"] = 0
                 cdp = await pg.context.new_cdp_session(pg); await cdp.send("Performance.enable")
                 m0 = {x["name"]: x["value"] for x in (await cdp.send("Performance.getMetrics"))["metrics"]}
                 r = await pg.evaluate("""async () => {
-                  const a = document.querySelector('#raster'); a.scrollTop = 0; await new Promise(r => requestAnimationFrame(r));
+                  const a = document.querySelector('#raster'); const max = a.scrollHeight - a.clientHeight;
                   const dt = []; let last = performance.now();
-                  await new Promise(res => { let k = 0; const f = (t) => { dt.push(t - last); last = t; a.scrollTop += 60; if (++k < 300) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+                  await new Promise(res => { let k = 0; const f = (t) => { dt.push(t - last); last = t; a.scrollTop = (k / 60) * max; if (++k <= 60) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
                   dt.shift(); dt.sort((x, y) => x - y);
-                  return { median: dt[dt.length >> 1], p95: dt[Math.floor(dt.length * .95)], ueber_20ms: dt.filter(x => x > 20).length };
+                  return { median: dt[dt.length >> 1], p95: dt[Math.floor(dt.length * .95)], max: dt[dt.length - 1] };
                 }""")
                 m1 = {x["name"]: x["value"] for x in (await cdp.send("Performance.getMetrics"))["metrics"]}
-                d = {k[:-8]: round((m1[k] - m0[k]) * 1000 / 300, 2) for k in ["ScriptDuration", "LayoutDuration", "RecalcStyleDuration", "TaskDuration"]}
-                print(f"{lay:7s} {name:28s}", {k: round(v, 1) for k, v in r.items()}, "ms/Frame:", d)
+                await pg.wait_for_timeout(1500)
+                d = {k[:-8]: round((m1[k] - m0[k]) * 1000 / 60, 1) for k in ["ScriptDuration", "TaskDuration"]}
+                print(f"{lay:7s} {name:14s}", {k: round(v, 1) for k, v in r.items()}, "ms/Frame:", d, "Bilder angefordert beim Ziehen:", zaehler["n"], "bis Ruhe:", zaehler["n_ruhe"] if "n_ruhe" in zaehler else "")
             await b.close()
     asyncio.run(go())
 finally:

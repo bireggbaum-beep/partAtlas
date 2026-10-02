@@ -279,10 +279,25 @@ const raster = (() => {
     abgleichen(innen, html.join(""));
   }
 
-  aussen.addEventListener("scroll", () => { if (!geplant) { geplant = true; requestAnimationFrame(() => zeichne(true)); } });
+  // Ein Sprung von mehr als einem Bildschirm je Meldung ist kein Lesen mehr, sondern Suchen.
+  let letzteLage = 0, ruhe = 0;
+  aussen.addEventListener("scroll", () => {
+    if (Math.abs(aussen.scrollTop - letzteLage) > aussen.clientHeight) schnellScrollen = true;
+    letzteLage = aussen.scrollTop;
+    if (schnellScrollen) {
+      clearTimeout(ruhe);
+      ruhe = setTimeout(() => { schnellScrollen = false; zeichne(); }, 120);
+    }
+    if (!geplant) { geplant = true; requestAnimationFrame(() => zeichne(true)); }
+  });
   window.addEventListener("resize", () => requestAnimationFrame(neu));
   return { neu, zeichne };
 })();
+
+// Beim schnellen Ziehen an der Scrollleiste fliegen dutzende Kacheln an den Augen
+// vorbei; ihre Bilder gar nicht erst anfordern. Erst wenn es ruhig wird, kommen sie.
+let schnellScrollen = false;
+const bildTag = (url) => (schnellScrollen ? '<img alt="">' : `<img loading="lazy" src="${url}" alt="">`);
 
 function bildUrl(m) {
   if (m.bild) return `/api/modelle/${m.id}/bild?v=${m.bild}`;
@@ -302,7 +317,7 @@ function karte(m, x, y) {
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (m.format === "step" ? "STEP · nur CAD" : "keine Vorschau");
   const markiert = zustand.auswahl.has(m.id);
   return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
-    <div class="bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="platzhalter">${platz}</div>`}
+    <div class="bild">${url ? bildTag(url) : `<div class="platzhalter">${platz}</div>`}
       ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
@@ -322,7 +337,7 @@ function zeileK(m, y) {
   const chips = [...(m.materialien || []).map((x) => `<span class="chip-k mat">${esc(x)}</span>`), ...m.tags.map((t) => `<span class="chip-k">#${esc(t)}</span>`)].join("");
   return `<div class="zeile-k ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
-    <div class="k-bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="mini">${m.format === "step" ? "STEP" : ""}</div>`}</div>
+    <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : ""}</div>`}</div>
     <div class="k-text">
       <div class="k-name" title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
@@ -340,7 +355,7 @@ function zeileL(m, y) {
   const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
   const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
-    <span>${url ? `<img loading="lazy" src="${url}" alt="">` : '<div class="mini"></div>'}</span>
+    <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
     <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}</span>
     <span class="mono">${esc(endung[m.format] || "")}</span>
