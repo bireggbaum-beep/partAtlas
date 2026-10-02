@@ -630,6 +630,25 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             raise KatalogFehler("Das ist kein ausführbares Programm.")
         return {**programme.eintrag_fuer(pfad, art), "automatisch": False}
 
+    @app.get("/api/ordner/inhalt")
+    def ordner_inhalt(id: str):
+        i = K().ordner_inhalt(id)
+        return {**i, "andere": i["andere"][:50], "andere_n": len(i["andere"])}
+
+    @app.post("/api/ordner/loeschen")
+    async def ordner_loeschen(request: Request):
+        d = await request.json()
+        return K().ordner_loeschen(d.get("id", ""), d.get("tags") or (), d.get("sammlungen") or ())
+
+    @app.post("/api/ordner/im_ordner")
+    async def ordner_im_ordner(request: Request):
+        pfad = K()._ordner_pfad((await request.json()).get("id", ""))[2]
+        try:
+            programme.im_ordner_zeigen(pfad)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True}
+
     @app.post("/api/modelle/{mid}/im_ordner")
     def im_ordner(mid: str):
         m = K().modell(mid)

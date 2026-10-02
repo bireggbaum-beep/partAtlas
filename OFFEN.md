@@ -303,6 +303,15 @@ aus oder ein, die Wahl bleibt gemerkt (`localStorage` „partatlas.inspektor“)
 nicht mit `test_ui.py`. **Offen:** bei ausgeblendetem Inspektor zeigt ein Klick auf ein Modell nichts an (wie in pDMS gewollt); die Baugruppen-Übersicht
 rechts ist dann ebenfalls weg.
 
+**Ordner löschen (0.29.1):** Rechtsklick auf einen Unterordner der Seitenleiste: „Im Dateimanager zeigen“ (auch für Wurzeln) und „Ordner löschen …“.
+Gebaut ist **Weg 1**: die Modelle, die ganz im Ordner liegen, gehen über `loeschen_mit` in den Papierkorb (derselbe Dialog mit Tags, Sammlungen,
+Baugruppen), danach `rmdir` von unten nach oben. Was keine Modelldatei ist, bleibt, und mit ihm der Ordner; ein Dialog nennt Pfad und Rest und führt in
+den Dateimanager. Ein Modell mit einer Kopie ausserhalb bleibt (sonst ginge die andere Kopie mit). Eine Wurzel wird nie gelöscht. API:
+`GET /api/ordner/inhalt`, `POST /api/ordner/loeschen`, `POST /api/ordner/im_ordner`. Geprüft in `test_verwalten` (57/57) mit Gegenproben und einem
+Playwright-Skript (Menü, Dialog, Ergebnis), nicht mit `test_ui.py`.
+**Offen:** Weg 2 (ganzer Ordner samt fremden Dateien in den Papierkorb und zurück, Aufwand 4). Der Ordnerbaum leitet sich aus den Modelldateien ab: ein Ordner,
+in dem nur noch fremde Dateien liegen, verschwindet aus der Seitenleiste — erreichbar bleibt er über den Pfad im Dialog.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

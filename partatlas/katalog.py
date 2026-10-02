@@ -491,6 +491,56 @@ class Katalog:
         os.makedirs(ziel)
         return f"{eltern_id.rstrip('/')}/{name}"
 
+    def ordner_inhalt(self, ordner_id):
+        """Was in einem Ordner liegt, damit der Anwender vor dem Löschen sieht, was passiert: Modelle, die ganz darin liegen
+        (sie gehen in den Papierkorb), Modelle mit einer Kopie ausserhalb (bleiben, sonst ginge die andere Kopie mit) und
+        alle übrigen Dateien (Bilder, PDFs, Texte aus einem entpackten Archiv — partAtlas rührt sie nie an)."""
+        wid, wpfad, pfad = self._ordner_pfad(ordner_id)
+        wreal = os.path.realpath(wpfad)
+        rel = os.path.relpath(pfad, wreal).replace(os.sep, "/")
+        if not os.path.isdir(pfad):
+            raise KatalogFehler("Den Ordner gibt es nicht (mehr).")
+        modelle, mehrfach, bekannt = [], [], set()
+        for h, d in self._dateien().items():
+            orte = d.get("orte", [])
+            innen = [o for o in orte if o["wurzel"] == wid and (rel == "." or o["pfad"].startswith(rel + "/"))]
+            if not innen:
+                continue
+            mid = self.modell_von(h)
+            if mid is None:
+                continue
+            bekannt.update(o["pfad"] for o in innen)
+            if len(innen) == len(orte):
+                modelle.append(mid)
+            else:
+                mehrfach.append(mid)
+        andere = []
+        for ordner, _, namen in os.walk(pfad):
+            for n in namen:
+                p = os.path.relpath(os.path.join(ordner, n), wreal).replace(os.sep, "/")
+                if p not in bekannt:
+                    andere.append(p if rel == "." else p[len(rel) + 1:])
+        return {"id": ordner_id, "name": os.path.basename(pfad), "pfad": pfad, "wurzel": rel == ".", "modelle": modelle,
+                "mehrfach": mehrfach, "andere": sorted(andere)}
+
+    def ordner_loeschen(self, ordner_id, tags=(), sammlungen=()):
+        """Die Modelle im Ordner in den Papierkorb, danach die leeren Verzeichnisse darunter und der Ordner selbst. Dateien,
+        die keine Modelle sind, bleiben — dann bleibt auch der Ordner, und der Aufrufer sagt dem Anwender, wo er liegt.
+        Ein Wurzelordner geht hier nicht: er wird nur aus partAtlas entfernt."""
+        i = self.ordner_inhalt(ordner_id)
+        if i["wurzel"]:
+            raise KatalogFehler("Ein Wurzelordner wird nicht gelöscht, nur aus partAtlas entfernt.")
+        fehler = self.loeschen_mit(i["modelle"], tags, sammlungen) if i["modelle"] else []
+        # Von unten nach oben: rmdir nimmt nur leere Verzeichnisse, mehr als das gibt es nicht zu verlieren.
+        for ordner, _, _ in os.walk(i["pfad"], topdown=False):
+            try:
+                os.rmdir(ordner)
+            except OSError:
+                pass
+        rest = self.ordner_inhalt(ordner_id) if os.path.isdir(i["pfad"]) else None
+        return {"fehler": fehler, "entfernt": rest is None, "modelle": len(i["modelle"]) - len(fehler), "pfad": i["pfad"],
+                "geblieben": {"andere": len(rest["andere"]), "modelle": len(rest["modelle"]) + len(rest["mehrfach"])} if rest else None}
+
     def verschieben(self, mid, ordner_id):
         h = self.datei_von(mid)
         d = self.db.get_node(ref(DATEI, h)) if h else None

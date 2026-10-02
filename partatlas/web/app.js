@@ -1159,12 +1159,17 @@ async function bildEntfernen(k) {
 
 // Rechtsklick auf das Bild: dasselbe wie die Knöpfe, an der Stelle der Maus.
 document.addEventListener("contextmenu", (e) => {
-  const wurzel = e.target.closest?.("[data-wurzel]");
-  if (wurzel) {
+  const eintrag = e.target.closest?.(".eintrag[data-ordner]");
+  if (eintrag) {
     e.preventDefault();
     const menu = $("#kontext");
-    menu.innerHTML = `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`;
-    kontextMenu.ziel = { wurzel: { id: wurzel.dataset.wurzel, name: wurzel.dataset.wurzelName, pfad: wurzel.title, anzahl: Number(wurzel.querySelector("em")?.textContent) || 0 } };
+    const istWurzel = eintrag.dataset.wurzel !== undefined;
+    // Wie in VS Code: „Im Dateimanager zeigen“ für jeden Ordner. Löschen nur für Unterordner; die Wurzel wird nur entfernt.
+    menu.innerHTML = `<button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
+      + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`
+                   : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner löschen …</button>`);
+    kontextMenu.ziel = { ordner: { id: eintrag.dataset.ordner, name: eintrag.dataset.wurzelName || eintrag.dataset.ordner.split("/").pop() },
+                         wurzel: istWurzel ? { id: eintrag.dataset.wurzel, name: eintrag.dataset.wurzelName, pfad: eintrag.title, anzahl: Number(eintrag.querySelector("em")?.textContent) || 0 } : null };
     menu.hidden = false;
     const b = menu.getBoundingClientRect();
     menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
@@ -1323,7 +1328,7 @@ async function loeschen(id) {
 // was man tut. Ankreuzen lässt sich nur, was wirklich eine Wahl ist: Tags
 // und Sammlungen, an denen sonst nichts mehr hängt. Alles andere geht mit in
 // den Papierkorb und kommt beim Wiederherstellen zurück.
-async function loeschDialog(modelle, titel) {
+async function loeschDialog(modelle, titel, ordner = null) {
   const v = await api("/api/stapel/loeschvorschau", { method: "POST", body: { modelle } });
   const viele = modelle.length > 1;
   const nurT = v.tags.filter((t) => !t.sonst), andereT = v.tags.filter((t) => t.sonst);
@@ -1344,15 +1349,26 @@ async function loeschDialog(modelle, titel) {
       ${nurT.length ? `<div class="lz-wahl"><label><input type="checkbox" id="mit-tags"> Tags, die nur ${viele ? "diese Modelle haben" : "dieses Modell hat"}, ganz löschen:
         ${nurT.map((t) => `<span class="chip">#${esc(t.name)}</span>`).join(" ")}</label>
         <p class="lz-warn" hidden>Kommen beim Wiederherstellen nicht mit zurück.</p></div>` : ""}`) : "";
+  const o = ordner?.inhalt;
+  const ordnerZeile = !o ? "" : o.andere_n || o.mehrfach.length
+    ? zeile("📁", `<b>Der Ordner bleibt stehen</b>, weil noch etwas darin liegt, das partAtlas nicht löscht:
+        <ul>${o.andere.slice(0, 6).map((d) => `<li>${esc(d)}</li>`).join("")}${o.andere_n > 6 ? `<li>… und ${o.andere_n - 6} weitere</li>` : ""}
+          ${o.mehrfach.length ? `<li>${o.mehrfach.length} ${o.mehrfach.length === 1 ? "Modell hat" : "Modelle haben"} eine Kopie ausserhalb und bleiben</li>` : ""}</ul>
+        Den Rest löschst du danach im Dateimanager; der Knopf dort hin kommt gleich.`)
+    : zeile("📁", "Der Ordner wird danach entfernt: er ist dann leer.");
   const a = await dialog(`<h2>${titel}</h2>
     <p class="dim">Alles kommt in den Papierkorb von partAtlas. „Wiederherstellen“ legt es an seinen Ort zurück; endgültig weg ist es erst, wenn der Papierkorb geleert wird.</p>
-    <div class="loesch-liste">${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
+    <div class="loesch-liste">${ordnerZeile}${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">In den Papierkorb</button></div>`);
   if (a !== "ja") return false;
   const wahl = {
     tags: $("#mit-tags")?.checked ? nurT.map((t) => t.name) : [],
     sammlungen: [...document.querySelectorAll("[data-mit-sammlung]:checked")].map((x) => x.dataset.mitSammlung),
   };
+  if (ordner) {
+    try { return await api("/api/ordner/loeschen", { method: "POST", body: { id: ordner.id, ...wahl } }); }
+    catch (e) { toast(e.message); return false; }
+  }
   try {
     const r = await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } });
     if (r.fehler.length) toast(`${modelle.length - r.fehler.length} gelöscht, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
@@ -2001,6 +2017,48 @@ async function kontextMenu(e, id) {
   menu.classList.toggle("flyout-links", menu.getBoundingClientRect().right + 220 > innerWidth);
 }
 
+async function ordnerZeigen(id) {
+  try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }
+}
+
+// Ordner löschen: die Modelle darin gehen in den Papierkorb, leere Verzeichnisse werden entfernt. Was keine Modelldatei ist
+// (Bilder, PDFs aus einem entpackten Archiv), rührt partAtlas nicht an — dann bleibt der Ordner, und der Anwender räumt den Rest
+// im Dateimanager selbst ab; dorthin führt der Knopf.
+async function ordnerLoeschen(id, name) {
+  let i;
+  try { i = await api(`/api/ordner/inhalt?id=${encodeURIComponent(id)}`); } catch (e) { return toast(e.message); }
+  const rest = i.andere_n || i.mehrfach.length;
+  let r;
+  if (i.modelle.length) {
+    r = await loeschDialog(i.modelle, `Ordner „${esc(name)}“ löschen?`, { id, inhalt: i });
+    if (!r) return;
+    if (r.fehler?.length) toast(`${r.fehler.length} Modelle ließen sich nicht löschen: ${r.fehler[0].fehler}`);
+  } else if (rest) {
+    const a = await dialog(`<h2>Ordner „${esc(name)}“ lässt sich hier nicht löschen</h2>
+      <p>Es liegen keine Modelle des Katalogs darin, aber ${i.andere_n} ${i.andere_n === 1 ? "andere Datei" : "andere Dateien"}, die partAtlas nicht anrührt:</p>
+      <ul>${i.andere.slice(0, 8).map((d) => `<li>${esc(d)}</li>`).join("")}${i.andere_n > 8 ? `<li>… und ${i.andere_n - 8} weitere</li>` : ""}</ul>
+      <div class="knoepfe"><button class="knopf" value="nein">Schließen</button><button class="knopf akzent" value="zeigen">Im Dateimanager zeigen</button></div>`);
+    if (a === "zeigen") ordnerZeigen(id);
+    return;
+  } else {
+    if (await dialog(`<h2>Leeren Ordner löschen?</h2><p><b>${esc(name)}</b> ist leer.</p>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Löschen</button></div>`) !== "ja") return;
+    try { r = await api("/api/ordner/loeschen", { method: "POST", body: { id } }); } catch (e) { return toast(e.message); }
+  }
+  if (zustand.ordner === id || zustand.ordner.startsWith(id + "/")) zustand.ordner = id.slice(0, id.lastIndexOf("/"));
+  await ladeSeite();
+  neuLaden();
+  if (r.entfernt) return toast("Ordner gelöscht.");
+  const g = r.geblieben;
+  const a = await dialog(`<h2>Der Ordner bleibt stehen</h2>
+    <p>${r.modelle ? `${r.modelle} ${r.modelle === 1 ? "Modell liegt" : "Modelle liegen"} im Papierkorb. ` : ""}Der Ordner enthält noch
+      ${g.andere ? `${g.andere} ${g.andere === 1 ? "andere Datei" : "andere Dateien"}` : ""}${g.andere && g.modelle ? " und " : ""}${g.modelle ? `${g.modelle} ${g.modelle === 1 ? "Modell" : "Modelle"}` : ""},
+      die partAtlas nicht löscht.</p>
+    <p class="dim">${esc(r.pfad)}</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Schließen</button><button class="knopf akzent" value="zeigen">Im Dateimanager zeigen</button></div>`);
+  if (a === "zeigen") ordnerZeigen(id);
+}
+
 async function wurzelEntfernen({ id, name, pfad, anzahl }) {
   const a = await dialog(`<h2>Ordner aus partAtlas entfernen?</h2>
     <p><b>${esc(name)}</b>${anzahl ? ` — ${anzahl} ${anzahl === 1 ? "Modell" : "Modelle"}` : ""}<br><code>${esc(pfad)}</code></p>
@@ -2019,7 +2077,13 @@ async function wurzelEntfernen({ id, name, pfad, anzahl }) {
 
 async function kontextAktion(k, knopf) {
   $("#kontext").hidden = true;
-  if (kontextMenu.ziel.wurzel) return k === "wurzel-weg" ? wurzelEntfernen(kontextMenu.ziel.wurzel) : undefined;
+  if (kontextMenu.ziel.ordner) {
+    const o = kontextMenu.ziel.ordner;
+    if (k === "wurzel-weg") return wurzelEntfernen(kontextMenu.ziel.wurzel);
+    if (k === "ordner-zeigen") return ordnerZeigen(o.id);
+    if (k === "ordner-weg") return ordnerLoeschen(o.id, o.name);
+    return;
+  }
   const f = kontextMenu.ziel.galerie;
   if (f) {
     if (k === "gal-titel") return vorschauSetzen(f.art === "eigen" ? `eigen:${f.k}` : f.art);

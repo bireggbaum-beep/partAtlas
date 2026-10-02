@@ -269,4 +269,49 @@ if __name__ == "__main__":
               os.path.exists(os.path.join(samm, "Leer", "Stern (2).stl"))
               and [f["id"] for f in r["fehler"]] == [m["Doppel"]])
         check("Unbekannte Aktion abgelehnt", c.post("/api/stapel", json={"aktion": "formatieren", "modelle": drei}).status_code == 400)
+
+    # -- Ordner löschen: Modelle in den Papierkorb, leere Verzeichnisse weg, alles andere bleibt
+    tmp2 = tempfile.mkdtemp()
+    s2 = os.path.join(tmp2, "Sammlung")
+    arch = os.path.join(s2, "Testarchiv")
+    os.makedirs(os.path.join(arch, "Teile", "Unten"))
+    os.makedirs(os.path.join(arch, "Leer", "Noch leerer"))
+    muster.stl_binaer(os.path.join(arch, "A.stl"), 11, 12, 13)
+    muster.stl_binaer(os.path.join(arch, "Teile", "B.stl"), 12, 12, 13)
+    muster.stl_binaer(os.path.join(arch, "Teile", "Unten", "C.stl"), 13, 12, 13)
+    with open(os.path.join(arch, "Anleitung.txt"), "w") as f:
+        f.write("gehört nicht zu den Modellen")
+    muster.stl_binaer(os.path.join(s2, "Draussen.stl"), 14, 12, 13)
+    muster.stl_binaer(os.path.join(arch, "Kopie.stl"), 14, 12, 13)         # gleicher Inhalt wie Draussen: eine Datei, zwei Orte
+    with TestClient(erstelle_app(os.path.join(tmp2, "bestand"), prozesse=2)) as c:
+        w = c.post("/api/wurzeln", json={"pfad": s2}).json()["id"]
+        warten(c)
+        i = c.get("/api/ordner/inhalt", params={"id": f"{w}/Testarchiv"}).json()
+        check("Ordnerinhalt: drei Modelle ganz darin, eins mit Kopie ausserhalb, die Textdatei als „andere“",
+              len(i["modelle"]) == 3 and len(i["mehrfach"]) == 1 and i["andere"] == ["Anleitung.txt"])
+        check("Ordnerinhalt: ein Pfad aus der Wurzel hinaus wird abgelehnt",
+              c.get("/api/ordner/inhalt", params={"id": f"{w}/../.."}).status_code == 400)
+        check("Ein Wurzelordner wird nicht gelöscht", c.post("/api/ordner/loeschen", json={"id": w}).status_code == 400)
+        r = c.post("/api/ordner/loeschen", json={"id": f"{w}/Testarchiv"}).json()
+        check("Ordner löschen: die drei Modelle im Papierkorb, der Ordner bleibt wegen Textdatei und Kopie",
+              r["entfernt"] is False and r["modelle"] == 3 and r["geblieben"] == {"andere": 1, "modelle": 1}
+              and not os.path.exists(os.path.join(arch, "A.stl")) and os.path.exists(os.path.join(arch, "Anleitung.txt"))
+              and os.path.exists(os.path.join(arch, "Kopie.stl")) and os.path.exists(os.path.join(s2, "Draussen.stl")))
+        check("Ordner löschen: die leeren Unterverzeichnisse sind weg, auch die, die nie ein Modell hatten",
+              not os.path.exists(os.path.join(arch, "Leer")) and not os.path.exists(os.path.join(arch, "Teile")))
+        check("Ordner löschen: die drei Modelle stehen im Papierkorb", c.get("/api/zaehler").json()["papierkorb"] == 3)
+        os.unlink(os.path.join(arch, "Anleitung.txt"))
+        os.unlink(os.path.join(arch, "Kopie.stl"))
+        c.post("/api/scan")
+        warten(c)
+        i2 = c.get("/api/ordner/inhalt", params={"id": f"{w}/Testarchiv"}).json()
+        check("Nach dem Aufräumen von Hand: der Ordner ist leer, auch im Katalog", i2["modelle"] == [] and i2["andere"] == [])
+        r = c.post("/api/ordner/loeschen", json={"id": f"{w}/Testarchiv"}).json()
+        check("Leerer Ordner: wird entfernt", r["entfernt"] is True and not os.path.exists(arch))
+        papier = [m["id"] for m in c.get("/api/modelle", params={"ansicht": "papierkorb"}).json()]
+        c.post(f"/api/modelle/{papier[0]}/wiederherstellen")
+        check("Wiederherstellen legt das Modell zurück, auch wenn sein Ordner inzwischen weg ist",
+              any(os.path.exists(os.path.join(arch, *pf)) for pf in (("A.stl",), ("Teile", "B.stl"), ("Teile", "Unten", "C.stl"))))
+        kommt = c.post("/api/ordner/im_ordner", json={"id": f"{w}/../.."})
+        check("Im Dateimanager zeigen: ein Pfad aus der Wurzel hinaus wird abgelehnt", kommt.status_code == 400)
     muster.ende()
