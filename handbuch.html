@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>partAtlas Handbuch</title>
+<style>
+:root {
+  --bg: #ffffff; --bg-side: #f7f7f5; --text: #2b2b2a; --muted: #6b6b68;
+  --line: #e7e7e3; --accent: #3b6fd4; --accent-bg: #eef3fc;
+  --code-bg: #f3f3f0; --ok: #2e7d4f; --soon: #a86a00; --no: #8a8a86;
+  --f: -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif;
+  --m: ui-monospace, "SF Mono", "DejaVu Sans Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1c1b; --bg-side: #222221; --text: #e6e6e3; --muted: #9a9a95;
+    --line: #333331; --accent: #7aa2f0; --accent-bg: #262d3b;
+    --code-bg: #2a2a28; --ok: #6cc08a; --soon: #e0a64a; --no: #8a8a86;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1c1b; --bg-side: #222221; --text: #e6e6e3; --muted: #9a9a95;
+  --line: #333331; --accent: #7aa2f0; --accent-bg: #262d3b;
+  --code-bg: #2a2a28; --ok: #6cc08a; --soon: #e0a64a; --no: #8a8a86;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 21px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.65 var(--f); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+nav.side {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: var(--bg-side); border-right: 1px solid var(--line); padding: 21px 13px 34px;
+}
+.brand { font-weight: 650; font-size: 17px; padding: 0 8px 3px; }
+.brand small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.navgroup { margin-top: 21px; }
+.navgroup h6 {
+  margin: 0 0 5px; padding: 0 8px; font-size: 11px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+}
+nav.side a {
+  display: block; padding: 3px 8px; border-radius: 6px; color: var(--text); font-size: 14px;
+}
+nav.side a:hover { background: var(--line); text-decoration: none; }
+nav.side a.on { background: var(--accent-bg); color: var(--accent); font-weight: 550; }
+.theme {
+  margin: 21px 8px 0; padding: 3px 10px; font: inherit; font-size: 13px; color: var(--muted);
+  background: none; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+}
+
+main { padding: 55px 34px 89px; }
+article { max-width: 760px; margin: 0 auto; }
+.kopf { margin-bottom: 34px; }
+.kopf .tag { font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+h1 { font-size: 34px; line-height: 1.2; margin: 5px 0 13px; font-weight: 700; }
+.lead { font-size: 17px; color: var(--muted); margin: 0; }
+section { padding-top: 21px; margin-top: 34px; border-top: 1px solid var(--line); }
+section:first-of-type { border-top: none; margin-top: 0; }
+h2 { font-size: 24px; margin: 0 0 8px; font-weight: 650; }
+h3 { font-size: 16px; margin: 21px 0 3px; font-weight: 650; }
+p { margin: 8px 0; }
+ul { margin: 8px 0; padding-left: 21px; }
+li { margin: 3px 0; }
+kbd, code {
+  font: 13px var(--m); background: var(--code-bg); padding: 1px 6px; border-radius: 5px;
+  border: 1px solid var(--line);
+}
+kbd { border-bottom-width: 2px; }
+
+.hinweis {
+  margin: 13px 0; padding: 8px 13px; background: var(--accent-bg);
+  border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 14px;
+}
+.hinweis.warn { border-left-color: var(--soon); }
+
+.karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 13px; margin: 13px 0; }
+.karte { border: 1px solid var(--line); border-radius: 10px; padding: 13px; }
+.karte b { display: block; margin-bottom: 3px; }
+.karte span { color: var(--muted); font-size: 14px; }
+
+table { width: 100%; border-collapse: collapse; margin: 13px 0; font-size: 14px; }
+th, td { text-align: left; padding: 8px 13px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+td:first-child { white-space: nowrap; }
+
+.st { display: inline-block; font-size: 12px; font-weight: 600; padding: 0 8px; border-radius: 99px; border: 1px solid currentColor; }
+.st.ok { color: var(--ok); } .st.soon { color: var(--soon); } .st.no { color: var(--no); }
+
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+  nav.side { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+  main { padding: 34px 16px 55px; }
+  h1 { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="side" id="nav">
+  <div class="brand">partAtlas<small>Handbuch · Fassung 0.20</small></div>
+
+  <div class="navgroup"><h6>Einstieg</h6>
+    <a href="#ueberblick">Überblick</a>
+    <a href="#prinzip">Wie partAtlas denkt</a>
+    <a href="#sammlung">Die Sammlung einlesen</a>
+  </div>
+  <div class="navgroup"><h6>Arbeiten mit Modellen</h6>
+    <a href="#ansichten">Ansichten</a>
+    <a href="#suche">Suche und Filter</a>
+    <a href="#ordnung">Tags, Material, Sammlungen</a>
+    <a href="#inspektor">Der Inspektor</a>
+    <a href="#drucke">Drucke</a>
+    <a href="#baugruppen">Baugruppen</a>
+  </div>
+  <div class="navgroup"><h6>Pflege</h6>
+    <a href="#oeffnen">Im Slicer öffnen</a>
+    <a href="#bereinigen">Bereinigen und Löschen</a>
+    <a href="#archive">Archive</a>
+    <a href="#einstellungen">Einstellungen</a>
+  </div>
+  <div class="navgroup"><h6>Hintergrund</h6>
+    <a href="#daten">Daten und Sicherheit</a>
+    <a href="#formate">Dateiformate</a>
+    <a href="#stand">Was geht, was kommt</a>
+  </div>
+  <button class="theme" id="theme" type="button">Hell / Dunkel</button>
+</nav>
+
+<main>
+<article>
+
+<div class="kopf">
+  <div class="tag">Handbuch</div>
+  <h1>partAtlas</h1>
+  <p class="lead">Ein Katalog für deine 3D-Druck-Sammlung: Modelle finden, ordnen, zu Baugruppen
+  zusammenstellen und festhalten, was wie gedruckt wurde — auf deinem eigenen Rechner,
+  ohne Cloud und ohne Konto.</p>
+</div>
+
+<section id="ueberblick">
+  <h2>Überblick</h2>
+  <p>partAtlas liest die Ordner, in denen deine Modelle schon liegen, und baut daraus einen
+  durchsuchbaren Katalog. Deine Dateien bleiben, wo sie sind. Was du im Katalog ergänzt —
+  Tags, Material, Sammlungen, Fotos, Drucke — gehört dir und bleibt erhalten, auch wenn du
+  Dateien verschiebst oder umbenennst.</p>
+  <div class="karten">
+    <div class="karte"><b>Finden</b><span>Suche über Name, Tags, Ordner, Material und mehr, mit Filtern wie <code>format:stl</code>.</span></div>
+    <div class="karte"><b>Ansehen</b><span>Vorschaubilder für jedes Modell, auch ohne eingebettetes Bild. Dazu eine 3D-Ansicht zum Drehen.</span></div>
+    <div class="karte"><b>Ordnen</b><span>Tags, Material, Sammlungen und Favoriten, ohne die Ordner auf der Platte anzufassen.</span></div>
+    <div class="karte"><b>Zusammenstellen</b><span>Baugruppen mit Stückliste, Kaufteilen und Export als PDF.</span></div>
+    <div class="karte"><b>Festhalten</b><span>Drucke mit Gewicht, Zeit, Filament und Fotos; „gedruckt“ ergibt sich daraus.</span></div>
+    <div class="karte"><b>Aufräumen</b><span>Duplikate, fehlende und unlesbare Dateien auf einen Blick; Löschen mit Papierkorb.</span></div>
+  </div>
+  <div class="hinweis">partAtlas läuft als kleines Programm auf deinem Rechner. Die Oberfläche öffnet
+  sich im Browser unter <code>http://127.0.0.1:8765</code>. Schließt du das Terminal, in dem es
+  gestartet wurde, ist partAtlas beendet.</div>
+</section>
+
+<section id="prinzip">
+  <h2>Wie partAtlas denkt</h2>
+  <p><b>Die Datei führt, der Katalog folgt.</b> Du denkst in Dateien: du legst ab, verschiebst,
+  benennst um, löschst. partAtlas macht mit. Jedes Modell im Katalog gehört zu einer Datei und wird
+  an deren <i>Inhalt</i> erkannt, nicht am Namen.</p>
+  <table>
+    <tr><th>Was du tust</th><th>Was im Katalog passiert</th></tr>
+    <tr><td>Neue Datei in einen Ordner legen</td><td>Beim nächsten Einlesen entsteht ein neues Modell.</td></tr>
+    <tr><td>Datei verschieben oder umbenennen</td><td>Das Modell folgt; Tags, Material und Drucke bleiben dran.</td></tr>
+    <tr><td>Datei kopieren</td><td>Ein Modell, zwei Orte — partAtlas zeigt es als Duplikat.</td></tr>
+    <tr><td>Datei im Dateimanager löschen</td><td>Das Modell bleibt und ist deutlich als „Datei fehlt“ markiert. Die Druckhistorie geht nicht verloren.</td></tr>
+    <tr><td>In partAtlas löschen</td><td>Papierkorb. Vorher zeigt ein Dialog, was am Modell hängt.</td></tr>
+  </table>
+  <p>Eigenes — Tags, Material, Sammlungen, Baugruppen, eigene Bilder, Drucke — bearbeitest du bewusst
+  in partAtlas. Es liegt in einem eigenen Bestand, nicht in deinen Ordnern.</p>
+</section>
+
+<section id="sammlung">
+  <h2>Die Sammlung einlesen</h2>
+  <p>Wähle einen oder mehrere <b>Wurzelordner</b>. partAtlas liest alles darunter ein und übernimmt die
+  Ordnerstruktur als Ansicht — die Struktur bleibt deine.</p>
+  <ul>
+    <li><b>Ordner hinzufügen</b> (Knopf in der Kopfzeile): Ordner im Dialog auswählen oder den Pfad eingeben.</li>
+    <li><b>Neu einlesen</b>: liest alle Ordner erneut; neue Dateien kommen dazu, Verschobenes wird wiedergefunden.</li>
+    <li><b>Hochladen</b>: Dateien per Ziehen in das Fenster ablegen; du wählst dann den Zielordner.</li>
+  </ul>
+  <p>Beim Einlesen entstehen Maße, Volumen und Gewicht (aus der Geometrie), ein Vorschaubild und — aus dem
+  Dateinamen — vorgeschlagene Tags. Das Einlesen läuft im Hintergrund; du kannst weiterarbeiten.</p>
+  <div class="hinweis">Zum Ausprobieren ohne eigene Sammlung gibt es eine Demo mit erfundenen Modellen und
+  Drucken: <code>./start.sh --demo</code>.</div>
+</section>
+
+<section id="ansichten">
+  <h2>Ansichten</h2>
+  <p>Der Katalog zeigt dieselben Modelle in drei Formen. Jede hat eine eigene Rolle.</p>
+  <div class="karten">
+    <div class="karte"><b>Raster</b><span>Große Vorschaubilder. Zum Durchblättern und Wiedererkennen.</span></div>
+    <div class="karte"><b>Karten</b><span>Eine Spalte mit der ganzen Fülle: Name, Maße, Status, Material, Ordner.</span></div>
+    <div class="karte"><b>Liste</b><span>Schlanke Tabelle zum Sortieren: Name, Format, Größe, Gewicht, Status.</span></div>
+  </div>
+  <h3>Die Seitenleiste</h3>
+  <p>Links: Suche, die Ansichten <b>Alle</b>, <b>Neu</b> und <b>Favoriten</b>, darunter die
+  <b>Ordner</b> wie im Explorer. Unten einklappbare Felder für Baugruppen, Sammlungen und Tags.
+  Die Höhen der Felder lassen sich an ihrer Oberkante ziehen und werden gemerkt. Die Breite der
+  Seitenleisten ist ebenfalls ziehbar (Doppelklick setzt zurück).</p>
+  <h3>Mehrere Modelle wählen</h3>
+  <p>Mit dem Häkchen auf der Kachel. Danach gelten Aktionen wie Tags, Sammlung, Löschen oder
+  „Zusammen gedruckt …“ für alle gewählten Modelle.</p>
+</section>
+
+<section id="suche">
+  <h2>Suche und Filter</h2>
+  <p>Das Suchfeld oben in der Seitenleiste versteht eine einfache Schreibweise. <kbd>Esc</kbd> leert es.</p>
+  <table>
+    <tr><th>Eingabe</th><th>Bedeutung</th></tr>
+    <tr><td><code>halter</code></td><td>Jedes Wort muss vorkommen, auch als Wortteil.</td></tr>
+    <tr><td><code>"arm front"</code></td><td>Genau diese Wortfolge.</td></tr>
+    <tr><td><code>-deckel</code></td><td>Schließt das Wort aus.</td></tr>
+    <tr><td><code>tag:arm</code></td><td>Nur Modelle mit dem Tag „arm“ (genau, nicht „armatur“).</td></tr>
+    <tr><td><code>format:stl</code></td><td>Nur ein Format: <code>3mf</code>, <code>stl</code>, <code>obj</code>, <code>step</code>.</td></tr>
+    <tr><td><code>gedruckt:ja</code></td><td>Nur bereits gedruckte Modelle (<code>nein</code> für die übrigen).</td></tr>
+    <tr><td><code>favorit:ja</code></td><td>Nur Favoriten.</td></tr>
+  </table>
+  <p>Weitere Filter: <code>ordner:</code> · <code>baugruppe:</code> · <code>sammlung:</code> ·
+  <code>material:</code> · <code>designer:</code> · <code>name:</code> · <code>titel:</code>.
+  Alles lässt sich kombinieren. Die Treffer sind nach Fundstelle geordnet: ein Begriff im
+  Namen zählt mehr als einer im Ordnernamen.</p>
+  <p>Zusätzlich gibt es über der Liste <b>Chips</b> für Material und Format. Gewählte Tags erscheinen
+  dort zum Wegnehmen.</p>
+</section>
+
+<section id="ordnung">
+  <h2>Tags, Material, Sammlungen</h2>
+  <h3>Tags</h3>
+  <p>Kurze Schlagworte. partAtlas schlägt beim Einlesen Tags aus dem Dateinamen vor
+  (abschaltbar unter <b>Einstellungen</b>). Tags liegen in der Seitenleiste, im Inspektor und in der Suche.</p>
+  <h3>Material</h3>
+  <p>Je Modell lässt sich festhalten, woraus es gedruckt wird. Material dient als Filter und taucht
+  in den Summen der Baugruppen auf.</p>
+  <h3>Sammlungen</h3>
+  <p>Frei zusammengestellte Gruppen, unabhängig von den Ordnern: „Für Weihnachten“, „Werkstatt“.
+  Ein Modell kann in mehreren Sammlungen sein; die Reihenfolge innerhalb einer Sammlung ist ziehbar.</p>
+  <h3>Favoriten</h3>
+  <p>Das Herz auf der Kachel. Es erscheint beim Darüberfahren und bleibt, wenn es gesetzt ist.</p>
+</section>
+
+<section id="inspektor">
+  <h2>Der Inspektor</h2>
+  <p>Ein Klick auf ein Modell öffnet rechts den Inspektor. Vorschau, Name, <b>Öffnen</b> und die
+  Reiterleiste bleiben oben stehen. Die Höhe der Vorschau ist ziehbar.</p>
+  <div class="karten">
+    <div class="karte"><b>Übersicht</b><span>Name, Tags, Material, Sammlungen, Maße und Gewicht.</span></div>
+    <div class="karte"><b>Drucke</b><span>Die Druckhistorie des Modells (siehe nächster Abschnitt).</span></div>
+    <div class="karte"><b>Datei</b><span>Wo die Datei liegt, ihre Modelldaten, Ordner im Dateimanager zeigen.</span></div>
+  </div>
+  <h3>Die Galerie</h3>
+  <p>Oben im Inspektor blätterst du durch: eigene Bilder, die <b>3D-Ansicht</b> (drehbar), das Bild aus
+  der Datei und die berechnete Vorschau. Mit <kbd>←</kbd> <kbd>→</kbd>, den Pfeilen, per Klick auf die
+  kleinen Bilder oder Wischen.</p>
+  <ul>
+    <li><b>Eigene Bilder</b> kommen mit <b>＋</b>, per Hineinziehen oder mit <kbd>Strg</kbd>+<kbd>V</kbd> dazu — auch mehrere auf einmal.</li>
+    <li><b>Rechtsklick</b> auf das Bild: „Als Vorschaubild festlegen“, „Bild entfernen“, „Eigenes Bild hinzufügen“.</li>
+    <li>Entfernte eigene Bilder werden archiviert, nicht gelöscht.</li>
+  </ul>
+  <p>Drei Arten von Bildern gibt es: <i>aus der Datei</i> (eingebettet, z. B. in 3MF), <i>berechnet</i>
+  (partAtlas rendert es aus dem Modell) und <i>eigene</i>. Ein neu berechnetes Bild überschreibt nie das aus der Datei.</p>
+</section>
+
+<section id="drucke">
+  <h2>Drucke</h2>
+  <p>Ein <b>Druck</b> hält fest, dass ein oder mehrere Modelle gedruckt wurden: wann, womit,
+  wie lange, wie schwer. Im Reiter <b>Drucke</b> des Inspektors legst du ihn an und bearbeitest ihn.</p>
+  <ul>
+    <li><b>Zähler und „gedruckt“ ergeben sich aus den Drucken.</b> Ein Haken von Hand ist nicht nötig.</li>
+    <li><b>Referenzdruck:</b> Der Druck, den du als Referenz markierst, liefert Gewicht, Zeit und Filament für Kachel und Übersicht.</li>
+    <li><b>Fotos</b> lassen sich einem Druck beilegen — auch per Ziehen auf den Druck.</li>
+    <li><b>Zusammen gedruckt:</b> Sind mehrere Modelle gewählt, legt „Zusammen gedruckt …“ im Menü einen Druck an allen an.</li>
+  </ul>
+  <div class="hinweis">Das Löschen eines Modells entfernt seine Druckhistorie nicht stillschweigend:
+  der Lösch-Dialog nennt vorher, was dranhängt.</div>
+</section>
+
+<section id="baugruppen">
+  <h2>Baugruppen</h2>
+  <p>Eine Baugruppe fasst mehrere Modelle zu einem Ganzen zusammen — ein Gehäuse aus fünf Teilen,
+  ein Regal aus zwanzig. Sie hat einen Namen, eine Beschreibung und eine <b>Stückliste</b>.</p>
+  <ul>
+    <li><b>Positionen:</b> Modelle mit Anzahl; Reihenfolge ziehbar.</li>
+    <li><b>Kaufteile:</b> Schrauben, Muttern, Magnete — alles, was nicht gedruckt wird. Ein Wähler mit Standardteilen hilft beim Anlegen.</li>
+    <li><b>Vorschläge:</b> partAtlas erkennt zusammengehörige Dateien anhand ihrer Namen und schlägt Baugruppen vor.</li>
+    <li><b>Export:</b> Die Stückliste lässt sich als <b>PDF</b> ausgeben.</li>
+    <li>Name und Beschreibung bearbeitest du direkt an Ort und Stelle; die ganze Zeile ist klickbar.</li>
+  </ul>
+  <p>Beim Löschen eines Modells zeigt der Dialog, in welchen Baugruppen es fehlen würde.</p>
+</section>
+
+<section id="oeffnen">
+  <h2>Im Slicer öffnen</h2>
+  <p>Weil partAtlas auf deinem Rechner läuft, kann es Programme direkt starten:
+  <b>Öffnen in …</b> im Inspektor oder im Kontextmenü.</p>
+  <ul>
+    <li><b>Erkannt</b> werden Slicer wie PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer und Cura sowie FreeCAD —
+    im PATH, als Flatpak oder als AppImage (z. B. in <code>~/Applications</code> oder <code>~/AppImages</code>).</li>
+    <li><b>Pro Format ein Standard:</b> STEP geht ins CAD, sonst in den Slicer. In den Einstellungen umstellbar; eigene Programme lassen sich eintragen.</li>
+    <li><b>Mit dem System öffnen</b> (xdg-open) geht immer.</li>
+    <li><b>Im Ordner zeigen</b> öffnet den Dateimanager an der Datei.</li>
+  </ul>
+  <p>Gestartet wird nur ein bekanntes Programm — nie ein Pfad, der aus einer Anfrage kommt.</p>
+</section>
+
+<section id="bereinigen">
+  <h2>Bereinigen und Löschen</h2>
+  <p>Der Besen in der Leiste am linken Rand zeigt, wo aufzuräumen ist. Das Abzeichen zählt
+  Duplikate, fehlende und unlesbare Dateien zusammen.</p>
+  <table>
+    <tr><th>Ansicht</th><th>Inhalt</th></tr>
+    <tr><td>Papierkorb</td><td>In partAtlas gelöschte Modelle; wiederherstellbar, leerbar.</td></tr>
+    <tr><td>Duplikate</td><td>Dateien mit gleichem Inhalt an mehreren Orten.</td></tr>
+    <tr><td>Datei fehlt</td><td>Im Katalog vorhanden, auf der Platte nicht mehr.</td></tr>
+    <tr><td>Unlesbar</td><td>Dateien, die partAtlas nicht auswerten konnte.</td></tr>
+  </table>
+  <h3>Löschen mit Auskunft</h3>
+  <p>Vor dem Löschen zeigt partAtlas, was am Modell hängt: Dateien, eigene Bilder, Baugruppen,
+  Sammlungen, Tags — jeweils mit der Zahl der anderen Modelle, die daran hängen. Ankreuzen lässt sich nur,
+  was eine echte Wahl ist. Der Dialog gilt auch für mehrere Modelle auf einmal.</p>
+</section>
+
+<section id="archive">
+  <h2>Archive</h2>
+  <p>ZIP- und TAR-Archive (<code>.zip</code>, <code>.tar</code>, <code>.tar.gz</code>, <code>.tar.bz2</code>,
+  <code>.tar.xz</code>) lassen sich in einen Unterordner neben dem Archiv entpacken. Nichts wird
+  überschrieben. Heraus kommen nur Modelle, G-Code, Bilder und Beschreibungen — nie Programme oder Skripte.
+  Gegen Archivbomben gibt es Grenzen für Größe und Anzahl der Einträge.</p>
+  <div class="hinweis warn">7z und RAR sind noch nicht möglich; sie bräuchten fremde Pakete.</div>
+</section>
+
+<section id="einstellungen">
+  <h2>Einstellungen</h2>
+  <ul>
+    <li><b>Hell / Dunkel</b> (Knopf in der Kopfzeile).</li>
+    <li><b>Tags aus dem Dateinamen vorschlagen</b> (Vorgabe: an). Gilt für neu Eingelesenes; Vorhandenes bleibt.</li>
+    <li><b>Programme:</b> Standardprogramm je Format; eigene Programme eintragen.</li>
+    <li><b>Wurzelordner entfernen:</b> Rechtsklick auf den Ordner in der Seitenleiste, „Aus partAtlas entfernen …“. Es werden keine Dateien gelöscht.</li>
+  </ul>
+</section>
+
+<section id="daten">
+  <h2>Daten und Sicherheit</h2>
+  <h3>Wo liegt was?</h3>
+  <table>
+    <tr><th>Ort</th><th>Inhalt</th></tr>
+    <tr><td><code>~/.local/share/partatlas</code></td><td>Der Bestand: Katalog, Vorschaubilder, eigene Bilder, Drucke. Anderer Ort mit <code>PARTATLAS_BESTAND</code>.</td></tr>
+    <tr><td>Deine Modell-Ordner</td><td>Bleiben, wo sie sind. partAtlas schreibt dort nur auf deine ausdrückliche Aktion: Verschieben, Umbenennen, Löschen in den Papierkorb.</td></tr>
+  </table>
+  <ul>
+    <li><b>Nur lokal:</b> Der Server hört auf <code>127.0.0.1</code> und ist von außen nicht erreichbar. Es gibt noch kein Passwort.</li>
+    <li><b>Sicher schreiben:</b> Jeder Schreibvorgang geht über eine Arbeitsdatei, <code>fsync</code> und Umbenennen — nie wird eine Datei an Ort und Stelle verändert. Der Speicher ändert sich erst, wenn die Platte es aufnehmen kann.</li>
+    <li><b>Nichts überschreiben:</b> Beim Verschieben und Entpacken wird nie etwas überschrieben.</li>
+    <li><b>Backup:</b> Sichere den Ordner <code>~/.local/share/partatlas</code>. Ohne ihn sind Tags, Drucke und eigene Bilder weg. Die Vorschaubilder lassen sich neu berechnen.</li>
+  </ul>
+  <div class="hinweis warn">Den Server nicht ins Netz stellen und den Port nicht freigeben: es gibt noch keinen
+  Passwortschutz, und der Ordnerwähler listet das Dateisystem.</div>
+</section>
+
+<section id="formate">
+  <h2>Dateiformate</h2>
+  <table>
+    <tr><th>Format</th><th>Was partAtlas daraus liest</th></tr>
+    <tr><td>3MF</td><td>Geometrie, eingebettetes Vorschaubild, Objektzahl, Filament je Platte (aus Orca/Bambu-Dateien).</td></tr>
+    <tr><td>STL</td><td>Geometrie, Maße, Volumen, Gewicht. Vorschau wird berechnet.</td></tr>
+    <tr><td>OBJ</td><td>Geometrie, Maße. Vorschau wird berechnet.</td></tr>
+    <tr><td>STEP / STP</td><td>Wird katalogisiert und im CAD geöffnet.</td></tr>
+  </table>
+</section>
+
+<section id="stand">
+  <h2>Was geht, was kommt</h2>
+  <p>partAtlas ist ein <b>Pilot</b>. Er zeigt, was die dateibasierte Datenbank
+  <a href="https://github.com/bireggbaum-beep/flatgraphdb">flatgraph</a> in einem echten Katalog kann.
+  Die Oberfläche ändert sich noch.</p>
+  <table>
+    <tr><th>Funktion</th><th>Stand</th></tr>
+    <tr><td>Einlesen, Suche, Ansichten, Tags, Sammlungen</td><td><span class="st ok">gebaut</span></td></tr>
+    <tr><td>Galerie, 3D-Ansicht, eigene Bilder</td><td><span class="st ok">gebaut</span></td></tr>
+    <tr><td>Baugruppen mit Stückliste und PDF</td><td><span class="st ok">gebaut</span></td></tr>
+    <tr><td>Drucke mit Fotos und Referenzdruck</td><td><span class="st ok">gebaut</span></td></tr>
+    <tr><td>Bereinigen, Papierkorb, Löschen mit Auskunft</td><td><span class="st ok">gebaut</span></td></tr>
+    <tr><td>Drucke mit G-Code: Einstellungen auslesen, zwei Drucke vergleichen</td><td><span class="st soon">geplant</span></td></tr>
+    <tr><td>Einstellungen als Dialog mit Reitern</td><td><span class="st soon">geplant</span></td></tr>
+    <tr><td>Warteschlange, Druckmanagement</td><td><span class="st soon">später (Phase 2)</span></td></tr>
+    <tr><td>Filament- und Druckerverwaltung, Moonraker-Anbindung</td><td><span class="st soon">später</span></td></tr>
+    <tr><td>7z und RAR entpacken</td><td><span class="st no">offen</span></td></tr>
+    <tr><td>Passwortschutz für Zugriff im Heimnetz</td><td><span class="st no">offen</span></td></tr>
+  </table>
+  <p>Was fehlt oder falsch ist, sag es: Screenshot und ein Satz dazu genügen.</p>
+</section>
+
+</article>
+</main>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  try { var t = localStorage.getItem('theme'); if (t) root.setAttribute('data-theme', t); } catch (e) {}
+  document.getElementById('theme').addEventListener('click', function () {
+    var dunkel = root.getAttribute('data-theme') === 'dark' ||
+      (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    var neu = dunkel ? 'light' : 'dark';
+    root.setAttribute('data-theme', neu);
+    try { localStorage.setItem('theme', neu); } catch (e) {}
+  });
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('#nav a'));
+  var secs = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+  function spy() {
+    var y = window.scrollY + 89, cur = 0;
+    secs.forEach(function (s, i) { if (s && s.offsetTop <= y) cur = i; });
+    links.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+  }
+  window.addEventListener('scroll', spy, { passive: true });
+  spy();
+})();
+</script>
+</body>
+</html>
