@@ -1815,7 +1815,7 @@ const feldRaum = $(".panes");
 const felder = [...feldRaum.children].filter((x) => x.classList.contains("sektion"));
 let gemerkteHoehen = {};
 try { gemerkteHoehen = JSON.parse(localStorageLesen("felder") || "{}") || {}; } catch { gemerkteHoehen = {}; }
-const feldSichtbar = () => felder.filter((f) => !f.hidden);
+const feldSichtbar = () => felder.filter((f) => !f.hidden && getComputedStyle(f).display !== "none");
 const feldOffen = (f) => !f.dataset.zu;
 // Gleiche Mindesthöhe für alle offenen Felder; wird das Fenster so niedrig, dass sie nicht reicht, schrumpft sie gemeinsam.
 function feldMin() {
@@ -1897,6 +1897,7 @@ felder.slice(1).forEach((f) => {
 });
 new ResizeObserver(seitenLayout).observe(feldRaum);
 new MutationObserver(seitenLayout).observe(feldRaum, { attributes: true, subtree: true, attributeFilter: ["data-zu", "hidden"] });
+new MutationObserver(seitenLayout).observe($(".seite"), { attributes: true, attributeFilter: ["data-modus"] });   // Katalog ↔ Bereinigen
 requestAnimationFrame(seitenLayout);
 
 

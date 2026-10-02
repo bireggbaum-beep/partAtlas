@@ -389,6 +389,7 @@ async def oberflaeche(port):
         check("… und der Besen trägt das Abzeichen „1“",
               (await pg.inner_text("#abz-bereinigen")).strip() == "1")
         await pg.click('[data-rail="bereinigen"]')
+        await pg.wait_for_selector('[data-sektion="bereinigen"]', state="visible", timeout=5000)
         check("Bereinigen: die Seitenleiste wechselt, „Datei fehlt“ zählt 1, Tags sind weg",
               await pg.locator('[data-sektion="bereinigen"]').is_visible()
               and (await pg.inner_text('[data-ansicht="fehlt"] em')).strip() == "1"
