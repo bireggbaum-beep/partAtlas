@@ -349,7 +349,7 @@ function zeileK(m, y) {
       <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
       <div class="k-chips">${chips}</div>
       <div class="k-ordner" title="${esc(ordner)}">${ordner ? "▸ " + esc(ordner) : ""}</div>
-    </div></div>`;
+    </div>${hoverAktionen(m)}</div>`;
 }
 
 const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
@@ -369,7 +369,7 @@ function zeileL(m, y) {
     <span class="mono">${m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : ""}</span>
     <span class="mono">${status}</span>
     <span class="mono">${m.tags.map((t) => "#" + esc(t)).join(" ")}</span>
-    <span class="mono" title="${esc(ordner)}">${esc(ordner)}</span></div>`;
+    <span class="mono" title="${esc(ordner)}">${esc(ordner)}</span>${hoverAktionen(m)}</div>`;
 }
 
 function zeichneListenkopf() {
@@ -1054,6 +1054,31 @@ document.addEventListener("paste", (e) => {
   bilderHochladen(bilder);
 });
 
+// Die Programme für die Hover-Knöpfe in Liste und Karten: synchron zur Hand, weil die Zeilen
+// als Text gebaut werden. Nach dem Laden und nach geänderten Einstellungen neu zeichnen.
+let programmDaten = null;
+function programmeAktualisieren() {
+  programmCache = null;
+  return ladeProgramme().then((p) => { programmDaten = p; raster.zeichne(); });
+}
+
+// Zeichensprache wie die Ansichtsleiste links: Linie, flach, einfarbig (16 × 16, 1,4 px).
+const HV_ICONS = {
+  slicer: '<svg viewBox="0 0 16 16"><path d="M8 2 14 5 8 8 2 5z"/><path d="M2 8l6 3 6-3"/><path d="M2 11l6 3 6-3"/></svg>',
+  cad: '<svg viewBox="0 0 16 16"><path d="M8 1.5 14 4.7v6.6L8 14.5 2 11.3V4.7z"/><path d="M2 4.7 8 8l6-3.3M8 8v6.5"/></svg>',
+};
+
+// Beim Überfahren: im Slicer / im CAD öffnen. Nur, wo es geht (Datei da, Programm für das Format da).
+function hoverAktionen(m) {
+  if (!programmDaten || m.fehlt || m.fehler || zustand.ansicht === "papierkorb") return "";
+  const { je } = programmeFuer(m, programmDaten);
+  const knoepfe = ["slicer", "cad"].filter((a) => je[a]?.length).map((a) => {
+    const p = je[a][0];
+    return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
+  }).join("");
+  return knoepfe ? `<div class="hv">${knoepfe}</div>` : "";
+}
+
 let programmCache = null;
 function ladeProgramme() {
   if (!programmCache) programmCache = api("/api/programme").catch(() => ({ programme: [], standard: {}, arten: {} }));
@@ -1255,6 +1280,8 @@ document.addEventListener("click", async (e) => {
   const t = e.target;
   const wahl = t.closest("[data-wahl]");
   if (wahl) { e.stopPropagation(); return waehleAus(wahl.dataset.wahl, e.shiftKey); }
+  const hv = t.closest("[data-hv]");
+  if (hv) { e.stopPropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }
   const st = t.closest("[data-stapel]");
   if (st) return stapelAktion(st.dataset.stapel);
   const lay = t.closest("[data-layout]");
@@ -1614,6 +1641,7 @@ function live() {
 
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
 neuLaden();
+programmeAktualisieren();
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.

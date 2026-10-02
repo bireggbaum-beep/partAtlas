@@ -187,6 +187,12 @@ Pfad-Texteingabe). Mehrere Wurzeln: gleichnamige Ordner tragen den übergeordnet
 Ordner als Zusatz („3D-Druck · USB-Stick“); Rechtsklick auf eine Wurzel →
 „Aus partAtlas entfernen …“ (Dateien bleiben, Modelle gelten als „Datei fehlt“).
 
+**Hover-Knöpfe (Liste und Karten):** beim Überfahren erscheinen unten rechts (Karten) bzw. am
+Zeilenende (Liste) zwei Linien-Symbole — Slicer (Schichten) und CAD (Würfel) — mit Tooltip
+„In <Programm> öffnen“; nur, wo die Datei da ist und ein Programm das Format kann
+(`hoverAktionen()` in `app.js`). Raster hat sie nicht. Meine Prüfskripte laufen mit
+`?phase=2` (Warteschlange sichtbar) — im Normalbetrieb bleibt sie ausgeblendet.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
@@ -215,8 +221,5 @@ sichtbar, nicht bearbeitbar — bewusst, Testbestand.
 
 ## Idee, noch nicht gebaut
 
-- **Hover-Aktionen in Liste und Karten:** Icon-Knöpfe mit Tooltip, die beim
-  Überfahren erscheinen — im Slicer öffnen, im CAD öffnen, direkt drucken;
-  in der Symbolsprache der Ansichtsleiste oben in der Seitenleiste
-  (einfache Strichsymbole, nicht Emoji). „Direkt drucken“ hängt an der
-  Druckanbindung und ist eine eigene Sache.
+- **„Direkt drucken“ als Hover-Knopf:** hängt an der Druckanbindung und ist eine
+  eigene Sache. Slicer und CAD gibt es schon (siehe unten, „Hover-Knöpfe“).

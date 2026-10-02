@@ -582,7 +582,7 @@ async function einstellungen() {
                                                           programm: progWahl.geaendert,
                                                           pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });
     toast("Gespeichert.");
-    programmCache = null;
+    programmeAktualisieren();
     ladeBaugruppe();
     if ($("#inspektor").dataset.id) waehle($("#inspektor").dataset.id);
   } catch (err) { toast(err.message); }
