@@ -464,6 +464,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             werte["standard_farbe"] = f
         if "auto_tags" in d:
             werte["auto_tags"] = bool(d["auto_tags"])
+        if "fcstd_freecad" in d:     # None = fragen, "ja", "nein"
+            if d["fcstd_freecad"] not in (None, "ja", "nein"):
+                raise KatalogFehler("FCStd über FreeCAD: ja, nein oder fragen.")
+            werte["fcstd_freecad"] = d["fcstd_freecad"]
         if "pdf" in d:     # nur bekannte Schalter, nur Wahrheitswerte
             werte["pdf"] = {k: bool(v) for k, v in (d["pdf"] or {}).items() if k in PDF_STANDARD}
         if "rolle_g" in d:

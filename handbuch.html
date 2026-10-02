@@ -380,7 +380,7 @@ td:first-child { white-space: nowrap; }
     <tr><td>STL</td><td>Geometrie, Maße, Volumen, Gewicht. Vorschau wird berechnet.</td></tr>
     <tr><td>OBJ</td><td>Geometrie, Maße. Vorschau wird berechnet.</td></tr>
     <tr><td>STEP / STP</td><td>Wird katalogisiert und im CAD geöffnet. Ist FreeCAD installiert, wandelt partAtlas die Dateien nach dem Einlesen im Hintergrund (ohne Fenster) in ein Netz um: dann gibt es Vorschau, Maße, Gewicht und 3D-Ansicht. Ohne FreeCAD bleibt es bei „nur CAD“.</td></tr>
-    <tr><td>FCStd</td><td>FreeCAD-Dokument. Titel und Urheber kommen aus der Datei. Als Vorschau dient das Bild, das FreeCAD beim Speichern mitlegt, falls vorhanden; Maße gibt es nicht. Öffnet in FreeCAD.</td></tr>
+    <tr><td>FCStd</td><td>FreeCAD-Dokument. Titel und Urheber kommen aus der Datei. Als Vorschau dient zunächst das Bild, das FreeCAD beim Speichern mitlegt. Für Maße, Gewicht und 3D-Ansicht kann partAtlas das Dokument im Hintergrund in FreeCAD laden; weil ein FreeCAD-Dokument Programmcode enthalten kann, fragt partAtlas vorher und tut es nur nach deiner Zusage (Einstellungen › Einlesen). Öffnet in FreeCAD.</td></tr>
   </table>
 </section>
 

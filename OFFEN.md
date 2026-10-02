@@ -312,6 +312,15 @@ Playwright-Skript (Menü, Dialog, Ergebnis), nicht mit `test_ui.py`.
 **Offen:** Weg 2 (ganzer Ordner samt fremden Dateien in den Papierkorb und zurück, Aufwand 4). Der Ordnerbaum leitet sich aus den Modelldateien ab: ein Ordner,
 in dem nur noch fremde Dateien liegen, verschwindet aus der Seitenleiste — erreichbar bleibt er über den Pfad im Dialog.
 
+**FCStd über FreeCAD (0.29.2):** derselbe Weg wie STEP (`cad.py`, Phase 6), aber **nur nach Zusage**: ein FreeCAD-Dokument kann beim Laden Programmcode
+ausführen (nicht geprüft, ob FreeCAD das tatsächlich tut — deshalb vorsichtig). Einstellung `fcstd_freecad` (`None` = fragen, `"ja"`, `"nein"`; Einstellungen › Einlesen).
+Ohne Antwort lädt der Scan kein FCStd und meldet `fcstd_frage` (Anzahl); die Oberfläche fragt einmal je Sitzung mit Hinweis: **Nie** / **Nicht jetzt** / **Ja, einlesen**
+(`fcstdFrage()` in `app.js`). `cad_skript.py` öffnet das Dokument, nimmt die **sichtbaren Körper, die nicht Teil eines anderen Körpers sind** (`koerper()`), fasst sie zu
+einer Form zusammen und vernetzt sie; Zeitgrenze und Stapel wie bei STEP. Das berechnete Bild steht vor dem Thumbnail aus der Datei (`Katalog.vorschauen`, für CAD-Formate
+umgekehrt). Geprüft in `test_cad` (12/12), `test_scan` (59/59) mit Gegenproben; **nicht** an echtem FreeCAD: `FreeCAD.openDocument`, `Visibility`/`InList`,
+`Part.makeCompound`. **Offen:** Teile in verschachtelten `App::Part` bekommen nur ihre lokale Platzierung (Baugruppen können versetzt erscheinen); `App::Link` wird nicht
+aufgelöst; grosse Baugruppen laufen in die Zeitgrenze.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

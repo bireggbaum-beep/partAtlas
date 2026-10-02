@@ -43,6 +43,23 @@ if __name__ == "__main__":
            (2, True, None, False), (2, False, True, False)] and "nicht lesbar" in zeilen[3]["fehler"])
     check("Skript: nach dem Fehler läuft der Stapel weiter (zweite Datei geschrieben)", os.path.exists(os.path.join(tmp, "b.stl")))
 
+    # -- Welche Körper eines FCStd-Dokuments zählen: sichtbar und nicht Teil eines anderen Körpers
+    class _Obj:
+        def __init__(self, sichtbar=True, form=True, in_liste=()):
+            if form:
+                self.Shape = _Form()
+            self.Visibility, self.InList = sichtbar, list(in_liste)
+    sichtbar_a, verdeckt = _Obj(), _Obj(sichtbar=False)
+    kind = _Obj()
+    schnitt = _Obj()
+    kind.InList = [schnitt]                       # steckt in einem Schnitt: zählt nicht einzeln
+    container = _Obj(form=False)                  # App::Part: keine Form, aber Kinder verweisen auf ihn
+    im_container = _Obj(in_liste=[container])
+    class _Dok:
+        Objects = [sichtbar_a, verdeckt, kind, schnitt, container, im_container]
+    check("Körper: sichtbar und nicht Teil eines anderen Körpers — ein Container verdeckt seine Kinder nicht",
+          cad_skript.koerper(_Dok) == [sichtbar_a.Shape, schnitt.Shape, im_container.Shape])
+
     # -- Welches Programm ist FreeCAD ohne Fenster?
     d = os.path.join(tmp, "bin")
     os.makedirs(d)

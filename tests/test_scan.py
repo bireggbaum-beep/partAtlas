@@ -395,4 +395,29 @@ if __name__ == "__main__":
     _scan2.programme.programm_fuer = _vorher
     st_b.schliessen()
 
+    # -- FCStd über FreeCAD nur nach Zusage des Anwenders (ein Dokument kann Programmcode mitbringen)
+    fz_tmp = tempfile.mkdtemp()
+    fz_dir = os.path.join(fz_tmp, "cad")
+    os.makedirs(fz_dir)
+    muster.fcstd(os.path.join(fz_dir, "Gehaeuse.FCStd"))
+    fz_b = Bestand(os.path.join(fz_tmp, "bestand"))
+    fz_k = Katalog(fz_b)
+    fz_k.wurzel_hinzufuegen(fz_dir)
+    fz = lambda: {m["name"]: m for m in fz_k.modelle()}["Gehaeuse"]
+    fz_s = Scanner(fz_b, fz_k, prozesse=2, cad_befehl=attrappe)
+    fz_s.lauf()
+    check("FCStd ohne Antwort des Anwenders: FreeCAD lädt es nicht, die Oberfläche soll fragen",
+          fz_s.status["fcstd_frage"] == 1 and fz()["cad"] == "ausstehend" and not os.path.exists(fz_b.netz_pfad(fz()["hash"])))
+    fz_b.einstellungen_setzen(fcstd_freecad="nein")
+    fz_s.lauf()
+    check("FCStd mit „Nein“: wird nicht geladen und es wird nicht erneut gefragt",
+          fz_s.status["fcstd_frage"] == 0 and fz()["cad"] == "ausstehend")
+    fz_b.einstellungen_setzen(fcstd_freecad="ja")
+    fz_s.lauf()
+    d = fz_k.db.get_node(f"PART_GEOMETRY/{fz()['hash']}", readonly=True)
+    check("FCStd mit „Ja“: Netz, Maße und berechnetes Vorschaubild; das schärfere Bild steht vor dem Thumbnail aus der Datei",
+          fz()["cad"] == "ok" and fz()["masse"] is not None and os.path.exists(fz_b.netz_pfad(fz()["hash"]))
+          and [a for a, _ in fz_k.vorschauen(d)] == ["berechnet", "extrahiert"])
+    fz_b.schliessen()
+
     muster.ende()

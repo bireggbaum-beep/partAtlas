@@ -578,7 +578,14 @@ async function einstellungen() {
     ["einlesen", "Einlesen", `
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
-      <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>`],
+      <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>
+      <div class="i-titel">FREECAD-DOKUMENTE (FCSTD)</div>
+      <label>Über FreeCAD einlesen für Maße, Gewicht und 3D-Ansicht
+        <select id="ein-fcstd"><option value="" ${!e.fcstd_freecad ? "selected" : ""}>Fragen</option>
+          <option value="ja" ${e.fcstd_freecad === "ja" ? "selected" : ""}>Ja, immer</option>
+          <option value="nein" ${e.fcstd_freecad === "nein" ? "selected" : ""}>Nein, nie</option></select></label>
+      <p class="dim">Ein FreeCAD-Dokument kann Programmcode enthalten, der beim Laden ausgeführt wird — als würdest du es in FreeCAD öffnen.
+        Nur für Dateien aus Quellen, denen du vertraust.</p>`],
     ["pdf", "PDF-Export", `
       <p class="dim">Was die Stückliste einer Baugruppe als PDF enthält („Stückliste als PDF“ in der Baugruppe).</p>
       <div class="i-titel">ABSCHNITTE</div>
@@ -604,6 +611,7 @@ async function einstellungen() {
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
                                                           rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked,
+                                                          fcstd_freecad: $("#ein-fcstd").value || null,
                                                           programm: progWahl.geaendert,
                                                           pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });
     toast("Gespeichert.");

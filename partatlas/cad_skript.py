@@ -5,6 +5,9 @@ partAtlas startet FreeCAD einmal für einen ganzen Stapel (`cad.py`); ein Start 
 Minuten. Dieses Skript importiert deshalb nichts aus partAtlas — FreeCADs Python kennt es nicht — und nimmt nur die
 Standardbibliothek und FreeCADs eigene Module.
 
+Eine STEP-Datei liest `Part.read`; ein FCStd-Dokument wird geöffnet (das lädt es wie beim Doppelklick) und die sichtbaren Körper
+werden zu einer Form zusammengefasst.
+
 Auftrag: die JSON-Datei, auf die PARTATLAS_CAD_JOB zeigt:
     {"auftraege": [{"quelle": "...step", "ziel": "...stl"}, ...],
      "abweichung": 0.1, "winkel": 0.5, "ergebnis": "<Pfad der Ergebnisdatei>"}
@@ -23,15 +26,41 @@ def _zeile(datei, **werte):
     datei.flush()
 
 
-def lauf(job_pfad, part, meshpart):
-    """`part` und `meshpart` werden übergeben statt importiert, damit die Suite das Protokoll ohne FreeCAD prüfen kann."""
+def koerper(doc):
+    """Die Formen eines FreeCAD-Dokuments, die man als Teil sieht: sichtbar und nicht Bestandteil eines anderen Körpers (Schnitt,
+    Body, Vereinigung). Container wie App::Part haben keine Form; ihre Kinder kommen einzeln."""
+    formen = []
+    for o in doc.Objects:
+        if not hasattr(o, "Shape") or not getattr(o, "Visibility", True) or o.Shape.isNull():
+            continue
+        if any(hasattr(p, "Shape") for p in o.InList):
+            continue
+        formen.append(o.Shape)
+    return formen
+
+
+def _form(auftrag, part, freecad):
+    if not auftrag["quelle"].lower().endswith(".fcstd"):
+        return part.read(auftrag["quelle"])
+    doc = freecad.openDocument(auftrag["quelle"])
+    try:
+        formen = koerper(doc)
+        if not formen:
+            raise ValueError("keine sichtbaren Körper")
+        return part.makeCompound(formen)
+    finally:
+        freecad.closeDocument(doc.Name)
+
+
+def lauf(job_pfad, part, meshpart, freecad=None):
+    """`part`, `meshpart` und `freecad` werden übergeben statt importiert, damit die Suite das Protokoll ohne FreeCAD prüfen kann."""
     with open(job_pfad, encoding="utf-8") as f:
         job = json.load(f)
     with open(job["ergebnis"], "a", encoding="utf-8") as erg:
         for i, auftrag in enumerate(job["auftraege"]):
             _zeile(erg, i=i, start=True)
             try:
-                form = part.read(auftrag["quelle"])
+                form = _form(auftrag, part, freecad)
                 if form.isNull():
                     raise ValueError("leere Form")
                 netz = meshpart.meshFromShape(Shape=form, LinearDeflection=job["abweichung"],
@@ -46,6 +75,7 @@ def lauf(job_pfad, part, meshpart):
 
 _job = os.environ.get("PARTATLAS_CAD_JOB")
 if _job:
+    import FreeCAD
     import MeshPart
     import Part
-    lauf(_job, Part, MeshPart)
+    lauf(_job, Part, MeshPart, FreeCAD)

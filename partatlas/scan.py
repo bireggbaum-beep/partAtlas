@@ -62,7 +62,7 @@ def _analyse(pfad, vorschau_ziel):
         dateien.schreibe_atomar(vorschau_ziel, a.vorschau_png)
         status = "eingebettet"
     felder = a.als_felder()
-    if a.format == "step":
+    if a.format in ("step", "fcstd"):
         felder["cad"] = "ausstehend"     # Netz kommt später von FreeCAD (Phase 6), wenn es da ist
     return felder, status, None
 
@@ -228,6 +228,7 @@ class Scanner:
     def lauf(self):
         t0 = time.time()
         self._stopp.clear()
+        self._setze(fcstd_frage=0)
         self._setze(laeuft=True, phase="suchen", gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
                     unlesbar=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
@@ -379,6 +380,15 @@ class Scanner:
         if not befehl:
             self._setze(cad_ohne_freecad=len(offen))
             return
+        # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut partAtlas nur nach
+        # ausdrücklicher Zusage des Anwenders. Solange er nicht geantwortet hat, fragt die Oberfläche (`fcstd_frage`).
+        wahl = self.b.einstellungen().get("fcstd_freecad")
+        fcstd = [x for x in offen if x[1].get("format") == "fcstd"]
+        if wahl != "ja" and fcstd:
+            offen = [x for x in offen if x[1].get("format") != "fcstd"]
+            self._setze(fcstd_frage=len(fcstd) if wahl is None else 0)
+            if not offen:
+                return
         aufgaben = []
         for h, d in offen:
             ort = next((o for o in d.get("orte", []) if self.k.absoluter_pfad(o)), None)

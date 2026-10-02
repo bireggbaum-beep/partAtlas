@@ -42,10 +42,41 @@ class Part:
         return Form(name)
 
 
+class Objekt:
+    def __init__(self, name, sichtbar=True):
+        self.Shape = Form(name)
+        self.Visibility = sichtbar
+        self.InList = []
+
+
+class Dokument:
+    def __init__(self, name):
+        self.Name = name
+        self.Objects = [Objekt(name), Objekt("verdeckt_" + name, sichtbar=False)]
+
+
+class FreeCAD:
+    @staticmethod
+    def openDocument(pfad):
+        name = os.path.basename(pfad)
+        if "haengt" in name:
+            time.sleep(600)
+        if "kaputt" in name:
+            raise ValueError("kaputt")
+        return Dokument(name)
+
+    @staticmethod
+    def closeDocument(name):
+        pass
+
+
+Part.makeCompound = staticmethod(lambda formen: formen[0])
+
+
 class MeshPart:
     @staticmethod
     def meshFromShape(Shape, LinearDeflection, AngularDeflection, Relative):
         return Netz(Shape.name)
 
 
-cad_skript.lauf(job, Part, MeshPart)
+cad_skript.lauf(job, Part, MeshPart, FreeCAD)

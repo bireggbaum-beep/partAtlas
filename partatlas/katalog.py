@@ -198,7 +198,11 @@ class Katalog:
 
     def vorschauen(self, d):
         """Die Vorschaubilder einer Datei: [(art, Pfad im Vault)], aus der Datei zuerst."""
-        return [(art, d[f"vorschau_{art}"]) for art in VORSCHAU_ARTEN if (d or {}).get(f"vorschau_{art}")]
+        arten = VORSCHAU_ARTEN
+        if (d or {}).get("format") in formate.OHNE_NETZ:
+            # CAD-Datei: das Bild aus der Datei ist ein kleines Thumbnail; das berechnete aus dem Netz ist schärfer.
+            arten = tuple(reversed(arten))
+        return [(art, d[f"vorschau_{art}"]) for art in arten if (d or {}).get(f"vorschau_{art}")]
 
     def vorschau_datei(self, h):
         """Bestes Vorschaubild als Pfad: aus der Datei vor berechnet."""
@@ -210,7 +214,7 @@ class Katalog:
         """STEP-Dateien, die noch ein Netz von FreeCAD brauchen. Auch ältere Einträge ohne das Feld `cad`: sie wurden vor
         dieser Fassung aufgenommen. `fehler` ist der Lesefehler der Datei selbst, nicht der der Umwandlung."""
         return [(h, d) for h, d in self._dateien().items()
-                if d.get("format") == "step" and d.get("cad") in (None, "ausstehend") and d.get("orte") and not d.get("fehler")]
+                if d.get("format") in ("step", "fcstd") and d.get("cad") in (None, "ausstehend") and d.get("orte") and not d.get("fehler")]
 
     def cad_ergebnis(self, h, felder, vorschau, fehler=None):
         """Netz und Vorschau aus FreeCAD sind da. Der Aufrufer hält die Transaktion."""

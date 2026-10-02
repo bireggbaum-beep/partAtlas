@@ -492,7 +492,7 @@ Sie gehen mit dem Modell in den Papierkorb und kommen mit ihm zurück.
 **Da:** Wurzelordner (mehrere), Scan mit Hash als Kennung (Verschieben,
 Umbenennen, Kopien, fehlende Dateien), Leser für STL/OBJ/3MF (Komponenten,
 Transformationen, Bild, Platten aus `slice_info`), STEP (Maße, Vorschau und 3D-Ansicht über FreeCAD ohne Fenster, wenn es
-installiert ist; sonst nur aufgenommen) und FCStd (Vorschau aus dem Thumbnail der Datei),
+installiert ist; sonst nur aufgenommen) und FCStd (Vorschau aus dem Thumbnail der Datei; nach Zusage des Anwenders auch Maße, Vorschau und 3D-Ansicht über FreeCAD),
 Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
 3MF Katalog, Suche wie in pDMS (Teilwörter, alle Wörter, "Wortfolge",
 -wort, Feldfilter tag:/ordner:/baugruppe:/sammlung:/material:/format:/

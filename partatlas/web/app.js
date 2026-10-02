@@ -96,7 +96,7 @@ const zahl = (x, stellen = 1) => x == null ? "–" : Number(x).toLocaleString("d
 const masse = (m) => m ? m.map((v) => zahl(v)).join(" × ") + " mm" : "";
 const endung = { "3mf": ".3mf", stl: ".stl", obj: ".obj", step: ".step", fcstd: ".FCStd" };
 // CAD-Formate ohne Netz: keine Masse, keine 3D-Ansicht; ein Bild nur, wenn die Datei eins mitbringt.
-const nurCad = (m) => (m.format === "step" && m.cad !== "ok") || m.format === "fcstd";
+const nurCad = (m) => (m.format === "step" || m.format === "fcstd") && m.cad !== "ok";
 const nurCadText = (m) => m.format === "step" && m.cad !== "fehler" && zustand.scan?.laeuft ? "Vorschau folgt (FreeCAD) …" : `${m.format === "fcstd" ? "FCStd" : "STEP"} · nur CAD`;
 const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()) < 7 * 864e5;
 
@@ -1846,6 +1846,7 @@ function live() {
         : (m.vorschauen_offen ? "" : "");
       if (m.phase === "vorschau" && m.vorschauen_offen && !m.abbricht) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
       if (m.phase === "cad" && m.laeuft && !m.abbricht) $("#scan-status").textContent = `STEP umwandeln (FreeCAD): noch ${m.cad_offen}`;
+      if (m.fcstd_frage && !m.laeuft && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
       if (m.phase === "fertig" || m.abgebrochen) {
         $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
         if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
@@ -1872,7 +1873,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan?.fcstd_frage && !s.scan.laeuft && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
@@ -2015,6 +2016,23 @@ async function kontextMenu(e, id) {
   menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
   menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
   menu.classList.toggle("flyout-links", menu.getBoundingClientRect().right + 220 > innerWidth);
+}
+
+// FCStd über FreeCAD: ein Dokument kann Programmcode enthalten, der beim Laden läuft — deshalb nie ohne Zusage. Einmal je Sitzung
+// gefragt; „Nicht jetzt“ fragt beim nächsten Start wieder, „Nie“ merkt sich die Antwort (Einstellungen › Einlesen).
+async function fcstdFrage(n) {
+  const a = await dialog(`<h2>FreeCAD-Dateien über FreeCAD einlesen?</h2>
+    <p>${n} ${n === 1 ? "FreeCAD-Datei hat" : "FreeCAD-Dateien haben"} noch keine Maße, kein Gewicht und keine 3D-Ansicht. partAtlas kann
+      ${n === 1 ? "sie" : "sie"} dafür im Hintergrund in FreeCAD laden, ohne Fenster.</p>
+    <p><b>Wichtig:</b> Ein FreeCAD-Dokument kann Programmcode enthalten, der beim Laden ausgeführt wird. Das ist dasselbe, als würdest du die
+      Datei in FreeCAD öffnen. Mach das nur für Dateien aus Quellen, denen du vertraust; bei heruntergeladenen Archiven aus dem Netz ist das
+      Risiko höher als bei eigenen Konstruktionen.</p>
+    <div class="knoepfe"><button class="knopf" value="nie">Nie</button><button class="knopf" value="nein">Nicht jetzt</button><button class="knopf akzent" value="ja">Ja, einlesen</button></div>`);
+  if (a !== "ja" && a !== "nie") return;
+  try {
+    await api("/api/einstellungen", { method: "PUT", body: { fcstd_freecad: a === "ja" ? "ja" : "nein" } });
+    if (a === "ja") { await api("/api/scan", { method: "POST" }); toast("FCStd-Dateien werden über FreeCAD eingelesen …"); }
+  } catch (e) { toast(e.message); }
 }
 
 async function ordnerZeigen(id) {
