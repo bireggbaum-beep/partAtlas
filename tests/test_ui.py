@@ -69,18 +69,9 @@ async def oberflaeche(port):
         await pg.wait_for_selector(".willkommen")
         check("Erster Start: Willkommenskarte, leere Rubriken der Seitenleiste ausgeblendet",
               "Wurzelordner wählen" in await pg.inner_text(".willkommen") and not await pg.locator("text=SAMMLUNGEN").is_visible())
-        await pg.click("#wurzel-neu-3")
-        await pg.wait_for_selector(".ow-ordner")
-        await pg.click(".ow-tippen summary")
-        await pg.fill("#ow-pfad", os.path.dirname(SAMMLUNG))
-        await pg.click("[data-ow-gehe]")
-        await pg.click(f'[data-ow-pfad="{SAMMLUNG}"]')
-        await pg.wait_for_function("document.querySelector('.ow-fuss')?.textContent.includes('3 Modelldateien')", timeout=5000)
-        check("Ordner-Wähler: hineinklicken, vor dem Bestätigen steht, wie viele Modelldateien drin liegen",
-              "3 Modelldateien" in await pg.inner_text(".ow-fuss"))
-        await pg.click("#ow-ok")
+        await pg.click("#wurzel-neu-3")                    # der Ordnerdialog des Rechners (Attrappe) wählt die Sammlung
         await pg.wait_for_selector(".karte", timeout=60000)
-        check("Nach dem Bestätigen wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
+        check("Ordner über den Dialog des Rechners gewählt: es wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
               await pg.locator("text=SAMMLUNGEN").is_visible())
         while api(port, "/api/stand")["scan"].get("laeuft"):
             await asyncio.sleep(0.3)
@@ -498,9 +489,9 @@ if __name__ == "__main__":
         with open(os.path.join(attrappen, name), "w") as f:
             f.write(f'#!/bin/sh\necho "{name} $*" >> "{PROTOKOLL}"\n')
         os.chmod(os.path.join(attrappen, name), 0o755)
-    # Der Dateidialog des Rechners: „wählt“ immer die FreeCAD-Attrappe.
+    # Der Dateidialog des Rechners: Ordner → die Sammlung, Programm → die FreeCAD-Attrappe.
     with open(os.path.join(attrappen, "zenity"), "w") as f:
-        f.write(f'#!/bin/sh\necho "{os.path.join(attrappen, "freecad")}"\n')
+        f.write(f'#!/bin/sh\ncase "$*" in *--directory*) echo "{sammlung}";; *) echo "{os.path.join(attrappen, "freecad")}";; esac\n')
     os.chmod(os.path.join(attrappen, "zenity"), 0o755)
     umgebung = {**os.environ, "PARTATLAS_BESTAND": os.path.join(tmp, "bestand"), "PARTATLAS_PORT": str(port),
                 "PYTHONPATH": os.environ.get("PARTATLAS_QUELLE") or WURZEL,

@@ -136,6 +136,9 @@ async function ladeSeite() {
   abz.textContent = zu > 99 ? "99+" : zu;
   zustand.formate = z.formate;
   if (zustand.leiste) zeichneLeiste(zustand.leiste);
+  // Zwei Wurzeln gleichen Namens (etwa „3D-Druck“ auf zwei Laufwerken): der übergeordnete Ordner unterscheidet sie.
+  const namen = ordner.map((w) => w.name);
+  zustand.doppelteWurzeln = new Set(namen.filter((n, i) => namen.indexOf(n) !== i));
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
@@ -148,8 +151,10 @@ function zweig(k, tiefe) {
   const hatKinder = k.kinder.length > 0;
   const offen = zustand.offen.has(k.id);
   const aktiv = zustand.ordner === k.id ? "aktiv" : "";
-  let html = `<button class="eintrag ${aktiv}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" title="${esc(k.pfad || k.name)}">
-    <span><span class="pfeil" data-klappe="${esc(k.id)}">${hatKinder ? (offen ? "▾" : "▸") : ""}</span>${esc(k.name)}</span><em>${k.anzahl}</em></button>`;
+  const ort = tiefe === 0 && zustand.doppelteWurzeln?.has(k.name)
+    ? `<small class="wz-ort">${esc((k.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || (k.pfad || ""))}</small>` : "";
+  let html = `<button class="eintrag ${aktiv}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
+    <span><span class="pfeil" data-klappe="${esc(k.id)}">${hatKinder ? (offen ? "▾" : "▸") : ""}</span>${esc(k.name)}${ort}</span><em>${k.anzahl}</em></button>`;
   if (hatKinder && offen) html += k.kinder.map((c) => zweig(c, tiefe + 1)).join("");
   return html;
 }
@@ -1001,6 +1006,18 @@ async function bildEntfernen(k) {
 
 // Rechtsklick auf das Bild: dasselbe wie die Knöpfe, an der Stelle der Maus.
 document.addEventListener("contextmenu", (e) => {
+  const wurzel = e.target.closest?.("[data-wurzel]");
+  if (wurzel) {
+    e.preventDefault();
+    const menu = $("#kontext");
+    menu.innerHTML = `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`;
+    kontextMenu.ziel = { wurzel: { id: wurzel.dataset.wurzel, name: wurzel.dataset.wurzelName, pfad: wurzel.title, anzahl: Number(wurzel.querySelector("em")?.textContent) || 0 } };
+    menu.hidden = false;
+    const b = menu.getBoundingClientRect();
+    menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
+    menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
+    return;
+  }
   if (!e.target.closest?.("#i-bild") || !galerie.m || galerie.m.papierkorb) return;
   const f = galerie.folien[galerie.i];
   if (!f || f.art === "3d") return;
@@ -1172,28 +1189,35 @@ async function umbenennen(id) {
 
 async function wurzelNeu() {
   $("#import-menu").hidden = true;
-  const pfad = await ordnerWaehler();
+  let w;
+  try { w = await api("/api/wurzeln/waehlen", { method: "POST" }); } catch (e) { return toast(e.message); }
+  if (w.abgebrochen) return;
+  // Ohne Dateidialog auf dem Rechner (kein zenity, kdialog, Tk) bleibt der eigene Ordnerbaum.
+  const pfad = w.keinDialog ? await ordnerWaehler() : w.pfad;
   if (!pfad) return;
+  if (!w.keinDialog && !w.modelle) {
+    const frage = await dialog(`<h2>Ordner ohne Modelle</h2><p>In diesem Ordner liegen keine Modelldateien (3MF, STL, OBJ, STEP).</p>
+      <p class="dim">${esc(pfad)}</p>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf" value="ja">Trotzdem hinzufügen</button></div>`);
+    if (frage !== "ja") return;
+  }
   try {
     await api("/api/wurzeln", { method: "POST", body: { pfad } });
     zustand.hatWurzeln = true;
     zustand.scan = { laeuft: true };
     zeichneLeer();
-    toast("Ordner wird eingelesen …");
+    toast(w.modelle ? `${w.vollstaendig ? "" : "Über "}${w.modelle.toLocaleString("de-DE")} ${w.modelle === 1 ? "Modelldatei wird" : "Modelldateien werden"} eingelesen …` : "Ordner wird eingelesen …");
     ladeSeite();
   } catch (e) { toast(e.message); }
 }
 
-// Ordner wählen wie im Dateimanager: Sprungziele links, Unterordner zum
-// Hineinklicken, unten wie viele Modelldateien darin liegen. Tippen geht
-// auch — für die, die den Pfad schon kennen.
+// Rückfall, wenn der Rechner keinen Ordnerdialog hat: Sprungziele links, Unterordner
+// zum Hineinklicken, unten wie viele Modelldateien darin liegen.
 const ow = { pfad: null };
 async function ordnerWaehler() {
   const fertig = dialog(`<h2>Wurzelordner hinzufügen</h2>
     <p class="dim">Wird rekursiv gescannt; versteckte Ordner (.name) bleiben aussen vor.</p>
     <div id="ow" class="ow"><div class="dim">Lade …</div></div>
-    <details class="ow-tippen"><summary>Pfad selbst eingeben</summary>
-      <input type="text" id="ow-pfad" placeholder="/home/…/3D-Druck"> <button type="button" class="knopf" data-ow-gehe>Öffnen</button></details>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja" id="ow-ok" disabled>Diesen Ordner hinzufügen</button></div>`);
   $("#dialog").classList.add("breit");
   owLaden(null);
@@ -1223,7 +1247,6 @@ async function owLaden(pfad) {
 document.addEventListener("click", (e) => {
   const z = e.target.closest?.("[data-ow-pfad]");
   if (z) return owLaden(z.dataset.owPfad);
-  if (e.target.closest?.("[data-ow-gehe]") && $("#ow-pfad").value.trim()) owLaden($("#ow-pfad").value.trim());
 });
 
 // ---------------------------------------------------------------- Ereignisse
@@ -1735,8 +1758,25 @@ async function kontextMenu(e, id) {
   menu.classList.toggle("flyout-links", menu.getBoundingClientRect().right + 220 > innerWidth);
 }
 
+async function wurzelEntfernen({ id, name, pfad, anzahl }) {
+  const a = await dialog(`<h2>Ordner aus partAtlas entfernen?</h2>
+    <p><b>${esc(name)}</b>${anzahl ? ` — ${anzahl} ${anzahl === 1 ? "Modell" : "Modelle"}` : ""}<br><code>${esc(pfad)}</code></p>
+    <p class="dim">Die Dateien auf der Platte bleiben unberührt. Tags, Bilder und Verknüpfungen der Modelle bleiben erhalten;
+      die Modelle gelten als „Datei fehlt“, bis der Ordner wieder hinzugefügt wird.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
+  if (a !== "ja") return;
+  try {
+    await api(`/api/wurzeln/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (zustand.ordner === id || zustand.ordner.startsWith(id + "/")) zustand.ordner = "";
+    toast("Ordner entfernt.");
+    await ladeSeite();
+    neuLaden();
+  } catch (e) { toast(e.message); }
+}
+
 async function kontextAktion(k, knopf) {
   $("#kontext").hidden = true;
+  if (kontextMenu.ziel.wurzel) return k === "wurzel-weg" ? wurzelEntfernen(kontextMenu.ziel.wurzel) : undefined;
   const f = kontextMenu.ziel.galerie;
   if (f) {
     if (k === "gal-titel") return vorschauSetzen(f.art === "eigen" ? `eigen:${f.k}` : f.art);

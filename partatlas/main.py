@@ -106,6 +106,19 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         zustand["scanner"].starten()
         return {"id": wid}
 
+    @app.post("/api/wurzeln/waehlen")
+    def wurzel_waehlen():
+        """Der Ordnerdialog des Rechners; hinzugefügt wird erst mit POST /api/wurzeln.
+        Mit „keinDialog“ weiss die Seite, dass sie den eigenen Ordnerbaum zeigen muss."""
+        try:
+            pfad = dateidialog.ordner_waehlen("Ordner mit 3D-Modellen auswählen")
+        except dateidialog.KeinDialog:
+            return {"keinDialog": True}
+        if not pfad:
+            return {"abgebrochen": True}
+        modelle, vollstaendig = durchsuchen.zaehlen(pfad)
+        return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
+
     @app.delete("/api/wurzeln/{wid}")
     def wurzel_weg(wid: str):
         K().wurzel_entfernen(wid)

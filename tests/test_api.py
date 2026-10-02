@@ -148,6 +148,13 @@ if __name__ == "__main__":
         check("Eigener Slicer übernimmt den Hauptknopf für STL", gestartet("meincad " + os.path.join(sammlung, "Haken.stl")))
         check("Es bleiben genau zwei Programme zur Auswahl: der gewählte Slicer und das CAD",
               [p["name"] for p in c.get("/api/programme").json()["programme"]] == ["meincad", "FreeCAD"])
+        with open(antwort, "w") as f:
+            f.write(sammlung + "\n")
+        w = c.post("/api/wurzeln/waehlen").json()
+        check("Ordner hinzufügen: der Ordnerdialog des Rechners liefert Pfad und Zahl der Modelldateien",
+              w["pfad"] == sammlung and w["modelle"] >= 2)
+        open(antwort, "w").close()
+        check("Ordnerdialog abgebrochen: nichts wird gewählt", c.post("/api/wurzeln/waehlen").json() == {"abgebrochen": True})
         c.put("/api/einstellungen", json={"programm": {"slicer": ""}})
         check("„Automatisch“: Slicer ist wieder der gefundene",
               c.get("/api/einstellungen").json()["programm"]["slicer"]["name"] == "PrusaSlicer")

@@ -671,3 +671,6 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .prog-aktion { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
 .knopf-text { background: none; border: 0; color: var(--ink-3); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
 .knopf-text:hover { color: var(--accent); }
+
+.eintrag .wz-ort { margin-left: 6px; color: var(--ink-3); font-size: 11.5px; }
+.eintrag .wz-ort::before { content: "· "; }

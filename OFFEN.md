@@ -180,8 +180,12 @@ Programm vorbelegt; „Ändern …“ öffnet den Dateidialog des Rechners (`dat
 zenity, kdialog oder Tk unter Linux; PowerShell unter Windows; AppleScript am Mac —
 **Windows und Mac ungeprüft**), „Automatisch“ nimmt die Wahl zurück. Kein Textfeld,
 keine Liste, kein Standard je Format mehr (STEP → CAD, sonst Slicer). Alte Einträge
-(`slicer`, `programme`) gelten weiter, bis neu gewählt wird. Offen: „Ordner hinzufügen“
-nutzt noch den eigenen Ordnerbaum statt des Rechner-Dialogs (`durchsuchen.py`).
+(`slicer`, `programme`) gelten weiter, bis neu gewählt wird. „Ordner hinzufügen“ nutzt jetzt
+ebenfalls den Rechner-Dialog (`POST /api/wurzeln/waehlen`); der eigene Ordnerbaum
+(`durchsuchen.py`) bleibt nur als Rückfall, wenn der Rechner keinen Dialog hat (ohne
+Pfad-Texteingabe). Mehrere Wurzeln: gleichnamige Ordner tragen den übergeordneten
+Ordner als Zusatz („3D-Druck · USB-Stick“); Rechtsklick auf eine Wurzel →
+„Aus partAtlas entfernen …“ (Dateien bleiben, Modelle gelten als „Datei fehlt“).
 
 ## Offen, in dieser Reihenfolge
 
