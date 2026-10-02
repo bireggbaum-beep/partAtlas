@@ -246,11 +246,11 @@ function zeichneLeer() {
 // Raster mit einer Spalte und niedrigen Zeilen.
 
 const raster = (() => {
-  const RAND = 14;
+  const RAND = 13;   // = --s4
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
   const mass = () => zustand.layout === "liste" ? { B: 0, H: 34, LUECKE: 0, RAND: 0 }
-    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
+    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 144, H: 233, LUECKE: 13, RAND };
 
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();

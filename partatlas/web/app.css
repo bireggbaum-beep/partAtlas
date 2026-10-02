@@ -23,7 +23,7 @@
 :root {
   /* Maßsystem — siehe KONZEPT „Gestaltungsregeln“. Alle Abstände und Masse kommen aus der Fibonacci-Reihe;
      das Verhältnis benachbarter Glieder nähert sich dem goldenen Schnitt (φ = 1,618). */
-  --s1: 3px; --s2: 5px; --s3: 8px; --s4: 13px; --s5: 21px; --s6: 34px; --s7: 55px; --s8: 89px; --phi: 1.618;
+  --s1: 3px; --s2: 5px; --s3: 8px; --s4: 13px; --s5: 21px; --s6: 34px; --s7: 55px; --s8: 89px; --s9: 144px; --phi: 1.618;
   --fs-title: 13.5px; --fs-body: 14px; --fs-meta: 11.5px; --fs-label: 11px; --radius: 4px;
         --mono: 'IBM Plex Mono', ui-monospace, 'DejaVu Sans Mono', monospace; }
 
@@ -36,16 +36,16 @@ button, input, select { font: inherit; color: inherit; }
 .mono { font-family: var(--mono); }
 .dim { color: var(--ink-3); font-size: 12.5px; }
 
-.app { display: grid; height: 100vh; grid-template-columns: 50px var(--seite-b, 200px) 1fr var(--insp-b, 320px); grid-template-rows: 44px 1fr; position: relative;
+.app { display: grid; height: 100vh; grid-template-columns: var(--s7) var(--seite-b, 200px) 1fr var(--insp-b, 320px); grid-template-rows: 44px 1fr; position: relative;
        grid-template-areas: "rail kopf kopf kopf" "rail seite mitte inspektor"; }
 
-.rail { grid-area: rail; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0;
+.rail { grid-area: rail; display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s4) 0;
         background: var(--panel); border-right: 1px solid var(--line); }
 .rail-btn { width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--ink-3); cursor: pointer; font-size: 16px; }
 .rail-btn.aktiv { background: var(--accent-soft); color: var(--accent); }
 .rail-luecke { flex: 1; }
 
-.kopf { grid-area: kopf; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+.kopf { grid-area: kopf; display: flex; align-items: center; gap: var(--s4); padding: 0 var(--s4);
         border-bottom: 1px solid var(--line); background: var(--bg); }
 .logo { font-weight: 700; letter-spacing: 0.08em; font-size: 14px; }
 .logo span { color: var(--accent); font-family: var(--mono); font-weight: 500; font-size: 11.5px; margin-left: 4px; }
@@ -78,41 +78,43 @@ button, input, select { font: inherit; color: inherit; }
                padding: 4px 6px; color: var(--ink-3); font: 12.5px var(--mono); text-align: left; cursor: pointer; margin-top: 4px; }
 
 .mitte { grid-area: mitte; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.tagleiste { display: flex; gap: 6px; padding: 8px 14px; overflow-x: auto; border-bottom: 1px solid var(--line); flex-wrap: nowrap; }
+.tagleiste { display: flex; gap: var(--s2); padding: var(--s3) var(--s4); overflow-x: auto; border-bottom: 1px solid var(--line); flex-wrap: nowrap; }
 .chip { font: 12.5px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
         color: var(--ink-2); cursor: pointer; white-space: nowrap; }
 .chip.aktiv { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.filterzeile { padding: 6px 14px; font-size: 13px; color: var(--ink-2); }
+.filterzeile { padding: var(--s2) var(--s4); font-size: 13px; color: var(--ink-2); }
 .filterzeile button { background: none; border: 0; color: var(--accent); cursor: pointer; }
 .raster { flex: 1; overflow-y: auto; position: relative; }
 .raster-innen { position: relative; }
 .leer { padding: 60px; text-align: center; color: var(--ink-3); }
 
-.karte { position: absolute; width: 164px; height: 236px; background: var(--panel); border: 1px solid transparent;
-         border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s; }
-.karte:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
-.karte.gewaehlt { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.karte .bild { height: 164px; position: relative; background: linear-gradient(160deg, var(--plate-2), var(--plate)); }
+/* Raster-Kachel: 144 × 233 — zwei Glieder der Reihe, 144 + 89 = 233 (Verhältnis 1 : φ). Oben das Bild (quadratisch, 144),
+   darunter ein Textfeld von 89; Rand 13, Zeilen 21 / 18 / 18. Aufgesetztes (Punkt, Haken, Herz, Plakette) hält 8 Abstand zur Kante. */
+.karte { position: absolute; width: var(--s9); height: calc(var(--s9) + var(--s8)); background: var(--panel); outline: 1px solid transparent; outline-offset: -1px;
+         border-radius: 10px; overflow: hidden; cursor: pointer; transition: outline-color 0.12s, box-shadow 0.12s; }
+.karte:hover { outline-color: var(--line-strong); box-shadow: var(--shadow); }
+.karte.gewaehlt { outline-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.karte .bild { height: var(--s9); position: relative; background: linear-gradient(160deg, var(--plate-2), var(--plate)); }
 .karte img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .karte .platzhalter { position: absolute; inset: 0; display: grid; place-items: center; font: 12.5px var(--mono); color: var(--ink-3); }
 .badge { position: absolute; font: 11px var(--mono); padding: 1px 6px; border-radius: 999px; }
-.badge.gedruckt { bottom: 8px; right: 8px; color: var(--accent); background: var(--panel); }
-.badge.warn { bottom: 8px; right: 8px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
-.neu-punkt { position: absolute; top: 9px; left: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.badge.gedruckt { bottom: var(--s3); right: var(--s3); color: var(--accent); background: var(--panel); }
+.badge.warn { bottom: var(--s3); right: var(--s3); border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
+.neu-punkt { position: absolute; top: var(--s3); left: var(--s3); width: var(--s3); height: var(--s3); border-radius: 50%; background: var(--accent); }
 /* Schalter auf der Kachel erst beim Darüberfahren — oder ständig, wenn schon etwas gewählt ist */
 .karte .wahl, .karte .herz { opacity: 0; transition: opacity 0.12s; }
 .karte:hover .wahl, .karte:hover .herz, .karte.mit-auswahl .wahl, .karte.markiert .wahl, .karte .herz.an { opacity: 1; }
-.herz { position: absolute; bottom: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; border: 0;
+.herz { position: absolute; bottom: var(--s2); left: var(--s2); width: 24px; height: 24px; border-radius: 50%; border: 0;
         background: transparent; color: var(--ink-2); font-size: 15px; line-height: 24px; text-align: center; padding: 0; cursor: pointer; }
 .herz:hover { color: var(--accent); }
 .herz.an { color: var(--accent); }
-.karte .text { padding: 8px 10px 0; }
-.karte .name { font-weight: 600; font-size: var(--fs-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karte .text { padding: var(--s4) var(--s4) 0; }
+.karte .name { font-weight: 600; font-size: var(--fs-title); line-height: var(--s5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .karte .name .endung { font-weight: 400; color: var(--ink-3); margin-left: 1px; }
-.karte .masse { font-size: 12px; color: var(--ink-3); margin: 2px 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.karte .tags { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.karte .masse { font-size: 12px; line-height: 18px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karte .tags { font-size: 12px; line-height: 18px; color: var(--ink-3); white-space: nowrap; }
 
-.inspektor { grid-area: inspektor; border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+.inspektor { grid-area: inspektor; border-left: 1px solid var(--line); overflow-y: auto; padding: var(--s4); }
 .hinweis { color: var(--ink-3); text-align: center; margin-top: 45vh; font-size: 13px; }
 .i-bild { aspect-ratio: 1; background: linear-gradient(160deg, var(--plate-2), var(--plate)); border-radius: 6px;
           border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
@@ -172,7 +174,7 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 .i-sammlungen select { font-size: 12.5px; }
 
 /* Mehrfachauswahl */
-.wahl { position: absolute; top: 8px; right: 8px; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.wahl { position: absolute; top: var(--s3); right: var(--s3); width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .karte.markiert { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .stapel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 14px; border-bottom: 1px solid var(--line);
           background: var(--accent-soft); font-size: 13px; }
@@ -476,7 +478,7 @@ body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 
 /* Griffe zum Ändern der Breite der Seitenleisten */
 .griff { position: absolute; top: 44px; bottom: 0; width: 7px; cursor: col-resize; z-index: 30; touch-action: none; }
-.griff.links { left: calc(50px + var(--seite-b, 200px) - 4px); }
+.griff.links { left: calc(var(--s7) + var(--seite-b, 200px) - 4px); }
 .griff.rechts { right: calc(var(--insp-b, 320px) - 3px); }
 .griff::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: var(--accent); opacity: 0; transition: opacity 0.12s; }
 .griff:hover::after, .griff.zieht::after { opacity: 1; }

@@ -110,8 +110,12 @@ Regeln statt einzelner Augenmasse-Entscheidungen. Sie stehen als Variablen in `a
    Tags, Ordner), die **Liste** ist die schlanke Tabelle zum Sortieren (Name, Format, Grösse, Gewicht, Status).
    Was die Karten zeigen, kommt nicht noch einmal in die Liste.
 
-Noch nicht auf das Maßsystem umgestellt: Raster-Kachel (164 × 236), Inspektor, Seitenleiste, Dialoge. Die Kachel
-liesse sich auf 164 × 265 (φ) bringen; das ist eine eigene Entscheidung.
+6. **Die Raster-Kachel** ist 144 × 233: zwei benachbarte Glieder der Reihe (144 + 89 = 233, Verhältnis 1 : φ). Oben das
+   quadratische Bild (144), darunter ein Textfeld von 89 mit Rand 13 und den Zeilen 21 / 18 / 18. Was auf dem
+   Bild liegt (Punkt, Haken, Herz, Plakette), hält 8 Abstand zur Kante. Raster: Rand und Lücke 13.
+
+Ebenfalls im Maßsystem: Rail (55 breit, 5 Abstand, 13 Rand), Kopfzeile, Tag- und Filterleiste, Inspektor-Rand (13).
+Noch nicht umgestellt: Seitenleiste (Felder, Zeilen), Dialoge, Inspektor-Innenleben, Kopfzeilenhöhe (44).
 
 ## 3. Dateien und Bestand
 
