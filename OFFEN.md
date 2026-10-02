@@ -206,7 +206,7 @@ Seitenleiste). **Notizen und Anhänge sind nur als Layout da („folgt“), nich
 **Gruppieren (2.10.2026):** neben „Sortieren“ eine Auswahl „Gruppieren“ — Keine · Ordner · Format · Material ·
 Status · Angelegt; gilt für Raster, Liste und Karten, gemerkt. Gruppenband 34 hoch mit Pfeil (ein-/ausklappen), Haken
 (Gruppe markieren) und Anzahl; innerhalb der Gruppe gilt die Sortierung. **Ordner:** nur die nächste Ebene unter der Wahl in der
-Seitenleiste (ohne Wahl: die Wurzeln); jede Gruppe enthält alle Modelle darunter, auch aus tieferen Unterordnern;
+Seitenleiste (ohne Wahl: mit **einer** Wurzel deren Unterordner — sonst gäbe es nur eine Gruppe und kein Band —, mit mehreren die Wurzeln); jede Gruppe enthält alle Modelle darunter, auch aus tieferen Unterordnern;
 Dateien direkt im gewählten Ordner stehen davor als „Direkt in <Ordner>“. Klick auf den Namen geht in den Ordner
 (Seitenleiste klappt den Weg auf), Pfeil klappt die Gruppe zu, Haken markiert sie. **Nur eine Gruppe → kein Band**
 (Blattordner). **Pfad über der Liste:** „Alle › 3D-Druck › Technik“, dezent, jeder Teil führt zurück (nur bei gewähltem Ordner). Tags, Sammlungen, Baugruppen bewusst nicht (Mehrfachzugehörigkeit).

@@ -112,7 +112,11 @@ const wurzelName = (id) => zustand.wurzelNamen.get(id) || id;
 // Seitenleiste gewählt ist (ohne Wahl: die Wurzeln): jede Gruppe ist ein direktes Kind und enthält alles darunter, auch
 // aus tieferen Unterordnern. Dateien, die direkt im gewählten Ordner liegen, bilden eine eigene Gruppe davor.
 // Ein Klick auf den Namen geht in diesen Ordner, dort gilt dieselbe Regel wieder eine Ebene tiefer.
-const gewaehlterPfad = () => (zustand.ordner ? zustand.ordner.split("/").filter(Boolean) : []);
+// Die Basis, unter der gruppiert wird: der gewählte Ordner; ohne Wahl und mit genau einer Wurzel diese Wurzel (sie als einzige
+// Gruppe zu zeigen trennte nichts, es sähe aus, als gruppierte nichts); mit mehreren Wurzeln die Ebene darüber, also die Wurzeln.
+const gewaehlterPfad = () => (zustand.ordner ? zustand.ordner.split("/").filter(Boolean)
+  : zustand.wurzelNamen.size === 1 ? [[...zustand.wurzelNamen.keys()][0]] : []);
+const basisId = () => gewaehlterPfad().join("/");
 
 function ordnerSchluessel(m) {
   const teile = (m.ordner[0] || "").split("/").filter(Boolean);
@@ -123,11 +127,11 @@ function ordnerSchluessel(m) {
 function ordnerBeschriftung(key) {
   const teile = key.split("/").filter(Boolean);
   const name = teile.length > 1 ? teile[teile.length - 1] : wurzelName(teile[0]);
-  return key === zustand.ordner ? `Direkt in ${name}` : name;
+  return key === basisId() ? `Direkt in ${name}` : name;
 }
 
 function ordnerVergleich(a, b) {
-  return ((b === zustand.ordner) - (a === zustand.ordner)) || natuerlich(ordnerBeschriftung(a), ordnerBeschriftung(b));
+  return ((b === basisId()) - (a === basisId())) || natuerlich(ordnerBeschriftung(a), ordnerBeschriftung(b));
 }
 
 const reihenfolge = (liste) => (a, b) => (liste.indexOf(a) - liste.indexOf(b)) || natuerlich(a, b);
@@ -173,7 +177,7 @@ function gruppenKopf(g, y) {
   const zu = zustand.eingeklappt.has(g.key);
   const ids = zustand.modelle.slice(g.start, g.start + g.n).map((m) => m.id);
   const alle = ids.length > 0 && ids.every((id) => zustand.auswahl.has(id));
-  const ordnerSprung = zustand.gruppierung === "ordner" && g.key !== zustand.ordner;
+  const ordnerSprung = zustand.gruppierung === "ordner" && g.key !== basisId();
   return `<div class="gruppe ${zu ? "zu" : ""}" data-id="g:${esc(g.key)}" data-gruppe="${esc(g.key)}" style="top:${y}px" title="${zu ? "Aufklappen" : "Zuklappen"}">
     <span class="g-pfeil">${zu ? "▸" : "▾"}</span>
     <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
@@ -227,7 +231,12 @@ async function ladeSeite() {
   zustand.wurzelNamen = new Map(ordner.map((w) => [w.id, zustand.doppelteWurzeln.has(w.name)
     ? `${w.name} · ${(w.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || ""}` : w.name]));
   zeichnePfad();
-  if (zustand.gruppierung === "ordner") raster.neu();
+  if (zustand.gruppierung === "ordner") {      // die Wurzeln sind jetzt bekannt: die Basis kann sich geändert haben
+    const g = gruppiere(zustand.modelle);
+    zustand.modelle = g.liste;
+    zustand.gruppen = g.gruppen;
+    raster.neu();
+  }
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
