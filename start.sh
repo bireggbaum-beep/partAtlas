@@ -15,6 +15,12 @@ if ! command -v git >/dev/null; then
   echo "git fehlt, es holt die Datenbank flatgraph (Manjaro: sudo pacman -S git)."; exit 1
 fi
 
+# Dateiauswahl (Ordner, Programme): der Dialog des Rechners braucht zenity oder kdialog.
+if ! command -v zenity >/dev/null && ! command -v kdialog >/dev/null; then
+  echo "Hinweis: für die Dateiauswahl fehlt zenity oder kdialog (Manjaro: sudo pacman -S zenity)."
+  echo "         partAtlas läuft trotzdem, zeigt dann aber einen einfachen eigenen Ordnerwähler."
+fi
+
 # Läuft es schon, wird nur der Browser geöffnet — nie ein zweiter Prozess.
 if curl -fs "$URL/" >/dev/null 2>&1; then
   echo "partAtlas läuft schon: $URL"; xdg-open "$URL" >/dev/null 2>&1 || true; exit 0

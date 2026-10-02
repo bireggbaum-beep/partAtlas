@@ -383,17 +383,17 @@ body.erststart .tagleiste { display: none; }
 @keyframes lauf { from { left: -30%; } to { left: 100%; } }
 
 /* Ordner-Wähler */
-.ow-grid { display: grid; grid-template-columns: 170px 1fr; gap: 10px; height: 320px; margin: 10px 0 8px; }
+.ow-grid { display: grid; grid-template-columns: 170px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 10px; height: min(320px, 46vh); margin: 10px 0 8px; }
 .ow-ziele { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; border-right: 1px solid var(--line); padding-right: 8px; }
 .ow-ziele button, .ow-ordner button { text-align: left; background: none; border: 0; padding: 6px 8px; border-radius: 5px; cursor: pointer;
                                       color: var(--ink); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ow-ziele button:hover, .ow-ordner button:hover { background: var(--panel-2); }
 .ow-ziele button.an { background: var(--accent-soft); color: var(--accent); }
-.ow-liste { display: flex; flex-direction: column; min-width: 0; }
+.ow-liste { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ow-pfad { display: flex; gap: 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 .ow-pfad code { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
-.ow-ordner { overflow-y: auto; display: flex; flex-direction: column; padding-top: 4px; }
-.ow-fuss { font-size: 14px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.ow-ordner { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding-top: 4px; }
+.ow-fuss { flex: none; font-size: 14px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
 .ow-tippen { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
 .ow-tippen summary { cursor: pointer; }
 .ow-tippen input { width: 70%; margin-top: 6px; }
@@ -802,3 +802,8 @@ dialog:has(.rm) { width: min(680px, 92vw); max-width: none; }
 .rm-punkt { display: grid; grid-template-columns: 188px minmax(0, 1fr); gap: var(--s4); padding: var(--s3) 0; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.45; }
 .rm-punkt b { font-weight: 600; }
 .rm-punkt span { color: var(--ink-2); }
+dialog { max-height: 92vh; overflow-y: auto; }
+.ow-ordner button, .ow-ziele button { flex: none; }
+/* Kopfzeile: Knopf und Fassung brechen nie um; die lange Einlese-Zeile kürzt sich selbst. */
+.kopf .knopf, .logo { white-space: nowrap; }
+.scan-status { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

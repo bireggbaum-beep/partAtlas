@@ -250,6 +250,12 @@ soll. Tester: ein Ordner mit 330 MB brauchte geschätzt 1,5–2 min (noch nicht 
 Gruppen (Jetzt da · Als Nächstes · Später), je Punkt Überschrift und ein Satz, keine Termine. Inhalt in `web/roadmap.js` (`ROADMAP`);
 **beim Fertigstellen eines Punkts dort von „Als Nächstes“ nach „Jetzt da“ schieben**. Quelle bleibt KONZEPT §7 und diese Datei.
 
+**Ordner-Wähler (Rückfall) repariert (0.25.1), Rückmeldung eines Testers („Dialog instabil“):** er erscheint nur, wenn der Rechner
+keinen Dateidialog hat (kein zenity/kdialog/Tk) — Ursache beim Tester. Behoben: Liste scrollt in fester Höhe statt über Fußzeile und Knöpfe
+zu laufen, Zeilen werden nicht mehr gequetscht; im Wurzelverzeichnis wird nicht gezählt (lief durch die ganze Platte) und „/“ sowie
+Systemordner lassen sich nicht als Wurzelordner hinzufügen (Server und Dialog). `start.sh` warnt, wenn zenity/kdialog fehlt; README
+nennt `zenity` als Voraussetzung. Kopfzeile bricht nicht mehr um (Einlese-Zeile kürzt sich, Tooltip zeigt alles).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

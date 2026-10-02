@@ -68,7 +68,11 @@ def auflisten(pfad=None):
     except PermissionError:
         namen = []
     eltern = os.path.dirname(pfad)
-    modelle, ganz = zaehlen(pfad)
+    # Im Wurzelverzeichnis und in Systemordnern wird nicht gezählt: es liefe durch das ganze Dateisystem.
+    if eltern == pfad or pfad in ("/proc", "/sys", "/dev", "/run", "/etc", "/usr", "/var", "/boot"):
+        modelle, ganz = None, True
+    else:
+        modelle, ganz = zaehlen(pfad)
     return {"pfad": pfad, "eltern": eltern if eltern != pfad else None,
             "ordner": [{"name": n, "pfad": os.path.join(pfad, n)} for n in namen],
             "modelle": modelle, "vollstaendig": ganz, "sprungziele": sprungziele()}

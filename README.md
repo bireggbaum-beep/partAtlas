@@ -5,7 +5,7 @@ Demo-Pilot, Vorbild ist der 3MF Katalog Manager. Führend ist `KONZEPT.md`.
 
 ## Ausprobieren (Manjaro / Linux)
 
-Voraussetzung: Python 3.10+ und git (`sudo pacman -S python git`).
+Voraussetzung: Python 3.10+, git und für die Dateiauswahl zenity oder kdialog (`sudo pacman -S python git zenity`).
 
 ```bash
 git clone https://github.com/bireggbaum-beep/partAtlas && cd partAtlas

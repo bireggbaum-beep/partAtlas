@@ -1411,7 +1411,8 @@ async function owLaden(pfad) {
   try { d = await api("/api/durchsuchen" + (pfad ? "?pfad=" + encodeURIComponent(pfad) : "")); }
   catch (e) { return toast(e.message); }
   ow.pfad = d.pfad;
-  const anzahl = d.modelle ? `<b>${d.vollstaendig ? "" : "mehr als "}${d.modelle.toLocaleString("de-DE")} Modelldateien</b> in diesem Ordner und seinen Unterordnern`
+  const anzahl = d.modelle === null ? `<span class="dim">Wähle den Ordner, in dem deine Modelle liegen.</span>`
+    : d.modelle ? `<b>${d.vollstaendig ? "" : "mehr als "}${d.modelle.toLocaleString("de-DE")} Modelldateien</b> in diesem Ordner und seinen Unterordnern`
     : `<span class="dim">Keine Modelldateien in diesem Ordner.</span>`;
   $("#ow").innerHTML = `<div class="ow-grid">
       <div class="ow-ziele">${d.sprungziele.map((z) => `<button type="button" class="${z.pfad === d.pfad ? "an" : ""}" data-ow-pfad="${esc(z.pfad)}">
@@ -1421,7 +1422,7 @@ async function owLaden(pfad) {
         <div class="ow-ordner">${d.ordner.map((o) => `<button type="button" data-ow-pfad="${esc(o.pfad)}">📁 ${esc(o.name)}</button>`).join("") || '<div class="dim">Keine Unterordner.</div>'}</div>
       </div></div>
     <div class="ow-fuss">${anzahl}</div>`;
-  $("#ow-ok").disabled = false;
+  $("#ow-ok").disabled = d.modelle === null;     // Wurzelverzeichnis und Systemordner lassen sich nicht hinzufügen
 }
 
 document.addEventListener("click", (e) => {
@@ -1823,7 +1824,7 @@ function live() {
         : (m.vorschauen_offen ? "" : "");
       if (m.phase === "vorschau" && m.vorschauen_offen) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
       if (m.phase === "fertig") {
-        $("#scan-status").textContent = scanErgebnis(m);
+        $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
         if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
         neuLaden();
       }
@@ -1844,7 +1845,7 @@ function live() {
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
 neuLaden();
 programmeAktualisieren();
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.

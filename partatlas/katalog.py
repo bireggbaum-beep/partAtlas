@@ -56,6 +56,9 @@ class Katalog:
         pfad = os.path.abspath(os.path.expanduser(pfad))
         if not os.path.isdir(pfad):
             raise KatalogFehler(f"Kein Ordner: {pfad}")
+        # Ein ganzes Laufwerk oder die Systemordner einzulesen wäre ein Versehen: es dauerte ewig und füllte den Katalog mit Fremdem.
+        if os.path.dirname(pfad) == pfad or pfad in ("/proc", "/sys", "/dev", "/run", "/etc", "/usr", "/var", "/boot"):
+            raise KatalogFehler("Das ist ein System- oder Laufwerksordner. Wähle den Ordner, in dem deine 3D-Modelle liegen.")
         bestand = os.path.abspath(self.b.wurzel)
         if pfad == bestand or pfad.startswith(bestand + os.sep) or bestand.startswith(pfad + os.sep):
             # Der eigene Bestand (Papierkorb, Cache) darf nicht Teil einer

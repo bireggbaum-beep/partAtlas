@@ -105,6 +105,12 @@ if __name__ == "__main__":
         check("Kein Ordner: verständliche Meldung",
               c.get("/api/durchsuchen", params={"pfad": "/gibt/es/nicht"}).json().get("fehler", "").startswith("Kein Ordner"))
 
+        # -- Das Wurzelverzeichnis ist kein Ordner für den Katalog
+        check("Das Wurzelverzeichnis „/“ lässt sich nicht als Wurzelordner hinzufügen",
+              c.post("/api/wurzeln", json={"pfad": "/"}).status_code == 400)
+        check("Der Ordnerbaum zählt im Wurzelverzeichnis keine Modelldateien (es liefe durch die ganze Platte)",
+              c.get("/api/durchsuchen", params={"pfad": "/"}).json()["modelle"] is None)
+
         # -- Wache
         fremd = c.post(f"/api/modelle/{zahnrad['id']}/loeschen", headers={"Origin": "http://boese.example"})
         check("Wache: Löschen von fremder Seite abgelehnt (403)", fremd.status_code == 403)
