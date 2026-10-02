@@ -538,24 +538,37 @@ async function einstellungen() {
   Object.assign(progWahl, { erkannt: prog.programme.filter((p) => !p.eigen), eigene: prog.programme.filter((p) => p.eigen),
                             arten: prog.arten, standard: { ...(e.standard_programm || {}) } });
   Object.assign(mwWahl, { material: e.gilt.material, farbe: e.gilt.farbe });
-  $("#dialog").classList.add("breit");
-  const a = await dialog(`<h2>Einstellungen</h2>
-    <p class="dim">Was partAtlas annimmt, wenn ein Druckteil keine Angabe hat (kein Slicer-Wert, nichts festgelegt).</p>
-    <div class="i-titel">STANDARDMATERIAL</div>
-    <div class="kategorien">${e.materialien.map((m) => `<button type="button" class="chip ${m === e.gilt.material ? "aktiv" : ""}" data-mw-mat="${esc(m)}">${esc(m)}</button>`).join("")}</div>
-    <div class="i-titel">STANDARDFARBE</div>
-    <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === e.gilt.farbe ? "aktiv" : ""}" data-mw-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
-      <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
-    <div class="i-titel">ROLLENGRÖSSE</div>
-    <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>
-    <div class="i-titel">TAGS</div>
-    <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
-    <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>
-    <div class="i-titel">PROGRAMME ZUM ÖFFNEN</div>
-    <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
-    <div id="prog-teil">${progTeil()}</div>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Speichern</button></div>`);
-  $("#dialog").classList.remove("breit");
+  $("#dialog").classList.add("einst");
+  // Alle Abschnitte stehen im Dialog, nur einer ist sichtbar: so gilt beim Speichern,
+  // was in jedem eingestellt wurde, auch wenn man zwischendurch gewechselt hat.
+  const abschnitte = [
+    ["vorgaben", "Vorgaben", `
+      <p class="dim">Was partAtlas annimmt, wenn ein Druckteil keine Angabe hat (kein Slicer-Wert, nichts festgelegt).</p>
+      <div class="i-titel">STANDARDMATERIAL</div>
+      <div class="kategorien">${e.materialien.map((m) => `<button type="button" class="chip ${m === e.gilt.material ? "aktiv" : ""}" data-mw-mat="${esc(m)}">${esc(m)}</button>`).join("")}</div>
+      <div class="i-titel">STANDARDFARBE</div>
+      <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === e.gilt.farbe ? "aktiv" : ""}" data-mw-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
+        <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
+      <div class="i-titel">ROLLENGRÖSSE</div>
+      <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>`],
+    ["einlesen", "Einlesen", `
+      <div class="i-titel">TAGS</div>
+      <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
+      <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>`],
+    ["programme", "Programme", `
+      <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
+      <div id="prog-teil">${progTeil()}</div>`],
+  ];
+  const gemerkt = localStorageLesen("einstellungen-abschnitt");
+  const zeige = abschnitte.some(([k]) => k === gemerkt) ? gemerkt : abschnitte[0][0];
+  const a = await dialog(`<div class="ein">
+    <nav class="ein-nav">${abschnitte.map(([k, t]) => `<button type="button" data-ein="${k}" class="${k === zeige ? "aktiv" : ""}">${t}</button>`).join("")}</nav>
+    <div class="ein-haupt">
+      <h2 id="ein-titel">${abschnitte.find(([k]) => k === zeige)[1]}</h2>
+      <div class="ein-inhalt">${abschnitte.map(([k, , h]) => `<section data-ein-teil="${k}" ${k === zeige ? "" : "hidden"}>${h}</section>`).join("")}</div>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Speichern</button></div>
+    </div></div>`);
+  $("#dialog").classList.remove("einst");
   if (a !== "ja") return;
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
@@ -606,4 +619,12 @@ document.addEventListener("change", (e) => {
   const f = e.target.dataset?.progStd;
   if (f) { if (e.target.value) progWahl.standard[f] = e.target.value; else delete progWahl.standard[f]; }
 });
-document.addEventListener("click", (e) => { if (e.target.closest?.("#einstellungen")) einstellungen(); });
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.("#einstellungen")) return einstellungen();
+  const wahl = e.target.closest?.("[data-ein]");
+  if (!wahl) return;
+  document.querySelectorAll("[data-ein]").forEach((b) => b.classList.toggle("aktiv", b === wahl));
+  document.querySelectorAll("[data-ein-teil]").forEach((s) => { s.hidden = s.dataset.einTeil !== wahl.dataset.ein; });
+  $("#ein-titel").textContent = wahl.textContent;
+  localStorageSchreiben("einstellungen-abschnitt", wahl.dataset.ein);
+});

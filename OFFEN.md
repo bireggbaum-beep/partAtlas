@@ -165,6 +165,11 @@ vorbauen (heute erst beim ersten Abruf), Thumbs aus Sicherung/Export lassen.
 30 vs. 10,7 ms/Frame im Raster (1844 vs. 20 Anfragen) — Anfragen, nicht Bytes,
 sind der Preis.
 
+**Einstellungen:** Dialog wie in pDMS — links Abschnitte (Vorgaben · Einlesen ·
+Programme), rechts der Inhalt, ein gemeinsames Speichern; der zuletzt gewählte
+Abschnitt wird gemerkt. `tests/test_ui.py` klickt vor dem Programm-Wähler auf
+„Programme“ (ungelaufen). Thumbs im Hintergrund vorbauen: wird ein Issue.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

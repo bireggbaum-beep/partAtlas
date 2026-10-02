@@ -154,6 +154,7 @@ async def oberflaeche(port):
         check("… und startet ihn mit der Datei des Modells",
               os.path.exists(PROTOKOLL) and "prusa-slicer " in open(PROTOKOLL).read() and "Vase.stl" in open(PROTOKOLL).read())
         await pg.click("#einstellungen")
+        await pg.click('[data-ein="programme"]')
         await pg.wait_for_selector('[data-prog-std="stl"]')
         freecad = await pg.locator('[data-prog-std="stl"] option', has_text="FreeCAD").get_attribute("value")
         await pg.select_option('[data-prog-std="stl"]', freecad)
