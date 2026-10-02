@@ -364,11 +364,6 @@ class Scanner:
                 self._setze(vorschauen_offen=rest)
         self._vorschauen_speichern(stapel)
 
-    def _cad_aufruf(self):
-        if self.cad_befehl:
-            return self.cad_befehl
-        return cad.konsole_befehl((programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}).get("pfad"))
-
     def _cad(self):
         """STEP-Dateien ohne Netz über FreeCAD umwandeln. Das Netz liegt abgeleitet in `netz/<hash>.stl` (nicht gesichert,
         jederzeit neu berechenbar). Ein Fehler oder eine Zeitüberschreitung betrifft nur seine Datei und wird nicht bei
@@ -376,10 +371,15 @@ class Scanner:
         offen = self.k.ausstehende_cad()
         if not offen:
             return
-        befehl = self._cad_aufruf()
+        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
+        befehl = self.cad_befehl or cad.konsole_befehl(prog.get("pfad"))
         if not befehl:
-            self._setze(cad_ohne_freecad=len(offen))
+            # Ins Protokoll und in den Status: sonst weiss niemand, ob FreeCAD fehlt oder nur nicht als solches erkannt wurde.
+            log.warning("CAD: kein FreeCAD-Aufruf gefunden, %d Dateien warten (erkanntes CAD-Programm: %s)", len(offen),
+                        prog.get("pfad") or "keines")
+            self._setze(cad_ohne_freecad=len(offen), cad_programm=prog.get("pfad") or "")
             return
+        log.info("CAD: FreeCAD-Aufruf %s, %d Dateien offen", befehl, len(offen))
         # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut partAtlas nur nach
         # ausdrücklicher Zusage des Anwenders. Solange er nicht geantwortet hat, fragt die Oberfläche (`fcstd_frage`).
         wahl = self.b.einstellungen().get("fcstd_freecad")

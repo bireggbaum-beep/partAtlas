@@ -2064,16 +2064,19 @@ function cadZeile(m) {
   if (m.format !== "step" && m.format !== "fcstd") return "";
   const sc = zustand.scan || {};
   let text, knopf = "";
+  // Ein Bild aus der Datei ist eine Vorschau; was FreeCAD zusätzlich bringt, sind Maße, Gewicht und die 3D-Ansicht.
+  const bild = m.ansichten?.some((a) => a.art === "extrahiert") ? "Die Vorschau ist das Bild, das in der Datei gespeichert ist. " : "";
+  const zusatz = bild ? "Maße, Gewicht und 3D-Ansicht kommen mit FreeCAD" : "Vorschau, Maße und 3D-Ansicht kommen mit FreeCAD";
   if (m.cad === "ok") text = "Netz, Maße und Vorschau stammen aus FreeCAD.";
   else if (m.cad === "fehler") {
     text = `Die Umwandlung über FreeCAD ist gescheitert: <code>${esc(m.cad_fehler || "ohne Meldung")}</code>`;
     knopf = `<button class="knopf klein" data-cad-erneut>Alle gescheiterten erneut versuchen</button>`;
   } else if (sc.laeuft) text = "Wird gerade eingelesen …";
-  else if (sc.cad_ohne_freecad) text = "FreeCAD wurde auf diesem Rechner nicht gefunden.";
-  else if (m.format === "fcstd" && sc.fcstd_frage) text = "Wartet auf deine Zusage: partAtlas hat gefragt, ob FCStd-Dateien über FreeCAD eingelesen werden dürfen (Einstellungen › Einlesen).";
-  else if (m.format === "fcstd") text = "Noch nicht umgewandelt. FCStd-Dateien werden nur nach deiner Zusage über FreeCAD gelesen (Einstellungen › Einlesen).";
-  else text = "Noch nicht umgewandelt; das geschieht beim nächsten Einlesen.";
-  return `<div class="i-titel">FREECAD</div><div class="i-karte"><div class="dim" style="padding:4px 0">${text}</div>${knopf}</div>`;
+  else if (sc.cad_ohne_freecad) text = `${zusatz}, aber partAtlas hat beim letzten Einlesen keinen Aufruf von FreeCAD ermittelt${sc.cad_programm ? ` (erkannt: <code>${esc(sc.cad_programm)}</code>)` : " (kein CAD-Programm erkannt)"}. Einstellungen › Programme: CAD wählen.`;
+  else if (m.format === "fcstd" && sc.fcstd_frage) text = `${zusatz}. partAtlas hat gefragt, ob FCStd-Dateien über FreeCAD eingelesen werden dürfen — noch keine Zusage (Einstellungen › Einlesen).`;
+  else if (m.format === "fcstd") text = `${zusatz}, sobald du es erlaubst: FCStd-Dateien liest partAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).`;
+  else text = `${zusatz}; das geschieht beim nächsten Einlesen.`;
+  return `<div class="i-titel">FREECAD</div><div class="i-karte"><div class="dim" style="padding:4px 0">${bild}${text}</div>${knopf}</div>`;
 }
 document.addEventListener("click", async (e) => {
   if (e.target.closest("[data-cad-erneut]")) {
