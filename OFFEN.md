@@ -205,9 +205,11 @@ Seitenleiste). **Notizen und Anhänge sind nur als Layout da („folgt“), nich
 
 **Gruppieren (2.10.2026):** neben „Sortieren“ eine Auswahl „Gruppieren“ — Keine · Ordner · Format · Material ·
 Status · Angelegt; gilt für Raster, Liste und Karten, gemerkt. Gruppenband 34 hoch mit Pfeil (ein-/ausklappen), Haken
-(Gruppe markieren) und Anzahl; innerhalb der Gruppe gilt die Sortierung. **Ordner:** beschriftet relativ zur Wahl in
-der Seitenleiste (gewählter Ordner „Technik“ → Gruppen „Technik“, „Motor“); ohne Wahl voller Pfad „3D-Druck › Technik ›
-Motor“; **nur eine Gruppe → kein Band** (Blattordner). Tags, Sammlungen, Baugruppen bewusst nicht (Mehrfachzugehörigkeit).
+(Gruppe markieren) und Anzahl; innerhalb der Gruppe gilt die Sortierung. **Ordner:** nur die nächste Ebene unter der Wahl in der
+Seitenleiste (ohne Wahl: die Wurzeln); jede Gruppe enthält alle Modelle darunter, auch aus tieferen Unterordnern;
+Dateien direkt im gewählten Ordner stehen davor als „Direkt in <Ordner>“. Klick auf den Namen geht in den Ordner
+(Seitenleiste klappt den Weg auf), Pfeil klappt die Gruppe zu, Haken markiert sie. **Nur eine Gruppe → kein Band**
+(Blattordner). Tags, Sammlungen, Baugruppen bewusst nicht (Mehrfachzugehörigkeit).
 Nicht geprüft in `tests/test_ui.py` (keine neue Prüfung); Scroll-Bench unverändert. Kein klebendes Band beim Scrollen.
 
 ## Offen, in dieser Reihenfolge

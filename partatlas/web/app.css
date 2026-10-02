@@ -769,3 +769,4 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .gruppe input { margin: 0; accent-color: var(--accent); }
 .gruppe .g-name { font: 600 12.5px var(--mono); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gruppe em { margin-left: auto; font: normal 12px var(--mono); color: var(--ink-3); }
+.gruppe .g-ordner:hover { color: var(--accent); text-decoration: underline; }

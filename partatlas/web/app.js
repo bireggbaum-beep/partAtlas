@@ -108,29 +108,26 @@ const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()
 const natuerlich = (a, b) => a.localeCompare(b, "de", { numeric: true, sensitivity: "base" });
 const wurzelName = (id) => zustand.wurzelNamen.get(id) || id;
 
-// Der Ordner eines Modells hat die Form „Wurzel/Pfad“. Beschriftet wird relativ zu dem, was in der Seitenleiste gewählt ist:
-// dort steht der Ordner selbst schon, also nur der Weg darunter (Unterordner „Deko › Motor“, der Ordner selbst mit seinem Namen).
+// Der Ordner eines Modells hat die Form „Wurzel/Pfad“. Gruppiert wird nach der **nächsten Ebene** unter dem, was in der
+// Seitenleiste gewählt ist (ohne Wahl: die Wurzeln): jede Gruppe ist ein direktes Kind und enthält alles darunter, auch
+// aus tieferen Unterordnern. Dateien, die direkt im gewählten Ordner liegen, bilden eine eigene Gruppe davor.
+// Ein Klick auf den Namen geht in diesen Ordner, dort gilt dieselbe Regel wieder eine Ebene tiefer.
+const gewaehlterPfad = () => (zustand.ordner ? zustand.ordner.split("/").filter(Boolean) : []);
+
+function ordnerSchluessel(m) {
+  const teile = (m.ordner[0] || "").split("/").filter(Boolean);
+  const wahl = gewaehlterPfad();
+  return teile.slice(0, wahl.length + 1).join("/");     // Wahl + eine Ebene; liegt die Datei direkt in der Wahl, ist es die Wahl selbst
+}
+
 function ordnerBeschriftung(key) {
   const teile = key.split("/").filter(Boolean);
-  const wahl = zustand.ordner ? zustand.ordner.split("/").filter(Boolean) : [];
-  if (wahl.length && wahl.every((t, i) => teile[i] === t)) {
-    const rel = teile.slice(wahl.length);
-    return rel.length ? rel.join(" › ") : (wahl.length > 1 ? wahl[wahl.length - 1] : wurzelName(wahl[0]));
-  }
-  return [wurzelName(teile[0]), ...teile.slice(1)].join(" › ");
+  const name = teile.length > 1 ? teile[teile.length - 1] : wurzelName(teile[0]);
+  return key === zustand.ordner ? `Direkt in ${name}` : name;
 }
 
 function ordnerVergleich(a, b) {
-  const x = a.split("/"), y = b.split("/");
-  const x0 = wurzelName(x[0]), y0 = wurzelName(y[0]);
-  if (x0 !== y0) return natuerlich(x0, y0);
-  if (x[0] !== y[0]) return natuerlich(x[0], y[0]);
-  for (let i = 1; i < Math.max(x.length, y.length); i++) {
-    if (x[i] === undefined) return -1;           // der Ordner vor seinen Unterordnern
-    if (y[i] === undefined) return 1;
-    if (x[i] !== y[i]) return natuerlich(x[i], y[i]);
-  }
-  return 0;
+  return ((b === zustand.ordner) - (a === zustand.ordner)) || natuerlich(ordnerBeschriftung(a), ordnerBeschriftung(b));
 }
 
 const reihenfolge = (liste) => (a, b) => (liste.indexOf(a) - liste.indexOf(b)) || natuerlich(a, b);
@@ -143,7 +140,7 @@ const ZEITRAUM = { heute: "Heute", woche: "Diese Woche", monat: "Diesen Monat", 
 const STATUS = { offen: "Noch nicht gedruckt", gedruckt: "Gedruckt", fehlt: "Datei fehlt", unlesbar: "Unlesbar" };
 
 const GRUPPEN = {
-  ordner: { schluessel: (m) => m.ordner[0] || "", beschriftung: ordnerBeschriftung, vergleich: ordnerVergleich },
+  ordner: { schluessel: ordnerSchluessel, beschriftung: ordnerBeschriftung, vergleich: ordnerVergleich },
   format: { schluessel: (m) => m.format || "", beschriftung: (k) => (endung[k] || k).replace(".", "").toUpperCase(),
             vergleich: reihenfolge(["3mf", "stl", "obj", "step"]) },
   material: { schluessel: (m) => m.material || "", beschriftung: (k) => k || "Ohne Material",
@@ -176,10 +173,12 @@ function gruppenKopf(g, y) {
   const zu = zustand.eingeklappt.has(g.key);
   const ids = zustand.modelle.slice(g.start, g.start + g.n).map((m) => m.id);
   const alle = ids.length > 0 && ids.every((id) => zustand.auswahl.has(id));
+  const ordnerSprung = zustand.gruppierung === "ordner" && g.key !== zustand.ordner;
   return `<div class="gruppe ${zu ? "zu" : ""}" data-id="g:${esc(g.key)}" data-gruppe="${esc(g.key)}" style="top:${y}px" title="${zu ? "Aufklappen" : "Zuklappen"}">
     <span class="g-pfeil">${zu ? "▸" : "▾"}</span>
     <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
-    <span class="g-name">${esc(g.label)}</span><em>${g.n}</em></div>`;
+    ${ordnerSprung ? `<span class="g-name g-ordner" data-gruppe-ordner="${esc(g.key)}" title="In diesen Ordner wechseln">${esc(g.label)}</span>`
+      : `<span class="g-name">${esc(g.label)}</span>`}<em>${g.n}</em></div>`;
 }
 
 async function ladeModelle() {
@@ -1407,6 +1406,16 @@ document.addEventListener("click", async (e) => {
       raster.zeichne();
     }
     return;
+  }
+  const go = t.closest("[data-gruppe-ordner]");
+  if (go) {
+    const id = go.dataset.gruppeOrdner;
+    // Die Seitenleiste zeigt den Weg dorthin offen.
+    const teile = id.split("/");
+    for (let i = 1; i < teile.length; i++) zustand.offen.add(teile.slice(0, i).join("/"));
+    localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));
+    Object.assign(zustand, { ordner: id, ansicht: "alle", sammlung: "", eingeklappt: new Set() });
+    return neuLaden();
   }
   const gk = t.closest("[data-gruppe]");
   if (gk) {
