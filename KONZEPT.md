@@ -264,9 +264,6 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
 - **Kaufteile aus einem Normteil-Katalog**: Schrauben (DIN 912, 7991,
   ISO 7380 …), Muttern, Scheiben, Gewindeeinsätze, Magnete, Lager,
   Profil, Elektronik — rund 200 Teile, dazu eigene.
-- **Fortschritt**: je Position „gedruckt“ bzw. „beschafft“ per Klick
-  zählen; oben „11 von 16 fertig · noch 140 g · 6 h“. Ab Phase 2 zählt
-  die Druckhistorie mit.
 - **Summen über alle Ebenen**: Filament je Material mit seinen Farben
   und dem Anteil einer 1-kg-Rolle („TPU 86 g in Rot und Schwarz, ein
   Rest“), Druckzeit, Einkaufsliste der Kaufteile. Ohne Slicer-Daten wird
@@ -275,8 +272,13 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   -farbe und Rollengrösse aus den Einstellungen (⚙, wie in pDMS). Wer
   nur PLA+ druckt, stellt das einmal ein. Angenommenes steht dezent als
   „Standard“ dabei; Material und Farbe je Druckteil per Klick.
-- **Fortschritt oben nur für den Druck**: „Druckteile 3 von 21
-  gedruckt“. Kaufteile zählen in der Stückliste, nicht im Kopf.
+- **Ansicht wie eine technische Zeichnung** (seit 2.10.2026): oben ein Schriftfeld mit Name, Beschreibung und fünf
+  Feldern (Druckteile, Kaufteile, Filament, Druckzeit, „steckt in“), darunter Reiter **Stückliste · Notizen ·
+  Anhänge**. Die Stückliste ist eine nummerierte Tabelle in der Reihenfolge des PDFs; die Zähler „gedruckt / beschafft“
+  und der Fortschrittsbalken sind entfallen — was gedruckt wurde, steht an den Drucken des Modells (§4.6). Jedes Druckteil
+  lässt sich beim Überfahren im Slicer oder CAD öffnen. **Notizen** (Markdown) und **Anhänge** (Montageanleitung,
+  Konstruktionszeichnungen aus CorelDRAW & Co., Datenblätter; Dateien bleiben unverändert im Bestand) sind in der
+  Aufteilung vorgesehen, aber noch nicht verdrahtet.
 - **Mitte Stückliste, rechts Übersicht**: die Mitte zeigt Kopf,
   Aktionen und Stückliste. Die rechte Seitenleiste, sonst die
   Modellvorschau, trägt die Übersicht: Filament je Material mit

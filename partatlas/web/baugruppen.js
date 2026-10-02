@@ -47,8 +47,7 @@ async function ladeBaugruppenLeiste() {
   const tipp = vorschlaege.length > Number(localStorageLesen("bgtipp") || 0)
     ? `<div class="tipp" id="bg-tipp"><span>${vorschlaege.length} Ordner sehen aus wie Baugruppen</span><button class="tipp-x" id="bg-tipp-x" title="Ausblenden">×</button></div>` : "";
   abgleichen($("#baugruppen"), liste.map((b) => `
-    <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
-      <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("")
+    <button class="eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}"><span>${esc(b.name)}</span><em title="Druckteile">${b.druck_bedarf}</em></button>`).join("")
     + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="baugruppe-neu-2">＋ Neue Baugruppe</button>`) + tipp);
   zustand.bgVorschlaege = vorschlaege;
   markiereAnsicht();
@@ -160,34 +159,47 @@ function uebersichtKauf(s) {
       <span class="ue-wert">${x.bedarf}${x.einheit === "Stück" ? "×" : " " + esc(x.einheit)}${x.offen ? "" : "<small>✓ da</small>"}</span></div>`).join("")}`;
 }
 
-function zeichneBaugruppe(d) {
+// Die Ansicht einer Baugruppe: oben das Schriftfeld (wie bei einer technischen Zeichnung), darunter Reiter.
+// Stückliste ist eine nummerierte Tabelle in der Reihenfolge des PDFs; Notizen und Anhänge sind als
+// Aufteilung vorgesehen, aber noch nicht verdrahtet.
+let bgReiter = ["stueckliste", "notizen", "anhaenge"].includes(localStorageLesen("bg-reiter")) ? localStorageLesen("bg-reiter") : "stueckliste";
+
+function schriftfeld(d) {
   const f = d.fortschritt, s = d.summen;
-  const druck = d.positionen.filter((p) => p.art === "modell");
-  const unter = d.positionen.filter((p) => p.art === "baugruppe");
-  const kauf = d.positionen.filter((p) => p.art === "kaufteil");
-  const titelbild = druck.map((p) => bildUrl(p)).find(Boolean);
-  const offenTeile = f.bedarf - f.erledigt;
-  const offenDruck = f.druck_bedarf - f.druck_erledigt;
+  const mats = s.materialien.map((m) => m.material).join(" · ");
+  const feld = (name, wert, unter) => `<div class="sf-feld"><small>${name}</small><b>${wert}</b><span>${unter || "&nbsp;"}</span></div>`;
+  return `<div class="sf-felder">
+    ${feld("DRUCKTEILE", f.druck_bedarf, "Stück gesamt")}
+    ${feld("KAUFTEILE", f.kauf_bedarf, `${s.einkauf.length} ${s.einkauf.length === 1 ? "Sorte" : "Sorten"}`)}
+    ${feld("FILAMENT", `${zahl(s.gewicht_g, 0)} g`, esc(mats) + (s.gewicht_geschaetzt ? " *" : ""))}
+    ${feld("DRUCKZEIT", s.zeit_s ? dauer(s.zeit_s) : "–", s.ohne_zeit ? `${s.ohne_zeit} ohne Zeit` : "aus dem Slicer")}
+    ${feld("STECKT IN", d.verwendet_in.length ? d.verwendet_in.map((b) => `<a href="#" data-baugruppe="${esc(b.id)}">${esc(b.name)}</a>`).join(", ") : "–",
+           d.verwendet_in.length ? d.verwendet_in.map((b) => `${b.menge}×`).join(", ") + (d.exemplare > 1 ? ` · ${d.exemplare} Sätze` : "") : "")}
+  </div>`;
+}
+
+function zeichneBaugruppe(d) {
+  const titelbild = d.positionen.filter((p) => p.art === "modell").map((p) => bildUrl(p)).find(Boolean);
+  const offenDruck = d.fortschritt.druck_bedarf - d.fortschritt.druck_erledigt;
   const leer = !d.positionen.length;
-  // Zwei Zeilen statt einer Summe: „3 von 45“ vermischte Druck- und Kaufteile.
-  const fortschrittZeilen = [
-    f.druck_bedarf ? `<div class="fz"><span class="fz-name">Druckteile</span>${balken({ bedarf: f.druck_bedarf, erledigt: f.druck_erledigt })}
-      <span class="fz-text"><b>${f.druck_erledigt} von ${f.druck_bedarf}</b> gedruckt${offenDruck ? ` · noch ca. ${zahl(s.offen_gewicht_g, 0)} g${s.offen_zeit_s ? ", " + dauer(s.offen_zeit_s) : ""}` : " ✓"}</span></div>` : "",
-  ].join("");
+  const reiter = [["stueckliste", "Stückliste", d.positionen.length || ""], ["notizen", "Notizen", ""], ["anhaenge", "Anhänge", ""]];
   return `
-  <div class="bg-kopf">
-    <div class="bg-bild">${titelbild ? `<img src="${titelbild}" alt="">` : '<span style="font-size:40px">🧩</span>'}</div>
-    <div style="flex:1;min-width:0">
+  <div class="sf">
+    <div class="sf-bild">${titelbild ? `<img src="${titelbild}" alt="">` : "🧩"}</div>
+    <div class="sf-kopf">
+      <small>BAUGRUPPE</small>
       <h2 class="bg-titel" id="bg-name" title="Klicken zum Umbenennen">${esc(d.name)}</h2>
       <div class="bg-beschreibung" id="bg-beschreibung" title="Klicken zum Bearbeiten">${d.beschreibung ? esc(d.beschreibung) : '<span class="dim">Beschreibung hinzufügen …</span>'}</div>
-      ${leer ? "" : `<div class="bg-fortschritt">${fortschrittZeilen}</div>`}
-      ${!leer && f.druck_bedarf && offenDruck === 0 ? '<div class="feier">🎉 Alle Teile gedruckt — Zeit zum Zusammenbauen!</div>' : ""}
-      ${d.verwendet_in.length ? `<div class="dim" style="margin-top:6px">Steckt in: ${d.verwendet_in.map((b) =>
-        `<a href="#" data-baugruppe="${esc(b.id)}">${esc(b.name)}</a> (${b.menge}×)`).join(", ")}${d.exemplare > 1
-        ? ` — insgesamt <b>${d.exemplare} Sätze</b>, die Zähler unten gelten für alle zusammen.` : ""}</div>` : ""}
     </div>
+    ${leer ? "" : schriftfeld(d)}
   </div>
-  ${leer ? `
+  <div class="bg-reiter" role="tablist">${reiter.map(([k, t, n]) =>
+    `<button role="tab" data-bg-reiter="${k}" class="${k === bgReiter ? "an" : ""}">${t}${n ? ` <span class="d-zahl">${n}</span>` : ""}${k === "stueckliste" ? "" : ' <small class="folgt">folgt</small>'}</button>`).join("")}</div>
+  ${bgReiter === "notizen" ? notizenTafel() : bgReiter === "anhaenge" ? anhaengeTafel() : stuecklisteTafel(d, leer, offenDruck)}`;
+}
+
+function stuecklisteTafel(d, leer, offenDruck) {
+  if (leer) return `
   <div class="bg-leer">
     <h3>Eine Baugruppe ist eine Stückliste</h3>
     <ol>
@@ -195,73 +207,86 @@ function zeichneBaugruppe(d) {
       <li><b>Mengen einstellen</b> — 4 Arme, 8 Halter. Heisst eine Datei <code>Arm_x4</code>, steht die 4 schon da.</li>
       <li><b>Kaufteile dazu</b> — Schrauben, Muttern, Magnete, Lager aus dem Katalog.</li>
     </ol>
-    <p class="dim">Dann zeigt partAtlas, was noch fehlt, wie viel Filament welcher Farbe du brauchst und was du kaufen musst.</p>
+    <p class="dim">Dann zeigt partAtlas, wie viel Filament welcher Farbe du brauchst und was du kaufen musst.</p>
     <div class="i-knoepfe"><button class="knopf akzent" data-bg-aktion="teile">＋ Druckteile wählen</button>
       <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button><button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button></div>
-  </div>` : `
-
-  <div class="bg-aktionen">
-    <button class="knopf akzent" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
+  </div>`;
+  return `
+  <div class="bg-werkzeug">
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
+    <span class="bg-luecke"></span>
+    <button class="knopf" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf gefahr" data-bg-aktion="loeschen">Baugruppe löschen</button>
   </div>
-  ${abschnitt("DRUCKTEILE", druck, "teile", "Noch keine Druckteile.")}
-  ${unter.length ? abschnitt("UNTERBAUGRUPPEN", unter, "unter", "") : ""}
-  ${abschnitt("KAUFTEILE", kauf, "kaufteile", "Noch keine Kaufteile — Schrauben, Magnete, Lager …")}
-`}`;
+  <div class="bom">
+    <div class="bom-kopf"><span>POS.</span><span></span><span>BENENNUNG</span><span>MENGE</span><span>MATERIAL</span><span class="re">GEWICHT</span><span></span></div>
+    ${d.positionen.map((p, i) => position(p, i + 1)).join("")}
+  </div>`;
 }
 
-function abschnitt(titel, liste, aktion, leer) {
-  return `<div class="bg-abschnitt"><h3>${titel}</h3><button data-bg-aktion="${aktion}">＋ hinzufügen</button></div>
-    ${liste.length ? liste.map(position).join("") : `<div class="pos-leer">${leer}</div>`}`;
+// Noch nicht verdrahtet: die Aufteilung steht, damit sich die Ansicht nicht mehr umbauen muss, wenn es kommt.
+function notizenTafel() {
+  return `<div class="bg-tafel">
+    <div class="bg-tafel-kopf"><div class="segment"><button class="an" disabled>Schreiben</button><button disabled>Vorschau</button></div>
+      <span class="dim">Markdown</span></div>
+    <div class="bg-platz"><b>Konstruktionsnotizen</b><span>Maße, Toleranzen, Entwürfe, Montagehinweise — in Markdown geschrieben, an dieser Baugruppe gespeichert.</span></div>
+  </div>`;
 }
 
-function position(p) {
+function anhaengeTafel() {
+  return `<div class="bg-tafel">
+    <div class="bg-tafel-kopf"><button class="knopf" disabled title="Kommt als Nächstes">＋ Datei anhängen</button><span class="dim">z. B. Montageanleitung, Konstruktionszeichnung</span></div>
+    <div class="anh-kopf"><span></span><span>TYP</span><span>NAME</span><span class="re">GRÖSSE</span><span>STAND</span></div>
+    <div class="bg-platz"><b>Dateien zur Baugruppe</b><span>Montageanleitungen, Konstruktionszeichnungen (PDF, CorelDRAW, SVG, DXF …), Datenblätter — hier ablegen. Die Dateien bleiben unverändert im Bestand.</span></div>
+  </div>`;
+}
+
+function position(p, nr) {
   const r = esc(p.ref);
-  const fertig = p.art !== "baugruppe" && p.erledigt >= p.bedarf;
-  let vorschau, name, unterzeile, zaehlerText;
+  let vorschau, name, unter;
   if (p.art === "modell") {
     const url = bildUrl(p);
     vorschau = url ? `<img loading="lazy" src="${url}" alt="">` : "🧊";
-    name = `<div class="name">${esc(p.name)}${esc(endung[p.format] || "")}</div>`;
-    unterzeile = [p.fehlt ? "⚠ Datei fehlt" : "", p.je_gewicht_g ? `je ${zahl(p.je_gewicht_g, 1)} g${p.je_geschaetzt ? " (geschätzt)" : ""}` : "", masse(p.masse)].filter(Boolean).join(" · ");
-    zaehlerText = "gedruckt";
+    name = `${esc(p.name)}<span class="endung">${esc(endung[p.format] || "")}</span>`;
+    unter = [p.fehlt ? "⚠ Datei fehlt" : "", masse(p.masse), p.je_gewicht_g ? `je ${zahl(p.je_gewicht_g, 1)} g${p.je_geschaetzt ? " *" : ""}` : ""].filter(Boolean).join(" · ");
   } else if (p.art === "kaufteil") {
     vorschau = symbolFuer(p.kategorie);
-    name = `<div class="name">${esc(p.name)}</div>`;
-    unterzeile = `${esc(p.kategorie || "")}${p.einheit && p.einheit !== "Stück" ? " · in " + esc(p.einheit) : ""}`;
-    zaehlerText = "beschafft";
+    name = esc(p.name);
+    unter = `${esc(p.kategorie || "")}${p.einheit && p.einheit !== "Stück" ? " · in " + esc(p.einheit) : ""}`;
   } else {
     vorschau = "🧩";
-    name = `<div class="name">${esc(p.name)} ›</div>`;
-    unterzeile = `${p.unter_positionen} Positionen · ${p.unter_erledigt} von ${p.unter_bedarf} Teilen fertig`;
-    zaehlerText = "";
+    name = `${esc(p.name)} ›`;
+    unter = `Baugruppe · ${p.unter_positionen} Positionen`;
   }
-  const zaehler = p.art === "baugruppe"
-    ? `<div class="zaehler">${balken({ bedarf: p.unter_bedarf, erledigt: p.unter_erledigt })}<span class="dim">wird in der Unterbaugruppe gezählt</span></div>`
-    : `<div class="zaehler"><div class="zeile2"><span class="stepper"><button data-bg-zaehlen="-1" data-ref="${r}" title="eins weniger">−</button><span>${p.erledigt}/${p.bedarf}</span><button data-bg-zaehlen="1" data-ref="${r}" title="eins mehr ${zaehlerText}">＋</button></span>
-       ${fertig ? '<span style="color:var(--good)">✓</span>' : `<button class="voll" data-bg-voll="${r}" title="alle ${zaehlerText}">alle</button>`}</div>
-       <span class="dim">${zaehlerText}</span></div>`;
   const material = p.art === "modell"
-    ? `<div class="material"><button class="mat-knopf ${p.material_angenommen ? "standard" : ""}" data-bg-material="${r}"
-        title="${p.material_angenommen ? "Keine Angabe — Standard aus den Einstellungen. Klicken zum Festlegen." : "Material und Farbe festlegen"}">
-        ${tupfer(p.farbe)}${esc(p.material)}${p.material_angenommen ? " <small>Standard</small>" : ""}</button></div>` : `<div class="material"></div>`;
+    ? `<button class="mat-knopf ${p.material_angenommen ? "standard" : ""}" data-bg-material="${r}"
+        title="${p.material_angenommen ? "Keine Angabe — Standard aus den Einstellungen. Klicken zum Festlegen." : "Material und Farbe festlegen"}">${tupfer(p.farbe)}${esc(p.material)}</button>` : "";
+  const gewicht = p.art === "modell" && p.je_gewicht_g ? `${zahl(p.je_gewicht_g * p.menge, 0)} g${p.je_geschaetzt ? " *" : ""}` : "";
   const zeile = p.art === "modell" ? `data-bg-modell="${esc(p.id)}" title="Im Inspektor zeigen"`
     : p.art === "baugruppe" ? `data-bg-unter="${esc(p.id)}" title="Öffnen"` : "";
-  return `<div class="pos ${fertig && p.art !== "baugruppe" ? "erledigt" : ""} ${p.art === "modell" && zustand.gewaehlt === p.id ? "gewaehlt" : ""}" ${zeile}>
+  return `<div class="bz ${p.art === "modell" && zustand.gewaehlt === p.id ? "gewaehlt" : ""}" ${zeile}>
+    <span class="bz-nr">${nr}</span>
     <div class="vorschau">${vorschau}</div>
-    <div style="min-width:0">${name}<div class="unter">${unterzeile}</div>${p.notiz ? `<div class="notiz-text" title="Notiz">${esc(p.notiz)}</div>` : ""}</div>
-    <div><span class="stepper"><button data-bg-menge="-1" data-ref="${r}">−</button><span>${p.menge}×</span><button data-bg-menge="1" data-ref="${r}">＋</button></span></div>
-    ${zaehler}
-    ${material}
-    <button class="weg" data-bg-weg="${r}" title="aus der Baugruppe nehmen">×</button></div>`;
+    <div class="bz-name"><b>${name}</b><small>${unter}</small>${p.notiz ? `<small class="notiz-text" title="Notiz">${esc(p.notiz)}</small>` : ""}</div>
+    <span class="stepper"><button data-bg-menge="-1" data-ref="${r}">−</button><span>${p.menge}×</span><button data-bg-menge="1" data-ref="${r}">＋</button></span>
+    <div class="bz-mat">${material}</div>
+    <span class="bz-gew mono">${gewicht}</span>
+    <div class="bz-akt">${p.art === "modell" ? hoverAktionen(p) : ""}<button class="hv-btn weg" data-bg-weg="${r}" title="aus der Baugruppe nehmen">×</button></div></div>`;
 }
 
 // ---------------------------------------------------------------- Ändern
 
 const bid = () => zustand.baugruppe;
+
+document.addEventListener("click", (e) => {
+  const r = e.target.closest?.("[data-bg-reiter]");
+  if (!r || !bgDaten) return;
+  bgReiter = r.dataset.bgReiter;
+  localStorageSchreiben("bg-reiter", bgReiter);
+  abgleichen($("#bg-ansicht"), zeichneBaugruppe(bgDaten));
+});
 
 async function positionAendern(ref, werte) {
   try { await api(`/api/baugruppen/${bid()}/positionen`, { method: "PATCH", body: { ref, ...werte } }); }
@@ -468,7 +493,7 @@ document.addEventListener("click", async (e) => {
   }
   const mod = t.closest("[data-bg-modell]");
   if (mod) {
-    document.querySelectorAll(".pos[data-bg-modell]").forEach((r) => r.classList.toggle("gewaehlt", r === mod));
+    document.querySelectorAll(".bz[data-bg-modell]").forEach((r) => r.classList.toggle("gewaehlt", r === mod));
     return waehle(mod.dataset.bgModell);
   }
   const unter = t.closest("[data-bg-unter]");

@@ -263,7 +263,7 @@ async def oberflaeche(port):
         check("Übersicht steht rechts: Filament, Druckzeit, PDF — die Mitte bleibt der Stückliste",
               "FILAMENT" in rechts and "DRUCKZEIT" in rechts and "PDF" in rechts
               and await pg.locator("#bg-ansicht .mischung").count() == 0)
-        await pg.locator("#bg-ansicht .pos .name").first.click()
+        await pg.locator("#bg-ansicht .bz .bz-name b").first.click()
         await pg.wait_for_selector("#bg-zurueck")
         await pg.click("#bg-zurueck")
         await pg.wait_for_timeout(300)

@@ -1279,7 +1279,7 @@ document.addEventListener("click", async (e) => {
   const wahl = t.closest("[data-wahl]");
   if (wahl) { e.stopPropagation(); return waehleAus(wahl.dataset.wahl, e.shiftKey); }
   const hv = t.closest("[data-hv]");
-  if (hv) { e.stopPropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }
+  if (hv) { e.stopImmediatePropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }
   const st = t.closest("[data-stapel]");
   if (st) return stapelAktion(st.dataset.stapel);
   const lay = t.closest("[data-layout]");
