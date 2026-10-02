@@ -12,7 +12,18 @@ git clone https://github.com/bireggbaum-beep/partAtlas && cd partAtlas
 ./start.sh --demo      # beim ersten Mal: Umgebung anlegen, Demo-Sammlung, Browser
 ```
 
-Danach genügt `./start.sh`. Slicer und CAD (PrusaSlicer, Orca, Cura, FreeCAD …)
+Danach genügt `./start.sh`. Zum **Aktualisieren** (neue Fassung holen):
+
+```bash
+# 1. laufendes partAtlas beenden: im Terminal, in dem es läuft, Strg+C
+#    (oder von woanders: pkill -f "python -m partatlas")
+cd partAtlas
+git pull
+./start.sh             # kein --demo nötig; die eigene Sammlung bleibt erhalten
+```
+
+Im Browser einmal **Strg+Umschalt+R** (neu laden ohne Zwischenspeicher). Oben links steht neben dem Logo die
+Fassung. Ein noch laufender alter Server wird von `start.sh` nur wieder geöffnet, nicht neu gestartet. Slicer und CAD (PrusaSlicer, Orca, Cura, FreeCAD …)
 findet partAtlas im PATH, bei Flatpak und als AppImage in `~/Applications`
 oder `~/AppImages`; „Öffnen in …“ startet sie auf dem eigenen Rechner.
 
@@ -24,7 +35,7 @@ python -m partatlas                 # http://127.0.0.1:8765
 ```
 
 Bestand unter `~/.local/share/partatlas`, anderer Ort mit `PARTATLAS_BESTAND=…`.
-In der Oberfläche: **Importieren → Ordner hinzufügen**, Pfad eingeben.
+In der Oberfläche: **Importieren → Ordner hinzufügen** öffnet den Ordnerdialog des Rechners.
 
 Zum Ausprobieren ohne eigene Sammlung:
 
