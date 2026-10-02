@@ -256,12 +256,17 @@ const raster = (() => {
     zeichne();
   }
 
-  function zeichne() {
+  // Beim Scrollen ändert sich der Zeilenbereich nur alle paar Bilder; dazwischen
+  // nichts neu bauen. Alle anderen Aufrufer (Auswahl, Herz, Nachladen) zeichnen immer.
+  let bereich = "";
+  function zeichne(nurBeiNeuemBereich) {
     geplant = false;
     const { B, H, LUECKE, RAND: R } = mass();
     const oben = aussen.scrollTop, hoehe = aussen.clientHeight;
     const von = Math.max(0, Math.floor((oben - R) / (H + LUECKE)) - 2);
     const bis = Math.ceil((oben + hoehe) / (H + LUECKE)) + 2;
+    if (nurBeiNeuemBereich === true && bereich === `${von}-${bis}`) return;
+    bereich = `${von}-${bis}`;
     const html = [];
     for (let z = von; z < bis; z++) {
       for (let s = 0; s < spalten; s++) {
@@ -274,7 +279,7 @@ const raster = (() => {
     abgleichen(innen, html.join(""));
   }
 
-  aussen.addEventListener("scroll", () => { if (!geplant) { geplant = true; requestAnimationFrame(zeichne); } });
+  aussen.addEventListener("scroll", () => { if (!geplant) { geplant = true; requestAnimationFrame(() => zeichne(true)); } });
   window.addEventListener("resize", () => requestAnimationFrame(neu));
   return { neu, zeichne };
 })();

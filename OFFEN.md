@@ -141,6 +141,14 @@ Vorschau.
 Bild links, rechts Name, Maße · Gewicht · Grösse, Status, Material und Tags
 als Chips, Ordner. Feste Feldauswahl (`zeileK()` in `app.js`).
 
+**Scroll-Leistung (2.10.2026, `messung/scroll_bench.py`, 5000 Modelle, headless):**
+Hauptthread je Frame — Raster Skript 2,6 → 1,35 ms (Gesamt 6,2 → 4,6 ms), Karten
+1,4 → 1,1 ms; Layout und Stil je ≈ 0,2 ms. Gebaut wurde nur: beim Scrollen
+nicht neu zeichnen, solange der Zeilenbereich gleich bleibt. Die Frame-Abstände
+(Raster 33 ms, Liste/Karten 17 ms) hängen hier am Malen der Bilder in Software
+(ohne Bilder halbiert sich das Raster); `contain` je Kachel brachte nichts.
+Auf echter Grafikkarte nicht gemessen.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
