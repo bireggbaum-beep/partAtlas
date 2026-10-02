@@ -223,6 +223,10 @@ Quelle der Linux-Pakete: Releases von develonrails/anycubic-slicer-next (AppImag
 in die Einstellungen › Programme; vorher verschwand er still. **Fassung 0.21.0** (die Fassungsnummer war seit 0.20.6 nicht
 mitgezogen worden). `tests/test_ui.py` lief am 2.10.2026 durch (58/58, ein Test an die zwei Programm-Plätze angepasst).
 
+**Einlese-Dauer sichtbar (0.22.0):** nach dem Einlesen bleibt in der Statuszeile oben „Eingelesen: 2 413 Dateien, 2 413 neu
+in 48 s“ stehen (auch nach Neuladen), dazu ein Hinweis. Für den Test mit dem ganzen Bestand eines Anwenders. Der Wert ist
+die Dauer des gesamten Laufs inklusive der Vorschauen (`dauer_s` aus `scan.py`).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

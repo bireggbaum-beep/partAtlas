@@ -342,6 +342,13 @@ function zeichneLeer() {
   }
 }
 
+// Wie lange das Einlesen gedauert hat, stehen lassen: wer einen grossen Bestand prüft, will die Zahl ablesen können.
+function scanErgebnis(m) {
+  if (m.dauer_s == null || !m.gefunden) return "";
+  const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
+  return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""} in ${zeit}`;
+}
+
 // ---------------------------------------------------------------- Virtuelles Raster und Liste
 //
 // Beide Ansichten zeichnen nur, was sichtbar ist. Die Liste ist dasselbe
@@ -1802,7 +1809,11 @@ function live() {
         ? `Einlesen: ${m.phase}${m.analysiert != null && m.zu_analysieren ? ` ${m.analysiert}/${m.zu_analysieren}` : ""}`
         : (m.vorschauen_offen ? "" : "");
       if (m.phase === "vorschau" && m.vorschauen_offen) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
-      if (m.phase === "fertig") { $("#scan-status").textContent = ""; neuLaden(); }
+      if (m.phase === "fertig") {
+        $("#scan-status").textContent = scanErgebnis(m);
+        if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
+        neuLaden();
+      }
       return;
     }
     // Viele Änderungen hintereinander (Scan) sammeln, dann einmal laden.
@@ -1820,6 +1831,7 @@ function live() {
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
 neuLaden();
 programmeAktualisieren();
+api("/api/stand").then((s) => { if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
