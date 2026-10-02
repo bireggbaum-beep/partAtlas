@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from . import durchsuchen, formate, programme
+from . import dateidialog, durchsuchen, formate, programme
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -418,8 +418,14 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.get("/api/einstellungen")
     def einstellungen():
         e = zustand["bestand"].einstellungen()
+        gewaehlt = e.get("programm") or {}
+        gefunden = programme.erkennen()
+        prog = {}
+        for art in programme.ARTEN:
+            p = programme.programm_fuer(art, e, gefunden)
+            prog[art] = p and {**p, "automatisch": not (gewaehlt.get(art) and p["pfad"] == gewaehlt[art])}
         return {"auto_tags": True, **e, "gilt": B().standard(), "materialien": K().materialien(),
-                "pdf": {**PDF_STANDARD, **(e.get("pdf") or {})}}
+                "pdf": {**PDF_STANDARD, **(e.get("pdf") or {})}, "programm": prog}
 
     @app.put("/api/einstellungen")
     async def einstellungen_setzen(request: Request):
@@ -442,20 +448,19 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
                 werte["rolle_g"] = max(100, min(int(d["rolle_g"]), 10_000))
             except (TypeError, ValueError):
                 raise KatalogFehler("Rollengrösse in Gramm.")
-        if "programme" in d:
-            eigene = []
-            for p in d["programme"] or []:
-                name, pfad = str(p.get("name") or "").strip()[:60], str(p.get("pfad") or "").strip()
-                if not name or not programme.ausfuehrbar(pfad):
-                    raise KatalogFehler(f"Kein ausführbares Programm: {pfad or '(leer)'}")
-                art = p.get("art") if p.get("art") in programme.ARTEN else programme.CAD
-                formate = [f for f in p.get("formate") or programme.FORMATE if f in programme.FORMATE]
-                eigene.append({"name": name, "pfad": pfad, "art": art, "formate": formate})
-            werte["programme"] = eigene
-            werte["slicer"] = []
-        if "standard_programm" in d:
-            werte["standard_programm"] = {f: str(v) for f, v in (d["standard_programm"] or {}).items()
-                                          if f in programme.FORMATE and v}
+        if "programm" in d:     # {"slicer": Pfad, "cad": Pfad}; leer = wieder automatisch
+            wahl = dict((zustand["bestand"].einstellungen().get("programm") or {}))
+            for art in programme.ARTEN:
+                if art not in (d["programm"] or {}):
+                    continue
+                pfad = str(d["programm"][art] or "").strip()
+                if not pfad:
+                    wahl.pop(art, None)
+                elif programme.ausfuehrbar(pfad):
+                    wahl[art] = pfad
+                else:
+                    raise KatalogFehler(f"Das ist kein ausführbares Programm: {pfad}")
+            werte["programm"] = wahl
         zustand["bestand"].einstellungen_setzen(**werte)
         verteiler.senden("einstellungen", werte)
         return B().standard()
@@ -582,6 +587,22 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def programme_liste():
         liste, std = _programme()
         return {"programme": liste, "standard": std, "arten": programme.ARTEN}
+
+    @app.post("/api/programme/waehlen")
+    async def programm_waehlen(request: Request):
+        """Öffnet den Dateidialog des Rechners; gespeichert wird erst mit „Speichern“."""
+        art = (await request.json()).get("art")
+        if art not in programme.ARTEN:
+            raise KatalogFehler("Slicer oder CAD.")
+        try:
+            pfad = dateidialog.programm_waehlen(f"{programme.ARTEN[art]} auswählen")
+        except dateidialog.KeinDialog as e:
+            raise KatalogFehler(str(e))
+        if not pfad:
+            return {"abgebrochen": True}
+        if not programme.ausfuehrbar(pfad):
+            raise KatalogFehler("Das ist kein ausführbares Programm.")
+        return {**programme.eintrag_fuer(pfad, art), "automatisch": False}
 
     @app.post("/api/modelle/{mid}/im_ordner")
     def im_ordner(mid: str):

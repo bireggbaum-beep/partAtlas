@@ -155,12 +155,15 @@ async def oberflaeche(port):
               os.path.exists(PROTOKOLL) and "prusa-slicer " in open(PROTOKOLL).read() and "Vase.stl" in open(PROTOKOLL).read())
         await pg.click("#einstellungen")
         await pg.click('[data-ein="programme"]')
-        await pg.wait_for_selector('[data-prog-std="stl"]')
-        freecad = await pg.locator('[data-prog-std="stl"] option', has_text="FreeCAD").get_attribute("value")
-        await pg.select_option('[data-prog-std="stl"]', freecad)
+        await pg.wait_for_selector('[data-prog-aendern="slicer"]')
+        check("Einstellungen › Programme: Slicer und CAD stehen schon drin, ohne Textfeld",
+              "PrusaSlicer" in await pg.inner_text(".prog-wahl >> nth=0") and "FreeCAD" in await pg.inner_text(".prog-wahl >> nth=1")
+              and await pg.locator("#prog-teil input").count() == 0)
+        await pg.click('[data-prog-aendern="slicer"]')                 # der Dateidialog (Attrappe) wählt FreeCAD
+        await pg.wait_for_function("document.querySelector('.prog-wahl').innerText.includes('FreeCAD')")
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
-        check("Einstellungen: STL auf FreeCAD umgestellt, der Hauptknopf folgt",
+        check("Einstellungen: FreeCAD als Slicer gewählt, der Hauptknopf für STL folgt",
               "FreeCAD" in await pg.inner_text("#oeffnen"))
 
         global WID
@@ -495,6 +498,10 @@ if __name__ == "__main__":
         with open(os.path.join(attrappen, name), "w") as f:
             f.write(f'#!/bin/sh\necho "{name} $*" >> "{PROTOKOLL}"\n')
         os.chmod(os.path.join(attrappen, name), 0o755)
+    # Der Dateidialog des Rechners: „wählt“ immer die FreeCAD-Attrappe.
+    with open(os.path.join(attrappen, "zenity"), "w") as f:
+        f.write(f'#!/bin/sh\necho "{os.path.join(attrappen, "freecad")}"\n')
+    os.chmod(os.path.join(attrappen, "zenity"), 0o755)
     umgebung = {**os.environ, "PARTATLAS_BESTAND": os.path.join(tmp, "bestand"), "PARTATLAS_PORT": str(port),
                 "PYTHONPATH": os.environ.get("PARTATLAS_QUELLE") or WURZEL,
                 "PATH": attrappen + os.pathsep + os.environ["PATH"]}

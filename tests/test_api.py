@@ -24,6 +24,11 @@ if __name__ == "__main__":
         with open(os.path.join(attrappen, name), "w") as f:
             f.write(f'#!/bin/sh\necho "{name} $*" >> "{protokoll}"\n')
         os.chmod(os.path.join(attrappen, name), 0o755)
+    # Der Dateidialog des Rechners: gibt aus, was in antwort.txt steht (leer = „Abbrechen“).
+    antwort = os.path.join(tmp, "antwort.txt")
+    with open(os.path.join(attrappen, "zenity"), "w") as f:
+        f.write(f'#!/bin/sh\ncat "{antwort}"\n[ -s "{antwort}" ]\n')
+    os.chmod(os.path.join(attrappen, "zenity"), 0o755)
     os.environ["PATH"] = attrappen + os.pathsep + os.environ["PATH"]
 
     def gestartet(erwartet):
@@ -124,13 +129,28 @@ if __name__ == "__main__":
               gestartet("dbus-send --session") and "ShowItems array:string:file://" + os.path.join(sammlung, "Haken.stl") in open(protokoll).read())
         r = c.post(f"/api/modelle/{zahnrad['id']}/oeffnen", json={"pfad": "/bin/sh"})
         check("Öffnen: nur bekannte Programme, kein beliebiger Pfad", r.status_code == 400)
-        r = c.put("/api/einstellungen", json={"programme": [{"name": "Kaputt", "pfad": os.path.join(tmp, "gibtsnicht")}]})
-        check("Eigenes Programm: nur was es gibt und ausführbar ist", r.status_code == 400)
+        e = c.get("/api/einstellungen").json()["programm"]
+        check("Einstellungen: Slicer und CAD stehen schon drin, als „automatisch“ gefunden",
+              e["slicer"]["name"] == "PrusaSlicer" and e["cad"]["name"] == "FreeCAD" and e["slicer"]["automatisch"] and e["cad"]["automatisch"])
+        r = c.put("/api/einstellungen", json={"programm": {"slicer": os.path.join(tmp, "gibtsnicht")}})
+        check("Programm wählen: nur was es gibt und ausführbar ist", r.status_code == 400)
         mein = os.path.join(attrappen, "meincad")
-        c.put("/api/einstellungen", json={"programme": [{"name": "Mein CAD", "pfad": mein, "art": "cad"}],
-                                           "standard_programm": {"stl": mein}})
+        open(antwort, "w").close()
+        check("Dateidialog abgebrochen: nichts ändert sich", c.post("/api/programme/waehlen", json={"art": "slicer"}).json() == {"abgebrochen": True})
+        with open(antwort, "w") as f:
+            f.write(mein + "\n")
+        w = c.post("/api/programme/waehlen", json={"art": "slicer"}).json()
+        check("Dateidialog des Rechners: der gewählte Pfad kommt zurück, mit Namen vom Dateinamen",
+              w["pfad"] == mein and w["name"] == "meincad" and w["art"] == "slicer" and not w["automatisch"])
+        check("… gespeichert wird erst mit „Speichern“", c.get("/api/einstellungen").json()["programm"]["slicer"]["name"] == "PrusaSlicer")
+        c.put("/api/einstellungen", json={"programm": {"slicer": mein}})
         c.post(f"/api/modelle/{haken['id']}/oeffnen", json={})
-        check("Eigenes Programm als Standard für STL übernimmt den Hauptknopf", gestartet("meincad " + os.path.join(sammlung, "Haken.stl")))
+        check("Eigener Slicer übernimmt den Hauptknopf für STL", gestartet("meincad " + os.path.join(sammlung, "Haken.stl")))
+        check("Es bleiben genau zwei Programme zur Auswahl: der gewählte Slicer und das CAD",
+              [p["name"] for p in c.get("/api/programme").json()["programme"]] == ["meincad", "FreeCAD"])
+        c.put("/api/einstellungen", json={"programm": {"slicer": ""}})
+        check("„Automatisch“: Slicer ist wieder der gefundene",
+              c.get("/api/einstellungen").json()["programm"]["slicer"]["name"] == "PrusaSlicer")
 
         # -- Löschen über die API
         v = c.get(f"/api/modelle/{zahnrad['id']}/loeschen").json()

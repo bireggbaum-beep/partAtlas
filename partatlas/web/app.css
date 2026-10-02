@@ -311,14 +311,6 @@ dialog.breit { width: min(640px, 92vw); max-width: none; }
 .zurueck { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0 0 10px; font-size: 13.5px; }
 
 /* Programme in den Einstellungen */
-.prog-zeile { display: grid; grid-template-columns: 120px 100px 1fr 24px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
-.prog-zeile small { color: var(--ink-3); font: 12px var(--mono); }
-.prog-zeile code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ink-2); }
-.prog-zeile .weg { background: none; border: 0; color: var(--ink-3); cursor: pointer; font-size: 15px; }
-.prog-neu { display: grid; grid-template-columns: 1fr 1.6fr auto auto; gap: 6px; margin-top: 8px; }
-.prog-standard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 14px; }
-.prog-standard label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 13px var(--mono); }
-.prog-standard select { flex: 1; max-width: 200px; }
 
 /* Leiste über dem Raster: Material und Tags je mit ODER */
 .tagleiste { align-items: center; }
@@ -669,3 +661,13 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .ein-inhalt { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
 .ein-inhalt > section > .i-titel:first-child { margin-top: 6px; }
 .ein-haupt .knoepfe { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 8px; }
+
+/* Einstellungen › Programme: ein Slicer, ein CAD. */
+.prog-feld { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.prog-art small { display: block; color: var(--ink-3); font-size: 12px; line-height: 1.35; margin-top: 3px; }
+.prog-wahl { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.prog-wahl code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ink-3); }
+.prog-gefunden { font: 11px var(--mono); color: var(--accent); margin-left: 8px; }
+.prog-aktion { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.knopf-text { background: none; border: 0; color: var(--ink-3); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
+.knopf-text:hover { color: var(--accent); }

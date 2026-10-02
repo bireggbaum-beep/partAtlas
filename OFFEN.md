@@ -175,6 +175,14 @@ Abhakkästchen, Dateipfade. Gespeichert in `einstellungen.json` unter `pdf`
 (`PDF_STANDARD` in `stueckliste.py`); Abschnittsnummern im PDF zählen mit.
 Nicht einstellbar (bisher): Papierformat, Schrift, Logo/Titelzeile.
 
+**Programme (Einstellungen):** nur noch zwei Plätze, Slicer und CAD, mit dem gefundenen
+Programm vorbelegt; „Ändern …“ öffnet den Dateidialog des Rechners (`dateidialog.py`:
+zenity, kdialog oder Tk unter Linux; PowerShell unter Windows; AppleScript am Mac —
+**Windows und Mac ungeprüft**), „Automatisch“ nimmt die Wahl zurück. Kein Textfeld,
+keine Liste, kein Standard je Format mehr (STEP → CAD, sonst Slicer). Alte Einträge
+(`slicer`, `programme`) gelten weiter, bis neu gewählt wird. Offen: „Ordner hinzufügen“
+nutzt noch den eigenen Ordnerbaum statt des Rechner-Dialogs (`durchsuchen.py`).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

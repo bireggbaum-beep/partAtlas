@@ -103,38 +103,61 @@ def erkennen():
 
 
 def eigene(einstellungen):
-    # „slicer“ ist der Schlüssel aus 0.6; er gilt weiter als Slicer-Liste.
+    # Einträge aus früheren Fassungen („slicer“ seit 0.6, „programme“): sie bleiben gültig,
+    # bis der Anwender in den Einstellungen selbst ein Programm wählt.
     roh = [{**s, "art": SLICER} for s in einstellungen.get("slicer", [])] + einstellungen.get("programme", [])
     return [{**_eintrag(s["name"], s.get("art") if s.get("art") in ARTEN else CAD, s.get("formate") or FORMATE,
                         s["pfad"]), "eigen": True}
             for s in roh if s.get("pfad") and os.path.isfile(s["pfad"])]
 
 
+def eintrag_fuer(pfad, art):
+    """Ein vom Anwender gewähltes Programm. Der Name kommt vom bekannten Programm,
+    sonst vom Dateinamen („prusa-slicer.AppImage“ → „prusa-slicer“)."""
+    echt = os.path.basename(os.path.realpath(pfad)).lower()
+    for name, _, _, programme, _, _ in BEKANNT:
+        if echt.rsplit(".", 1)[0] in {x.lower() for x in programme}:
+            return {**_eintrag(name, art, FORMATE, pfad), "eigen": True}
+    stamm = os.path.basename(pfad.rstrip("/\\"))
+    for ende in (".AppImage", ".appimage", ".exe", ".app"):
+        if stamm.endswith(ende):
+            stamm = stamm[: -len(ende)]
+    return {**_eintrag(stamm, art, FORMATE, pfad), "eigen": True}
+
+
+def programm_fuer(art, einstellungen, erkannt=None):
+    """Das Programm für „Slicer“ bzw. „CAD“: was der Anwender gewählt hat, sonst ein
+    Eintrag aus früheren Fassungen, sonst das erste gefundene. None, wenn es keines gibt."""
+    gewaehlt = (einstellungen.get("programm") or {}).get(art)
+    if gewaehlt and ausfuehrbar(gewaehlt):
+        return eintrag_fuer(gewaehlt, art)
+    alt = next((s for s in eigene(einstellungen) if s["art"] == art), None)
+    if alt:
+        return alt
+    return next((s for s in (erkannt if erkannt is not None else erkennen()) if s["art"] == art), None)
+
+
 def alle(einstellungen):
-    mein = eigene(einstellungen)
-    pfade = {os.path.realpath(s["pfad"]) for s in mein}
-    return mein + [s for s in erkennen() if os.path.realpath(s["pfad"]) not in pfade]
+    """Genau zwei Plätze: ein Slicer und ein CAD."""
+    gefunden = erkennen()
+    return [p for p in (programm_fuer(art, einstellungen, gefunden) for art in (SLICER, CAD)) if p]
 
 
-def standard(programme, einstellungen):
-    """Je Format das Programm, das der Hauptknopf nimmt.
-
-    Eingestellt geht vor. Sonst STEP ins CAD (ein Slicer würde es nur
-    vernetzen), alles andere in den Slicer — so wie man druckt.
-    """
-    gewaehlt = einstellungen.get("standard_programm", {})
+def standard(programme, einstellungen=None):
+    """Je Format das Programm, das der Hauptknopf nimmt: STEP ins CAD (ein Slicer
+    würde es nur vernetzen), alles andere in den Slicer — so wie man druckt."""
     ergebnis = {}
     for fmt in FORMATE:
         passend = [p for p in programme if fmt in p["formate"]]
         vorzug = CAD if fmt == "step" else SLICER
-        wahl = (next((p for p in passend if p["pfad"] == gewaehlt.get(fmt)), None)
-                or next((p for p in passend if p["art"] == vorzug), None)
-                or (passend[0] if passend else None))
+        wahl = next((p for p in passend if p["art"] == vorzug), None) or (passend[0] if passend else None)
         ergebnis[fmt] = wahl["pfad"] if wahl else None
     return ergebnis
 
 
 def ausfuehrbar(pfad):
+    if sys.platform == "darwin" and pfad.endswith(".app") and os.path.isdir(pfad):
+        return True         # ein Programm ist am Mac ein Ordner
     return os.path.isfile(pfad) and (sys.platform.startswith("win") or os.access(pfad, os.X_OK))
 
 
@@ -150,7 +173,8 @@ def _optionen():
 
 
 def oeffnen(programm, datei):
-    subprocess.Popen([programm, datei], **_optionen())
+    befehl = ["open", "-a", programm, datei] if programm.endswith(".app") else [programm, datei]
+    subprocess.Popen(befehl, **_optionen())
 
 
 def mit_system(datei):

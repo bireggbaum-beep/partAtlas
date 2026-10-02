@@ -534,9 +534,8 @@ ladeBaugruppenLeiste();
 // einmal ein und muss nie wieder ein Teil anfassen.
 
 async function einstellungen() {
-  const [e, prog] = await Promise.all([api("/api/einstellungen"), api("/api/programme")]);
-  Object.assign(progWahl, { erkannt: prog.programme.filter((p) => !p.eigen), eigene: prog.programme.filter((p) => p.eigen),
-                            arten: prog.arten, standard: { ...(e.standard_programm || {}) } });
+  const e = await api("/api/einstellungen");
+  Object.assign(progWahl, { ...e.programm, geaendert: {} });
   Object.assign(mwWahl, { material: e.gilt.material, farbe: e.gilt.farbe });
   $("#dialog").classList.add("einst");
   // Alle Abschnitte stehen im Dialog, nur einer ist sichtbar: so gilt beim Speichern,
@@ -562,7 +561,8 @@ async function einstellungen() {
       <div class="i-titel">DARSTELLUNG</div>
       ${PDF_FELDER.slice(5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}`],
     ["programme", "Programme", `
-      <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
+      <p class="dim">Mit diesen beiden Programmen öffnet partAtlas ein Modell: STEP-Dateien im CAD, alles andere im Slicer.
+        Was auf diesem Rechner installiert ist, steht schon da.</p>
       <div id="prog-teil">${progTeil()}</div>`],
   ];
   const gemerkt = localStorageLesen("einstellungen-abschnitt");
@@ -579,7 +579,7 @@ async function einstellungen() {
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
                                                           rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked,
-                                                          programme: progWahl.eigene, standard_programm: progWahl.standard,
+                                                          programm: progWahl.geaendert,
                                                           pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });
     toast("Gespeichert.");
     programmCache = null;
@@ -593,43 +593,46 @@ const PDF_FELDER = [["struktur", "Strukturstückliste (jede Ebene mit Positionsn
   ["bilder", "Vorschaubilder"], ["kaestchen", "Abhakkästchen zum Ausdrucken"], ["pfade", "Dateipfade unter den Namen"]];
 const pdfSchalter = (k, t, wert) => `<label><input type="checkbox" data-pdf="${k}" ${wert[k] ? "checked" : ""}> ${t}</label>`;
 
-const progWahl = { erkannt: [], eigene: [], arten: {}, standard: {} };
-const FORMAT_NAMEN = { "3mf": "3MF", stl: "STL", obj: "OBJ", step: "STEP" };
+// Zwei Plätze, keine Liste: ein Slicer und ein CAD. Der Pfad kommt aus dem Dateidialog des
+// Rechners, nie aus einem Textfeld. `geaendert` merkt, was erst mit „Speichern“ gilt
+// (Pfad, oder "" für „wieder automatisch“).
+const progWahl = { slicer: null, cad: null, geaendert: {} };
+const PROG_ARTEN = [["slicer", "Slicer", "zum Aufbereiten und Drucken, z. B. PrusaSlicer, Bambu Studio, OrcaSlicer"],
+                    ["cad", "CAD", "zum Konstruieren und Ändern, z. B. FreeCAD"]];
 
 function progTeil() {
-  const alle = [...progWahl.eigene, ...progWahl.erkannt];
-  const zeile = (p, i) => `<div class="prog-zeile"><b>${esc(p.name)}</b><small>${esc(progWahl.arten[p.art] || p.art)}</small>
-      <code title="${esc(p.pfad)}">${esc(p.pfad)}</code>${i != null ? `<button type="button" class="weg" data-prog-weg="${i}" title="Eintrag entfernen">×</button>` : "<span></span>"}</div>`;
-  return `${alle.length ? "" : '<p class="dim">Nichts gefunden.</p>'}
-    ${progWahl.eigene.map((p, i) => zeile(p, i)).join("")}${progWahl.erkannt.map((p) => zeile(p, null)).join("")}
-    <div class="prog-neu"><input type="text" id="prog-name" placeholder="Name, z. B. Blender">
-      <input type="text" id="prog-pfad" placeholder="/pfad/zum/programm">
-      <select id="prog-art">${Object.entries(progWahl.arten).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select>
-      <button type="button" class="knopf" data-prog-dazu>Eintragen</button></div>
-    <div class="i-titel">STANDARD JE FORMAT</div>
-    <div class="prog-standard">${Object.entries(FORMAT_NAMEN).map(([f, n]) => {
-      const passend = alle.filter((p) => !p.formate || p.formate.includes(f));
-      return `<label>${n}<select data-prog-std="${f}"><option value="">automatisch</option>${passend.map((p) =>
-        `<option value="${esc(p.pfad)}" ${progWahl.standard[f] === p.pfad ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>`;
-    }).join("")}</div>`;
+  return PROG_ARTEN.map(([art, name, hilfe]) => {
+    const p = progWahl[art];
+    return `<div class="prog-feld">
+      <div class="prog-art"><b>${name}</b><small>${hilfe}</small></div>
+      <div class="prog-wahl">${p ? `<div><b>${esc(p.name)}</b>${p.automatisch ? '<span class="prog-gefunden">gefunden</span>' : ""}</div><code title="${esc(p.pfad)}">${esc(p.pfad)}</code>`
+                                : progWahl.geaendert[art] === "" ? '<span class="dim">Automatisch — wird beim Speichern gewählt.</span>'
+                                : '<span class="dim">Nichts gefunden — bitte ein Programm auswählen.</span>'}</div>
+      <div class="prog-aktion"><button type="button" class="knopf" data-prog-aendern="${art}">${p ? "Ändern …" : "Auswählen …"}</button>
+        ${p && !p.automatisch ? `<button type="button" class="knopf-text" data-prog-auto="${art}">Automatisch</button>` : ""}</div>
+    </div>`;
+  }).join("");
 }
 
-document.addEventListener("click", (e) => {
-  const t = e.target;
-  if (!t.closest?.("#prog-teil")) return;
-  const weg = t.closest("[data-prog-weg]");
-  if (weg) progWahl.eigene.splice(Number(weg.dataset.progWeg), 1);
-  else if (t.closest("[data-prog-dazu]")) {
-    const name = $("#prog-name").value.trim(), pfad = $("#prog-pfad").value.trim();
-    if (!name || !pfad) return toast("Name und Pfad angeben.");
-    // Geprüft wird beim Speichern: der Server weiss, ob es die Datei gibt.
-    progWahl.eigene.push({ name, pfad, art: $("#prog-art").value, formate: Object.keys(FORMAT_NAMEN), eigen: true });
-  } else return;
+document.addEventListener("click", async (e) => {
+  const aendern = e.target.closest?.("[data-prog-aendern]"), auto = e.target.closest?.("[data-prog-auto]");
+  if (!aendern && !auto) return;
+  if (auto) {
+    const art = auto.dataset.progAuto;
+    progWahl.geaendert[art] = "";
+    // Wie es automatisch wäre, weiss der Server; die Anzeige zeigt es nach dem Speichern.
+    progWahl[art] = null;
+    $("#prog-teil").innerHTML = progTeil();
+    return;
+  }
+  const art = aendern.dataset.progAendern;
+  aendern.disabled = true;
+  aendern.textContent = "Dialog geöffnet …";
+  try {
+    const p = await api("/api/programme/waehlen", { method: "POST", body: { art } });
+    if (!p.abgebrochen) { progWahl[art] = p; progWahl.geaendert[art] = p.pfad; }
+  } catch (err) { toast(err.message); }
   $("#prog-teil").innerHTML = progTeil();
-});
-document.addEventListener("change", (e) => {
-  const f = e.target.dataset?.progStd;
-  if (f) { if (e.target.value) progWahl.standard[f] = e.target.value; else delete progWahl.standard[f]; }
 });
 document.addEventListener("click", (e) => {
   if (e.target.closest?.("#einstellungen")) return einstellungen();
