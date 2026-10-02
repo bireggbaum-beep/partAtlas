@@ -190,7 +190,13 @@ async def oberflaeche(port):
 
         # -- Mehrfachauswahl und Aktionsleiste
         await suche("")
+        oben = (await pg.locator(".karte").nth(2).bounding_box())["y"]
         await pg.locator(".karte .wahl").nth(0).click()
+        await pg.wait_for_selector("#stapel:not([hidden])")
+        leiste, mitte = await pg.locator("#stapel").bounding_box(), await pg.locator(".mitte").bounding_box()
+        check("Erstes Häkchen: die Liste bleibt stehen, die Leiste erscheint unten (der nächste Klick trifft)",
+              (await pg.locator(".karte").nth(2).bounding_box())["y"] == oben
+              and leiste["y"] > mitte["y"] + mitte["height"] / 2)
         await pg.locator(".karte .wahl").nth(2).click(modifiers=["Shift"])
         check("Kästchen und Umschalt-Klick: Bereich von drei gewählt, Leiste zeigt es",
               "3 ausgewählt" in await pg.inner_text("#stapel"))

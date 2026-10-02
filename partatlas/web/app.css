@@ -77,7 +77,7 @@ button, input, select { font: inherit; color: inherit; }
 .gestrichelt { width: 100%; background: none; border: 1px dashed var(--line-strong); border-radius: var(--radius);
                padding: 4px 6px; color: var(--ink-3); font: 12.5px var(--mono); text-align: left; cursor: pointer; margin-top: 4px; }
 
-.mitte { grid-area: mitte; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.mitte { grid-area: mitte; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
 .tagleiste { display: flex; gap: var(--s2); padding: var(--s3) var(--s4); overflow-x: auto; border-bottom: 1px solid var(--line); flex-wrap: nowrap; }
 .chip { font: 12.5px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
         color: var(--ink-2); cursor: pointer; white-space: nowrap; }
@@ -176,8 +176,13 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 /* Mehrfachauswahl */
 .wahl { position: absolute; top: var(--s3); right: var(--s3); width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .karte.markiert { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.stapel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 14px; border-bottom: 1px solid var(--line);
-          background: var(--accent-soft); font-size: 13px; }
+/* Schwebt unten über der Liste (wie pDMS, Capacities). Oben im Fluss rückte sie beim ersten Häkchen die Liste nach unten, und der
+   nächste Klick traf daneben. Die Liste bekommt unten Luft, damit die letzte Reihe nicht darunter verschwindet. */
+.stapel { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 20; width: max-content; max-width: calc(100% - 28px);
+          display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 8px 12px;
+          background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; }
+.mitte:has(> .stapel:not([hidden])) .raster { padding-bottom: 72px; }
+body:has(#stapel:not([hidden])) .toast { bottom: 96px; }
 .stapel b { margin-right: 6px; }
 .stapel .knopf, .stapel select { padding: 2px 8px; font-size: 13px; }
 

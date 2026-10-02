@@ -385,6 +385,24 @@ weggeräumt (nur bei über 20 Sicherungen je Sekunde, also im Test); jetzt immer
 archiviert, Vorschau bleibt, Server ohne Tippprüfung, Nummer in der Lücke — jede lässt `test_schutz` bzw. `test_verwalten` fallen. **Offen:** Drucke, die nur an einem
 endgültig entfernten Modell hingen, bleiben als Knoten ohne Modell im Graph (unsichtbar, nichts geht verloren; Aufwand 2, sie mit in den Papierkorb zu legen).
 
+**Auswahlleiste unten (0.33.0):** die Leiste der Mehrfachauswahl stand oben im Fluss und rückte beim ersten Häkchen die Liste nach unten —
+der nächste Klick traf daneben. Jetzt schwebt sie unten über der Liste (wie pDMS, Capacities), die Liste bekommt unten Luft, Meldungen
+rücken darüber. `test_ui` 61/61; die neue Prüfung (Liste bleibt stehen, Leiste unten) fällt mit der alten Leiste.
+
+**Entschieden 02.10.2026: Dateien bleiben an Ort und Stelle.** Verglichen: 3MF Katalog (an Ort und Stelle, verwaiste Einträge nur zum
+Löschen vorausgewählt), Manyfold (an Ort und Stelle, kann umräumen; fehlende Datei = Problem „either delete it, or find where it went!“,
+ignorierbar), Lightroom (wählbar; letzter Ort, „Suchen“, Nachbarn mitfinden, Smart Previews), Calibre/Apple Fotos/Zotero (eigene Ablage).
+Eine Ablage wie in pDMS wäre bei grossen 3D-Dateien doppelter Platz oder nähme dem Anwender seine Ordner. Daraus folgt für eine Datei,
+die der Anwender selbst gelöscht hat (Eintrag mit Drucken, Bildern usw. soll bleiben):
+
+1. **Ansehen ohne Datei** — zuerst. Vorschaubilder bleiben schon (Bestand), die 3D-Ansicht nicht: `/api/modelle/{mid}/netz` liest die
+   Originaldatei, nur STEP hat ein Netz im Bestand. Plan: beim Einlesen ein verkleinertes Anzeige-Netz ablegen. Erst messen: Platz je
+   Modell und Aussehen bei z. B. 30 000 Dreiecken (geschätzt 0,5 MB, nicht gemessen; heute bis 200 000 = rund 7 MB). Aufwand 2–3.
+2. **„Datei fehlt“ mit drei Wegen:** *Suchen …* (Ordner zeigen, Nachbarn mitfinden), *Ohne Datei behalten* (kein Problem mehr, ruhiges
+   Zeichen, verschwindet von selbst, wenn die Datei zurückkommt), *Aus dem Katalog entfernen*. „Datei fehlt“ bleibt als Warnung der Standard.
+3. **Wiedererkennen:** automatisch nur bei gleichem Inhalt (gibt es schon). Name, Ort, Form höchstens als bestätigter Vorschlag mit beiden
+   Vorschauen — eine automatische Zuordnung wäre fehleranfällig.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
