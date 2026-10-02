@@ -1809,7 +1809,7 @@ document.querySelectorAll("[data-griff]").forEach((g) => {
 // zuerst es selbst, dann von unten nach oben. Ein Griff an der Oberkante eines Feldes verschiebt die
 // Grenze zu dem darüber: das eine wächst, die auf der anderen Seite schrumpfen der Reihe nach bis zu
 // ihrer Mindesthöhe. Alle Höhen rechnet seitenLayout(); das CSS setzt sie nur.
-const KOPF = 25, FELD_MIN = 110, FELD_START = 140;
+const KOPF = 25, FELD_MIN = 125, FELD_START = 150;
 const feldRaum = $(".panes");
 const felder = [...feldRaum.children].filter((x) => x.classList.contains("sektion"));
 let gemerkteHoehen = {};

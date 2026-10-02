@@ -98,7 +98,7 @@ Statuszeile „57 Modelle · 3 ausgewählt“ statt der Zahl in der Kopfzeile.
 Geprüft nur mit einem Playwright-Skript, nicht mit `test_ui.py`.
 
 Seitenleiste als Split View (0.20.2): alle Höhen rechnet `seitenLayout()` in `app.js`,
-nicht mehr das CSS. Jedes offene Feld hat dieselbe Mindesthöhe (110 px, bei sehr
+nicht mehr das CSS. Jedes offene Feld hat dieselbe Mindesthöhe (125 px = 4,5 Zeilen à 22 px, bei sehr
 niedrigem Fenster gemeinsam kleiner), eingeklappt nur die Kopfzeile. Das erste offene
 Feld (Ordner) ist das biegsame. Griff an der Oberkante jedes Feldes verschiebt die
 Grenze: das eine wächst, die auf der anderen Seite schrumpfen der Reihe nach bis zur
