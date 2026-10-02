@@ -299,10 +299,11 @@ const raster = (() => {
 let schnellScrollen = false;
 const bildTag = (url) => (schnellScrollen ? '<img alt="">' : `<img loading="lazy" src="${url}" alt="">`);
 
+// Kacheln und Zeilen laden die kleine Fassung (?t=1); Inspektor und Galerie das Original.
 function bildUrl(m) {
-  if (m.bild) return `/api/modelle/${m.id}/bild?v=${m.bild}`;
-  if (m.vorschau_art && m.hash) return `/api/vorschau/${m.hash}.${m.vorschau_art}.png`;
-  return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png` : null;
+  if (m.bild) return `/api/modelle/${m.id}/bild?t=1&v=${m.bild}`;
+  if (m.vorschau_art && m.hash) return `/api/vorschau/${m.hash}.${m.vorschau_art}.png?t=1`;
+  return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png?t=1` : null;
 }
 
 function statusBadge(m) {

@@ -330,19 +330,22 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     # ---------------------------------------------------------------- Bilder des Anwenders
 
-    def _bild_antwort(pfad):
+    def _bild_antwort(pfad, klein=False):
         if not pfad or not os.path.exists(pfad):
             raise HTTPException(404)
+        if klein:           # ?t=1: die kleine Fassung für Kacheln und Zeilen, ein paar KB statt MB
+            pfad = zustand["bestand"].thumb(pfad)
+        art = "image/webp" if pfad.endswith(".webp") else "image/png"
         # Die Kennung ist der Hash des Inhalts: ein anderes Bild hat eine andere Adresse.
-        return FileResponse(pfad, media_type="image/png", headers={"Cache-Control": "max-age=31536000, immutable"})
+        return FileResponse(pfad, media_type=art, headers={"Cache-Control": "max-age=31536000, immutable"})
 
     @app.get("/api/modelle/{mid}/bild")
-    def titelbild(mid: str):
-        return _bild_antwort(K().bild_pfad(mid))
+    def titelbild(mid: str, t: int = 0):
+        return _bild_antwort(K().bild_pfad(mid), bool(t))
 
     @app.get("/api/modelle/{mid}/bilder/{k}")
-    def bild(mid: str, k: str):
-        return _bild_antwort(K().bild_pfad(mid, k))
+    def bild(mid: str, k: str, t: int = 0):
+        return _bild_antwort(K().bild_pfad(mid, k), bool(t))
 
     @app.post("/api/modelle/{mid}/bilder")
     async def bild_dazu(mid: str, request: Request):
@@ -552,7 +555,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         return K().ordnerbaum()
 
     @app.get("/api/vorschau/{name}")
-    def vorschaubild(name: str):
+    def vorschaubild(name: str, t: int = 0):
         # <hash>.png = das beste Bild (für die Kachel), <hash>.<art>.png = genau dieses.
         m = re.fullmatch(r"([0-9a-f]{64})(?:\.(extrahiert|berechnet))?\.png", name)
         if not m:
@@ -563,8 +566,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             raise HTTPException(404)
         if not os.path.exists(pfad):
             raise HTTPException(404)
-        return FileResponse(pfad, media_type="image/png",
-                            headers={"Cache-Control": "max-age=31536000, immutable"})
+        return _bild_antwort(pfad, bool(t))
 
     # ---------------------------------------------------------------- Öffnen in …
 

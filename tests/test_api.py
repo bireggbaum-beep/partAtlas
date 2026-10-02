@@ -51,6 +51,24 @@ if __name__ == "__main__":
         r = c.get(f"/api/vorschau/{zahnrad['hash']}.png")
         check("Vorschaubild ausgeliefert, lange cachebar", r.status_code == 200
               and r.headers["content-type"] == "image/png" and "immutable" in r.headers["cache-control"])
+        import io
+        from PIL import Image
+        foto = io.BytesIO()
+        Image.effect_noise((900, 900), 40).convert("RGB").save(foto, "PNG")
+        mid = zahnrad["id"]
+        c.post(f"/api/modelle/{mid}/bilder", content=foto.getvalue())
+        gross = c.get(f"/api/modelle/{mid}/bild")
+        klein = c.get(f"/api/modelle/{mid}/bild", params={"t": 1})
+        bild = Image.open(io.BytesIO(klein.content))
+        check("Thumbnail: ?t=1 liefert ein kleines WebP, lange cachebar, das Original bleibt unverändert",
+              klein.headers["content-type"] == "image/webp" and bild.format == "WEBP" and max(bild.size) <= 320
+              and len(klein.content) * 5 < len(gross.content) and gross.headers["content-type"] == "image/png"
+              and "immutable" in klein.headers["cache-control"])
+        check("Thumbnail: liegt als Datei in thumbs/ und wird beim zweiten Abruf nicht neu erzeugt",
+              len(os.listdir(os.path.join(tmp, "bestand", "thumbs"))) == 1
+              and c.get(f"/api/modelle/{mid}/bild", params={"t": 1}).content == klein.content)
+        check("Thumbnail: ein nicht lesbares Bild fällt auf das Original zurück, kein Fehler",
+              c.get(f"/api/vorschau/{zahnrad['hash']}.png", params={"t": 1}).status_code == 200)
         check("Vorschau: nur echte Hashes, kein Pfad durch die Hintertür",
               c.get("/api/vorschau/..%2F..%2Fetc%2Fpasswd.png").status_code == 404)
 

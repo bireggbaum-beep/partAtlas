@@ -154,9 +154,16 @@ ohne Aufschub 1844 Bild-Anfragen im Raster (641 in Karten), Hauptthread
 51 ms/Frame (25); mit Aufschub 20 (8) Anfragen, 9 ms/Frame (4,8). Die Bilder
 werden erst nach 120 ms Ruhe angefordert. Mit 4-MB-Fotos brach der Bench ohne
 Aufschub ab (Playwright-Leitung, vermutlich Bench-Artefakt) — mit Aufschub lief er.
-**Nächster Hebel:** eigene Fotos (bis 1600 px, als PNG) laufen unverkleinert in
-164-px-Kacheln; eine kleine Fassung (≈ 400 px) je Bild vom Server wäre der
-grösste Gewinn für das Ruhe-Laden (Aufwand ≈ 3).
+
+**Thumbnails (gebaut):** `?t=1` an den Bild-Adressen liefert eine 320-px-WebP-Fassung
+aus `<Bestand>/thumbs/` (abgeleitet, löschbar; erzeugt beim ersten Abruf; Name aus
+Pfad + Zeit + Grösse). Kacheln, Zeilen und Karten laden sie, Inspektor und Galerie
+das Original; nicht lesbare Bilder fallen auf das Original zurück. Format steht nur
+in `THUMB_ENDUNG` (`bestand.py`). Offen: Thumbs nach dem Einlesen im Hintergrund
+vorbauen (heute erst beim ersten Abruf), Thumbs aus Sicherung/Export lassen.
+**Aufschub bleibt:** auch ohne Bilddaten (404) kostet das Anfordern allein beim Ziehen
+30 vs. 10,7 ms/Frame im Raster (1844 vs. 20 Anfragen) — Anfragen, nicht Bytes,
+sind der Preis.
 
 ## Offen, in dieser Reihenfolge
 

@@ -54,11 +54,18 @@ try:
             import numpy as np
             foto = io.BytesIO(); Image.fromarray(np.random.default_rng(1).integers(0, 255, (1200, 1200, 3), dtype=np.uint8)).save(foto, "PNG"); foto = foto.getvalue()
             print("Foto-Bytes:", len(foto))
+            klein = io.BytesIO(); yy, xx = np.mgrid[0:320, 0:320]
+            Image.fromarray(np.dstack([xx * 255 // 320, yy * 255 // 320, (xx + yy) * 255 // 640]).astype(np.uint8)).save(klein, "WEBP", quality=80)
+            klein = klein.getvalue(); print("Thumb-Bytes:", len(klein))
             zaehler = {"n": 0}
             async def vorschau(r):
                 zaehler["n"] += 1
-                await r.fulfill(status=200, content_type="image/png", body=foto if os.environ.get("FOTOS", "1") == "1" else png)
-            await pg.route("**/api/vorschau/**", vorschau)
+                if "t=1" in r.request.url: await r.fulfill(status=200, content_type="image/webp", body=klein)
+                else: await r.fulfill(status=200, content_type="image/png", body=foto if os.environ.get("FOTOS", "1") == "1" else png)
+            if os.environ.get("BILDER") == "404":      # ohne Interception: nur die Anfragekosten, echter Server antwortet 404
+                pg.on("request", lambda q: zaehler.__setitem__("n", zaehler["n"] + 1) if "/api/vorschau/" in q.url else None)
+            else:
+                await pg.route("**/api/vorschau/**", vorschau)
             await pg.goto(f"http://127.0.0.1:{port}/?phase=2")
             await pg.wait_for_function("zustand.modelle.length >= %d" % N, timeout=60000)
             print("Modelle im Browser:", await pg.evaluate("zustand.modelle.length"))
