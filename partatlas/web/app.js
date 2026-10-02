@@ -1200,9 +1200,16 @@ const HV_ICONS = {
 function hoverAktionen(m) {
   if (!programmDaten || m.fehlt || m.fehler || zustand.ansicht === "papierkorb") return "";
   const { je } = programmeFuer(m, programmDaten);
-  const knoepfe = ["slicer", "cad"].filter((a) => je[a]?.length).map((a) => {
-    const p = je[a][0];
-    return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
+  const knoepfe = ["slicer", "cad"].map((a) => {
+    if (je[a]?.length) {
+      const p = je[a][0];
+      return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
+    }
+    // Gar kein Programm dieser Art eingerichtet: der Knopf bleibt da, gedämpft, und führt in die Einstellungen —
+    // sonst findet niemand heraus, warum er fehlt. (Kann nur das Format nicht, bleibt er weg.)
+    if (programmDaten.programme.some((p) => p.art === a)) return "";
+    const name = programmDaten.arten?.[a] || a;
+    return `<button type="button" class="hv-btn leer" data-hv-einrichten="1" title="Noch kein ${esc(name)} eingerichtet — in den Einstellungen wählen" aria-label="${esc(name)} einrichten">${HV_ICONS[a]}</button>`;
   }).join("");
   return knoepfe ? `<div class="hv">${knoepfe}</div>` : "";
 }
@@ -1438,6 +1445,11 @@ document.addEventListener("click", async (e) => {
     const key = gk.dataset.gruppe;
     if (zustand.eingeklappt.has(key)) zustand.eingeklappt.delete(key); else zustand.eingeklappt.add(key);
     return raster.neu();
+  }
+  if (t.closest("[data-hv-einrichten]")) {
+    e.stopImmediatePropagation();
+    localStorageSchreiben("einstellungen-abschnitt", "programme");
+    return einstellungen();
   }
   const hv = t.closest("[data-hv]");
   if (hv) { e.stopImmediatePropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }

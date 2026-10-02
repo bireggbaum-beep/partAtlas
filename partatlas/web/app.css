@@ -777,3 +777,5 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .pfad button:hover { color: var(--accent); text-decoration: underline; }
 .pfad i { font-style: normal; opacity: 0.6; }
 .pfad .pfad-jetzt { color: var(--ink-2); }
+.hv-btn.leer { opacity: 0.55; border-style: dashed; }
+.hv-btn.leer:hover { opacity: 1; }
