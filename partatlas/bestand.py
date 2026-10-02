@@ -91,6 +91,19 @@ class Bestand:
     def pfad(self, *teile):
         return os.path.join(self.wurzel, *teile)
 
+    def entfernen(self, pfad):
+        """Der einzige Weg, auf dem partAtlas eine Datei löscht: nur innerhalb des eigenen Bestands (Vorschauen, Netze, Arbeitsdateien,
+        überzählige Kopien). Ein Pfad ausserhalb — etwa in einem Ordner des Anwenders — wird verweigert, nicht still übergangen:
+        das wäre ein Fehler im Aufrufer, und der soll laut auffallen (KONZEPT §3.3)."""
+        echt, bestand = os.path.realpath(pfad), os.path.realpath(self.wurzel)
+        if not echt.startswith(bestand + os.sep):
+            raise PermissionError(f"partAtlas löscht nichts ausserhalb seines Bestands: {pfad}")
+        try:
+            os.unlink(echt)
+            return True
+        except FileNotFoundError:
+            return False
+
     def thumb(self, quelle):
         """Pfad der kleinen Fassung von `quelle` (wird beim ersten Abruf erzeugt),
         oder `quelle` selbst, wenn sie sich nicht verkleinern lässt. Der Name

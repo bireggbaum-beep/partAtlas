@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from . import dateidialog, durchsuchen, formate, programme
+from . import dateidialog, durchsuchen, formate, programme, sicherung
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -42,6 +42,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     async def leben(app):
         verteiler.binden(asyncio.get_running_loop())
         b = Bestand(bestand_pfad, bei_aenderung=verteiler.graph)
+        # Vor allem anderen, auch vor dem Nachziehen alter Bestände in Katalog(): der Stand, mit dem diese Sitzung beginnt.
+        try:
+            sicherung.sichern(b, "start")
+        except OSError as e:
+            log.error("Keine Sicherung beim Start möglich: %s", e)
         k = Katalog(b)
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), prozesse=prozesse)
         zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=Baugruppen(k))
@@ -662,6 +667,23 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def cad_starten():
         """Nur die Umwandlung über FreeCAD, ohne alles neu einzulesen — nach der Zusage für FCStd."""
         return {"gestartet": zustand["scanner"].starten(nur_cad=True)}
+
+    @app.get("/api/sicherungen")
+    def sicherungen():
+        return sicherung.liste(zustand["bestand"].wurzel)
+
+    @app.post("/api/sicherungen")
+    def sicherung_jetzt():
+        return {"name": sicherung.sichern(zustand["bestand"], "von-hand", immer=True)}
+
+    @app.post("/api/sicherungen/zeigen")
+    def sicherungen_zeigen():
+        pfad = zustand["bestand"].pfad(sicherung.ORDNER)
+        try:
+            programme.mit_system(pfad)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True, "pfad": pfad}
 
     @app.post("/api/protokoll/zeigen")
     def protokoll_zeigen():

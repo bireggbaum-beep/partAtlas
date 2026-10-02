@@ -15,7 +15,7 @@ import os
 import re
 import time
 
-from . import archiv, dateien, formate, tags
+from . import archiv, dateien, formate, sicherung, tags
 from .suche import Suchindex
 from .bestand import (BRAUCHT, DATEI, HAT_DATEI, VORSCHAU_ARTEN, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
                       TAG, VORGESEHEN, WURZEL)
@@ -78,10 +78,19 @@ class Katalog:
                                           "angelegt": jetzt()})
         return wid
 
+    def _sichern_vor(self, was):
+        """Vor einer Massenaktion immer eine Sicherung der Datenbank. Scheitert sie (Platte voll), unterbleibt die Aktion: lieber nichts
+        tun als etwas, das sich nicht zurückholen lässt."""
+        try:
+            sicherung.sichern(self.b, f"vor-{was}", immer=True)
+        except OSError as e:
+            raise KatalogFehler(f"Vorher liess sich keine Sicherung anlegen ({e}); die Aktion unterbleibt.") from e
+
     def wurzel_entfernen(self, wid):
         """Nur der Eintrag geht; Dateien bleiben, ihre Orte unter dieser Wurzel
         verschwinden. Modelle ohne anderen Ort gelten danach als fehlend — samt Tags, Drucken und Verknüpfungen, die am Inhalt hängen.
         Der Eintrag selbst bleibt im Papierkorb (`entfernte_wurzeln`) und lässt sich zurückholen."""
+        self._sichern_vor("ordner-entfernen")
         with self.db.transaction():
             n = 0
             for h, d in self._dateien().items():
@@ -157,10 +166,8 @@ class Katalog:
             self.db.restore_node(MODELL, mid)
             self.db.update_node(DATEI, h, {"orte": [ort], "papierkorb": [], "geloescht": None})
         for a in ablage:
-            try:
-                os.unlink(self.b.pfad(a["ablage"]))
-            except FileNotFoundError:
-                pass
+            # Dieselbe Datei (gleicher Hash) liegt wieder im Ordner: die Kopie im Papierkorb von partAtlas ist überzählig.
+            self.b.entfernen(self.b.pfad(a["ablage"]))
         return True
 
     def ignorierte_orte(self):
@@ -237,11 +244,7 @@ class Katalog:
         self.db.create_edge(ref(MODELL, mid), ref(DATEI, h), HAT_DATEI, cascade_delete=True)
         self._datei_materialien(h, self.db.get_node(ref(DATEI, h), readonly=True))
         for art in VORSCHAU_ARTEN:
-            # Abgeleitet von einem Inhalt, den es nicht mehr gibt.
-            try:
-                os.unlink(self.b.vorschau_pfad(alt, art))
-            except FileNotFoundError:
-                pass
+            self.b.entfernen(self.b.vorschau_pfad(alt, art))      # abgeleitet von einem Inhalt, den es nicht mehr gibt
         self._netz_weg(alt)
         return mid
 
@@ -308,10 +311,7 @@ class Katalog:
             self.db.update_node(DATEI, h, {"cad": "fehler", "cad_fehler": text})
 
     def _netz_weg(self, h):
-        try:
-            os.unlink(self.b.netz_pfad(h))
-        except FileNotFoundError:
-            pass
+        self.b.entfernen(self.b.netz_pfad(h))
 
     def ausstehende_vorschauen(self):
         return [(h, d) for h, d in self._dateien().items() if d.get("vorschau") == "ausstehend"]
@@ -616,6 +616,8 @@ class Katalog:
         i = self.ordner_inhalt(ordner_id)
         if i["wurzel"]:
             raise KatalogFehler("Ein Wurzelordner wird nicht gelöscht, nur aus partAtlas entfernt.")
+        if i["modelle"]:
+            self._sichern_vor("ordner-aus-katalog")
         fehler = self.loeschen_mit(i["modelle"], tags, sammlungen) if i["modelle"] else []
         return {"fehler": fehler, "modelle": len(i["modelle"]) - len(fehler), "pfad": i["pfad"],
                 "mehrfach": len(i["mehrfach"]), "andere": len(i["andere"])}
@@ -766,14 +768,18 @@ class Katalog:
         if formate.format_von(name) is None and not archiv.ist_archiv(name):
             raise KatalogFehler(f"„{name}“ ist weder Modell noch Archiv.")
         _, _, zielordner = self._ordner_pfad(ordner_id)
+        if archiv.ist_archiv(name):
+            # Das Archiv selbst landet nur im Bestand (arbeit/), entpackt wird in einen neuen Unterordner des Ziels: so muss partAtlas
+            # im Ordner des Anwenders nichts wieder wegräumen.
+            arbeit = dateien.freier_name(self.b.pfad("arbeit", "hochladen", name))
+            dateien.neu_anlegen(arbeit, daten)
+            try:
+                _, neu, _ = archiv.entpacken(arbeit, ziel=dateien.freier_name(os.path.join(zielordner, archiv.stamm(name))))
+            finally:
+                self.b.entfernen(arbeit)
+            return neu
         ziel = dateien.freier_name(os.path.join(zielordner, name))
         dateien.neu_anlegen(ziel, daten)
-        if archiv.ist_archiv(name):
-            try:
-                _, neu, _ = archiv.entpacken(ziel)
-            finally:
-                os.unlink(ziel)          # hochgeladen, um entpackt zu werden
-            return neu
         return [ziel]
 
     def archive(self):
@@ -1205,6 +1211,8 @@ class Katalog:
         """Modelle löschen und danach, was nur an ihnen hing. Geprüft wird
         vorher; gelöscht wird erst, wenn alles passt."""
         tags, sammlungen = self._mitloeschen_pruefen(modelle, tags, sammlungen)
+        if len(modelle) > 1 or tags or sammlungen:
+            self._sichern_vor("entfernen")      # ein einzelnes Modell holt der Papierkorb zurück; mehrere und Mitgelöschtes die Sicherung
         fehler = []
         for mid in modelle:
             try:

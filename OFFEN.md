@@ -366,6 +366,14 @@ wirklich leeren Katalog; sonst eine Leiste „Es ist kein Ordner mehr eingetrage
 **Offen:** Baugruppen, Drucke, Sammlungen und Tags löscht die Oberfläche weiter per `soft_delete` (also wiederherstellbar im Graph), aber ohne Ansicht dafür; Browser-Dateien und laufender Server können nach `git pull` ohne Neustart auseinanderlaufen — die Seite bricht dann
 nicht mehr ab (der neue Endpunkt ist abgefangen), ein Hinweis „bitte neu starten“ fehlt noch.
 
+**Datensicherheit als Architektur (0.31.0):** nach dem Vorfall mit „Papierkorb leeren“ systematisch geprüft (Inventur aller Aufrufe, die löschen, verschieben oder ersetzen) und in
+KONZEPT §3.3 als Zusagen mit erzwingendem Mechanismus festgehalten. Neu: `Bestand.entfernen` (einziger Löschweg, verweigert ausserhalb des Bestands), Wächter in `tests/test_schutz.py`
+(`schutz_inventur.py` findet jeden Aufruf per AST, `ERLAUBT` begründet jeden), `sicherung.py` (Sicherung beim Start und vor Massenaktionen, Rotation, Zurückholen per Kommandozeile),
+Scan lässt Orte eines nicht erreichbaren oder leeren Wurzelordners stehen, Archiv-Hochladen über `arbeit/`. Gefunden beim Bauen: gleichsekündige Sicherungen sortierten falsch
+(Namensschema mit zweistelligem Zähler behoben). `test_schutz` 16/16 mit vier Gegenproben (unbegründeter Löschaufruf, Verweigerung entfernt, Scan-Schutz entfernt, Sicherung vor
+Massenaktion entfernt); alle Suiten grün. **Offen:** Zurückholen einer Sicherung in der Oberfläche (Aufwand 2–3: Scanner anhalten, Bestand schliessen, tauschen, neu öffnen);
+Ansicht zum Zurückholen gelöschter Sammlungen, Baugruppen, Drucke, Tags; die Sperre beim Kopieren ist nicht unter Last geprüft (Kopierzeit grosser Bestände nicht gemessen).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

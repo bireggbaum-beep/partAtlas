@@ -213,6 +213,25 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
 
 ---
 
+### 3.3 Datensicherheit — was partAtlas zusagt (02.10.2026)
+
+Anlass: ein entfernter Wurzelordner und „Papierkorb leeren“ haben bei einem Tester alles scheinbar verschwinden lassen; der Knopf
+räumte über den Müllsammler von flatgraph auch entfernte Ordner, Baugruppen und Drucke ab. Seitdem gelten diese Zusagen, und jede hat
+einen Mechanismus, der sie erzwingt, und eine Prüfung in `tests/test_schutz.py`, die fällt, wenn man ihn entfernt.
+
+| Zusage | erzwungen durch |
+|---|---|
+| **Keine Datei des Anwenders wird gelöscht oder überschrieben.** In den Ordnern legt partAtlas nur neu an (Hochladen, Entpacken) und verschiebt oder benennt um, wenn der Anwender es auslöst — nie überschreibend. | Löschen nur über `Bestand.entfernen`, das ausserhalb des Bestands verweigert (auch über Verweise). Ein Wächter listet jeden Aufruf, der löscht, verschiebt oder ersetzt, und lässt die Suite bei jedem unbegründeten fallen (`ERLAUBT`). Hochladen eines Archivs geht über `arbeit/`, nicht über den Ordner. |
+| **Katalogdaten werden nie endgültig entfernt.** Löschen ist `soft_delete`; es gibt keinen „Papierkorb leeren“, nichts ruft den Müllsammler auf. | Wächter: kein `run_garbage_collection` im Code. |
+| **Jedes Entfernen ist umkehrbar.** Modell: Papierkorb › Wiederherstellen. Wurzelordner: Papierkorb › „Wieder hinzufügen“. | `entfernte_wurzeln`, `wurzel_wiederherstellen`; die Modelle kommen über den Inhalt mit Tags und Drucken zurück. |
+| **Vor jeder Massenaktion eine Sicherung** der Datenbank (Ordner entfernen, Ordner aus dem Katalog, mehrere Modelle, Mitgelöschtes), dazu beim Start. Scheitert sie, unterbleibt die Aktion. | `sicherung.py`; Kopie unter der Sperre von flatgraph, fertig erst nach `os.replace`; behalten: neueste 20 und je Tag die erste für 60 Tage. Zurückholen bei beendetem partAtlas (`python -m partatlas.sicherung --zurueck NAME`), selbst wieder umkehrbar. |
+| **Ein nicht erreichbarer Ordner ist nicht leer.** Fehlt ein Wurzelordner oder liefert er keine einzige Datei, obwohl der Katalog welche kennt, bleiben seine Orte stehen. | `Scanner.lauf` (`nicht_erreichbar`). |
+| **Ohne Ordner ist der Katalog nicht leer.** Der Willkommensschirm erscheint nur, wenn wirklich nichts da ist. | `zustand.katalogLeer` in `app.js`. |
+
+Was davon nicht abgedeckt ist: Sammlungen, Baugruppen, Drucke und Tags lassen sich in der Oberfläche löschen (`soft_delete`, also im
+Graph und in den Sicherungen noch da), aber nicht in der Oberfläche zurückholen; das Zurückholen einer Sicherung geht nur über die
+Kommandozeile.
+
 ## 4. Druckhistorie, Referenz, Nochmal
 
 Der Kern von partAtlas. Aus eigener Erfahrung: acht Versuche, und keiner

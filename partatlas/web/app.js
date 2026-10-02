@@ -371,7 +371,8 @@ function scanErgebnis(m) {
   // Phasen unter einer halben Sekunde sind Rauschen
   const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
-  const korb = (m.zurueckgeholt ? `; ${m.zurueckgeholt.toLocaleString("de-DE")} aus dem Papierkorb zurückgeholt` : "")
+  const weg = m.nicht_erreichbar?.length ? `; nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)` : "";
+  const korb = weg + (m.zurueckgeholt ? `; ${m.zurueckgeholt.toLocaleString("de-DE")} aus dem Papierkorb zurückgeholt` : "")
     + (m.im_papierkorb ? `; ${m.im_papierkorb.toLocaleString("de-DE")} im Papierkorb (aus dem Katalog entfernt) übergangen` : "");
   return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""}${korb} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
 }
@@ -2099,10 +2100,28 @@ document.addEventListener("click", async (e) => {
     try { const r = await api("/api/cad/erneut", { method: "POST" }); toast(`${r.zurueckgesetzt} Datei${r.zurueckgesetzt === 1 ? "" : "en"} werden erneut versucht …`); }
     catch (err) { toast(err.message); }
   }
+  if (e.target.closest("#ein-sichern")) {
+    try { const r = await api("/api/sicherungen", { method: "POST" }); toast(`Gesichert: ${r.name}`); sicherungenZeigen(); } catch (err) { toast(err.message); }
+  }
+  if (e.target.closest("#ein-sicherungen-zeigen")) {
+    try { await api("/api/sicherungen/zeigen", { method: "POST" }); } catch (err) { toast(err.message); }
+  }
   if (e.target.closest("#ein-protokoll")) {
     try { await api("/api/protokoll/zeigen", { method: "POST" }); } catch (err) { toast(err.message); }
   }
 });
+
+// Die letzten Sicherungen in den Einstellungen: sehen, dass es sie gibt, ist schon die halbe Beruhigung.
+async function sicherungenZeigen() {
+  const el = document.getElementById("ein-sicherungen");
+  if (!el) return;
+  try {
+    const l = await api("/api/sicherungen");
+    el.innerHTML = l.length ? `${l.length} Sicherungen, neueste: ${l.slice(0, 3).map((s) => `${esc(s.zeit)} (${esc(s.grund)})`).join(" · ")}` : "Noch keine Sicherung.";
+  } catch { el.textContent = "Sicherungen nicht lesbar."; }
+}
+new MutationObserver(() => { if (document.getElementById("ein-sicherungen")?.textContent === "…") sicherungenZeigen(); })
+  .observe(document.getElementById("dialog"), { childList: true, subtree: true });
 
 async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }

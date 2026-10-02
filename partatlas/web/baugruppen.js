@@ -589,7 +589,14 @@ async function einstellungen() {
       <div class="i-titel">PROTOKOLL</div>
       <p class="dim">Was partAtlas beim Einlesen und bei Fehlern meldet, steht auch in der Datei <code>partatlas.log</code> im Bestand.
         Bei einem Fehler: diese Datei schicken.</p>
-      <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>`],
+      <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>
+      <div class="i-titel">SICHERUNGEN</div>
+      <p class="dim">partAtlas sichert die Datenbank (Modelle, Tags, Drucke, Baugruppen, Ordner) beim Start und vor jeder Massenaktion,
+        etwa bevor ein Ordner entfernt wird. Es löscht nie Dateien in deinen Ordnern. Zurückholen bei beendetem partAtlas:
+        <code>python -m partatlas.sicherung --zurueck NAME</code>.</p>
+      <div id="ein-sicherungen" class="dim">…</div>
+      <div class="knoepfe" style="justify-content:flex-start"><button type="button" class="knopf" id="ein-sichern">Jetzt sichern</button>
+        <button type="button" class="knopf" id="ein-sicherungen-zeigen">Ordner zeigen</button></div>`],
     ["pdf", "PDF-Export", `
       <p class="dim">Was die Stückliste einer Baugruppe als PDF enthält („Stückliste als PDF“ in der Baugruppe).</p>
       <div class="i-titel">ABSCHNITTE</div>

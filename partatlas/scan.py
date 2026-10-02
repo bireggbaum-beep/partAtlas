@@ -236,15 +236,24 @@ class Scanner:
         self._setze(fcstd_frage=0, cad_ohne_freecad=0)
         if nur_cad:
             return self._lauf_nur_cad(t0)
-        self._setze(laeuft=True, phase="suchen", nur_cad=False, gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
+        self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
                     unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
         index = self.k.ort_index()
         ignoriert = self.k.ignorierte_orte()
         wurzeln = self.k.wurzeln()
         gesehen, zu_hashen = set(), []
+        # Ein Wurzelordner, der fehlt oder plötzlich keine einzige Modelldatei mehr hat, obwohl der Katalog welche kennt, ist mit grosser
+        # Wahrscheinlichkeit nicht erreichbar (Stick ab, Netzlaufwerk weg, leerer Einhängepunkt) — nicht geleert. Seine Orte bleiben dann
+        # stehen; sonst stünde nach jedem Stecker-Ziehen der halbe Katalog als „Datei fehlt“ da.
+        bekannt_je_wurzel = {}
+        for wid, _ in index:
+            bekannt_je_wurzel[wid] = bekannt_je_wurzel.get(wid, 0) + 1
+        unerreichbar = []
         for wid, w in wurzeln.items():
+            gefunden_hier = 0
             for pfad, rel, st in self._ablaufen(w["pfad"]):
+                gefunden_hier += 1
                 if self._stopp.is_set():
                     return self._abgebrochen(t0)
                 schluessel = (wid, rel)
@@ -257,9 +266,13 @@ class Scanner:
                     self.status["im_papierkorb"] += 1     # aus dem Katalog entfernt, die Datei liegt noch im Ordner: so lassen
                     continue
                 zu_hashen.append((schluessel, pfad, st))
+            if gefunden_hier == 0 and (bekannt_je_wurzel.get(wid) or not os.path.isdir(w["pfad"])):
+                unerreichbar.append(wid)
+                log.warning("Wurzelordner nicht erreichbar oder leer, seine Orte bleiben: %s", w["pfad"])
         if self._stopp.is_set():
             return self._abgebrochen(t0)
-        self._setze(gefunden=len(gesehen), phase="hashen", zu_pruefen=len(zu_hashen))
+        self._setze(gefunden=len(gesehen), phase="hashen", zu_pruefen=len(zu_hashen),
+                    nicht_erreichbar=[wurzeln[w]["name"] for w in unerreichbar])
 
         self._pool = self._neuer_pool()
         try:
@@ -324,7 +337,7 @@ class Scanner:
                 return self._abgebrochen(t0)
 
             # Orte, die dieser Lauf nicht mehr gesehen hat.
-            weg = [(v[0], s) for s, v in index.items() if s not in gesehen and s[0] in wurzeln]
+            weg = [(v[0], s) for s, v in index.items() if s not in gesehen and s[0] in wurzeln and s[0] not in unerreichbar]
             with self.b.db.transaction():
                 for h, s in weg:
                     self.k.ort_entfernen(h, *s)

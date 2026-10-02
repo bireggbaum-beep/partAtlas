@@ -366,6 +366,7 @@ td:first-child { white-space: nowrap; }
     <li><b>Nur lokal:</b> Der Server hört auf <code>127.0.0.1</code> und ist von außen nicht erreichbar. Es gibt noch kein Passwort.</li>
     <li><b>Sicher schreiben:</b> Jeder Schreibvorgang geht über eine Arbeitsdatei, <code>fsync</code> und Umbenennen — nie wird eine Datei an Ort und Stelle verändert. Der Speicher ändert sich erst, wenn die Platte es aufnehmen kann.</li>
     <li><b>Nichts überschreiben:</b> Beim Verschieben und Entpacken wird nie etwas überschrieben.</li>
+    <li><b>Sicherungen:</b> partAtlas sichert seine Datenbank selbst — beim Start und vor jeder Massenaktion (etwa bevor ein Ordner entfernt wird) — in <code>~/.local/share/partatlas/sicherungen</code>. Es behält die neuesten 20 und für 60 Tage je Tag eine. Einstellungen › Einlesen zeigt sie und kann sofort eine anlegen.</li>
     <li><b>Backup:</b> Sichere den Ordner <code>~/.local/share/partatlas</code>. Ohne ihn sind Tags, Drucke und eigene Bilder weg. Die Vorschaubilder lassen sich neu berechnen.</li>
   </ul>
   <div class="hinweis warn">Den Server nicht ins Netz stellen und den Port nicht freigeben: es gibt noch keinen
