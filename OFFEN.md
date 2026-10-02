@@ -398,6 +398,10 @@ die der Anwender selbst gelöscht hat (Eintrag mit Drucken, Bildern usw. soll bl
 1. **Ansehen ohne Datei** — zuerst. Vorschaubilder bleiben schon (Bestand), die 3D-Ansicht nicht: `/api/modelle/{mid}/netz` liest die
    Originaldatei, nur STEP hat ein Netz im Bestand. Plan: beim Einlesen ein verkleinertes Anzeige-Netz ablegen. Erst messen: Platz je
    Modell und Aussehen bei z. B. 30 000 Dreiecken (geschätzt 0,5 MB, nicht gemessen; heute bis 200 000 = rund 7 MB). Aufwand 2–3.
+   **Gemessen 02.10.2026** (Stanford-Testmodelle 70 000–250 000 Dreiecke, kein echter Bestand): vereinfacht auf 30 000 Dreiecke
+   (Quadrik, `fast-simplification`), Ecken 16 Bit, zlib: **0,23–0,27 MB je Modell**, 0,1–0,4 s. Sieht aus wie das Original; das heutige
+   Ausdünnen per Zufall (über 200 000) ergibt dagegen ein löchriges Netz. Obergrenze bei 5 700 Modellen: rund 1,4 GB, kleinere
+   Modelle weniger. Neue Abhängigkeit `fast-simplification` (MIT, nur partAtlas).
 2. **„Datei fehlt“ mit drei Wegen:** *Suchen …* (Ordner zeigen, Nachbarn mitfinden), *Ohne Datei behalten* (kein Problem mehr, ruhiges
    Zeichen, verschwindet von selbst, wenn die Datei zurückkommt), *Aus dem Katalog entfernen*. „Datei fehlt“ bleibt als Warnung der Standard.
 3. **Wiedererkennen:** automatisch nur bei gleichem Inhalt (gibt es schon). Name, Ort, Form höchstens als bestätigter Vorschlag mit beiden
