@@ -312,6 +312,13 @@ if __name__ == "__main__":
         c.post(f"/api/modelle/{papier[0]}/wiederherstellen")
         check("Wiederherstellen legt das Modell zurück, auch wenn sein Ordner inzwischen weg ist",
               any(os.path.exists(os.path.join(arch, *pf)) for pf in (("A.stl",), ("Teile", "B.stl"), ("Teile", "Unten", "C.stl"))))
+        # Ein Ordner „neu“ anlegen, den es auf der Platte schon gibt (Rest eines gelöschten Modells): benutzen statt Fehler
+        os.makedirs(os.path.join(s2, "Rest"))
+        r1 = c.post("/api/verzeichnisse", json={"eltern": w, "name": "Rest"})
+        check("Neuer Unterordner, den es schon gibt: wird benutzt, kein Fehler", r1.status_code == 200 and r1.json()["id"] == f"{w}/Rest")
+        r2 = c.post("/api/verzeichnisse", json={"eltern": w, "name": "Draussen.stl"})
+        check("Neuer Unterordner mit dem Namen einer Datei: abgelehnt, mit dem richtigen Grund",
+              r2.status_code == 400 and "Datei" in r2.json().get("fehler", ""))
         kommt = c.post("/api/ordner/im_ordner", json={"id": f"{w}/../.."})
         check("Im Dateimanager zeigen: ein Pfad aus der Wurzel hinaus wird abgelehnt", kommt.status_code == 400)
     muster.ende()

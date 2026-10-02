@@ -333,6 +333,12 @@ FCStd nicht; der Lauf nannte keine FreeCAD-Phase — vermutlich nicht beantworte
 Gegenprobe der Tests: `cad_erneut` und `cad_fehler` in `test_scan` (60/60).
 **Offen:** Ursache der fehlenden FCStd-Vorschau beim Tester — Meldung aus dem Inspektor oder `partatlas.log` abwarten.
 
+**„Den Ordner gibt es schon“ (0.29.6):** gemeldet. Der Ordnerbaum zeigt nur Ordner mit Modellen; ein gelöschtes Modell lässt sein leeres Verzeichnis auf der Platte zurück, und ein
+„Neuer Unterordner“ mit demselben Namen scheiterte, obwohl man davon nichts sah. Jetzt wird ein vorhandener Ordner benutzt; nur eine gleichnamige *Datei* lehnt es ab (mit diesem Grund).
+Dazu: **Dateien, deren Inhalt als Modell im Papierkorb liegt, nimmt der Scan bewusst nicht neu auf** (`scan.py`, `im_papierkorb`) — das war stumm; die Kopfzeile nennt jetzt „N schon im
+Papierkorb (dort wiederherstellen)“. Geprüft in `test_verwalten` (59/59). **Offen / Entscheidung:** soll eine zurückgelegte Datei das Modell stattdessen selbst aus dem Papierkorb holen?
+Ausserdem zeigt der Baum leere Ordner nicht — von aussen ist ein Rest unsichtbar.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

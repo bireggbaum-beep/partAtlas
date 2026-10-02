@@ -500,8 +500,12 @@ class Katalog:
             raise KatalogFehler("Ungültiger Ordnername.")
         wid, _, eltern = self._ordner_pfad(eltern_id)
         ziel = os.path.join(eltern, name)
+        if os.path.isdir(ziel) and not os.path.islink(ziel):
+            # Den Ordner gibt es schon — oft als Rest, weil der Baum nur Ordner mit Modellen zeigt: ein gelöschtes Modell lässt sein
+            # leeres Verzeichnis zurück, und von aussen sieht der Anwender nichts davon. Wer ihn „neu“ anlegt, will ihn benutzen.
+            return f"{eltern_id.rstrip('/')}/{name}"
         if os.path.lexists(ziel):
-            raise KatalogFehler("Den Ordner gibt es schon.")
+            raise KatalogFehler("Dort liegt schon eine Datei mit diesem Namen.")
         os.makedirs(ziel)
         return f"{eltern_id.rstrip('/')}/{name}"
 

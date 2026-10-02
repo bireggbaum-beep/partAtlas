@@ -364,7 +364,10 @@ function scanErgebnis(m) {
   // Phasen unter einer halben Sekunde sind Rauschen
   const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
-  return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
+  // Eine Datei, deren Inhalt als Modell im Papierkorb liegt, nimmt der Scan nicht neu auf: sie soll dort wiederhergestellt werden.
+  // Ohne diesen Hinweis sieht der Anwender nur, dass die Datei „nicht ankommt“.
+  const korb = m.im_papierkorb ? `; ${m.im_papierkorb.toLocaleString("de-DE")} schon im Papierkorb (dort wiederherstellen)` : "";
+  return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""}${korb} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
 }
 
 // ---------------------------------------------------------------- Virtuelles Raster und Liste
