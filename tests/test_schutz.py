@@ -28,7 +28,9 @@ ERLAUBT = {
     ("dateien.py", "schreibe_atomar", "os.replace"): "ersetzt ein Ziel — nur von den unten erlaubten Aufrufern, alle im Bestand",
     ("dateien.py", "schreibe_atomar", "os.unlink"): "eigene Arbeitsdatei (.…arbeit), eben angelegt",
     ("dateien.py", "verschiebe", "os.unlink"): "Quelle eines Verschiebens, erst nach sicherer Kopie (über Dateisystemgrenzen)",
-    ("katalog.py", "Katalog._archivieren", "dateien.verschiebe"): "eigenes Bild des Anwenders vault/ → vault_archive/, nie weg",
+    ("katalog.py", "Katalog._archivieren", "dateien.verschiebe"): "eigenes Bild oder Datei aus dem alten Papierkorb → vault_archive/, nie weg",
+    ("katalog.py", "Katalog.endgueltig_entfernen", "self.db.purge"): "ein Modell aus dem Papierkorb mit genau seiner Kaskade (flatgraph "
+        "purge), auf Wunsch je Modell mit Tippbestätigung, vorher eine Sicherung; nie der ganze Papierkorb",
     ("katalog.py", "Katalog._vault_nachziehen", "os.replace"): "Vorschau aus alter Ablage im Bestand in die neue, nur wenn das Ziel fehlt",
     ("katalog.py", "Katalog._vault_nachziehen", "os.rmdir"): "leerer Ordner cache/ der alten Ablage im Bestand",
     ("katalog.py", "Katalog._zurueck", "dateien.verschiebe"): "macht ein gescheitertes Verschieben rückgängig",
@@ -59,7 +61,7 @@ if __name__ == "__main__":
 
     from partatlas import sicherung
     from partatlas.bestand import Bestand
-    from partatlas.katalog import Katalog
+    from partatlas.katalog import Katalog, KatalogFehler
     from partatlas.scan import Scanner
     import flatgraph
 
@@ -150,5 +152,48 @@ if __name__ == "__main__":
     s.lauf()
     check("Wieder da, eine Datei wirklich gelöscht: nur diese gilt als fehlend",
           s.status["nicht_erreichbar"] == [] and len([m for m in k.modelle() if m["fehlt"]]) == 1)
+
+    # -- Endgültig entfernen: ein Modell aus dem Papierkorb, sonst nichts
+    from PIL import Image
+    from partatlas.bestand import DATEI, MODELL
+    from partatlas.katalog import ref
+    ids = {m["name"]: m["id"] for m in k.modelle()}
+    ma, mb, mc = ids["A"], ids["B"], ids["C"]
+    puffer = io.BytesIO()
+    Image.new("RGB", (8, 8), "red").save(puffer, "PNG")
+    k.bild_hinzufuegen(ma, puffer.getvalue())
+    bild = k.db.get_node(ref(MODELL, ma))["bilder"][0]["datei"]
+    ha = k.datei_von(ma)
+    sid = k.sammlung_anlegen("Weg", [mb])
+    k.sammlung_loeschen(sid)
+    k.loeschen(ma)
+    k.loeschen(mc)
+
+    def im_papierkorb():
+        return {f"{col}/{nid}" for col, alle in k.db._cache["nodes"].items() for nid, d in alle.items() if "_deletion_flag" in d}
+    vorher = im_papierkorb()
+    try:
+        k.endgueltig_entfernen(mb)
+        lebend_abgelehnt = False
+    except KatalogFehler:
+        lebend_abgelehnt = True
+    check("Endgültig entfernen nimmt nur ein Modell aus dem Papierkorb, ein lebendes wird abgelehnt",
+          lebend_abgelehnt and k.db.get_node(ref(MODELL, mb)) is not None and im_papierkorb() == vorher)
+    check("Vorschau: die Datei liegt noch im Ordner (sie kommt beim nächsten Einlesen wieder)",
+          k.endgueltig_vorschau(ma)["im_ordner"] == [os.path.join(sammlung, "Teile", "A.stl")])
+    namen = {x["name"] for x in sicherung.liste(b.wurzel)}
+    k.endgueltig_entfernen(ma)
+    check("Endgültig entfernt sind genau das Modell und seine Datei im Katalog; das andere Modell und die Sammlung bleiben im Papierkorb",
+          im_papierkorb() == vorher - {ref(MODELL, ma), ref(DATEI, ha)} and k.db.get_node_raw(ref(MODELL, ma)) is None
+          and k.db.get_node_raw(ref(DATEI, ha)) is None)
+    check("Vorher entsteht eine Sicherung",
+          sicherung.liste(b.wurzel)[0]["name"] not in namen and sicherung.liste(b.wurzel)[0]["grund"] == "vor-endgueltig-entfernen")
+    check("Die Datei im Ordner bleibt, das eigene Bild kommt ins Archiv, nur die Vorschau (abgeleitet) geht",
+          os.path.exists(os.path.join(sammlung, "Teile", "A.stl")) and not os.path.exists(b.pfad(*bild.split("/")))
+          and any(n.startswith(os.path.basename(bild)[:-4]) for n in os.listdir(b.pfad("vault_archive")))
+          and not any(os.path.exists(b.vorschau_pfad(ha, art)) for art in ("extrahiert", "berechnet")))
+    s.lauf()
+    check("Beim nächsten Einlesen kommt die Datei als neues Modell wieder (wie der Dialog sagt)",
+          "A" in {m["name"] for m in k.modelle()} and ids["A"] not in {m["id"] for m in k.modelle()})
     b.schliessen()
     muster.ende()

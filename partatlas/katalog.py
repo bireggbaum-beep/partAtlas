@@ -1281,3 +1281,45 @@ class Katalog:
             self.db.restore_node(MODELL, mid)
             if h is not None:
                 self.db.update_node(DATEI, h, {"orte": orte, "papierkorb": [], "geloescht": None})
+
+    # ------------------------------------------------------------ Endgültig entfernen
+
+    def _im_papierkorb(self, mid):
+        roh = self.db.get_node_raw(ref(MODELL, mid))
+        if roh is None or self.db.get_node(ref(MODELL, mid), readonly=True) is not None:
+            raise KatalogFehler("Dieses Modell liegt nicht im Papierkorb.")
+        return roh
+
+    def endgueltig_vorschau(self, mid):
+        """Was ein endgültiges Entfernen bedeutet, ohne etwas zu ändern: vor allem, ob die Datei noch im Ordner liegt — dann kommt sie
+        beim nächsten Einlesen als neues Modell zurück, denn partAtlas löscht sie nicht."""
+        roh = self._im_papierkorb(mid)
+        h = self._datei_im_papierkorb(mid)
+        d = (self.db.get_node_raw(ref(DATEI, h)) if h else None) or {}
+        im_ordner = []
+        for a in d.get("papierkorb") or []:
+            wpfad = self.wurzel_pfad(a["wurzel"])
+            pfad = os.path.join(wpfad, *a["pfad"].split("/")) if wpfad and "ablage" not in a else None
+            if pfad and os.path.isfile(pfad):
+                im_ordner.append(pfad)
+        return {"name": roh.get("name"), "im_ordner": im_ordner, "bilder": len(roh.get("bilder") or [])}
+
+    def endgueltig_entfernen(self, mid):
+        """Ein Modell aus dem Papierkorb endgültig aus dem Katalog nehmen — nur dieses, mit genau dem, was mit ihm in den Papierkorb kam
+        (seine Datei im Katalog). Nie „alles leeren“: der Müllsammler von flatgraph räumte auch entfernte Ordner, Baugruppen und Drucke
+        ab. Vorher immer eine Sicherung. Keine Datei des Anwenders geht verloren: die Datei im Ordner bleibt, eigene Bilder und Dateien
+        aus dem alten Papierkorb von partAtlas kommen nach vault_archive/; nur Abgeleitetes (Vorschauen, Netz) wird gelöscht."""
+        roh = self._im_papierkorb(mid)
+        h = self._datei_im_papierkorb(mid)
+        d = (self.db.get_node_raw(ref(DATEI, h)) if h else None) or {}
+        self._sichern_vor("endgueltig-entfernen")
+        self.db.purge(MODELL, mid)
+        for b in roh.get("bilder") or []:
+            self._archivieren(b["datei"])
+        for a in d.get("papierkorb") or []:
+            if "ablage" in a:
+                self._archivieren(a["ablage"])
+        if h and self.db.get_node_raw(ref(DATEI, h)) is None:
+            for art in VORSCHAU_ARTEN:
+                self.b.entfernen(self.b.vorschau_pfad(h, art))
+            self._netz_weg(h)

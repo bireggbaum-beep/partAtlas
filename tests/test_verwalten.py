@@ -318,6 +318,15 @@ if __name__ == "__main__":
         check("Einen Weg, den Papierkorb endgültig zu leeren, gibt es nicht; nichts geht dabei verloren",
               c.post("/api/papierkorb/leeren").status_code in (404, 405) and c.get("/api/zaehler").json()["papierkorb"] == 2
               and alle_dateien() == vorher_dateien)
+        r = c.post(f"/api/modelle/{papier[2]}/endgueltig")
+        check("Endgültig entfernen ohne eingetipptes „entfernen“: abgelehnt, auch vom Server",
+              r.status_code == 400 and c.get("/api/zaehler").json()["papierkorb"] == 2)
+        r = c.post(f"/api/modelle/{papier[2]}/endgueltig", json={"bestaetigung": " Entfernen "})
+        check("Mit Bestätigung: nur dieses Modell geht aus dem Papierkorb, das andere bleibt, keine Datei auf der Platte ändert sich",
+              r.status_code == 200 and [m["id"] for m in c.get("/api/modelle", params={"ansicht": "papierkorb"}).json()] == [papier[1]]
+              and alle_dateien() == vorher_dateien)
+        check("Ein lebendes Modell lässt sich nicht endgültig entfernen",
+              c.post(f"/api/modelle/{c.get('/api/modelle').json()[0]['id']}/endgueltig", json={"bestaetigung": "entfernen"}).status_code == 400)
 
         # Wurzelordner entfernen: reversibel, nichts geht verloren, auch wenn es der letzte war
         zst = c.app.state.zustand
@@ -338,7 +347,7 @@ if __name__ == "__main__":
               c.get("/api/zaehler").json()["fehlt"] == 0 and c.get("/api/wurzeln/entfernt").json() == []
               and "wichtig" in c.get(f"/api/modelle/{modell}").json()["tags"] and len(c.get("/api/wurzeln").json()) == 1)
         c.post(f"/api/modelle/{papier[1]}/wiederherstellen")
-        check("Danach lässt sich auch das Modell aus dem Papierkorb wiederherstellen", c.get("/api/zaehler").json()["papierkorb"] == 1)
+        check("Danach lässt sich auch das Modell aus dem Papierkorb wiederherstellen", c.get("/api/zaehler").json()["papierkorb"] == 0)
         os.rename(s2, s2 + "_weg")
         c.delete(f"/api/wurzeln/{w}")
         rr = c.post(f"/api/wurzeln/{w}/wiederherstellen")

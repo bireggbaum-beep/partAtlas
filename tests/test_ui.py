@@ -457,6 +457,24 @@ async def oberflaeche(port):
               and not await pg.locator("#ws-knopf").is_visible() and "Warteschlange" not in menue
               and await pg.locator("#baugruppen").is_visible() and "gedruckt" in menue)
         await pg.keyboard.press("Escape")
+
+        # -- Endgültig entfernen: je Modell im Papierkorb, erst nach Eintippen
+        im_korb = api(port, "/api/zaehler")["papierkorb"]
+        await pg.click('[data-rail="bereinigen"]')
+        await pg.locator(".karte", has_text="Haken").first.click()
+        await pg.click("#endgueltig")
+        await pg.wait_for_selector("dialog[open] #endgueltig-wort")
+        text = await pg.inner_text("dialog")
+        gesperrt = await pg.locator("#endgueltig-ja").is_disabled()
+        await pg.fill("#endgueltig-wort", "entfernen")
+        check("Endgültig entfernen: Knopf erst nach Eintippen von „entfernen“; der Dialog sagt, dass die Datei im Ordner bleibt und wiederkommt",
+              gesperrt and await pg.locator("#endgueltig-ja").is_enabled() and "bleibt in ihrem Ordner" in text and "neues" in text)
+        await pg.keyboard.press("Enter")
+        await pg.wait_for_selector("dialog[open]", state="detached")
+        await pg.wait_for_timeout(500)
+        check("… Enter entfernt genau dieses Modell aus dem Papierkorb",
+              api(port, "/api/zaehler")["papierkorb"] == im_korb - 1
+              and await pg.locator(".karte", has_text="Haken").count() == 0)
         check("Keine Fehler in der Browser-Konsole", fehler == [])
         if fehler:
             print("   ", fehler)

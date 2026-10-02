@@ -1,6 +1,6 @@
 # flatgraph auf einen Commit festgenagelt, wie in pDMS. Aktualisieren:
 # Commit ersetzen, pip install -r requirements.txt, alle Suiten.
-flatgraph @ git+https://github.com/bireggbaum-beep/flatgraphdb.git@d2ae82fa45e5f5b3af1c7a5c10e24c583b36d57d
+flatgraph @ git+https://github.com/bireggbaum-beep/flatgraphdb.git@39698faa8cc713ce970643a3ce45616856bd26b3
 fastapi>=0.140
 uvicorn>=0.50
 numpy>=2.0

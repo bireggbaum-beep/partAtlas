@@ -70,9 +70,10 @@ def sichern(bestand, grund, immer=False):
             return None
     grund = re.sub(r"[^\w-]+", "-", grund).strip("-") or "sicherung"
     stamm = time.strftime("%Y-%m-%d_%H%M%S")
-    n = 1
-    while any(x.startswith(f"{stamm}-{n:02d}__") for x in os.listdir(basis)):
-        n += 1
+    # Hinter der höchsten Nummer dieser Sekunde, nie in einer Lücke: eine frei geräumte niedrige Nummer sortierte die neue Sicherung
+    # als älteste, und das Aufräumen gleich danach nähme sie wieder weg.
+    belegt = [x.lstrip(".")[len(stamm) + 1:len(stamm) + 3] for x in os.listdir(basis) if x.lstrip(".").startswith(stamm + "-")]
+    n = 1 + max((int(x) for x in belegt if x.isdigit()), default=0)
     name = f"{stamm}-{n:02d}__{grund}"
     arbeit = os.path.join(basis, f".{name}.arbeit")
     with bestand.db.transaction():       # hält die Sperre: kein Schreiben anderer Threads während des Kopierens

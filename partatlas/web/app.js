@@ -656,13 +656,14 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
 
 // Die Leiste über der Liste. Im Papierkorb: was drin liegt und die entfernten Ordner mit „Wieder hinzufügen“. Ohne eingetragenen Ordner, aber
 // mit Modellen im Katalog: was los ist und wie es zurückgeht. Einen „Papierkorb leeren“ gibt es bewusst nicht: er räumte per Müllsammler alles
-// Gelöschte auf einmal ab (auch entfernte Ordner, Baugruppen, Drucke) und liesse sich nicht rückgängig machen.
+// Gelöschte auf einmal ab (auch entfernte Ordner, Baugruppen, Drucke) und liesse sich nicht rückgängig machen. Endgültig entfernt wird nur
+// einzeln (endgueltigEntfernen).
 function zeichneHinweisLeiste() {
   const entf = zustand.entfernteWurzeln || [];
   const zeilen = [];
   if (zustand.ansicht === "papierkorb") {
     const n = zustand.modelle.length;
-    zeilen.push(`<div class="pk-zeile"><span>🗑 ${n ? `${n.toLocaleString("de-DE")} ${n === 1 ? "Modell" : "Modelle"}` : "Keine Modelle"} im Papierkorb. Er wird nie von selbst geleert; „Wiederherstellen“ holt ein Modell zurück.</span></div>`);
+    zeilen.push(`<div class="pk-zeile"><span>🗑 ${n ? `${n.toLocaleString("de-DE")} ${n === 1 ? "Modell" : "Modelle"}` : "Keine Modelle"} im Papierkorb. Er wird nie von selbst geleert; „Wiederherstellen“ holt ein Modell zurück, „Endgültig entfernen“ nimmt eines für immer heraus.</span></div>`);
     for (const w of entf) {
       zeilen.push(`<div class="pk-zeile"><span>📁 Entfernter Ordner <b>${esc(w.name || "")}</b> <code>${esc(w.pfad || "")}</code>${w.modelle ? ` · ${w.modelle.toLocaleString("de-DE")} Modelle` : ""}${w.vorhanden ? "" : " · liegt dort nicht mehr"}</span>
         ${w.vorhanden ? `<button class="knopf klein" data-wurzel-zurueck="${esc(w.id)}">Wieder hinzufügen</button>` : ""}</div>`);
@@ -804,7 +805,8 @@ async function waehle(id, live = false) {
       <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
       <div class="i-griff" title="Höhe der Vorschau ziehen (Doppelklick: zurücksetzen)"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
-      ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button></div>`
+      ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button>
+        <button class="knopf gefahr" id="endgueltig">Endgültig entfernen …</button></div>`
         : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
         <div class="mehr"><button class="schalter" id="mehr-knopf" title="Weitere Aktionen">⋯</button>
           <div class="menu" id="mehr-menu" hidden>
@@ -1418,6 +1420,36 @@ async function loeschDialog(modelle, titel, ordner = null) {
   } catch (e) { toast(e.message); return false; }
 }
 
+// Ein Modell aus dem Papierkorb endgültig aus dem Katalog nehmen. Einzeln und mit eingetipptem Wort, weil es nicht zurückkommt; vorher
+// legt der Server eine Sicherung an. Liegt die Datei noch im Ordner, sagt der Dialog, dass sie beim nächsten Einlesen wiederkommt.
+async function endgueltigEntfernen(id) {
+  let v;
+  try { v = await api(`/api/modelle/${id}/endgueltig`); } catch (e) { return toast(e.message); }
+  const datei = v.im_ordner.length
+    ? `<p><b>Die Datei bleibt in ihrem Ordner</b> — partAtlas löscht sie nicht. Beim nächsten Einlesen erscheint sie deshalb wieder, als neues
+        Modell ohne Tags, Drucke und Bilder:</p><ul>${v.im_ordner.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+       <p class="dim">Soll sie nicht mehr im Katalog auftauchen, lass das Modell besser im Papierkorb.</p>`
+    : `<p class="dim">Die Datei liegt nicht mehr in einem eingetragenen Ordner.</p>`;
+  const a = await dialog(`<h2>„${esc(v.name)}“ endgültig entfernen?</h2>
+    <p>Das Modell verschwindet aus dem Papierkorb und lässt sich dort nicht mehr wiederherstellen — mit seinen Tags, Drucken und
+      Verknüpfungen. Vorher legt partAtlas eine Sicherung der Datenbank an.</p>
+    ${datei}
+    ${v.bilder ? `<p class="dim">${v.bilder === 1 ? "Das eigene Bild kommt" : `Die ${v.bilder} eigenen Bilder kommen`} ins Archiv des Bestands (vault_archive), nicht weg.</p>` : ""}
+    <p>Zum Bestätigen <b>entfernen</b> eintippen:</p>
+    <input type="text" id="endgueltig-wort" autocomplete="off" data-enter="#endgueltig-ja">
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" id="endgueltig-ja" value="ja" disabled>Endgültig entfernen</button></div>`);
+  if (a !== "ja") return;
+  try {
+    await api(`/api/modelle/${id}/endgueltig`, { method: "POST", body: { bestaetigung: $("#endgueltig-wort").value } });
+    toast("Endgültig entfernt.");
+    waehle(null);
+  } catch (e) { toast(e.message); }
+}
+
+$("#dialog-inhalt").addEventListener("input", (e) => {
+  if (e.target.id === "endgueltig-wort") $("#endgueltig-ja").disabled = e.target.value.trim().toLowerCase() !== "entfernen";
+});
+
 async function umbenennen(id) {
   const m = await api(`/api/modelle/${id}`);
   const antwort = await dialog(`<h2>Umbenennen</h2><p class="dim">Die Datei wird auf der Platte umbenannt, die Endung bleibt.</p>
@@ -1683,6 +1715,7 @@ $("#gruppierung").value = zustand.gruppierung;
       try { await api(`/api/modelle/${id}/wiederherstellen`, { method: "POST" }); toast("Wiederhergestellt."); waehle(null); }
       catch (e2) { toast(e2.message); }
       return;
+    case "endgueltig": return endgueltigEntfernen(id);
     case "thema": {
       const neu = document.documentElement.dataset.app === "dark" ? "light" : "dark";
       document.documentElement.dataset.app = neu;
@@ -2016,7 +2049,9 @@ async function kontextMenu(e, id) {
   const papierkorb = zustand.ansicht === "papierkorb";
   let eintraege;
   if (papierkorb) {
-    eintraege = [["wiederherstellen", `↩ Wiederherstellen${mehrere ? ` (${modelle.length})` : ""}`]];
+    // Endgültig nur je Modell, nie für eine Auswahl: ein „alles leeren“ gibt es bewusst nicht.
+    eintraege = [["wiederherstellen", `↩ Wiederherstellen${mehrere ? ` (${modelle.length})` : ""}`],
+      ...(mehrere ? [] : [["-"], ["endgueltig", "Endgültig entfernen …", "gefahr"]])];
   } else if (mehrere) {
     eintraege = [
       ["kopf", `${modelle.length} Modelle`],
@@ -2208,6 +2243,7 @@ async function kontextAktion(k, knopf) {
     case "wiederherstellen":
       for (const x of modelle) await api(`/api/modelle/${x}/wiederherstellen`, { method: "POST" }).catch((err) => toast(err.message));
       return;
+    case "endgueltig": return endgueltigEntfernen(id);
     case "sammlung": return sammlungWahl(modelle);
     case "druck": return druckAnlegen(modelle);
     default: return stapelAktion(k, modelle);

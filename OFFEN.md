@@ -362,7 +362,7 @@ Baugruppen, Drucke, Sammlungen, Tags; bei früheren Fassungen zudem die in den P
 `run_garbage_collection` auf, der Papierkorb wächst nur. Ein entfernter Wurzelordner bleibt als Eintrag (`wurzel_entfernen` merkt Zeit und Zahl) und steht unter Bereinigen › Papierkorb mit „Wieder hinzufügen“ (`entfernte_wurzeln`,
 `wurzel_wiederherstellen`, `GET /api/wurzeln/entfernt`, `POST /api/wurzeln/{id}/wiederherstellen`; der nächste Scan verbindet die Modelle über den Inhalt, Tags und Drucke sind noch da). Der Willkommensschirm erscheint nur noch in einem
 wirklich leeren Katalog; sonst eine Leiste „Es ist kein Ordner mehr eingetragen …“. Ein Modell wiederherstellen, dessen Ordner entfernt ist, sagt, was zu tun ist, statt es halb zurückzuholen. Geprüft in `test_verwalten` (63/63),
-`test_scan` (65/65) und mit einem Playwright-Skript an genau diesem Zustand (null Ordner, Modelle da). **Ausdrücklich nicht gebaut:** ein „endgültig löschen“; käme es je, dann nur je Modell, mit Tippbestätigung und ohne Müllsammler.
+`test_scan` (65/65) und mit einem Playwright-Skript an genau diesem Zustand (null Ordner, Modelle da). **Ausdrücklich nicht gebaut:** ein „endgültig löschen“; käme es je, dann nur je Modell, mit Tippbestätigung und ohne Müllsammler (gebaut so in 0.32.0).
 **Offen:** Baugruppen, Drucke, Sammlungen und Tags löscht die Oberfläche weiter per `soft_delete` (also wiederherstellbar im Graph), aber ohne Ansicht dafür; Browser-Dateien und laufender Server können nach `git pull` ohne Neustart auseinanderlaufen — die Seite bricht dann
 nicht mehr ab (der neue Endpunkt ist abgefangen), ein Hinweis „bitte neu starten“ fehlt noch.
 
@@ -373,6 +373,17 @@ Scan lässt Orte eines nicht erreichbaren oder leeren Wurzelordners stehen, Arch
 (Namensschema mit zweistelligem Zähler behoben). `test_schutz` 16/16 mit vier Gegenproben (unbegründeter Löschaufruf, Verweigerung entfernt, Scan-Schutz entfernt, Sicherung vor
 Massenaktion entfernt); alle Suiten grün. **Offen:** Zurückholen einer Sicherung in der Oberfläche (Aufwand 2–3: Scanner anhalten, Bestand schliessen, tauschen, neu öffnen);
 Ansicht zum Zurückholen gelöschter Sammlungen, Baugruppen, Drucke, Tags; die Sperre beim Kopieren ist nicht unter Last geprüft (Kopierzeit grosser Bestände nicht gemessen).
+
+**Endgültig entfernen je Modell (0.32.0):** flatgraph 4.1.0 (Pin `39698fa`) hat `purge(sammlung, kennung)`: entfernt einen Knoten aus dem Papierkorb mit genau seiner
+Kaskade (`_geloescht_durch`), lehnt lebende ab, lässt alle anderen Papierkorb-Einträge samt Texten stehen; `run_garbage_collection` bleibt für die Wartung (VERTRAG §2.9).
+In partAtlas: Papierkorb › Inspektor „Endgültig entfernen …“ bzw. Rechtsklick (nur bei einem Modell, nie für eine Auswahl). Dialog nennt, ob die Datei noch im Ordner liegt
+(dann kommt sie beim nächsten Einlesen als neues Modell wieder) und wohin eigene Bilder gehen; Knopf erst nach Eintippen von „entfernen“, das auch der Server prüft.
+`Katalog.endgueltig_entfernen`: Sicherung (`vor-endgueltig-entfernen`), `purge` des Modells (nimmt den Datei-Knoten mit), eigene Bilder und Dateien aus dem alten
+Papierkorb von partAtlas nach `vault_archive/`, Vorschauen und Netz der Datei weg. Wächter: `purge` steht begründet in `ERLAUBT`, `run_garbage_collection` bleibt
+verboten. Nebenbei behoben: eine Sicherung bekam nach dem Aufräumen eine frei gewordene, niedrige Nummer derselben Sekunde, sortierte als älteste und wurde sofort wieder
+weggeräumt (nur bei über 20 Sicherungen je Sekunde, also im Test); jetzt immer hinter der höchsten. Gegenproben: Sicherung weg, Müllsammler statt `purge`, Bild nicht
+archiviert, Vorschau bleibt, Server ohne Tippprüfung, Nummer in der Lücke — jede lässt `test_schutz` bzw. `test_verwalten` fallen. **Offen:** Drucke, die nur an einem
+endgültig entfernten Modell hingen, bleiben als Knoten ohne Modell im Graph (unsichtbar, nichts geht verloren; Aufwand 2, sie mit in den Papierkorb zu legen).
 
 ## Offen, in dieser Reihenfolge
 

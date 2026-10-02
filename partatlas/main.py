@@ -236,6 +236,21 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         K().wiederherstellen(mid)
         return {"ok": True}
 
+    @app.get("/api/modelle/{mid}/endgueltig")
+    def endgueltig_vorschau(mid: str):
+        return K().endgueltig_vorschau(mid)
+
+    @app.post("/api/modelle/{mid}/endgueltig")
+    async def endgueltig(mid: str, request: Request):
+        # Die Tippbestätigung prüft auch der Server: ein Aufruf ohne sie
+        # (ein Skript, ein verirrter Klick) entfernt nichts.
+        d = await request.json() if await request.body() else {}
+        if str(d.get("bestaetigung", "")).strip().lower() != "entfernen":
+            raise KatalogFehler("Zum endgültigen Entfernen „entfernen“ eintippen.")
+        K().endgueltig_entfernen(mid)
+        verteiler.senden("neu_laden", {})
+        return {"ok": True}
+
 
     # Netz für die 3D-Ansicht: Dreiecke als float32, little endian, 9 Werte
     # je Dreieck. Ausgedünnt, damit ein Modell mit 2 Mio. Dreiecken nicht
