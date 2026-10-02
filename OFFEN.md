@@ -149,6 +149,15 @@ nicht neu zeichnen, solange der Zeilenbereich gleich bleibt. Die Frame-Abstände
 (ohne Bilder halbiert sich das Raster); `contain` je Kachel brachte nichts.
 Auf echter Grafikkarte nicht gemessen.
 
+**Scrollleiste ziehen (2.10.2026, 3000 Modelle, 60 Sprünge, kleine Bilder):**
+ohne Aufschub 1844 Bild-Anfragen im Raster (641 in Karten), Hauptthread
+51 ms/Frame (25); mit Aufschub 20 (8) Anfragen, 9 ms/Frame (4,8). Die Bilder
+werden erst nach 120 ms Ruhe angefordert. Mit 4-MB-Fotos brach der Bench ohne
+Aufschub ab (Playwright-Leitung, vermutlich Bench-Artefakt) — mit Aufschub lief er.
+**Nächster Hebel:** eigene Fotos (bis 1600 px, als PNG) laufen unverkleinert in
+164-px-Kacheln; eine kleine Fassung (≈ 400 px) je Bild vom Server wäre der
+grösste Gewinn für das Ruhe-Laden (Aufwand ≈ 3).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
