@@ -770,3 +770,10 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .gruppe .g-name { font: 600 12.5px var(--mono); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gruppe em { margin-left: auto; font: normal 12px var(--mono); color: var(--ink-3); }
 .gruppe .g-ordner:hover { color: var(--accent); text-decoration: underline; }
+
+/* Pfad über der Liste: dezent, eine Zeile, Rand 13. */
+.pfad { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4); font: 12.5px/21px var(--mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; }
+.pfad button { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-3); cursor: pointer; }
+.pfad button:hover { color: var(--accent); text-decoration: underline; }
+.pfad i { font-style: normal; opacity: 0.6; }
+.pfad .pfad-jetzt { color: var(--ink-2); }

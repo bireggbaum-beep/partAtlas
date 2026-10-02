@@ -58,7 +58,7 @@ async function ladeBaugruppenLeiste() {
 function zeigeBaugruppeFlaeche(an) {
   document.body.classList.toggle("bg-offen", an);
   for (const s of ["#tagleiste", "#raster"]) $(s).hidden = an;
-  if (an) for (const s of ["#filterzeile", "#stapel", "#listenkopf", "#leer"]) $(s).hidden = true;
+  if (an) for (const s of ["#pfad", "#filterzeile", "#stapel", "#listenkopf", "#leer"]) $(s).hidden = true;
   $("#bg-ansicht").hidden = !an;
 }
 

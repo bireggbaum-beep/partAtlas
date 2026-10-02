@@ -226,6 +226,7 @@ async function ladeSeite() {
   zustand.doppelteWurzeln = new Set(namen.filter((n, i) => namen.indexOf(n) !== i));
   zustand.wurzelNamen = new Map(ordner.map((w) => [w.id, zustand.doppelteWurzeln.has(w.name)
     ? `${w.name} · ${(w.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || ""}` : w.name]));
+  zeichnePfad();
   if (zustand.gruppierung === "ordner") raster.neu();
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
@@ -280,12 +281,24 @@ function zeichneLeiste(l) {
     + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : ""));
 }
 
+// Der Weg zum gewählten Ordner, dezent über der Liste: „Alle › 3D-Druck › Technik“. Jeder Teil führt dorthin zurück.
+function zeichnePfad() {
+  const el = $("#pfad");
+  const teile = zustand.ordner ? zustand.ordner.split("/").filter(Boolean) : [];
+  el.hidden = !teile.length || !!zustand.baugruppe;
+  const glieder = [`<button data-pfad="">Alle</button>`, ...teile.map((t, i) => {
+    const name = i === 0 ? wurzelName(t) : t;
+    return i === teile.length - 1 ? `<span class="pfad-jetzt">${esc(name)}</span>`
+      : `<button data-pfad="${esc(teile.slice(0, i + 1).join("/"))}">${esc(name)}</button>`;
+  })];
+  abgleichen(el, glieder.join('<i>›</i>'));
+}
+
 function zeichneFilterzeile() {
   const teile = [];
   const sammlung = zustand.sammlungen.find((x) => x.id === zustand.sammlung);
   if (sammlung) teile.push(`Sammlung <b>${esc(sammlung.name)}</b> <button id="sammlung-umbenennen">umbenennen</button> <button id="sammlung-loeschen">löschen</button> <button id="sammlung-zu-baugruppe">🧩 als Baugruppe</button> <span class="dim">· Reihenfolge per Ziehen</span>`);
   if (zustand.ansicht === "warteschlange") teile.push(`Warteschlange <span class="dim">· Reihenfolge per Ziehen</span>`);
-  if (zustand.ordner) teile.push(`Ordner ${esc(zustand.ordner.split("/").slice(1).join("/") || "(Wurzel)")}`);
   const chips = [...zustand.material, ...[...zustand.tags].map((t) => "#" + t)];
   if (chips.length) teile.push(`${chips.map(esc).join(" oder ")} <span class="dim">· wer mehr trifft, steht oben</span>`);
   if (zustand.format) teile.push(esc(endung[zustand.format] || zustand.format));
@@ -293,7 +306,8 @@ function zeichneFilterzeile() {
   const z = $("#filterzeile");
   z.hidden = teile.length === 0;
   abgleichen(z, teile.join(" · ") + ` <button id="filter-weg">✕ Filter aufheben</button>`);
-  zustand.filterTeile = teile.length;
+  zustand.filterTeile = teile.length + (zustand.ordner ? 1 : 0);
+  zeichnePfad();
   zeichneLeer();
 }
 
@@ -1407,6 +1421,8 @@ document.addEventListener("click", async (e) => {
     }
     return;
   }
+  const pf = t.closest("[data-pfad]");
+  if (pf) { Object.assign(zustand, { ordner: pf.dataset.pfad, ansicht: "alle", sammlung: "", eingeklappt: new Set() }); return neuLaden(); }
   const go = t.closest("[data-gruppe-ordner]");
   if (go) {
     const id = go.dataset.gruppeOrdner;

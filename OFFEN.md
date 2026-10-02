@@ -209,7 +209,7 @@ Status · Angelegt; gilt für Raster, Liste und Karten, gemerkt. Gruppenband 34 
 Seitenleiste (ohne Wahl: die Wurzeln); jede Gruppe enthält alle Modelle darunter, auch aus tieferen Unterordnern;
 Dateien direkt im gewählten Ordner stehen davor als „Direkt in <Ordner>“. Klick auf den Namen geht in den Ordner
 (Seitenleiste klappt den Weg auf), Pfeil klappt die Gruppe zu, Haken markiert sie. **Nur eine Gruppe → kein Band**
-(Blattordner). Tags, Sammlungen, Baugruppen bewusst nicht (Mehrfachzugehörigkeit).
+(Blattordner). **Pfad über der Liste:** „Alle › 3D-Druck › Technik“, dezent, jeder Teil führt zurück (nur bei gewähltem Ordner). Tags, Sammlungen, Baugruppen bewusst nicht (Mehrfachzugehörigkeit).
 Nicht geprüft in `tests/test_ui.py` (keine neue Prüfung); Scroll-Bench unverändert. Kein klebendes Band beim Scrollen.
 
 ## Offen, in dieser Reihenfolge
