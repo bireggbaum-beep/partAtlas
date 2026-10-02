@@ -40,6 +40,8 @@ class Katalog:
         self.suche = Suchindex(self)
         self._material_nachziehen()
         self._vault_nachziehen()
+        from .drucke import Drucke
+        self.drucke = Drucke(self)
 
     # ------------------------------------------------------------ Wurzeln
 
@@ -138,14 +140,15 @@ class Katalog:
             return mid
         mid = self.db.next_id(MODELL, "m_", 6)
         self.db.create_node(MODELL, mid, {
-            "name": name, "favorit": False, "gedruckt": False, "quelle_url": None,
+            "name": name, "favorit": False, "gedruckt": False, "drucke_n": 0, "quelle_url": None,
             "angelegt": jetzt(), "zuletzt_angesehen": None,
         })
         # cascade_delete: wer das Modell löscht, legt seine Datei mit in den
         # Papierkorb (VERTRAG §2.4) — und loeschfolgen() zeigt das vorher an.
         self.db.create_edge(ref(MODELL, mid), ref(DATEI, h), HAT_DATEI, cascade_delete=True)
-        for t in tags.vorschlaege(name, felder):
-            self._tag_verbinden(mid, t)
+        if self.b.einstellungen().get("auto_tags", True):
+            for t in tags.vorschlaege(name, felder):
+                self._tag_verbinden(mid, t)
         self._datei_materialien(h, felder)
         return mid
 
@@ -226,6 +229,10 @@ class Katalog:
         d = d or {}
         platten = d.get("platten") or []
         gewicht = sum(p.get("gewicht_g") or 0 for p in platten) or None
+        # Der Referenzdruck („so war es gut“) geht vor der Schätzung aus der Datei (KONZEPT §4.6).
+        rw = m.get("ref_werte") or {}
+        gewicht_herkunft = "druck" if rw.get("gewicht_g") else ("datei" if gewicht else None)
+        gewicht = rw.get("gewicht_g") or gewicht
         mat = self.materialien_von(mid, h) if not papierkorb else {"vorgesehen": [], "aus_datei": []}
         materialien = sorted(set(mat["vorgesehen"]) | set(mat["aus_datei"]))
         # Vorgesehen geht vor: der Anwender weiss, womit er drucken will.
@@ -233,8 +240,9 @@ class Katalog:
         orte = d.get("orte", [])
         return {
             "id": mid, "name": m.get("name"), "format": d.get("format"),
-            "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None,
+            "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None, "gewicht_herkunft": gewicht_herkunft,
             "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
+            "drucke_n": m.get("drucke_n", 0),
             "favorit": m.get("favorit", False), "hash": h,
             "vorschau": d.get("vorschau"), "fehlt": not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),
@@ -245,7 +253,8 @@ class Katalog:
             # die Adresse im Browser-Cache eindeutig.
             # Kennung des Titelbilds (das erste der Liste) — ändert sich mit
             # dem Bild und macht die Adresse im Browser-Cache eindeutig.
-            "bild": (m.get("bilder") or [{}])[0].get("k"),
+            "bild": None if m.get("vorschau_art") else (m.get("bilder") or [{}])[0].get("k"),
+            "vorschau_art": m.get("vorschau_art"),
             "groesse": sum(o.get("groesse") or 0 for o in orte[:1]) or None,
         }
 
@@ -350,6 +359,8 @@ class Katalog:
             "sammlungen": [] if papierkorb else self.sammlungen_von(mid),
             "material_herkunft": self.materialien_von(mid, kurz["hash"]) if not papierkorb else None,
             "ansichten": self.ansichten(mid, m, d),
+            "ref_werte": m.get("ref_werte"),
+            "drucke": [] if papierkorb else self.drucke.liste(mid),
         }
 
     def modell_aendern(self, mid, werte):
@@ -366,9 +377,14 @@ class Katalog:
             if url and (not re.match(r"https?://[^\s]+$", url, re.I) or len(url) > 2000):
                 raise KatalogFehler("Quelle muss eine http(s)-Adresse sein.")
             neu["quelle_url"] = url or None
-        if neu.get("gedruckt"):
-            # Wie im 3MF Katalog: gedruckt heisst erledigt, raus aus der Warteschlange.
-            neu["warteschlange"] = None
+        if "gedruckt" in neu:
+            # „Gedruckt“ ist abgeleitet: es gibt es, wenn es einen Druck gibt (KONZEPT §4.6).
+            # Der Haken legt einen leeren Druck an; zurücknehmen geht nur, solange
+            # kein Druck Angaben trägt.
+            gesetzt = neu.pop("gedruckt")
+            self.drucke.markieren(mid, gesetzt)
+            if gesetzt:
+                neu["warteschlange"] = None   # wie im 3MF Katalog: erledigt heisst raus aus der Warteschlange
         if neu:
             self.db.update_node(MODELL, mid, neu)
 
@@ -484,9 +500,9 @@ class Katalog:
             raise KatalogFehler(f"Modell {mid} gibt es nicht.")
         return m, list(m.get("bilder") or [])
 
-    def bild_hinzufuegen(self, mid, daten):
+    def png_aus(self, daten):
+        """Rohe Bildbytes → PNG-Bytes: lesbar, höchstens 1600 px, gedreht, ohne Metadaten."""
         from PIL import Image, ImageOps, UnidentifiedImageError
-        m, bilder = self._bilder(mid)
         if len(daten) > self.MAX_BILD:
             raise KatalogFehler("Bild grösser als 15 MB.")
         try:
@@ -502,15 +518,23 @@ class Katalog:
         bild.thumbnail((1600, 1600))
         puffer = io.BytesIO()
         bild.save(puffer, "PNG", optimize=True)
-        png = puffer.getvalue()
+        return puffer.getvalue()
+
+    def bild_ablegen(self, png, name):
+        """PNG in den Vault legen; gibt (Kennung, Pfad im Vault) zurück."""
         k = hashlib.sha256(png).hexdigest()[:12]
-        if any(b["k"] == k for b in bilder):
-            return k
-        titel = re.sub(r"[^\w.-]+", "_", m.get("name") or mid)[:60]
+        titel = re.sub(r"[^\w.-]+", "_", name or "bild")[:60]
         rel = f"vault/bilder/{titel}__{k}.png"
         ziel = self.b.pfad(*rel.split("/"))
         if not os.path.exists(ziel):
             dateien.schreibe_atomar(ziel, png)
+        return k, rel
+
+    def bild_hinzufuegen(self, mid, daten):
+        m, bilder = self._bilder(mid)
+        k, rel = self.bild_ablegen(self.png_aus(daten), m.get("name") or mid)
+        if any(b["k"] == k for b in bilder):
+            return k
         self.db.update_node(MODELL, mid, {"bilder": bilder + [{"k": k, "datei": rel, "angelegt": jetzt()}]})
         return k
 
@@ -528,7 +552,18 @@ class Katalog:
         _, bilder = self._bilder(mid)
         if not any(b["k"] == k for b in bilder):
             raise KatalogFehler("Dieses Bild gibt es nicht.")
-        self.db.update_node(MODELL, mid, {"bilder": sorted(bilder, key=lambda b: b["k"] != k)})
+        self.db.update_node(MODELL, mid, {"bilder": sorted(bilder, key=lambda b: b["k"] != k), "vorschau_art": None})
+
+    def vorschau_als_titel(self, mid, art):
+        """Das Bild aus der Datei oder die berechnete Vorschau soll auf der
+        Kachel stehen, auch wenn eigene Bilder da sind — sonst bliebe ein
+        schlechtes eigenes Bild nur durch Löschen zu überstimmen."""
+        m, _ = self._bilder(mid)
+        h = self.datei_von(mid)
+        d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+        if art not in [a for a, _ in self.vorschauen(d)]:
+            raise KatalogFehler("Dieses Bild gibt es nicht.")
+        self.db.update_node(MODELL, mid, {"vorschau_art": art})
 
     def bild_pfad(self, mid, k=None):
         """Pfad eines Bilds, ohne `k` das Titelbild. Auch im Papierkorb."""
@@ -550,12 +585,17 @@ class Katalog:
         """Was die Galerie im Inspektor durchblättert, in dieser Reihenfolge:
         die Bilder des Anwenders, dann was in der Datei steckt, dann was
         partAtlas berechnet hat. Die 3D-Ansicht fügt die Oberfläche ein."""
+        art_titel = m.get("vorschau_art")
         eigene = [{"art": "eigen", "k": b["k"], "url": f"/api/modelle/{mid}/bilder/{b['k']}",
-                   "titel": "Titelbild" if i == 0 else "Eigenes Bild"} for i, b in enumerate(m.get("bilder") or [])]
+                   "titel": "Vorschaubild" if i == 0 and not art_titel else "Eigenes Bild",
+                   "ist_vorschaubild": i == 0 and not art_titel} for i, b in enumerate(m.get("bilder") or [])]
         h = self.datei_von(mid) or self._datei_im_papierkorb(mid)
         titel = {"extrahiert": "Aus der Datei", "berechnet": "Vorschau"}
-        return eigene + [{"art": art, "url": f"/api/vorschau/{h}.{art}.png", "titel": titel[art]}
-                         for art, _ in self.vorschauen(d)]
+        vorschauen = [a for a, _ in self.vorschauen(d)]
+        # Ohne Wahl und ohne eigenes Bild zeigt die Kachel das beste der Datei.
+        gewaehlt = art_titel or (vorschauen[0] if vorschauen and not eigene else None)
+        return eigene + [{"art": art, "url": f"/api/vorschau/{h}.{art}.png", "titel": titel[art],
+                          "ist_vorschaubild": art == gewaehlt} for art in vorschauen]
 
     # ------------------------------------------------------------ Hochladen und Archive
 

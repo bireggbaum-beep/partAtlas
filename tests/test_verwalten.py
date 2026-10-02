@@ -97,14 +97,25 @@ if __name__ == "__main__":
         check("Als PNG neu geschrieben, höchstens 1600 px; die Kachel zeigt das erste als Titelbild",
               gross.format == "PNG" and max(gross.size) == 1600 and kachel["bild"] == k1)
         ans = c.get(f"/api/modelle/{m['Welle']}").json()["ansichten"]
-        check("Galerie: eigene Bilder zuerst (das erste heisst Titelbild), dann die berechnete Vorschau",
+        check("Galerie: eigene Bilder zuerst (das erste heisst Vorschaubild), dann die berechnete Vorschau",
               [(a["art"], a.get("k"), a["titel"]) for a in ans]
-              == [("eigen", k1, "Titelbild"), ("eigen", k2, "Eigenes Bild"), ("berechnet", None, "Vorschau")]
+              == [("eigen", k1, "Vorschaubild"), ("eigen", k2, "Eigenes Bild"), ("berechnet", None, "Vorschau")]
               and c.get(ans[2]["url"]).status_code == 200)
         c.post(f"/api/modelle/{m['Welle']}/bilder/{k2}/titel")
         check("Als Titelbild: rückt nach vorn, die Kachel folgt",
               [b["k"] for b in db.get_node(mref, readonly=True)["bilder"]] == [k2, k1]
               and next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] == k2)
+        r = c.post(f"/api/modelle/{m['Welle']}/vorschau/berechnet/titel")
+        kachel = next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])
+        ans = c.get(f"/api/modelle/{m['Welle']}").json()["ansichten"]
+        check("Original als Vorschaubild: die Kachel zeigt es statt des eigenen Bilds, die Galerie markiert es",
+              r.status_code == 200 and kachel["bild"] is None and kachel["vorschau_art"] == "berechnet"
+              and [a["ist_vorschaubild"] for a in ans] == [False, False, True])
+        check("Unbekannte Art als Vorschaubild abgelehnt",
+              c.post(f"/api/modelle/{m['Welle']}/vorschau/gibtsnicht/titel").status_code >= 400)
+        c.post(f"/api/modelle/{m['Welle']}/bilder/{k2}/titel")
+        check("Ein eigenes Bild als Vorschaubild nimmt die Wahl des Originals zurück",
+              next(x for x in c.get("/api/modelle").json() if x["id"] == m["Welle"])["bild"] == k2)
         check("Dasselbe Bild zweimal wird nicht doppelt",
               c.post(f"/api/modelle/{m['Welle']}/bilder", content=jpeg((20, 200, 50), (300, 300))).json()["k"] == k2
               and len(db.get_node(mref, readonly=True)["bilder"]) == 2)
@@ -149,6 +160,19 @@ if __name__ == "__main__":
         check("Bestand von vorher: Feld und Bildknoten werden zur Liste, Kante weg, Feld leer",
               [b["datei"] for b in n["bilder"]] == [alt1, alt2] and not n.get("bild")
               and not db.verwendungen(mref, direction="out").get("HAS_IMAGE") and db.get_node("MODEL_IMAGE/i_000001") is None)
+
+        # -- Tags aus dem Dateinamen abschaltbar (wie im 3MF Katalog vorhanden)
+        check("Einstellung auto_tags ist vorgabemässig an", c.get("/api/einstellungen").json()["auto_tags"] is True)
+        c.put("/api/einstellungen", json={"auto_tags": False})
+        c.post("/api/hochladen", params={"ordner": w, "name": "Kamera_Halter_v3.stl"}, content=stl_bytes(31))
+        warten(c)
+        neu = next(x for x in c.get("/api/modelle").json() if x["name"] == "Kamera_Halter_v3")
+        check("Ohne Auto-Tags: ein neu eingelesenes Modell hat keine Tags aus dem Namen", neu["tags"] == [])
+        c.put("/api/einstellungen", json={"auto_tags": True})
+        c.post("/api/hochladen", params={"ordner": w, "name": "Lampen_Fuss_v2.stl"}, content=stl_bytes(32))
+        warten(c)
+        neu = next(x for x in c.get("/api/modelle").json() if x["name"] == "Lampen_Fuss_v2")
+        check("Wieder an: Tags aus dem Namen kommen zurück", "lampen" in neu["tags"] or "fuss" in neu["tags"])
 
         # -- Hochladen
         r = c.post("/api/hochladen", params={"ordner": f"{w}/Deko", "name": "Stern.stl"}, content=stl_bytes())

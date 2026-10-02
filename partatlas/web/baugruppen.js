@@ -43,13 +43,15 @@ const balken = (f) => `<div class="balken ${f.bedarf && f.erledigt >= f.bedarf ?
 async function ladeBaugruppenLeiste() {
   const [liste, vorschlaege] = await Promise.all([api("/api/baugruppen"), api("/api/baugruppen/vorschlaege")]);
   zustand.baugruppen = liste;
-  const tipp = vorschlaege.length
-    ? `<div class="tipp" id="bg-tipp"><b>💡 ${vorschlaege.length} Ordner</b> sehen aus wie Baugruppen — ansehen</div>` : "";
+  // Ein Hinweis, kein Kasten: wegklickbar, kommt erst wieder, wenn es mehr Vorschläge gibt.
+  const tipp = vorschlaege.length > Number(localStorageLesen("bgtipp") || 0)
+    ? `<div class="tipp" id="bg-tipp"><span>${vorschlaege.length} Ordner sehen aus wie Baugruppen</span><button class="tipp-x" id="bg-tipp-x" title="Ausblenden">×</button></div>` : "";
   abgleichen($("#baugruppen"), liste.map((b) => `
     <button class="bg-eintrag ${zustand.baugruppe === b.id ? "aktiv" : ""}" data-baugruppe="${esc(b.id)}">
       <div class="kopfzeile"><span>${esc(b.name)}</span><em title="Druckteile gedruckt">${b.druck_erledigt}/${b.druck_bedarf}</em></div>${balken({ bedarf: b.druck_bedarf, erledigt: b.druck_erledigt })}</button>`).join("")
     + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="baugruppe-neu-2">＋ Neue Baugruppe</button>`) + tipp);
   zustand.bgVorschlaege = vorschlaege;
+  markiereAnsicht();
 }
 
 // ---------------------------------------------------------------- Ansicht
@@ -199,7 +201,7 @@ function zeichneBaugruppe(d) {
   </div>` : `
 
   <div class="bg-aktionen">
-    <button class="knopf akzent" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
+    <button class="knopf akzent" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
@@ -433,6 +435,7 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("click", async (e) => {
   const t = e.target;
+  if (t.closest("#bg-tipp-x")) { localStorageSchreiben("bgtipp", String((zustand.bgVorschlaege || []).length)); return ladeBaugruppenLeiste(); }
   if (t.closest("#bg-tipp") || t.id === "baugruppe-neu" || t.id === "baugruppe-neu-2") return neueBaugruppe();
   const vor = t.closest("[data-vorschlag]");
   if (vor) return ausVorschlag(vor.dataset.vorschlag);
@@ -545,6 +548,9 @@ async function einstellungen() {
       <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
     <div class="i-titel">ROLLENGRÖSSE</div>
     <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>
+    <div class="i-titel">TAGS</div>
+    <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
+    <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>
     <div class="i-titel">PROGRAMME ZUM ÖFFNEN</div>
     <p class="dim">Gefunden wird, was an den üblichen Orten liegt (PATH, Flatpak, AppImage, /opt). Anderes hier eintragen.</p>
     <div id="prog-teil">${progTeil()}</div>
@@ -553,7 +559,7 @@ async function einstellungen() {
   if (a !== "ja") return;
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
-                                                          rolle_g: Number($("#ein-rolle").value),
+                                                          rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked,
                                                           programme: progWahl.eigene, standard_programm: progWahl.standard } });
     toast("Gespeichert.");
     programmCache = null;

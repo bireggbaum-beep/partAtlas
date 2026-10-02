@@ -353,12 +353,53 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         K().bild_als_titel(mid, k)
         return {"ok": True}
 
+    @app.post("/api/modelle/{mid}/vorschau/{art}/titel")
+    def vorschau_titel(mid: str, art: str):
+        K().vorschau_als_titel(mid, art)
+        return {"ok": True}
+
     @app.delete("/api/modelle/{mid}/bilder/{k}")
     def bild_weg(mid: str, k: str):
         K().bild_entfernen(mid, k)
         return {"ok": True}
 
     # ---------------------------------------------------------------- Mehrere auf einmal
+
+    # ---------------------------------------------------------------- Drucke (KONZEPT §4.6)
+
+    @app.post("/api/drucke")
+    async def druck_neu(request: Request):
+        d = await request.json()
+        return {"id": K().drucke.anlegen(d.get("modelle"), d.get("felder"))}
+
+    @app.patch("/api/drucke/{did}")
+    async def druck_aendern(did: str, request: Request):
+        K().drucke.aendern(did, await request.json())
+        return {"ok": True}
+
+    @app.delete("/api/drucke/{did}")
+    def druck_weg(did: str):
+        K().drucke.loeschen(did)
+        return {"ok": True}
+
+    @app.post("/api/drucke/{did}/referenz")
+    async def druck_referenz(did: str, request: Request):
+        d = await request.json()
+        K().drucke.referenz(did, d.get("modell"), bool(d.get("an", True)))
+        return {"ok": True}
+
+    @app.post("/api/drucke/{did}/bilder")
+    async def druck_bild_dazu(did: str, request: Request):
+        return {"k": K().drucke.bild_hinzufuegen(did, await request.body())}
+
+    @app.get("/api/drucke/{did}/bilder/{k}")
+    def druck_bild(did: str, k: str):
+        return _bild_antwort(K().drucke.bild_pfad(did, k))
+
+    @app.delete("/api/drucke/{did}/bilder/{k}")
+    def druck_bild_weg(did: str, k: str):
+        K().drucke.bild_entfernen(did, k)
+        return {"ok": True}
 
     @app.post("/api/stapel")
     async def stapel(request: Request):
@@ -373,7 +414,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     @app.get("/api/einstellungen")
     def einstellungen():
-        return {**zustand["bestand"].einstellungen(), "gilt": B().standard(),
+        return {"auto_tags": True, **zustand["bestand"].einstellungen(), "gilt": B().standard(),
                 "materialien": K().materialien()}
 
     @app.put("/api/einstellungen")
@@ -388,6 +429,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
                 raise KatalogFehler("Farbe als #RRGGBB angeben.")
             werte["standard_farbe"] = f
+        if "auto_tags" in d:
+            werte["auto_tags"] = bool(d["auto_tags"])
         if "rolle_g" in d:
             try:
                 werte["rolle_g"] = max(100, min(int(d["rolle_g"]), 10_000))

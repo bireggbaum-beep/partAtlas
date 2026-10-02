@@ -64,7 +64,7 @@ async def oberflaeche(port):
             await pg.fill("#suche", t)
             await pg.wait_for_timeout(700)
 
-        await pg.goto(f"http://127.0.0.1:{port}/")
+        await pg.goto(f"http://127.0.0.1:{port}/?phase=2")
         # -- Erster Start: Willkommenskarte, Ordner wählen durch Klicken statt Tippen
         await pg.wait_for_selector(".willkommen")
         check("Erster Start: Willkommenskarte, leere Rubriken der Seitenleiste ausgeblendet",
@@ -130,6 +130,20 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(300)
         check("Blättern mit Pfeiltaste und Pfeil: vom Titelbild rückwärts ans Ende (Vorschau, 4 / 4)",
               (await pg.inner_text(".gal-etikett")).startswith("Vorschau · 4 / 4"))
+
+        # -- Blättern zeichnet nicht neu: Pfeil und Leiste bleiben dieselben Elemente
+        await pg.hover("#i-bild")
+        await pg.evaluate("window.__pfeil = document.querySelector('.gal-pfeil.rechts'); window.__leiste = document.querySelector('.gal-leiste')")
+        await pg.click(".gal-pfeil.rechts")
+        await pg.click(".gal-pfeil.rechts")
+        check("Mehrfach blättern: Pfeile und Leiste bleiben stehen (kein Neuzeichnen, sonst Flackern und verlorene Klicks)",
+              await pg.evaluate("window.__pfeil.isConnected && window.__leiste.isConnected"))
+        # -- Rechtsklick auf das Bild
+        await pg.locator(".gal-mini[data-art=eigen]").nth(1).click()
+        await pg.click("#i-bild img", button="right")
+        check("Rechtsklick auf ein eigenes Bild: Vorschaubild festlegen und Bild entfernen",
+              "Vorschaubild" in await pg.inner_text("#kontext") and "entfernen" in await pg.inner_text("#kontext"))
+        await pg.keyboard.press("Escape")
 
         # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
         check("Hauptknopf nennt den Standard fürs Format (STL → Slicer), daneben der CAD-Knopf",
@@ -224,10 +238,15 @@ async def oberflaeche(port):
 
         # -- Quelle als Link
         await pg.locator(".karte").first.click()
-        await pg.wait_for_selector("#i-details[open] #quelle-aendern")
-        check("Inspektor: Vorschau und Name oben fest, Modelldaten sofort sichtbar und offen",
+        await pg.wait_for_selector(".i-reiter")
+        check("Inspektor: Vorschau, Name, Öffnen und Reiter oben fest; drei Reiter, die Übersicht zuerst",
               await pg.evaluate("getComputedStyle(document.querySelector('.i-fix')).position") == "sticky"
-              and "MODELLDATEN" in await pg.inner_text("#i-details summary"))
+              and await pg.locator(".i-reiter button").count() == 3
+              and await pg.get_attribute("#inspektor", "data-reiter") == "uebersicht"
+              and await pg.locator("#quelle-aendern").is_hidden())
+        await pg.click('.i-reiter [data-reiter="datei"]')
+        check("Reiter Datei zeigt die Modelldaten, und der Reiter bleibt beim nächsten Modell gewählt",
+              "MODELLDATEN" in await pg.inner_text(".i-tafel[data-reiter=datei]") and await pg.locator("#quelle-aendern").is_visible())
         await pg.click("#quelle-aendern")
         await pg.fill("#quelle-url", "https://www.printables.com/model/42")
         await pg.click('dialog button[value="ja"]')
@@ -312,6 +331,8 @@ async def oberflaeche(port):
             ids = [await pg.locator(".karte").nth(i).get_attribute("data-id") for i in range(3)]
             check(f"Drei Kacheln schnell nacheinander angeklickt (Runde {runde + 1}): die letzte ist gewählt",
                   await pg.locator(".karte.gewaehlt").count() == 1 and await pg.locator("#inspektor").get_attribute("data-id") == ids[2])
+        if await pg.locator('.sektion[data-sektion="tags"][data-zu="1"]').count():
+            await pg.click('.sektion[data-sektion="tags"] .sk-kopf')
         for tag in [t["name"] for t in api(port, "/api/tags")][:3]:
             await pg.click(f'#tag-liste [data-tag="{tag}"]', no_wait_after=True)
         await pg.wait_for_timeout(800)
@@ -387,6 +408,58 @@ async def oberflaeche(port):
               "Haken.stl" in text and "Warteschlange" in text and "Tags:" in text and "HAS_TAG" not in text)
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
+        # -- Phase 1 (Vorgabe): keine Warteschlange, Baugruppen bleiben
+        await pg.goto(f"http://127.0.0.1:{port}/")
+        await pg.wait_for_selector(".karte")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector(".i-reiter")
+
+        # -- Drucke: Reiter, Formular, Karte, Referenz, Foto, Zähler auf der Kachel
+        await pg.click('.i-reiter [data-reiter="drucke"]')
+        await pg.click("[data-druck-neu]")
+        await pg.wait_for_selector("#df-g")
+        await pg.fill("#df-g", "12.5")
+        await pg.fill("#df-h", "1")
+        await pg.fill("#df-min", "30")
+        await pg.select_option("#df-typ", "PETG")
+        await pg.fill("#df-notiz", "Brim an, Düse 240")
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_selector(".druck")
+        karte = await pg.inner_text(".druck")
+        check("Druck anlegen: Karte mit Gewicht, Dauer, Material und Notiz; Zähler auf dem Reiter",
+              "12,5 g" in karte and "1 h 30 min" in karte and "PETG" in karte and "Brim an" in karte
+              and "1" in await pg.inner_text('.i-reiter [data-reiter="drucke"]'))
+        await pg.click("[data-druck-ref]")
+        await pg.wait_for_selector(".druck.ref")
+        async with pg.expect_file_chooser() as wahl:
+            await pg.click("[data-druck-foto]")
+        await (await wahl.value).set_files(fotos[0])
+        await pg.wait_for_selector(".d-foto img")
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')
+        uebersicht = await pg.inner_text('.i-tafel[data-reiter="uebersicht"]')
+        check("Referenzdruck liefert Gewicht und Zeit der Übersicht, mit Herkunft; „1× gedruckt“ statt „Nicht gedruckt“",
+              "12,5" in uebersicht and "Referenzdruck" in uebersicht and "1× gedruckt" in uebersicht)
+        try:
+            await pg.wait_for_function("document.querySelector('.karte.gewaehlt')?.innerText.includes('12,5 g')", timeout=6000)
+        except Exception:
+            pass
+        check("Die Kachel zeigt das Gewicht des Referenzdrucks",
+              "12,5 g" in await pg.locator(".karte.gewaehlt").inner_text())
+        await pg.click('.i-reiter [data-reiter="drucke"]')
+        await pg.click("[data-druck-weg]")
+        await pg.click('dialog button[value="ja"]')
+        await pg.wait_for_selector(".d-leer")
+        check("Druck entfernen: der Reiter ist wieder leer, das Modell wieder „noch nicht gedruckt“",
+              "Noch nicht gedruckt" in await pg.inner_text(".d-oben"))
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')
+        await pg.wait_for_selector("#gedruckt")
+        await pg.locator(".karte").first.click(button="right")
+        menue = await pg.inner_text("#kontext")
+        check("Phase 1: Warteschlange nirgends zu sehen (Seitenleiste, Inspektor, Rechtsklick), Baugruppen und Gedruckt bleiben",
+              not await pg.locator('[data-ansicht="warteschlange"]').is_visible()
+              and not await pg.locator("#ws-knopf").is_visible() and "Warteschlange" not in menue
+              and await pg.locator("#baugruppen").is_visible() and "gedruckt" in menue)
+        await pg.keyboard.press("Escape")
         check("Keine Fehler in der Browser-Konsole", fehler == [])
         if fehler:
             print("   ", fehler)

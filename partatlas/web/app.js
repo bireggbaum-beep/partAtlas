@@ -4,6 +4,13 @@
 // Browser lahmlegen (vermutete Ursache für „nicht gescheit“ bei 5 700).
 "use strict";
 
+// Phase 1: Katalog und Öffnen im Slicer/CAD. Was ein Druckmanagement voraussetzt
+// (Warteschlange), ist ausgeblendet, nicht gelöscht — `data-ab-phase="2"` in der
+// Seitenleiste, Filter bei den Menüs. In Phase 2 genügt PHASE = 2.
+const PHASE = Number(new URLSearchParams(location.search).get("phase")) || 1;   // ?phase=2: zum Testen und Vorzeigen
+document.documentElement.dataset.phase = PHASE;
+const ab2 = (k) => PHASE >= 2 || !["ws", "warteschlange"].includes(k);
+
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -102,7 +109,6 @@ async function ladeModelle() {
   if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
   if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
   zustand.modelle = liste;
-  $("#anzahl").textContent = `${liste.length.toLocaleString("de-DE")} Dateien`;
   zeichneFilterzeile();
   zeichneStapel();
   zeichneListenkopf();
@@ -123,13 +129,13 @@ async function ladeSeite() {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
-  // Das Zählabzeichen am Besen: nur, wenn etwas zu tun ist (der Papierkorb zählt nicht).
+  // Zählabzeichen am Besen: nur, wenn etwas zu tun ist (der Papierkorb zählt nicht).
   const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0);
   const abz = $("#abz-bereinigen");
   abz.hidden = !zu;
   abz.textContent = zu > 99 ? "99+" : zu;
-  abgleichen($("#formate"), Object.entries(z.formate).sort().map(([f, n]) =>
-    `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join(""));
+  zustand.formate = z.formate;
+  if (zustand.leiste) zeichneLeiste(zustand.leiste);
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
@@ -148,29 +154,36 @@ function zweig(k, tiefe) {
   return html;
 }
 
+// Die Seitenleiste wechselt als Ganzes (wie bei VS Code): Katalog oder Bereinigen.
 const BEREINIGEN = ["papierkorb", "duplikate", "fehlt", "unlesbar"];
 
 function markiereAnsicht() {
   const bereinigt = BEREINIGEN.includes(zustand.ansicht);
+  $(".seite").dataset.modus = bereinigt ? "bereinigen" : "katalog";
+  const hat = { ordner: !!zustand.ordner, baugruppen: !!zustand.baugruppe, sammlungen: !!zustand.sammlung, tags: zustand.tags.size > 0 };
+  document.querySelectorAll(".sektion").forEach((s) => s.classList.toggle("hat-wahl", !!hat[s.dataset.sektion]));
   document.querySelectorAll("[data-ansicht]").forEach((b) =>
     b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tags.size && !zustand.material.size && !zustand.format && !zustand.sammlung));
   document.querySelectorAll(".rail-btn[data-rail]").forEach((b) =>
     b.classList.toggle("aktiv", (b.dataset.rail === "bereinigen") === bereinigt));
-  // Die Seitenleiste wechselt als Ganzes, wie bei VS Code: Katalog oder Bereinigen.
-  $(".seite").dataset.modus = bereinigt ? "bereinigen" : "katalog";
 }
 
-// Die Leiste über dem Raster: Material und Tags als Chips, je mit ODER.
-// Gezählt wird vor der Chip-Auswahl (Server), gewählte Chips bleiben
-// sichtbar, auch wenn sie unter die ersten 14 fallen.
+// Die Leiste über dem Raster: Material und Format als Chips (wenige Werte, die
+// wirklich filtern). Tags stehen in der Seitenleiste und in der Suche; hier
+// erscheinen nur die gewählten, zum Wegnehmen. Material mit ODER; gezählt
+// wird vor der Chip-Auswahl (Server), gewählte Chips bleiben sichtbar, auch
+// wenn sie unter die ersten acht fallen.
 function zeichneLeiste(l) {
-  const chip = (art, wahl, x, text) => `<button class="chip ${wahl.has(x.name) ? "aktiv" : ""}" data-${art}="${esc(x.name)}">${text}<em>${x.anzahl}</em></button>`;
+  zustand.leiste = l;
+  const chip = (art, aktiv, name, text, n) => `<button class="chip ${aktiv ? "aktiv" : ""}" data-${art}="${esc(name)}">${text}${n != null ? `<em>${n}</em>` : ""}</button>`;
   const auswahl = (liste, wahl, n) => [...liste.slice(0, n), ...liste.slice(n).filter((x) => wahl.has(x.name))];
-  const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material, x, esc(x.name))).join("");
-  const tags = auswahl(l.tags, zustand.tags, 14).map((x) => chip("tag", zustand.tags, x, "#" + esc(x.name))).join("");
-  const leer = !zustand.tags.size && !zustand.material.size;
+  const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material.has(x.name), x.name, esc(x.name), x.anzahl)).join("");
+  const fmt = Object.entries(zustand.formate || {}).sort().map(([f, n]) => chip("format", zustand.format === f, f, esc((endung[f] || f).slice(1).toUpperCase()), n)).join("");
+  const tags = [...zustand.tags].map((t) => `<button class="chip aktiv" data-tag="${esc(t)}" title="Filter entfernen">#${esc(t)} ×</button>`).join("");
+  const leer = !zustand.tags.size && !zustand.material.size && !zustand.format;
   abgleichen($("#tagleiste"), `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
+    + (fmt ? `<span class="leiste-titel">FORMAT</span>${fmt}` : "")
     + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : ""));
 }
 
@@ -232,7 +245,7 @@ const raster = (() => {
   const aussen = $("#raster"), innen = $("#raster-innen");
   let spalten = 1, geplant = false;
   const mass = () => zustand.layout === "liste"
-    ? { B: 0, H: 36, LUECKE: 0, RAND: 0 } : { B: 164, H: 246, LUECKE: 14, RAND };
+    ? { B: 0, H: 38, LUECKE: 0, RAND: 0 } : { B: 164, H: 236, LUECKE: 14, RAND };
 
   function neu() {
     const { B, H, LUECKE, RAND: R } = mass();
@@ -268,29 +281,30 @@ const raster = (() => {
 
 function bildUrl(m) {
   if (m.bild) return `/api/modelle/${m.id}/bild?v=${m.bild}`;
+  if (m.vorschau_art && m.hash) return `/api/vorschau/${m.hash}.${m.vorschau_art}.png`;
   return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png` : null;
 }
 
 function statusBadge(m) {
+  // Ruhig: ein Haken, bei mehreren Drucken mit Zahl. Gewicht und Material stehen im Inspektor.
   return m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
     : m.fehler ? `<span class="badge warn">unlesbar</span>`
-    : m.gedruckt ? `<span class="badge gedruckt">✓ Gedruckt${m.gewicht_g ? " · " + zahl(m.gewicht_g, 2) + " g" : ""}</span>` : "";
+    : m.drucke_n ? `<span class="badge gedruckt" title="${m.drucke_n}× gedruckt">✓${m.drucke_n > 1 ? " " + m.drucke_n + "×" : ""}</span>` : "";
 }
 
 function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (m.format === "step" ? "STEP · nur CAD" : "keine Vorschau");
-  const unter = [masse(m.masse), m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g${m.material ? " | " + esc(m.material) : ""}` : ""].filter(Boolean).join(" · ");
   const markiert = zustand.auswahl.has(m.id);
-  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
+  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
     <div class="bild">${url ? `<img loading="lazy" src="${url}" alt="">` : `<div class="platzhalter">${platz}</div>`}
-      ${istNeu(m) ? '<span class="badge neu">NEU</span>' : ""}
+      ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
       ${m.fehlt ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
-    <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</div>
-      <div class="masse">${unter || "&nbsp;"}</div>
-      <div class="tags">${m.tags.slice(0, 5).map((t) => `<span>#${esc(t)}</span>`).join("")}</div></div></div>`;
+    <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
+      <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
+      <div class="tags">${m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "&nbsp;"}</div></div></div>`;
 }
 
 const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
@@ -300,7 +314,7 @@ function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
   const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
-  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.gedruckt ? "✓ gedruckt" : (m.warteschlange != null ? "☰ Warteschlange" : "");
+  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? `<img loading="lazy" src="${url}" alt="">` : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
@@ -345,6 +359,8 @@ function zeichneStapel() {
   const sichtbar = new Set(zustand.modelle.map((m) => m.id));
   for (const id of [...zustand.auswahl]) if (!sichtbar.has(id)) zustand.auswahl.delete(id);
   const n = zustand.auswahl.size;
+  // Dezent unten: wie viele Modelle die Liste zeigt, und wie viele davon gewählt sind.
+  $("#anzahl").textContent = `${zustand.modelle.length.toLocaleString("de-DE")} Modelle${n ? ` · ${n} ausgewählt` : ""}`;
   const st = $("#stapel");
   st.hidden = n === 0;
   if (!n) return;
@@ -354,7 +370,7 @@ function zeichneStapel() {
     : `<b>${n} ausgewählt</b>
     <button class="knopf" data-stapel="alle">Alle auswählen (${zustand.modelle.length})</button>
     <button class="knopf" data-stapel="baugruppe">🧩 Zu Baugruppe …</button>
-    <button class="knopf" data-stapel="warteschlange">☰ In Warteschlange</button>
+    <button class="knopf" data-ab-phase="2" data-stapel="warteschlange">☰ In Warteschlange</button>
     <select class="knopf" id="stapel-sammlung"><option value="">Zu Sammlung …</option>${zustand.sammlungen.map((x) =>
       `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}<option value="__neu">Neue Sammlung …</option></select>
     <button class="knopf" data-stapel="tag">＃ Tag …</button>
@@ -503,17 +519,20 @@ async function waehle(id, live = false) {
   if (live && zustand.angezeigt === id && imInspektorAmTippen()) { zustand.nachholen = true; return; }
   const papierkorb = m.papierkorb;
   const zeile = ([a, b]) => `<div class="zeile"><span>${a}</span><span>${b}</span></div>`;
-  const zeit = m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
-  // Zum Drucken: was man vor dem Slicen wissen will. Modelldaten: Masse, Quelle, Orte —
-  // offen, solange man sie nicht selbst zuklappt (der Zustand bleibt gemerkt).
+  // Gewicht, Zeit, Filament: vom Referenzdruck, sonst aus der Datei (KONZEPT §4.6).
+  const rw = m.ref_werte;
+  const zeit = rw?.dauer_s || m.platten.reduce((t, p) => t + (p.zeit_s || 0), 0);
+  const zeitQuelle = rw?.dauer_s ? "Referenzdruck" : "Slicer";
   const drucken = [
     ["Grösse", esc(masse(m.masse) || "–")],
-    ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + " g <small class=\"dim\">aus Slicer</small>" : "–"],
-    ...(zeit ? [["Druckzeit", esc(dauer(zeit))]] : []),
+    ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + ` g <small class="dim">${m.gewicht_herkunft === "druck" ? "Referenzdruck" : "aus Slicer"}</small>` : "–"],
+    ...(zeit ? [["Druckzeit", esc(dauer(zeit)) + ` <small class="dim">${zeitQuelle}</small>`]] : []),
     ...(m.platten.length > 1 ? [["Druckplatten", m.platten.length]] : []),
   ];
-  const platten = m.platten.map((p) => `<div class="zeile"><span>${m.platten.length > 1 ? `Platte ${p.nr}` : "Filament"}</span><span>${p.filamente.map((f) =>
-    `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 1)} g`).join("<br>")}</span></div>`).join("");
+  const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><span>${liste.map((f) =>
+    `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 1)} g`).join("<br>")}</span></div>`;
+  const platten = rw?.filament?.length ? filamentZeile("Filament", rw.filament)
+    : m.platten.map((p) => filamentZeile(m.platten.length > 1 ? `Platte ${p.nr}` : "Filament", p.filamente)).join("");
   const details = [
     ["Volumen", m.volumen_cm3 != null ? esc(zahl(m.volumen_cm3)) + " cm³" : "–"],
     ["Objekte", m.objekte ?? "–"],
@@ -530,16 +549,19 @@ async function waehle(id, live = false) {
   // bleibt stehen, samt 3D-Ansicht — ausser es kam ein Bild dazu oder weg.
   const sig = JSON.stringify([m.papierkorb, m.ansichten.map((a) => a.url)]);
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
-  const detailsOffen = localStorageLesen("details") !== "0";
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
+  const reiter = papierkorb ? "datei" : ["uebersicht", "drucke", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
+  const reiterKopf = papierkorb ? "" : `<div class="i-reiter" role="tablist">
+      <button role="tab" data-reiter="uebersicht">Übersicht</button>
+      <button role="tab" data-reiter="drucke">Drucke${m.drucke_n ? ` <span class="d-zahl">${m.drucke_n}</span>` : ""}</button>
+      <button role="tab" data-reiter="datei">Datei</button></div>`;
   $("#inspektor").innerHTML = `
-    ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
     <div class="i-fix">
+      ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
       <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
+      <div class="i-griff" title="Höhe der Vorschau ziehen (Doppelklick: zurücksetzen)"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
-    </div>
-    <div class="i-kopf">
       ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button></div>`
         : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
         <div class="mehr"><button class="schalter" id="mehr-knopf" title="Weitere Aktionen">⋯</button>
@@ -549,26 +571,21 @@ async function waehle(id, live = false) {
             <button id="gal-plus-menu">Bild hinzufügen …</button>
             <hr><button id="loeschen" class="gefahr">Löschen …</button>
           </div></div>
-      </div>
-      <div class="i-schalter">
-        <button class="schalter ${m.warteschlange != null ? "an" : ""}" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
-        <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="Als gedruckt markieren">${m.gedruckt ? "✓ Gedruckt" : "○ Nicht gedruckt"}</button>
-        <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
       </div>`}
+      ${reiterKopf}
     </div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? `<p class="fehler"><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr — gelöscht, umbenannt ausserhalb der Ordner von partAtlas oder auf einem Laufwerk, das gerade fehlt. Tags, Bilder und Verknüpfungen sind noch da: legt man die Datei zurück, ist beim nächsten Einlesen alles wieder verbunden. Braucht man das Modell nicht mehr: „Löschen“.</p>` : ""}
 
+    <div class="i-tafel" data-reiter="uebersicht">
+    ${papierkorb ? "" : `<div class="i-schalter">
+        <button class="schalter ${m.warteschlange != null ? "an" : ""}" data-ab-phase="2" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
+        <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="${m.drucke_n ? "Zu den Drucken" : "Als gedruckt markieren"}">${m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : "○ Noch nicht gedruckt"}</button>
+        <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
+      </div>`}
     <div class="i-titel">ZUM DRUCKEN</div>
     <div class="i-karte">${drucken.map(zeile).join("")}${platten}</div>
-    <details class="i-details" id="i-details" ${detailsOffen ? "open" : ""}>
-      <summary>MODELLDATEN</summary>
-      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
-      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
-      ${orte}
-    </details>
     ${papierkorb ? "" : materialTeil(m, materialien)}
-
     ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
     <div class="i-gruppe"><span class="i-label">Tags</span>
       <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
@@ -580,13 +597,190 @@ async function waehle(id, live = false) {
       <div class="i-sammlungen">${m.sammlungen.map((x) => `<span class="chip">${esc(x.name)}<button data-sammlung-weg="${esc(x.id)}" title="aus der Sammlung">×</button></span>`).join("")}
         <select class="knopf klein" id="sammlung-dazu"><option value="">＋ Sammlung …</option>${zustand.sammlungen
           .filter((x) => !m.sammlungen.some((y) => y.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
-          <option value="__neu">Neue Sammlung …</option></select></div></div>`}`;
+          <option value="__neu">Neue Sammlung …</option></select></div></div>`}
+    </div>
+
+    ${papierkorb ? "" : `<div class="i-tafel" data-reiter="drucke">${druckeTafel(m)}</div>`}
+
+    <div class="i-tafel" data-reiter="datei">
+      <div class="i-titel">MODELLDATEN</div>
+      <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
+      <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
+      ${orte}
+    </div>`;
+  $("#inspektor").dataset.reiter = reiter;
   $("#inspektor").dataset.id = id;
   if (menuOffen) $("#mehr-menu").hidden = false;
   if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }
   zustand.angezeigt = id;
   zeigeGalerie(m);
 }
+
+// ---------------------------------------------------------------- Drucke
+//
+// Ein Druck ist ein einzelnes Mal, dass das Modell auf dem Drucker lag: mit
+// Gewicht, Dauer, Filament, Foto, Ergebnis, Notiz. „Gedruckt“ und der
+// Zähler folgen daraus (KONZEPT §4.6). Ein Druck kann an mehreren Modellen
+// hängen — eine Platte mit drei Teilen —, dann steht „zusammen mit …“ dabei.
+
+const ERGEBNIS = { gut: ["✓ Gut", "gut"], fehler: ["⚠ Mit Fehlern", "fehler"], abgebrochen: ["✕ Abgebrochen", "abbruch"] };
+const datumDe = (d) => d ? new Date(d + "T00:00").toLocaleDateString("de-DE") : "Datum unbekannt";
+
+function druckeTafel(m) {
+  const liste = m.drucke || [];
+  const kopf = `<div class="d-oben"><button class="knopf akzent" data-druck-neu>＋ Druck</button>
+    <span class="dim">${m.drucke_n ? `${m.drucke_n}× gedruckt` : "Noch nicht gedruckt"}</span></div>`;
+  if (!liste.length) return kopf + `<p class="d-leer">Hier stehen die Drucke dieses Modells — mit Einstellungen, Foto und Ergebnis.
+    Wenn einer gut wurde, markierst du ihn als Referenz und weisst beim nächsten Mal, wie es ging.</p>`;
+  return kopf + liste.map((d) => {
+    const [text, art] = ERGEBNIS[d.ergebnis] || ERGEBNIS.gut;
+    const werte = [d.gewicht_g != null ? `${zahl(d.gewicht_g, 1)} g` : "", d.dauer_s ? dauer(d.dauer_s) : ""].filter(Boolean).join(" · ");
+    const fil = d.filament.map((f) => `<span class="chip"><span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")}${f.g != null ? " " + zahl(f.g, 1) + " g" : ""}</span>`).join("");
+    return `<div class="druck ${d.referenz ? "ref" : ""}" data-druck="${esc(d.id)}">
+      <div class="d-kopf"><span class="d-erg ${art}">${text}</span><b>${esc(datumDe(d.datum))}</b>
+        ${d.referenz ? `<span class="d-refmarke" title="So war es gut — Referenz für dieses Modell">★ Referenz</span>` : ""}</div>
+      ${werte || fil ? `<div class="d-werte">${werte ? `<span class="mono">${esc(werte)}</span>` : ""}${fil}</div>` : ""}
+      ${d.notiz ? `<p class="d-notiz">${esc(d.notiz)}</p>` : ""}
+      ${d.zusammen_mit.length ? `<div class="d-zusammen">zusammen mit ${d.zusammen_mit.map((x) => `<button class="link" data-gefaehrte="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</div>` : ""}
+      <div class="d-fotos">${d.bilder.map((b) => `<span class="d-foto"><a href="${esc(b.url)}" target="_blank" rel="noopener"><img src="${esc(b.url)}" alt="" loading="lazy"></a>
+        <button data-druck-bild-weg="${esc(d.id)}|${esc(b.k)}" title="Foto entfernen">×</button></span>`).join("")}
+        <button class="d-fotoplus" data-druck-foto="${esc(d.id)}" title="Foto zum Druck hinzufügen">＋ Foto</button></div>
+      <div class="d-aktionen"><button class="link" data-druck-ref="${esc(d.id)}" data-an="${d.referenz ? "0" : "1"}">${d.referenz ? "★ Keine Referenz mehr" : "☆ Als Referenz"}</button>
+        <button class="link" data-druck-aendern="${esc(d.id)}">Bearbeiten …</button>
+        <button class="link gefahr" data-druck-weg="${esc(d.id)}">Entfernen …</button></div>
+    </div>`;
+  }).join("");
+}
+
+// Ein Formular für „neu“ und „bearbeiten“. Gibt die Felder zurück oder null.
+async function druckDialog({ titel, namen, druck }) {
+  const mats = await api("/api/materialien");
+  const d = druck || {};
+  const f0 = (d.filament && d.filament[0]) || {};
+  const std = d.dauer_s ? [Math.floor(d.dauer_s / 3600), Math.round((d.dauer_s % 3600) / 60)] : ["", ""];
+  const heute = new Date().toISOString().slice(0, 10);
+  const a = await dialog(`<h2>${esc(titel)}</h2>
+    ${namen.length > 1 ? `<p class="dim">Gilt für: ${namen.map(esc).join(", ")}</p>` : ""}
+    <div class="d-form">
+      <div class="d-ergebnis">${Object.entries(ERGEBNIS).map(([k, [t]]) =>
+        `<label><input type="radio" name="df-erg" value="${k}" ${(d.ergebnis || "gut") === k ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
+      <label>Datum <input type="date" id="df-datum" value="${esc(druck ? (d.datum || "") : heute)}"></label>
+      <div class="d-zweier">
+        <label>Gewicht (g) <input type="number" id="df-g" min="0" step="0.1" value="${d.gewicht_g ?? ""}"></label>
+        <label>Dauer <span class="d-dauer"><input type="number" id="df-h" min="0" value="${std[0]}"> h <input type="number" id="df-min" min="0" max="59" value="${std[1]}"> min</span></label>
+      </div>
+      <div class="d-filament">
+        <label>Material <select id="df-typ"><option value="">–</option>${mats.map((x) => `<option ${f0.typ === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
+        <label>Farbe <input type="color" id="df-farbe" value="${esc(f0.farbe || "#cccccc")}" data-gesetzt="${f0.farbe ? "1" : ""}"></label>
+        <label>Verbrauch (g) <input type="number" id="df-fg" min="0" step="0.1" value="${f0.g ?? ""}"></label>
+      </div>
+      <label>Notiz <textarea id="df-notiz" rows="3" placeholder="z. B. Düse 215 °C, Lüfter 60 %, Brim an">${esc(d.notiz || "")}</textarea></label>
+    </div>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" id="df-ok" value="ja">Speichern</button></div>`);
+  if (a !== "ja") return null;
+  const zahlOderNull = (id) => { const v = $(id).value; return v === "" ? null : Number(v); };
+  const h = zahlOderNull("#df-h"), mi = zahlOderNull("#df-min");
+  const typ = $("#df-typ").value, farbe = $("#df-farbe").dataset.gesetzt ? $("#df-farbe").value : null, fg = zahlOderNull("#df-fg");
+  // Weitere Filamente (aus einer G-Code-Datei, später) bleiben unberührt.
+  const rest = (d.filament || []).slice(1);
+  const erstes = typ || farbe || fg != null ? [{ typ: typ || null, farbe, g: fg }] : [];
+  return {
+    ergebnis: document.querySelector('input[name="df-erg"]:checked').value,
+    datum: $("#df-datum").value || null,
+    gewicht_g: zahlOderNull("#df-g"),
+    dauer_s: h == null && mi == null ? null : (h || 0) * 3600 + (mi || 0) * 60,
+    filament: [...erstes, ...rest],
+    notiz: $("#df-notiz").value,
+  };
+}
+document.addEventListener("input", (e) => { if (e.target.id === "df-farbe") e.target.dataset.gesetzt = "1"; });
+
+async function druckAnlegen(modelle) {
+  const namen = modelle.map((id) => zustand.modelle.find((x) => x.id === id)?.name || id);
+  const felder = await druckDialog({ titel: modelle.length > 1 ? "Zusammen gedruckt" : "Neuer Druck", namen });
+  if (!felder) return;
+  try {
+    await api("/api/drucke", { method: "POST", body: { modelle, felder } });
+    toast("Druck angelegt.");
+  } catch (e) { toast(e.message); return; }
+  localStorageSchreiben("reiter", "drucke");
+  if (zustand.gewaehlt && modelle.includes(zustand.gewaehlt)) waehle(zustand.gewaehlt);
+}
+
+function reiterWaehlen(r) {
+  localStorageSchreiben("reiter", r);
+  $("#inspektor").dataset.reiter = r;
+}
+
+let druckFotoZiel = null;
+document.addEventListener("click", async (e) => {
+  const t = e.target;
+  if (!t.closest?.("#inspektor")) return;
+  const id = zustand.gewaehlt;
+  const tab = t.closest(".i-reiter [data-reiter]");
+  if (tab) return reiterWaehlen(tab.dataset.reiter);
+  if (t.closest("[data-druck-neu]")) return druckAnlegen([id]);
+  const gef = t.closest("[data-gefaehrte]");
+  if (gef) return waehle(gef.dataset.gefaehrte);
+  const bearb = t.closest("[data-druck-aendern]");
+  if (bearb) {
+    const m = await api(`/api/modelle/${id}`);
+    const d = m.drucke.find((x) => x.id === bearb.dataset.druckAendern);
+    if (!d) return;
+    const felder = await druckDialog({ titel: "Druck bearbeiten", namen: [m.name, ...d.zusammen_mit.map((x) => x.name)], druck: d });
+    if (!felder) return;
+    try { await api(`/api/drucke/${d.id}`, { method: "PATCH", body: felder }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+  const rf = t.closest("[data-druck-ref]");
+  if (rf) {
+    try { await api(`/api/drucke/${rf.dataset.druckRef}/referenz`, { method: "POST", body: { modell: id, an: rf.dataset.an === "1" } }); }
+    catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+  const weg = t.closest("[data-druck-weg]");
+  if (weg) {
+    const a = await dialog(`<h2>Druck entfernen?</h2><p class="dim">Der Eintrag und seine Fotos verschwinden aus partAtlas; die Fotos bleiben im Archiv des Bestands (<code>vault_archive</code>). Hängt der Druck an mehreren Modellen, verschwindet er bei allen.</p>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
+    if (a !== "ja") return;
+    try { await api(`/api/drucke/${weg.dataset.druckWeg}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+  const foto = t.closest("[data-druck-foto]");
+  if (foto) { druckFotoZiel = foto.dataset.druckFoto; return $("#druck-bild-wahl").click(); }
+  const fw = t.closest("[data-druck-bild-weg]");
+  if (fw) {
+    const [did, k] = fw.dataset.druckBildWeg.split("|");
+    try { await api(`/api/drucke/${did}/bilder/${k}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
+    return waehle(id);
+  }
+});
+// Fotos auf einen Druck gezogen; ohne Druck (leerer Teil des Reiters) entsteht ein neuer mit diesen Fotos.
+async function druckBilderAblegen(did, dateien) {
+  const id = zustand.gewaehlt;
+  const bilder = [...dateien].filter((f) => /^image\/(png|jpeg|webp)$/.test(f.type));
+  if (!id || !bilder.length) return toast("Nur PNG, JPG oder WebP.");
+  try {
+    if (!did) did = (await api("/api/drucke", { method: "POST", body: { modelle: [id], felder: {} } })).id;
+    for (const f of bilder) {
+      const r = await fetch(`/api/drucke/${did}/bilder`, { method: "POST", body: f });
+      if (!r.ok) toast((await r.json().catch(() => ({}))).fehler || "Foto nicht gespeichert.");
+    }
+  } catch (err) { return toast(err.message); }
+  toast(bilder.length > 1 ? `${bilder.length} Fotos hinzugefügt.` : "Foto hinzugefügt.");
+  if (zustand.gewaehlt === id) waehle(id);
+}
+$("#druck-bild-wahl").addEventListener("change", async (e) => {
+  const did = druckFotoZiel;
+  const bilder = [...e.target.files];
+  e.target.value = "";
+  if (!did) return;
+  for (const f of bilder) {
+    const r = await fetch(`/api/drucke/${did}/bilder`, { method: "POST", body: f });
+    if (!r.ok) toast((await r.json().catch(() => ({}))).fehler || "Foto nicht gespeichert.");
+  }
+  if (zustand.gewaehlt) waehle(zustand.gewaehlt);
+});
 
 // ---------------------------------------------------------------- Galerie
 //
@@ -632,7 +826,43 @@ function galerieZeigen(i) {
   const f = galerie.folien[i];
   if (f.art === "3d") localStorageSchreiben("ansicht", "3d");
   else if (f.art !== "eigen") localStorageSchreiben("ansicht", "bild");
-  zeichneGalerie();
+  umschalten();
+}
+
+const hauptHtml = (m, f, darf) => !f
+  ? `<div class="gal-leer"><span>${m.format === "step" ? "STEP · nur CAD" : "Keine Vorschau"}</span>
+      ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`
+  : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
+  : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
+
+const aktionenHtml = (f, darf) => f && f.art === "eigen" && darf
+  ? `${f.ist_vorschaubild ? "" : `<button data-gal-titel="eigen:${esc(f.k)}" title="Dieses Bild auf der Kachel zeigen">★ Als Vorschaubild</button>`}
+    <button data-gal-weg="${esc(f.k)}" title="Bild entfernen">Entfernen</button>`
+  : f && f.art !== "3d" && darf && !f.ist_vorschaubild
+    ? `<button data-gal-titel="${esc(f.art)}" title="Dieses Bild auf der Kachel zeigen">★ Als Vorschaubild</button>` : "";
+
+const etikettText = (f, i, n) => `${f.titel}${n > 1 ? ` · ${i + 1} / ${n}` : ""}`;
+
+// Beim Blättern bleiben Pfeile, Leiste und Aktionen stehen — nur das Bild
+// wechselt. Wer sie neu zeichnet, nimmt der Maus das Ziel zwischen Drücken
+// und Loslassen: der Klick geht verloren, das Bild flackert.
+async function umschalten() {
+  const { m, folien, i } = galerie;
+  const bild = $("#i-bild");
+  if (!bild || !m) return;
+  const f = folien[i];
+  if (dreiDModul) (await dreiD()).schliessen();
+  viewer = null;
+  if (galerie.i !== i || $("#i-bild") !== bild) return;
+  const haupt = bild.querySelector(".gal-haupt");
+  const img = haupt.firstElementChild;
+  if (f && f.art !== "3d" && img?.tagName === "IMG") { img.src = f.url; img.alt = f.titel; }
+  else haupt.innerHTML = hauptHtml(m, f, !m.papierkorb);
+  const et = bild.querySelector(".gal-etikett");
+  if (et && f) et.textContent = etikettText(f, i, folien.length);
+  bild.querySelector(".gal-aktionen").innerHTML = aktionenHtml(f, !m.papierkorb);
+  document.querySelectorAll("#i-galerie .gal-mini[data-gal-i]").forEach((x) => x.classList.toggle("an", Number(x.dataset.galI) === i));
+  if (f && f.art === "3d") lade3d(m);
 }
 
 async function zeichneGalerie() {
@@ -646,19 +876,10 @@ async function zeichneGalerie() {
   viewer = null;
   const pfeile = n > 1 ? `<button class="gal-pfeil links" data-gal="-1" title="Vorheriges (←)">‹</button>
     <button class="gal-pfeil rechts" data-gal="1" title="Nächstes (→)">›</button>` : "";
-  const ersteEigene = folien.findIndex((x) => x.art === "eigen");
-  const aktionen = f && f.art === "eigen" && darf ? `<div class="gal-aktionen">
-    ${i !== ersteEigene ? `<button data-gal-titel="${esc(f.k)}" title="Dieses Bild auf der Kachel zeigen">★ Als Titelbild</button>` : ""}
-    <button data-gal-weg="${esc(f.k)}" title="Bild entfernen">Entfernen</button></div>` : "";
-  const leer = `<div class="gal-leer"><span>${m.format === "step" ? "STEP · nur CAD" : "Keine Vorschau"}</span>
-    ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`;
-  const haupt = !f ? leer
-    : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
-    : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
   const minis = folien.map((x, j) => `<button class="gal-mini ${j === i ? "an" : ""}" data-gal-i="${j}" data-art="${x.art}" title="${esc(x.titel)}">
-      ${x.art === "3d" ? "<span>3D</span>" : `<img src="${esc(x.url)}" alt="" loading="lazy">`}</button>`).join("");
-  feld.innerHTML = `<div class="i-bild" id="i-bild">${haupt}${pfeile}
-      ${f ? `<span class="gal-etikett">${esc(f.titel)}${n > 1 ? ` · ${i + 1} / ${n}` : ""}</span>` : ""}${aktionen}
+      ${x.art === "3d" ? "<span>3D</span>" : `<img src="${esc(x.url)}" alt="" loading="lazy" draggable="false">`}</button>`).join("");
+  feld.innerHTML = `<div class="i-bild" id="i-bild"><div class="gal-haupt">${hauptHtml(m, f, darf)}</div>${pfeile}
+      <span class="gal-etikett">${f ? esc(etikettText(f, i, n)) : ""}</span><div class="gal-aktionen">${aktionenHtml(f, darf)}</div>
       <div class="gal-abwurf">Als Bild zu „${esc(m.name)}“ hinzufügen</div></div>
     ${f && (n > 1 || darf) ? `<div class="gal-leiste">${minis}${darf ? `<button class="gal-mini plus" data-gal-plus title="Eigene Bilder hinzufügen (oder hineinziehen, Strg+V)">＋</button>` : ""}</div>` : ""}`;
   if (f && f.art === "3d") lade3d(m);
@@ -710,22 +931,51 @@ document.addEventListener("click", async (e) => {
   if (mini) return galerieZeigen(Number(mini.dataset.galI));
   if (t.closest("[data-gal-plus]")) return $("#bild-wahl").click();
   const titel = t.closest("[data-gal-titel]");
-  if (titel) {
-    await api(`/api/modelle/${m.id}/bilder/${titel.dataset.galTitel}/titel`, { method: "POST" });
-    toast("Titelbild gesetzt.");
-    galerie.ziel = titel.dataset.galTitel;
-    zustand.angezeigt = null;
-    return waehle(m.id);
-  }
+  if (titel) return vorschauSetzen(titel.dataset.galTitel);
   const weg = t.closest("[data-gal-weg]");
-  if (weg) {
+  if (weg) return bildEntfernen(weg.dataset.galWeg);
+});
+
+// „eigen:<k>“ = eigenes Bild, sonst die Art (extrahiert, berechnet).
+async function vorschauSetzen(wahl) {
+  const m = galerie.m;
+  const eigen = wahl.startsWith("eigen:");
+  await api(eigen ? `/api/modelle/${m.id}/bilder/${wahl.slice(6)}/titel` : `/api/modelle/${m.id}/vorschau/${wahl}/titel`, { method: "POST" });
+  toast("Vorschaubild gesetzt.");
+  galerie.ziel = eigen ? wahl.slice(6) : null;
+  zustand.angezeigt = null;
+  waehle(m.id);
+}
+
+async function bildEntfernen(k) {
+  const m = galerie.m;
+  {
     const a = await dialog(`<h2>Bild entfernen?</h2><p class="dim">Es verschwindet aus partAtlas. Die Datei bleibt im Archiv des Bestands (<code>vault_archive</code>).</p>
       <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
     if (a !== "ja") return;
-    await api(`/api/modelle/${m.id}/bilder/${weg.dataset.galWeg}`, { method: "DELETE" });
+    await api(`/api/modelle/${m.id}/bilder/${k}`, { method: "DELETE" });
     zustand.angezeigt = null;
     return waehle(m.id);
   }
+}
+
+// Rechtsklick auf das Bild: dasselbe wie die Knöpfe, an der Stelle der Maus.
+document.addEventListener("contextmenu", (e) => {
+  if (!e.target.closest?.("#i-bild") || !galerie.m || galerie.m.papierkorb) return;
+  const f = galerie.folien[galerie.i];
+  if (!f || f.art === "3d") return;
+  e.preventDefault();
+  const eintraege = [];
+  if (!f.ist_vorschaubild) eintraege.push(["gal-titel", "★ Als Vorschaubild festlegen"]);
+  if (f.art === "eigen") eintraege.push(["gal-weg", "Bild entfernen …", "gefahr"]);
+  eintraege.push(["gal-plus", "Eigenes Bild hinzufügen …"]);
+  const menu = $("#kontext");
+  menu.innerHTML = eintraege.map(([k, t, kl]) => `<button type="button" data-km="${k}" class="${kl || ""}">${t}</button>`).join("");
+  kontextMenu.ziel = { galerie: f };
+  menu.hidden = false;
+  const b = menu.getBoundingClientRect();
+  menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
+  menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
 });
 
 // Wischen auf dem Bild (Tablet, Touchpad-Klick-Ziehen) — nicht auf der 3D-Ansicht, die dreht.
@@ -996,7 +1246,7 @@ document.addEventListener("click", async (e) => {
   const mat = t.closest("[data-mat]");
   if (tag || mat) {
     const [wahl, wert] = tag ? [zustand.tags, tag.dataset.tag] : [zustand.material, mat.dataset.mat];
-    if (!wert) { zustand.tags.clear(); zustand.material.clear(); }
+    if (!wert) { zustand.tags.clear(); zustand.material.clear(); zustand.format = ""; }
     else if (wahl.has(wert)) wahl.delete(wert);
     else wahl.add(wert);
     if (zustand.ansicht === "papierkorb") zustand.ansicht = "alle";
@@ -1020,7 +1270,7 @@ document.addEventListener("click", async (e) => {
   }
   const id = $("#inspektor").dataset.id;
   switch (t.id) {
-    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; return neuLaden();
+    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return neuLaden();
     case "sammlung-neu": case "sammlung-neu-2": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
       try {
@@ -1071,7 +1321,13 @@ document.addEventListener("click", async (e) => {
       return;
     }
     case "neu-einlesen": case "neu-einlesen-2": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
-    case "gedruckt": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { gedruckt: !(m && m.gedruckt) }); return waehle(id); }
+    case "gedruckt": {
+      // Mit Drucken führt der Knopf zu ihnen; ohne legt er einen leeren an.
+      const m = zustand.modelle.find((x) => x.id === id);
+      if (m && m.drucke_n) return reiterWaehlen("drucke");
+      await aendern(id, { gedruckt: true });
+      return waehle(id);
+    }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
     case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.oeffnePfad }); }
     case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
@@ -1155,9 +1411,19 @@ document.addEventListener("keydown", async (e) => {
 
 let suchZeit;
 $("#suche").addEventListener("input", (e) => {
+  $("#suche-x").hidden = !e.target.value;
   clearTimeout(suchZeit);
   suchZeit = setTimeout(() => { zustand.suche = e.target.value.trim(); ladeModelle(); }, 150);
 });
+
+function sucheLeeren() {
+  const s = $("#suche");
+  s.value = "";
+  s.dispatchEvent(new Event("input"));
+  s.focus();
+}
+$("#suche-x").addEventListener("click", sucheLeeren);
+$("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
 
 function neuLaden() {
   ladeModelle();
@@ -1289,33 +1555,48 @@ live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
 let abwurfZaehler = 0;
-const vonAussen = (e) => !gezogen && [...(e.dataTransfer?.types || [])].includes("Files");
+// Ein Bild aus der eigenen Leiste hat Dateityp „Files“, kommt aber nicht von
+// aussen — sonst entstünde vom Original eine Kopie als eigenes Bild.
+let vonGalerie = false;
+document.addEventListener("dragstart", (e) => { vonGalerie = !!e.target.closest?.("#i-galerie"); }, true);
+document.addEventListener("dragend", () => { vonGalerie = false; }, true);
+const vonAussen = (e) => !gezogen && !vonGalerie && [...(e.dataTransfer?.types || [])].includes("Files");
 window.addEventListener("dragenter", (e) => { if (vonAussen(e)) { abwurfZaehler++; $("#abwurf").hidden = false; } });
+// Bilder auf einen Druck (Foto dazu) oder auf den leeren Teil des Reiters „Drucke“ (neuer Druck mit Foto).
+const druckZiel = (e) => (!galerie.m || galerie.m.papierkorb ? null : e.target.closest?.(".druck, .i-tafel[data-reiter='drucke']"));
+const abwurfAufraeumen = () => document.querySelectorAll(".abwurf-ziel, .druck-ziel").forEach((x) => x.classList.remove("abwurf-ziel", "druck-ziel"));
 window.addEventListener("dragleave", (e) => {
-  if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; $("#i-galerie")?.classList.remove("abwurf-ziel"); }
+  if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; abwurfAufraeumen(); }
 });
 window.addEventListener("dragover", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
   const aufGalerie = !!(e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb);
-  $("#i-galerie")?.classList.toggle("abwurf-ziel", aufGalerie);
-  $("#abwurf").hidden = aufGalerie;
+  const dz = aufGalerie ? null : druckZiel(e);
+  abwurfAufraeumen();
+  if (aufGalerie) $("#i-galerie")?.classList.add("abwurf-ziel");
+  if (dz) dz.classList.add("druck-ziel");
+  $("#abwurf").hidden = aufGalerie || !!dz;
 });
 window.addEventListener("drop", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
   abwurfZaehler = 0;
   $("#abwurf").hidden = true;
-  $("#i-galerie")?.classList.remove("abwurf-ziel");
+  const dz = druckZiel(e);
+  abwurfAufraeumen();
   // Auf die Galerie gezogen: Bilder zum Modell, keine neuen Modelldateien.
   if (e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb) return bilderHochladen(e.dataTransfer.files);
+  if (dz) return druckBilderAblegen(dz.closest(".druck")?.dataset.druck || null, e.dataTransfer.files);
+  // Nur Bilder, aber nirgends, wo sie hingehören: nicht als Modelldatei einlesen wollen.
+  const dateien = [...e.dataTransfer.files];
+  if (dateien.length && dateien.every((f) => f.type.startsWith("image/"))) return toast("Bilder gehören auf die Vorschau oder auf einen Druck.");
   hochladen(e.dataTransfer.files);
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
 
 // Datei-Details auf- oder zugeklappt lassen, wie man es zuletzt wollte.
 document.addEventListener("toggle", (e) => {
-  if (e.target.id === "i-details") localStorageSchreiben("details", e.target.open ? "1" : "0");
 }, true);
 
 function imInspektorAmTippen() {
@@ -1341,6 +1622,7 @@ function sektionSetzen(sek, zu) {
   localStorageSchreiben("sektion." + sek.dataset.sektion, zu ? "1" : "0");
 }
 document.querySelectorAll(".sektion").forEach((sek) => {
+  if (sek.dataset.sektion === "ordner") return;     // die Bibliothek ist immer offen; zu klappen sind nur ihre Ordner
   const gemerkt = localStorageLesen("sektion." + sek.dataset.sektion);
   if (gemerkt != null) sek.dataset.zu = gemerkt === "1" ? "1" : "";
 });
@@ -1374,7 +1656,7 @@ async function kontextMenu(e, id) {
   } else if (mehrere) {
     eintraege = [
       ["kopf", `${modelle.length} Modelle`],
-      ["warteschlange", "☰ In die Warteschlange"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"],
+      ["warteschlange", "☰ In die Warteschlange"], ["druck", "🖨 Zusammen gedruckt …"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"],
       ["-"], ["tag", "＃ Tag …"], ["material", "Material …"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
   } else {
@@ -1392,12 +1674,14 @@ async function kontextMenu(e, id) {
     eintraege = [
       ...(da ? [...oeffnen, ["system", "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
       ["ws", m.warteschlange != null ? "☰ Aus der Warteschlange" : "☰ In die Warteschlange"],
+      ["druck1", "🖨 Druck anlegen …"],
       ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],
       ["favorit1", m.favorit ? "♡ Kein Favorit mehr" : "♥ Favorit"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
   }
+  eintraege = eintraege.filter(([k]) => ab2(k));
   const menu = $("#kontext");
   menu.innerHTML = eintraege.map(([k, t, kl, extra]) => k === "-" ? "<hr>" : k === "kopf" ? `<div class="km-kopf">${esc(t)}</div>`
     : k === "unter" ? `<div class="km-unter"><button type="button">${t}<span class="km-pfeil">▸</span></button><div class="menu km-flyout">${extra}</div></div>`
@@ -1412,8 +1696,15 @@ async function kontextMenu(e, id) {
 }
 
 async function kontextAktion(k, knopf) {
-  const { id, modelle, m } = kontextMenu.ziel;
   $("#kontext").hidden = true;
+  const f = kontextMenu.ziel.galerie;
+  if (f) {
+    if (k === "gal-titel") return vorschauSetzen(f.art === "eigen" ? `eigen:${f.k}` : f.art);
+    if (k === "gal-weg") return bildEntfernen(f.k);
+    if (k === "gal-plus") return $("#bild-wahl").click();
+    return;
+  }
+  const { id, modelle, m } = kontextMenu.ziel;
   switch (k) {
     case "oeffnen": return modellOeffnen({ pfad: knopf.dataset.pfad }, id);
     case "system": return modellOeffnen({ system: true }, id);
@@ -1425,6 +1716,7 @@ async function kontextAktion(k, knopf) {
       if (m.warteschlange != null) await api(`/api/warteschlange/${id}`, { method: "DELETE" });
       else await api("/api/warteschlange", { method: "POST", body: { modelle: [id] } });
       return;
+    case "druck1": return druckAnlegen([id]);
     case "gedruckt1": return aendern(id, { gedruckt: !m.gedruckt });
     case "favorit1": return aendern(id, { favorit: !m.favorit });
     case "umbenennen": return umbenennen(id);
@@ -1433,6 +1725,7 @@ async function kontextAktion(k, knopf) {
       for (const x of modelle) await api(`/api/modelle/${x}/wiederherstellen`, { method: "POST" }).catch((err) => toast(err.message));
       return;
     case "sammlung": return sammlungWahl(modelle);
+    case "druck": return druckAnlegen(modelle);
     default: return stapelAktion(k, modelle);
   }
 }
@@ -1507,4 +1800,143 @@ document.querySelectorAll("[data-griff]").forEach((g) => {
     g.addEventListener("pointerup", ende);
     g.addEventListener("pointercancel", ende);
   });
+});
+
+
+// ---------------------------------------------------------------- Felder der Seitenleiste (Split View)
+//
+// Wie in VS Code: jedes Feld hat dieselbe Mindesthöhe, ein eingeklapptes nur die Kopfzeile. Das erste
+// offene Feld (der Explorer, solange er offen ist) nimmt auf, was frei wird, und gibt her, was fehlt —
+// zuerst es selbst, dann von unten nach oben. Ein Griff an der Oberkante eines Feldes verschiebt die
+// Grenze zu dem darüber: das eine wächst, die auf der anderen Seite schrumpfen der Reihe nach bis zu
+// ihrer Mindesthöhe. Alle Höhen rechnet seitenLayout(); das CSS setzt sie nur.
+const KOPF = 25, FELD_MIN = 125, FELD_START = 150;
+const feldRaum = $(".panes");
+const felder = [...feldRaum.children].filter((x) => x.classList.contains("sektion"));
+let gemerkteHoehen = {};
+try { gemerkteHoehen = JSON.parse(localStorageLesen("felder") || "{}") || {}; } catch { gemerkteHoehen = {}; }
+const feldSichtbar = () => felder.filter((f) => !f.hidden);
+const feldOffen = (f) => !f.dataset.zu;
+// Gleiche Mindesthöhe für alle offenen Felder; wird das Fenster so niedrig, dass sie nicht reicht, schrumpft sie gemeinsam.
+function feldMin() {
+  const liste = feldSichtbar(), offene = liste.filter(feldOffen).length;
+  if (!offene) return FELD_MIN;
+  return Math.max(KOPF + 36, Math.min(FELD_MIN, Math.floor((feldRaum.clientHeight - (liste.length - offene) * KOPF) / offene)));
+}
+const setzeHoehen = (karte) => karte.forEach((h, f) => { f.style.height = h + "px"; });
+
+function seitenLayout() {
+  const T = feldRaum.clientHeight;
+  const liste = feldSichtbar();
+  if (T <= 0 || !liste.length) return;
+  const min = feldMin();
+  const g = new Map(liste.map((f) => [f, feldOffen(f) ? Math.max(min, gemerkteHoehen[f.dataset.sektion] || FELD_START) : KOPF]));
+  const offene = liste.filter(feldOffen);
+  let delta = T - [...g.values()].reduce((a, b) => a + b, 0);
+  if (offene.length) {
+    const biegsam = offene[0];
+    if (delta > 0) g.set(biegsam, g.get(biegsam) + delta);
+    else for (const f of [biegsam, ...offene.slice(1).reverse()]) {
+      const nimm = Math.min(g.get(f) - min, -delta);
+      g.set(f, g.get(f) - nimm);
+      delta += nimm;
+      if (delta >= 0) break;
+    }
+  }
+  setzeHoehen(g);
+  // Ein Griff nur dort, wo oberhalb und unterhalb je ein offenes Feld liegt.
+  liste.forEach((f, i) => {
+    const griff = f.querySelector(":scope > .sash");
+    const weg = !(liste.slice(0, i).some(feldOffen) && liste.slice(i).some(feldOffen));
+    if (griff && griff.hidden !== weg) griff.hidden = weg;     // nur bei Änderung: sonst weckt es den Beobachter wieder auf
+  });
+}
+
+felder.slice(1).forEach((f) => {
+  const griff = document.createElement("div");
+  griff.className = "sash";
+  griff.title = "Höhe ziehen";
+  f.prepend(griff);
+  griff.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    const liste = feldSichtbar();
+    const i = liste.indexOf(f);
+    const min = feldMin();
+    const start = new Map(liste.map((x) => [x, x.offsetHeight]));
+    const ueber = liste.slice(0, i).filter(feldOffen).reverse();   // das nächste zuerst
+    const unter = liste.slice(i).filter(feldOffen);
+    if (!ueber.length || !unter.length) return;
+    griff.setPointerCapture(e.pointerId);
+    griff.classList.add("zieht");
+    const y0 = e.clientY;
+    // `waechst` wächst um d, die `gibt` schrumpfen der Reihe nach um zusammen d (jedes höchstens bis FELD_MIN).
+    const verschiebe = (waechst, gibt, d) => {
+      const g = new Map(start);
+      d = Math.max(0, Math.min(d, gibt.reduce((s, x) => s + start.get(x) - min, 0)));
+      g.set(waechst, start.get(waechst) + d);
+      let rest = d;
+      for (const x of gibt) { const nimm = Math.min(start.get(x) - min, rest); g.set(x, start.get(x) - nimm); rest -= nimm; }
+      setzeHoehen(g);
+    };
+    const bewegt = (m) => {
+      const d = m.clientY - y0;
+      if (d >= 0) verschiebe(ueber[0], unter, d); else verschiebe(unter[0], ueber, -d);
+    };
+    const fertig = () => {
+      griff.classList.remove("zieht");
+      griff.removeEventListener("pointermove", bewegt);
+      griff.removeEventListener("pointerup", fertig);
+      griff.removeEventListener("pointercancel", fertig);
+      for (const x of feldSichtbar().filter(feldOffen)) gemerkteHoehen[x.dataset.sektion] = x.offsetHeight;
+      localStorageSchreiben("felder", JSON.stringify(gemerkteHoehen));
+    };
+    griff.addEventListener("pointermove", bewegt);
+    griff.addEventListener("pointerup", fertig);
+    griff.addEventListener("pointercancel", fertig);
+  });
+});
+new ResizeObserver(seitenLayout).observe(feldRaum);
+new MutationObserver(seitenLayout).observe(feldRaum, { attributes: true, subtree: true, attributeFilter: ["data-zu", "hidden"] });
+requestAnimationFrame(seitenLayout);
+
+
+// ---------------------------------------------------------------- Höhe der Vorschau im Inspektor
+//
+// Das Bild braucht man nach dem ersten Hinsehen nicht mehr gross: der Griff unter der Vorschau zieht
+// die Höhe, die Leiste mit den kleinen Bildern entfällt, wenn nur noch wenig bleibt. Gemerkt.
+const BILD_MIN = 48, BILD_KLEIN = 120;
+function setzeBildHoehe(px) {
+  const root = document.documentElement;
+  if (px == null) root.style.removeProperty("--bild-h");
+  else root.style.setProperty("--bild-h", px + "px");
+  root.classList.toggle("bild-klein", px != null && px < BILD_KLEIN);
+}
+{
+  const gemerkt = Number(localStorageLesen("bildhoehe"));
+  if (gemerkt) setzeBildHoehe(gemerkt);
+}
+document.addEventListener("pointerdown", (e) => {
+  const griff = e.target.closest?.(".i-griff");
+  if (!griff) return;
+  e.preventDefault();
+  griff.setPointerCapture(e.pointerId);
+  griff.classList.add("zieht");
+  const y0 = e.clientY, h0 = $("#i-bild")?.offsetHeight || 220;
+  const hoechst = Math.round(innerHeight * 0.6);
+  const bewegt = (m) => setzeBildHoehe(Math.round(Math.min(hoechst, Math.max(BILD_MIN, h0 + m.clientY - y0))));
+  const fertig = () => {
+    griff.classList.remove("zieht");
+    griff.removeEventListener("pointermove", bewegt);
+    griff.removeEventListener("pointerup", fertig);
+    griff.removeEventListener("pointercancel", fertig);
+    localStorageSchreiben("bildhoehe", String($("#i-bild")?.offsetHeight || ""));
+  };
+  griff.addEventListener("pointermove", bewegt);
+  griff.addEventListener("pointerup", fertig);
+  griff.addEventListener("pointercancel", fertig);
+});
+document.addEventListener("dblclick", (e) => {
+  if (!e.target.closest?.(".i-griff")) return;
+  setzeBildHoehe(null);
+  localStorageSchreiben("bildhoehe", "");
 });
