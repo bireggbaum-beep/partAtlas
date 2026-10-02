@@ -326,6 +326,13 @@ ein reiner Fehler. Jetzt eine Leiste über der Liste in der Papierkorb-Ansicht (
 etwas drin liegt. Geprüft mit einem Playwright-Skript (Leiste, Dialog, danach leer, Datei weg), nicht mit `test_ui.py`; das Backend deckt `test_scan` ab.
 **Offen:** einzelne Modelle endgültig löschen (nur „Alles leeren“); die Leiste ohne Test in `test_ui.py`.
 
+**Protokoll und CAD-Status sichtbar (0.29.4):** gemeldet: FCStd ohne Bild bekamen keine Vorschau, und man sah nicht, woran es lag (Screenshot: STEP-Zeilen haben Maße, die
+FCStd nicht; der Lauf nannte keine FreeCAD-Phase — vermutlich nicht beantwortet oder gescheitert, **Ursache nicht geklärt**). Jetzt: (1) `partatlas.log` im Bestand (rotierend
+3 × 1 MB, zusätzlich zur Konsole), Knopf „Protokoll im Dateimanager zeigen“ in Einstellungen › Einlesen; (2) im Inspektor, Reiter „Datei“, eine Karte „FreeCAD“ mit dem Zustand
+(ok / gescheitert mit Meldung / wartet auf Zusage / FreeCAD nicht gefunden) und „Alle gescheiterten erneut versuchen“ (`POST /api/cad/erneut`). Nicht an echtem FreeCAD geprüft;
+Gegenprobe der Tests: `cad_erneut` und `cad_fehler` in `test_scan` (60/60).
+**Offen:** Ursache der fehlenden FCStd-Vorschau beim Tester — Meldung aus dem Inspektor oder `partatlas.log` abwarten.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

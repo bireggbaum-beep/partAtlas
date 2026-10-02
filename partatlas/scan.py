@@ -228,7 +228,7 @@ class Scanner:
     def lauf(self):
         t0 = time.time()
         self._stopp.clear()
-        self._setze(fcstd_frage=0)
+        self._setze(fcstd_frage=0, cad_ohne_freecad=0)
         self._setze(laeuft=True, phase="suchen", gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
                     unlesbar=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
@@ -400,7 +400,7 @@ class Scanner:
         for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
             rest -= 1
             if not ok:
-                log.warning("STEP %s: %s", h[:12], info)
+                log.warning("CAD %s: %s", h[:12], info)
                 with self.b.db.transaction():
                     self.k.cad_fehler(h, str(info))
             else:

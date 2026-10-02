@@ -225,6 +225,16 @@ class Katalog:
         self.db.update_node(DATEI, h, {**felder, "cad": "ok", "cad_fehler": None, "vorschau": vorschau,
                                        **({"vorschau_berechnet": self.b.vorschau_rel(h, "berechnet")} if vorschau == "gerendert" else {})})
 
+    def cad_erneut(self):
+        """Gescheiterte CAD-Umwandlungen wieder auf „ausstehend“ — etwa nach einer Reparatur oder wenn FreeCAD gefehlt hat."""
+        n = 0
+        with self.db.transaction():
+            for h, d in self._dateien().items():
+                if d.get("cad") == "fehler":
+                    self.db.update_node(DATEI, h, {"cad": "ausstehend", "cad_fehler": None})
+                    n += 1
+        return n
+
     def cad_fehler(self, h, text):
         if self.db.get_node(ref(DATEI, h), readonly=True) is not None:
             self.db.update_node(DATEI, h, {"cad": "fehler", "cad_fehler": text})
@@ -386,7 +396,7 @@ class Katalog:
             **kurz, "papierkorb": papierkorb, "orte": orte,
             "volumen_cm3": d.get("volumen_cm3"), "dreiecke": d.get("dreiecke"),
             "objekte": d.get("objekte"), "titel": d.get("titel"), "designer": d.get("designer"),
-            "platten": d.get("platten") or [], "fehler_text": d.get("fehler"),
+            "platten": d.get("platten") or [], "fehler_text": d.get("fehler"), "cad_fehler": d.get("cad_fehler"),
             "quelle_url": m.get("quelle_url"), "eingelesen": d.get("eingelesen"),
             "papierkorb_ablage": d.get("papierkorb", []),
             "sammlungen": [] if papierkorb else self.sammlungen_von(mid),

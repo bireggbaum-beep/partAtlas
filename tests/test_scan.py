@@ -388,6 +388,10 @@ if __name__ == "__main__":
     st_s.lauf()
     check("STEP: ein weiterer Lauf startet FreeCAD nicht noch einmal, auch nicht für die gescheiterte Datei",
           open(st_log).read().count("start") == 1)
+    check("STEP: der Grund des Scheiterns steht am Modell, und „erneut versuchen“ setzt nur die gescheiterten zurück",
+          "kaputt" in (st_k.modell(d2["kaputt"]["id"])["cad_fehler"] or "") and st_k.cad_erneut() == 1
+          and {m["name"]: m for m in st_k.modelle()}["kaputt"]["cad"] == "ausstehend"
+          and {m["name"]: m for m in st_k.modelle()}["Halter"]["cad"] == "ok")
     st_k.loeschen(d2["Halter"]["id"])
     st_k.papierkorb_leeren()
     check("STEP: beim endgültigen Löschen geht das abgeleitete Netz mit",

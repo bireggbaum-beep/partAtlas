@@ -644,6 +644,24 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         d = await request.json()
         return K().ordner_loeschen(d.get("id", ""), d.get("tags") or (), d.get("sammlungen") or ())
 
+    @app.post("/api/cad/erneut")
+    def cad_erneut():
+        n = K().cad_erneut()
+        if n:
+            zustand["scanner"].starten()
+        return {"zurueckgesetzt": n}
+
+    @app.post("/api/protokoll/zeigen")
+    def protokoll_zeigen():
+        pfad = zustand["bestand"].pfad("partatlas.log")
+        if not os.path.exists(pfad):
+            raise KatalogFehler("Es gibt noch kein Protokoll.")
+        try:
+            programme.im_ordner_zeigen(pfad)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True, "pfad": pfad}
+
     @app.post("/api/ordner/im_ordner")
     async def ordner_im_ordner(request: Request):
         pfad = K()._ordner_pfad((await request.json()).get("id", ""))[2]

@@ -826,6 +826,7 @@ async function waehle(id, live = false) {
     <div class="i-tafel" data-reiter="datei">
       <div class="i-titel">MODELLDATEN</div>
       <div class="i-karte">${details.map(zeile).join("")}${quelle}</div>
+      ${papierkorb ? "" : cadZeile(m)}
       <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
       ${orte}
     </div>`;
@@ -2057,6 +2058,32 @@ async function fcstdFrage(n) {
     if (a === "ja") { await api("/api/scan", { method: "POST" }); toast("FCStd-Dateien werden über FreeCAD eingelesen …"); }
   } catch (e) { toast(e.message); }
 }
+
+// Was mit der Umwandlung über FreeCAD ist — sonst sieht man bei einem CAD-Modell ohne Vorschau nie, woran es liegt.
+function cadZeile(m) {
+  if (m.format !== "step" && m.format !== "fcstd") return "";
+  const sc = zustand.scan || {};
+  let text, knopf = "";
+  if (m.cad === "ok") text = "Netz, Maße und Vorschau stammen aus FreeCAD.";
+  else if (m.cad === "fehler") {
+    text = `Die Umwandlung über FreeCAD ist gescheitert: <code>${esc(m.cad_fehler || "ohne Meldung")}</code>`;
+    knopf = `<button class="knopf klein" data-cad-erneut>Alle gescheiterten erneut versuchen</button>`;
+  } else if (sc.laeuft) text = "Wird gerade eingelesen …";
+  else if (sc.cad_ohne_freecad) text = "FreeCAD wurde auf diesem Rechner nicht gefunden.";
+  else if (m.format === "fcstd" && sc.fcstd_frage) text = "Wartet auf deine Zusage: partAtlas hat gefragt, ob FCStd-Dateien über FreeCAD eingelesen werden dürfen (Einstellungen › Einlesen).";
+  else if (m.format === "fcstd") text = "Noch nicht umgewandelt. FCStd-Dateien werden nur nach deiner Zusage über FreeCAD gelesen (Einstellungen › Einlesen).";
+  else text = "Noch nicht umgewandelt; das geschieht beim nächsten Einlesen.";
+  return `<div class="i-titel">FREECAD</div><div class="i-karte"><div class="dim" style="padding:4px 0">${text}</div>${knopf}</div>`;
+}
+document.addEventListener("click", async (e) => {
+  if (e.target.closest("[data-cad-erneut]")) {
+    try { const r = await api("/api/cad/erneut", { method: "POST" }); toast(`${r.zurueckgesetzt} Datei${r.zurueckgesetzt === 1 ? "" : "en"} werden erneut versucht …`); }
+    catch (err) { toast(err.message); }
+  }
+  if (e.target.closest("#ein-protokoll")) {
+    try { await api("/api/protokoll/zeigen", { method: "POST" }); } catch (err) { toast(err.message); }
+  }
+});
 
 async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }

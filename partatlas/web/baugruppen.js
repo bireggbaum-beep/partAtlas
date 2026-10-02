@@ -585,7 +585,11 @@ async function einstellungen() {
           <option value="ja" ${e.fcstd_freecad === "ja" ? "selected" : ""}>Ja, immer</option>
           <option value="nein" ${e.fcstd_freecad === "nein" ? "selected" : ""}>Nein, nie</option></select></label>
       <p class="dim">Ein FreeCAD-Dokument kann Programmcode enthalten, der beim Laden ausgeführt wird — als würdest du es in FreeCAD öffnen.
-        Nur für Dateien aus Quellen, denen du vertraust.</p>`],
+        Nur für Dateien aus Quellen, denen du vertraust.</p>
+      <div class="i-titel">PROTOKOLL</div>
+      <p class="dim">Was partAtlas beim Einlesen und bei Fehlern meldet, steht auch in der Datei <code>partatlas.log</code> im Bestand.
+        Bei einem Fehler: diese Datei schicken.</p>
+      <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>`],
     ["pdf", "PDF-Export", `
       <p class="dim">Was die Stückliste einer Baugruppe als PDF enthält („Stückliste als PDF“ in der Baugruppe).</p>
       <div class="i-titel">ABSCHNITTE</div>
