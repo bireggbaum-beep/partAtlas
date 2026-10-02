@@ -227,6 +227,11 @@ mitgezogen worden). `tests/test_ui.py` lief am 2.10.2026 durch (58/58, ein Test 
 in 48 s“ stehen (auch nach Neuladen), dazu ein Hinweis. Für den Test mit dem ganzen Bestand eines Anwenders. Der Wert ist
 die Dauer des gesamten Laufs inklusive der Vorschauen (`dauer_s` aus `scan.py`).
 
+**Programmstart mit Diagnose (0.22.1):** die Ausgabe eines gestarteten Programms geht nach `<Bestand>/arbeit/programmstart.log`
+(Standard: `~/.local/share/partatlas/arbeit/`); beendet es sich binnen 1,2 s mit Fehler, steht Code und Anfang der Ausgabe in der
+Meldung. Preis: der „wird geöffnet“-Hinweis kommt bei laufenden Programmen etwa 1,2 s später. Auslöser: Test mit Anycubic Slicer
+auf Manjaro — FreeCAD startete (3D-Ansicht nur nicht eingepasst: `V`, `F`), der Slicer nicht, Grund unbekannt.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

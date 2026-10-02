@@ -651,7 +651,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         if pfad not in {p["pfad"] for p in liste}:
             raise KatalogFehler("Dieses Programm kennt partAtlas nicht.")
         try:
-            programme.oeffnen(pfad, datei)
+            programme.oeffnen(pfad, datei, zustand["bestand"].pfad("arbeit", "programmstart.log"))
         except (OSError, subprocess.SubprocessError) as e:
             raise KatalogFehler(f"{next(p['name'] for p in liste if p['pfad'] == pfad)} ließ sich nicht starten: {e}")
         return {"ok": True, "programm": next(p["name"] for p in liste if p["pfad"] == pfad)}

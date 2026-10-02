@@ -182,6 +182,16 @@ if __name__ == "__main__":
             except OSError as e:
                 gemeldet = str(e)
             check("AppImage, die sich sofort beendet: sagt es (FUSE) statt still zu scheitern", "FUSE" in gemeldet and "sofort" in gemeldet)
+            with open(app, "w") as f:
+                f.write("#!/bin/sh\necho 'libfuse.so.2: kann nicht geoeffnet werden' >&2\nexit 3\n")
+            log = os.path.join(tmp, "arbeit-test", "programmstart.log")
+            try:
+                prog_mod.oeffnen(app, os.path.join(sammlung, "Haken.stl"), log)
+                gemeldet = ""
+            except OSError as e:
+                gemeldet = str(e)
+            check("Fehlstart: die Ausgabe des Programms steht in der Meldung und im Protokoll",
+                  "libfuse.so.2" in gemeldet and "Code 3" in gemeldet and "libfuse.so.2" in open(log).read())
         finally:
             os.environ["HOME"] = alt_heim
 

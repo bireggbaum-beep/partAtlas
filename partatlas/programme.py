@@ -13,6 +13,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import urllib.parse
 
 SLICER, CAD = "slicer", "cad"
@@ -190,19 +191,40 @@ def _optionen():
     return optionen
 
 
-def oeffnen(programm, datei):
+def oeffnen(programm, datei, protokoll=None):
+    """Startet das Programm mit der Datei. Seine Ausgabe geht in `protokoll` (wenn gegeben): sonst weiss niemand,
+    warum ein Start nicht klappte. Beendet es sich innerhalb von 1,2 s mit Fehler, wird das gemeldet — samt dem
+    Anfang seiner Ausgabe; ein Programm, das weiterläuft, hat gestartet."""
     befehl = ["open", "-a", programm, datei] if programm.endswith(".app") else [programm, datei]
-    prozess = subprocess.Popen(befehl, **_optionen())
-    if programm.lower().endswith(".appimage"):
-        # Eine AppImage, die sich sofort beendet, ist meist an fehlendem FUSE gescheitert; die Ausgabe geht ins Leere,
-        # also sonst würde „wird geöffnet …“ stehen und nichts passieren.
-        try:
-            code = prozess.wait(timeout=1.5)
-        except subprocess.TimeoutExpired:
-            return
-        if code != 0:
-            raise OSError(f"{os.path.basename(programm)} beendete sich sofort (Code {code}). "
-                          "AppImages brauchen FUSE — auf Manjaro/Arch: sudo pacman -S fuse2")
+    optionen = _optionen()
+    start = 0
+    log = None
+    if protokoll:
+        os.makedirs(os.path.dirname(protokoll), exist_ok=True)
+        log = open(protokoll, "ab")
+        log.write(f"\n--- {time.strftime('%d.%m.%Y %H:%M:%S')}  {' '.join(befehl)}\n".encode())
+        log.flush()
+        start = log.tell()
+        optionen["stdout"], optionen["stderr"] = log, subprocess.STDOUT
+    try:
+        prozess = subprocess.Popen(befehl, **optionen)
+    finally:
+        if log:
+            log.close()
+    try:
+        code = prozess.wait(timeout=1.2)
+    except subprocess.TimeoutExpired:
+        return
+    if code == 0:
+        return          # etwa ein Starter, der an ein laufendes Programm übergibt
+    ausgabe = ""
+    if protokoll and os.path.exists(protokoll):
+        with open(protokoll, "rb") as f:
+            f.seek(start)
+            ausgabe = f.read(600).decode("utf-8", "replace").strip()
+    hinweis = (" AppImages brauchen FUSE — auf Manjaro/Arch: sudo pacman -S fuse2." if programm.lower().endswith(".appimage") else "")
+    raise OSError(f"{os.path.basename(programm)} beendete sich sofort (Code {code}).{hinweis}"
+                  + (f" Ausgabe: {ausgabe}" if ausgabe else "") + (f" — Protokoll: {protokoll}" if protokoll else ""))
 
 
 def mit_system(datei):
