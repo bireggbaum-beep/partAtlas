@@ -36,7 +36,7 @@ button, input, select { font: inherit; color: inherit; }
 .mono { font-family: var(--mono); }
 .dim { color: var(--ink-3); font-size: 12.5px; }
 
-.app { display: grid; height: 100vh; grid-template-columns: var(--s7) var(--seite-b, 200px) 1fr var(--insp-b, 320px); grid-template-rows: 44px 1fr; position: relative;
+.app { display: grid; height: 100vh; grid-template-columns: var(--s7) var(--seite-b, 233px) 1fr var(--insp-b, 377px); grid-template-rows: 44px 1fr; position: relative;
        grid-template-areas: "rail kopf kopf kopf" "rail seite mitte inspektor"; }
 
 .rail { grid-area: rail; display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s4) 0;
@@ -478,8 +478,8 @@ body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 
 /* Griffe zum Ändern der Breite der Seitenleisten */
 .griff { position: absolute; top: 44px; bottom: 0; width: 7px; cursor: col-resize; z-index: 30; touch-action: none; }
-.griff.links { left: calc(var(--s7) + var(--seite-b, 200px) - 4px); }
-.griff.rechts { right: calc(var(--insp-b, 320px) - 3px); }
+.griff.links { left: calc(var(--s7) + var(--seite-b, 233px) - 4px); }
+.griff.rechts { right: calc(var(--insp-b, 377px) - 3px); }
 .griff::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: var(--accent); opacity: 0; transition: opacity 0.12s; }
 .griff:hover::after, .griff.zieht::after { opacity: 1; }
 body.bg-offen .nur-katalog { display: none; }
@@ -505,7 +505,7 @@ body.bg-offen .nur-katalog { display: none; }
 /* Inspektor: Vorschau und Name bleiben beim Scrollen stehen */
 .i-fix { position: sticky; top: -14px; z-index: 6; margin: -14px -14px 0; padding: 14px 14px 8px; background: var(--bg);
          border-bottom: 1px solid var(--line); }
-.i-fix .i-bild { aspect-ratio: auto; height: var(--bild-h, 220px); margin: 0; }
+.i-fix .i-bild { aspect-ratio: auto; height: var(--bild-h, calc((var(--insp-b, 377px) - 2 * var(--s4)) / var(--phi))); margin: 0; }
 /* Das Bild füllt den Rahmen und schrumpft mit ihm; sonst bestimmte seine Eigengrösse die Zeile und der Rahmen schnitte es nur ab. */
 .i-fix .i-bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .i-fix .i-name { margin: 10px 0 0; font-size: 16px; }
@@ -693,3 +693,49 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
           background: var(--panel-2); color: var(--ink-2); cursor: pointer; }
 .hv-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .hv-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Inspektor im Maßsystem ----------
+   Breite 377 (links 233: 1 : φ). Eine linke Kante bei 13 für alles; Etiketten in einer Spalte von 89;
+   senkrecht 21 zwischen Abschnitten, 8 innerhalb, 13 zwischen Kopfteilen. Höhen: 34 für Hauptaktionen und Reiter,
+   26 für alles Übrige zum Bedienen (Symbol 16 + 2 × 5), 55 für Vorschaubilder der Leiste.
+   Die Vorschau hat das Verhältnis 1 : φ zur Breite, solange man sie nicht selbst zieht. */
+.inspektor { padding: var(--s4); }
+.i-fix { top: calc(-1 * var(--s4)); margin: calc(-1 * var(--s4)) calc(-1 * var(--s4)) 0; padding: var(--s4) var(--s4) 0; }
+.i-fix .i-name { margin: var(--s4) 0 0; font-size: 16px; line-height: var(--s5); }
+.i-fix .gal-leiste { margin-top: var(--s3); gap: var(--s3); }
+.gal-mini { width: var(--s7); height: var(--s7); }
+.i-fix .i-haupt { margin-top: var(--s3); gap: var(--s3); }
+.i-haupt .knopf, .i-haupt select.knopf { height: var(--s6); padding: 0 var(--s4); font-size: 13px; }
+.i-haupt select.knopf.schmal { width: var(--s6); padding: 0; }
+.i-haupt .mehr .schalter { width: var(--s6); height: var(--s6); padding: 0; border-radius: var(--radius); }
+.i-reiter { gap: 0; margin: var(--s4) 0 0; }
+.i-reiter button { height: var(--s6); padding: 0; margin-bottom: -1px; }
+.i-tafel { padding-top: var(--s4); }
+.i-tafel > .i-schalter { margin-top: 0; }
+.i-schalter { gap: var(--s2); margin-top: 0; }
+.inspektor .schalter, .inspektor .chip, .inspektor .knopf.klein, .inspektor select.knopf.klein, .inspektor .i-tags input {
+  height: 26px; display: inline-flex; align-items: center; padding: 0 var(--s3); font-size: 12.5px; }
+.inspektor .schalter { border-radius: 13px; }
+.inspektor .chip { gap: var(--s2); }
+.inspektor select.knopf.klein { display: inline-block; padding-right: var(--s2); }
+.i-titel { margin: var(--s5) 0 var(--s3); }
+.i-tafel > .i-titel:first-child, .i-tafel > .i-schalter + .i-titel { margin-top: var(--s5); }
+.i-karte { padding: 0 var(--s4); margin: 0; }
+.i-karte .zeile { min-height: var(--s6); align-items: center; padding: 0; gap: var(--s4); }
+.i-gruppe { grid-template-columns: var(--s8) minmax(0, 1fr); gap: var(--s3); align-items: center; margin: var(--s3) 0 0; }
+.i-gruppe + .i-gruppe, .i-karte + .i-gruppe { margin-top: var(--s3); }
+.i-label { padding-top: 0; line-height: 26px; }
+.i-tags, .i-sammlungen, .i-material { gap: var(--s2); min-height: 26px; align-items: center; }
+.i-tags input { width: 89px; border-radius: 13px; }
+.i-tafel > .i-label { margin: var(--s4) 0 var(--s2); }
+.ort { padding: var(--s1) 0; }
+/* Drucke */
+.d-oben { margin: 0 0 var(--s4); }
+.druck { padding: var(--s3) var(--s4); margin-bottom: var(--s4); }
+.d-fotos, .d-werte { gap: var(--s2); margin-top: var(--s3); }
+.d-foto { width: var(--s7); height: var(--s7); }
+.d-fotoplus { height: var(--s7); }
+/* Die Auswahlfelder der Übersicht sind gleich breit (144): eine rechte Kante, keine ausgefranste Reihe. */
+.i-gruppe select.knopf.klein, .i-gruppe #zu-baugruppe { width: var(--s9); text-align: left; justify-content: flex-start; }
+.i-tafel > .i-titel:first-child { margin-top: 0; }
+.gal-leiste { overflow-y: hidden; padding-bottom: 0; }

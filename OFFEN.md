@@ -196,7 +196,7 @@ Zeilenende (Liste) zwei Linien-Symbole — Slicer (Schichten) und CAD (Würfel) 
 **Gestaltungsregeln:** Maßsystem (Fibonacci 3-5-8-13-21-34-55-89), gemeinsame Kanten, Aktionen
 in eigener Spalte auf der Mittellinie — in `KONZEPT.md` („Gestaltungsregeln“) und als `--s1…--s8` in
 `app.css`. Umgesetzt für Karten und Liste; die Liste ist entschlackt (Tags und Ordner raus).
-Raster-Kachel jetzt 144 × 233 (1 : φ), Rail 55, Ränder 13. Als Nächstes nach dem Maßsystem prüfen: Seitenleiste, Dialoge, Inspektor-Innenleben.
+Raster-Kachel jetzt 144 × 233 (1 : φ), Rail 55, Ränder 13. Inspektor jetzt im Maßsystem (377 breit, Seitenleiste 233). Als Nächstes prüfen: Seitenleiste links (Felder, Zeilen), Dialoge, Baugruppen-Ansicht.
 
 ## Offen, in dieser Reihenfolge
 

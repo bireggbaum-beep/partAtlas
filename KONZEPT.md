@@ -114,8 +114,13 @@ Regeln statt einzelner Augenmasse-Entscheidungen. Sie stehen als Variablen in `a
    quadratische Bild (144), darunter ein Textfeld von 89 mit Rand 13 und den Zeilen 21 / 18 / 18. Was auf dem
    Bild liegt (Punkt, Haken, Herz, Plakette), hält 8 Abstand zur Kante. Raster: Rand und Lücke 13.
 
-Ebenfalls im Maßsystem: Rail (55 breit, 5 Abstand, 13 Rand), Kopfzeile, Tag- und Filterleiste, Inspektor-Rand (13).
-Noch nicht umgestellt: Seitenleiste (Felder, Zeilen), Dialoge, Inspektor-Innenleben, Kopfzeilenhöhe (44).
+7. **Der Inspektor** ist 377 breit, die linke Seitenleiste 233 (1 : φ; beide bleiben ziehbar). Eine linke Kante bei 13 für
+   alles, Etiketten in einer Spalte von 89, Auswahlfelder gleich breit (144). Senkrecht 21 zwischen Abschnitten, 8 innerhalb,
+   13 zwischen den Teilen des Kopfs. Höhen: 34 für Hauptaktion und Reiter, 26 für alles Übrige zum Bedienen, 55 für die
+   Bilder der Leiste. Die Vorschau hat 1 : φ zur Breite, bis man sie selbst zieht.
+
+Ebenfalls im Maßsystem: Rail (55 breit, 5 Abstand, 13 Rand), Kopfzeile, Tag- und Filterleiste.
+Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenhöhe (44), Baugruppen-Ansicht.
 
 ## 3. Dateien und Bestand
 

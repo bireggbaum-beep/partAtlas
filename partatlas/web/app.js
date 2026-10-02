@@ -1870,8 +1870,8 @@ document.addEventListener("scroll", () => { $("#kontext").hidden = true; }, true
 // Die Griffe sitzen auf den Rändern; Ziehen ändert die Spaltenbreite, die
 // Zahl bleibt gemerkt, ein Doppelklick stellt die Vorgabe wieder her.
 
-const BREITE = { seite: { vorgabe: 200, min: 160, max: 480, var: "--seite-b", von: "links" },
-                 inspektor: { vorgabe: 320, min: 260, max: 700, var: "--insp-b", von: "rechts" } };
+const BREITE = { seite: { vorgabe: 233, min: 160, max: 480, var: "--seite-b", von: "links" },
+                 inspektor: { vorgabe: 377, min: 260, max: 700, var: "--insp-b", von: "rechts" } };
 function breiteSetzen(name, px, merken = true) {
   const b = BREITE[name];
   px = Math.round(Math.max(b.min, Math.min(b.max, px)));
