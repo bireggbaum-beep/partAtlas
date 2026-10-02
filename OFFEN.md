@@ -264,6 +264,19 @@ Gegenprobe. **Nicht gemessen**, wie viel (1) bringt — keine grossen Bestände 
 Vorschauen 25 s (84 %), Hashen 2,9 s, Analysieren 1,8 s. **Noch offen:** (3) einmal parsen statt dreimal (Hash, Analyse, Render), sowie
 eine Zeitgrenze je Datei (ein hängender Render hält den Lauf auf) und ein Abbrechen-Knopf.
 
+**Als Nächstes: Abbrechen-Knopf fürs Einlesen** (für den neuen Chat). Heute gibt es keinen; man muss den Server beenden.
+- *Ziel:* in der Statuszeile oben rechts, solange `scan.laeuft`, ein „Abbrechen“; danach „Abgebrochen nach X s, N Dateien“. Nichts geht verloren:
+  der nächste Lauf macht weiter (bekannte Dateien werden über Pfad, Grösse und Datum erkannt, ausstehende Vorschauen später nachgeholt).
+- *Wo:* `partatlas/scan.py` — `Scanner` läuft im Thread `_lauf_sicher`, Arbeit in `self._pool` (spawn), Phasen suchen → hashen → analysieren →
+  vorschau; `_verteilen()` liefert die Ergebnisse nach und nach. Dazu ein Endpunkt `POST /api/scan/abbrechen` in `main.py`, ein Knopf in `app.js`
+  (SSE-Meldung `scan` mit `phase`, `laeuft`), neuer Status `abbruch`/`phase="abgebrochen"`.
+- *Idee:* ein `threading.Event`, das `lauf()` zwischen den Phasen und `_verteilen()` je Ergebnis prüft; beim Abbruch `self._pool.shutdown(wait=False,
+  cancel_futures=True)`, bereits fertige Gruppen sind schon in der Datenbank (Transaktionen zu 100). Während `pool.map` des Hashens
+  (noch ohne Prüfung) genügt es, danach abzubrechen — oder das Hashen ebenfalls auf `_verteilen` umstellen.
+- *Beachten:* nie mitten in einer Transaktion abbrechen; die Statuszeile `scanErgebnis()` darf bei Abbruch keine „Eingelesen“-Zeile zeigen; Test in
+  `tests/test_scan.py` (Lauf starten, abbrechen, zweiter Lauf vollendet ohne Duplikate) mit Gegenprobe. Die UI-Suite nur nach Absprache.
+- *Dazu offen (kleiner):* Zeitgrenze je Datei, einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
