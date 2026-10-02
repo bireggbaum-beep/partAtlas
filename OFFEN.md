@@ -321,6 +321,11 @@ umgekehrt). Geprüft in `test_cad` (12/12), `test_scan` (59/59) mit Gegenproben;
 `Part.makeCompound`. **Offen:** Teile in verschachtelten `App::Part` bekommen nur ihre lokale Platzierung (Baugruppen können versetzt erscheinen); `App::Link` wird nicht
 aufgelöst; grosse Baugruppen laufen in die Zeitgrenze.
 
+**Papierkorb leeren (0.29.3):** der Server konnte es (`POST /api/papierkorb/leeren`), die Oberfläche bot es nirgends an — gemeldet vom Anwender („man kann ihn nicht leeren“),
+ein reiner Fehler. Jetzt eine Leiste über der Liste in der Papierkorb-Ansicht („N Modelle im Papierkorb · Papierkorb leeren …“) mit Rückfrage; nur sichtbar, wenn
+etwas drin liegt. Geprüft mit einem Playwright-Skript (Leiste, Dialog, danach leer, Datei weg), nicht mit `test_ui.py`; das Backend deckt `test_scan` ab.
+**Offen:** einzelne Modelle endgültig löschen (nur „Alles leeren“); die Leiste ohne Test in `test_ui.py`.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

@@ -559,6 +559,10 @@ function zeichneStapel() {
   const n = zustand.auswahl.size;
   // Dezent unten: wie viele Modelle die Liste zeigt, und wie viele davon gewählt sind.
   $("#anzahl").textContent = `${zustand.modelle.length.toLocaleString("de-DE")} Modelle${n ? ` · ${n} ausgewählt` : ""}`;
+  // Papierkorb: der Knopf zum endgültigen Leeren (der Server konnte das, die Oberfläche bot es nirgends an).
+  const pk = zustand.ansicht === "papierkorb" && zustand.modelle.length > 0;
+  $("#pk-leiste").hidden = !pk;
+  if (pk) $("#pk-text").textContent = `🗑 ${zustand.modelle.length.toLocaleString("de-DE")} ${zustand.modelle.length === 1 ? "Modell" : "Modelle"} im Papierkorb`;
   const st = $("#stapel");
   st.hidden = n === 0;
   if (!n) return;
@@ -642,6 +646,25 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
       return;
   }
 }
+
+// Papierkorb endgültig leeren: die Dateien gehen von der Platte, danach ist nichts mehr wiederherzustellen. Eigene Bilder werden
+// archiviert und gehen nicht verloren.
+async function papierkorbLeeren() {
+  const n = zustand.modelle.length;
+  const a = await dialog(`<h2>Papierkorb endgültig leeren?</h2>
+    <p>${n.toLocaleString("de-DE")} ${n === 1 ? "Modell wird" : "Modelle werden"} samt ${n === 1 ? "seiner Datei" : "ihren Dateien"} von der Platte gelöscht. Danach lässt sich nichts davon wiederherstellen.</p>
+    <p class="dim">Eigene Bilder, die du hinzugefügt hattest, werden archiviert und gehen nicht verloren.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Endgültig löschen</button></div>`);
+  if (a !== "ja") return;
+  try {
+    const r = await api("/api/papierkorb/leeren", { method: "POST" });
+    toast(`${r.geloescht} ${r.geloescht === 1 ? "Modell" : "Modelle"} endgültig gelöscht.`);
+    waehle(null);
+    await ladeSeite();
+    neuLaden();
+  } catch (e) { toast(e.message); }
+}
+$("#pk-leeren").addEventListener("click", papierkorbLeeren);
 
 async function loeschenViele(modelle) {
   if (await loeschDialog(modelle, `${modelle.length} Modelle löschen?`)) { zustand.auswahl.clear(); waehle(null); }

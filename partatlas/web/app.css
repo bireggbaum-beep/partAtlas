@@ -584,6 +584,9 @@ body.erststart .ans-leiste { display: none; }
 .suche-x { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 0; border-radius: 4px;
            background: none; color: var(--ink-3); cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
 .suche-x:hover { background: var(--panel-2); color: var(--ink); }
+.pk-leiste { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s3) var(--s4);
+             border-bottom: 1px solid var(--line); background: var(--panel); font-size: 13.5px; color: var(--ink-2); }
+.pk-leiste[hidden] { display: none; }
 .statuszeile { flex: none; height: 22px; display: flex; align-items: center; padding: 0 14px; border-top: 1px solid var(--line);
                font-size: 12.5px; color: var(--ink-3); }
 body.bg-offen .statuszeile { display: none; }
