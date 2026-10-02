@@ -43,6 +43,9 @@ if __name__ == "__main__":
         r = c.post("/api/wurzeln", json={"pfad": sammlung})
         check("Ordner hinzufügen startet das Einlesen", r.status_code == 200)
         z["scanner"].warten(120)
+        ph = z["scanner"].status.get("phasen", {})
+        check("Scan hält die Dauer je Phase fest (Hashen, Analysieren …), zusammen höchstens die Gesamtdauer",
+              {"hashen", "analysieren"} <= set(ph) and sum(ph.values()) <= z["scanner"].status["dauer_s"] + 0.3)
         check("Wurzel falsch: verständliche Meldung statt Absturz",
               c.post("/api/wurzeln", json={"pfad": "/gibt/es/nicht"}).json().get("fehler", "").startswith("Kein Ordner"))
 

@@ -241,6 +241,11 @@ per ETag neu geprüft, damit nach einer Aktualisierung nicht die alte Oberfläch
 ewig gecacht). Test: `tests/test_api.py`. Beim Tester: Anycubic Slicer wurde **nicht automatisch gefunden**, nach manuellem
 Hinzufügen läuft es — Ort seiner Datei noch offen (würde die Erkennung verbessern).
 
+**Einlese-Dauer je Phase (0.24.0):** Statuszeile nach dem Einlesen: „Eingelesen: N Dateien, M neu in X (Hashen … · Analysieren … ·
+Vorschauen …)“; Phasen unter 0,5 s werden weggelassen. Erste Messung (150 Demo-Dateien, 2,5 MB, hier): 8,3 s gesamt, davon **Vorschauen
+7,9 s**, Hashen 0,2 s, Analysieren 0,2 s — die Vorschaubilder (STL werden gerechnet) sind der Hebel, wenn das Einlesen schneller werden
+soll. Tester: ein Ordner mit 330 MB brauchte geschätzt 1,5–2 min (noch nicht aus der Statuszeile abgelesen).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

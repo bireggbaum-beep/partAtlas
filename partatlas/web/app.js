@@ -343,10 +343,14 @@ function zeichneLeer() {
 }
 
 // Wie lange das Einlesen gedauert hat, stehen lassen: wer einen grossen Bestand prüft, will die Zahl ablesen können.
+const PHASENNAME = { suchen: "Suchen", hashen: "Hashen", analysieren: "Analysieren", vorschau: "Vorschauen" };
 function scanErgebnis(m) {
   if (m.dauer_s == null || !m.gefunden) return "";
   const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
-  return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""} in ${zeit}`;
+  // Phasen unter einer halben Sekunde sind Rauschen
+  const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
+    .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
+  return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
 }
 
 // ---------------------------------------------------------------- Virtuelles Raster und Liste

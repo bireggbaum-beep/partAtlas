@@ -78,8 +78,20 @@ class Scanner:
         self._faden = None
         self._nochmal = False
         self.status = {"laeuft": False}
+        self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
 
     def _setze(self, **werte):
+        # Wie lange jede Phase dauerte (Suchen, Hashen, Analysieren, Vorschau): wer einen grossen Bestand einliest,
+        # will wissen, wo die Zeit bleibt. Eine neue Phase schliesst die vorige.
+        if "phase" in werte:
+            jetzt = time.time()
+            if werte["phase"] == "suchen":
+                self._phasen, self._phase_name = {}, None
+            if self._phase_name and self._phase_name != werte["phase"]:
+                self._phasen[self._phase_name] = round(self._phasen.get(self._phase_name, 0) + jetzt - self._phase_t, 1)
+            if self._phase_name != werte["phase"]:
+                self._phase_name, self._phase_t = werte["phase"], jetzt
+            werte["phasen"] = dict(self._phasen)
         self.status.update(werte)
         self.melden(dict(self.status))
 
