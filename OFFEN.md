@@ -232,6 +232,10 @@ die Dauer des gesamten Laufs inklusive der Vorschauen (`dauer_s` aus `scan.py`).
 Meldung. Preis: der „wird geöffnet“-Hinweis kommt bei laufenden Programmen etwa 1,2 s später. Auslöser: Test mit Anycubic Slicer
 auf Manjaro — FreeCAD startete (3D-Ansicht nur nicht eingepasst: `V`, `F`), der Slicer nicht, Grund unbekannt.
 
+**Lesbarkeit (0.23.0), Rückmeldung eines Testers:** `--ink-3` hatte nur 3,8–4,0 : 1 (dunkel) bzw. 3,0–3,3 : 1 (hell); jetzt
+etwa 6 : 1, `--ink-2` etwa 9 : 1 bzw. 8 : 1. Kleine Schrift von 11/11,5 auf 12/12,5 px, Einstellungsdialog 14,5 px.
+Regel steht in `KONZEPT.md` (Gestaltungsregeln, 8). Hell und dunkel im Einstellungsdialog geprüft, nicht überall.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

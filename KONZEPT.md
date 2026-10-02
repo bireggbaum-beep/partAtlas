@@ -119,6 +119,11 @@ Regeln statt einzelner Augenmasse-Entscheidungen. Sie stehen als Variablen in `a
    13 zwischen den Teilen des Kopfs. Höhen: 34 für Hauptaktion und Reiter, 26 für alles Übrige zum Bedienen, 55 für die
    Bilder der Leiste. Die Vorschau hat 1 : φ zur Breite, bis man sie selbst zieht.
 
+8. **Lesbarkeit.** Jeder Text hat mindestens **4,5 : 1** Kontrast zum Grund (WCAG AA), auch der graue (`--ink-3`: dunkel
+   etwa 6 : 1, hell etwa 6 : 1; `--ink-2` etwa 9 : 1 bzw. 8 : 1). Schrift nicht unter **12 px**; im Einstellungsdialog 14,5.
+   Auslöser war die Rückmeldung eines Testers: grau und klein war dort kaum zu lesen. Wer eine Farbe ändert, rechnet den
+   Kontrast nach, statt nach Gefühl zu gehen.
+
 Ebenfalls im Maßsystem: Rail (55 breit, 5 Abstand, 13 Rand), Kopfzeile, Tag- und Filterleiste.
 Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenhöhe (44), Baugruppen-Ansicht.
 
