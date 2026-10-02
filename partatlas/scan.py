@@ -109,6 +109,7 @@ class Scanner:
         self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
         self._pool = None
         self._stopp = threading.Event()
+        self._nur_cad = False
 
     def abbrechen(self):
         """Bittet den laufenden Lauf, aufzuhören. Wahr, wenn einer lief. Ein wartender Folgelauf entfällt: wer abbricht,
@@ -196,15 +197,18 @@ class Scanner:
         self.status.update(werte)
         self.melden(dict(self.status))
 
-    def starten(self):
+    def starten(self, nur_cad=False):
         """Im Hintergrund. Kommt ein Auftrag während eines Laufs (Hochladen,
         Entpacken), läuft danach ein zweiter — der erste hat die neuen
-        Dateien womöglich schon hinter sich gelassen."""
+        Dateien womöglich schon hinter sich gelassen.
+
+        Mit `nur_cad`: nur die Umwandlung über FreeCAD, ohne Suchen und Hashen — etwa nachdem der Anwender FCStd erlaubt hat."""
         with self._sperre:
             if self._faden and self._faden.is_alive():
                 self._nochmal = True
                 return False
             self._nochmal = False
+            self._nur_cad = nur_cad
             self._faden = threading.Thread(target=self._lauf_sicher, name="scan", daemon=True)
             self._faden.start()
             return True
@@ -216,7 +220,8 @@ class Scanner:
     def _lauf_sicher(self):
         while True:
             try:
-                self.lauf()
+                nur, self._nur_cad = self._nur_cad, False      # ein Folgelauf ist wieder ein ganzer
+                self.lauf(nur_cad=True) if nur else self.lauf()
             except Exception as e:                   # der Server soll weiterlaufen
                 log.exception("Scan abgebrochen")
                 self._setze(laeuft=False, abbruch=str(e))
@@ -225,12 +230,14 @@ class Scanner:
                     return
                 self._nochmal = False
 
-    def lauf(self):
+    def lauf(self, nur_cad=False):
         t0 = time.time()
         self._stopp.clear()
         self._setze(fcstd_frage=0, cad_ohne_freecad=0)
-        self._setze(laeuft=True, phase="suchen", gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
-                    unlesbar=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
+        if nur_cad:
+            return self._lauf_nur_cad(t0)
+        self._setze(laeuft=True, phase="suchen", nur_cad=False, gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
+                    unlesbar=0, zurueckgeholt=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
         index = self.k.ort_index()
         wurzeln = self.k.wurzeln()
@@ -256,6 +263,7 @@ class Scanner:
             neu_je_hash = {}                          # hash -> [(schluessel, pfad, st)]
             vorgaenger = {}                           # neuer hash -> hash, der vorher an diesem Ort lag
             ortwechsel = []                           # (hash, schluessel, st, alter_hash)
+            zurueck = []                              # (hash, schluessel, st): Dateien, deren Modell im Papierkorb liegt
             for pfad, h, fehler in pool.map(_hash, list(nach_pfad), chunksize=8):
                 if self._stopp.is_set():      # map holt die übrigen Aufträge beim Verlassen der Schleife zurück
                     break
@@ -268,9 +276,8 @@ class Scanner:
                 if status == "lebt":
                     ortwechsel.append((h, s, st, alt[0] if alt and alt[0] != h else None))
                 elif status == "papierkorb":
-                    # Wer ein Modell löscht und die Datei zurücklegt, soll es
-                    # im Papierkorb wiederherstellen — nicht still zurückbekommen.
-                    self.status["im_papierkorb"] += 1
+                    # Dieselbe Datei liegt wieder im Ordner: das Modell kommt aus dem Papierkorb zurück (der Inhalt ist die Kennung).
+                    zurueck.append((h, s, st))
                 else:
                     neu_je_hash.setdefault(h, []).append((s, pfad, st))
                     if alt and alt[0] != h:
@@ -283,6 +290,9 @@ class Scanner:
                         self.k.ort_entfernen(alter_hash, *s)
                     if h:
                         self.k.ort_setzen(h, s[0], s[1], st.st_size, st.st_mtime)
+            for h, s, st in zurueck:
+                if self.k.aus_papierkorb_zurueck(h, s[0], s[1], st):
+                    self._setze(zurueckgeholt=self.status["zurueckgeholt"] + 1)
             verschoben = sum(1 for o in ortwechsel if o[0])
             self._setze(verschoben=verschoben, bearbeitet=verschoben)
             if self._stopp.is_set():          # gehasht ist nur ein Teil: nichts Neues anlegen, nichts entfernen
@@ -315,6 +325,19 @@ class Scanner:
             self._vorschauen()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
+            self._cad()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+        finally:
+            self._pool.shutdown(wait=False, cancel_futures=True)
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+
+    def _lauf_nur_cad(self, t0):
+        """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""
+        self._setze(laeuft=True, phase="cad", nur_cad=True, bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False,
+                    beginn=time.strftime("%H:%M:%S"))
+        self._pool = self._neuer_pool()
+        try:
             self._cad()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)

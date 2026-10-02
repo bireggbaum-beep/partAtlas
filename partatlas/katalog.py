@@ -107,6 +107,32 @@ class Katalog:
             return None if roh.get("ersetzt_durch") else "papierkorb"
         return None
 
+    def aus_papierkorb_zurueck(self, h, wurzel, pfad, st):
+        """Die Datei `h` liegt wieder im Ordner, ihr Modell im Papierkorb: das Modell kommt mit allem zurück (Tags, Drucke, Baugruppen) und
+        bekommt den neuen Ort. Die Kopie im Papierkorb ist dieselbe Datei und wird überflüssig. Hatte das Modell mehrere Orte, kommen
+        die übrigen wie bei „Wiederherstellen“ an ihren Platz zurück — es geht nichts verloren."""
+        d = self.db.get_node_raw(ref(DATEI, h))
+        teile = self.db.get_connected(ref(DATEI, h), direction="in", rel_type=HAT_DATEI, include_deleted=True)
+        mid = teile[0].split("/", 1)[1] if teile else None
+        if d is None or mid is None:
+            return False
+        ablage = d.get("papierkorb", [])
+        if len(ablage) > 1:
+            self.wiederherstellen(mid)
+            with self.db.transaction():
+                self.ort_setzen(h, wurzel, pfad, st.st_size, st.st_mtime)
+            return True
+        ort = {"wurzel": wurzel, "pfad": pfad, "groesse": st.st_size, "mtime": st.st_mtime}
+        with self.db.transaction():
+            self.db.restore_node(MODELL, mid)
+            self.db.update_node(DATEI, h, {"orte": [ort], "papierkorb": [], "geloescht": None})
+        for a in ablage:
+            try:
+                os.unlink(self.b.pfad(a["ablage"]))
+            except FileNotFoundError:
+                pass
+        return True
+
     def ort_setzen(self, h, wurzel, pfad, groesse, mtime):
         d = self.db.get_node(ref(DATEI, h))
         orte = [o for o in d.get("orte", []) if (o["wurzel"], o["pfad"]) != (wurzel, pfad)]

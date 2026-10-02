@@ -357,16 +357,15 @@ function zeichneLeer() {
 // Wie lange das Einlesen gedauert hat, stehen lassen: wer einen grossen Bestand prüft, will die Zahl ablesen können.
 const PHASENNAME = { suchen: "Suchen", hashen: "Hashen", analysieren: "Analysieren", vorschau: "Vorschauen", cad: "STEP (FreeCAD)" };
 function scanErgebnis(m) {
-  if (m.dauer_s == null || (!m.gefunden && !m.abgebrochen)) return "";
+  if (m.dauer_s == null || (!m.gefunden && !m.abgebrochen && !m.nur_cad)) return "";
   const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
   // Nach einem Abbruch keine „Eingelesen“-Zeile: es ist nicht alles eingelesen.
   if (m.abgebrochen) return `Abgebrochen nach ${zeit}, ${(m.bearbeitet || 0).toLocaleString("de-DE")} Dateien`;
+  if (m.nur_cad) return `FreeCAD-Umwandlung: ${(m.bearbeitet || 0).toLocaleString("de-DE")} Dateien in ${zeit}`;
   // Phasen unter einer halben Sekunde sind Rauschen
   const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
-  // Eine Datei, deren Inhalt als Modell im Papierkorb liegt, nimmt der Scan nicht neu auf: sie soll dort wiederhergestellt werden.
-  // Ohne diesen Hinweis sieht der Anwender nur, dass die Datei „nicht ankommt“.
-  const korb = m.im_papierkorb ? `; ${m.im_papierkorb.toLocaleString("de-DE")} schon im Papierkorb (dort wiederherstellen)` : "";
+  const korb = m.zurueckgeholt ? `; ${m.zurueckgeholt.toLocaleString("de-DE")} aus dem Papierkorb zurückgeholt (Datei lag wieder im Ordner)` : "";
   return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""}${korb} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
 }
 
@@ -2058,7 +2057,7 @@ async function fcstdFrage(n) {
   if (a !== "ja" && a !== "nie") return;
   try {
     await api("/api/einstellungen", { method: "PUT", body: { fcstd_freecad: a === "ja" ? "ja" : "nein" } });
-    if (a === "ja") { await api("/api/scan", { method: "POST" }); toast("FCStd-Dateien werden über FreeCAD eingelesen …"); }
+    if (a === "ja") { await api("/api/cad/starten", { method: "POST" }); toast("FCStd-Dateien werden über FreeCAD umgewandelt …"); }
   } catch (e) { toast(e.message); }
 }
 

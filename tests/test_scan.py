@@ -157,20 +157,30 @@ if __name__ == "__main__":
           and len(os.listdir(b.pfad("papierkorb"))) == 2)
     check("Löschen: Modell weg aus dem Katalog, sichtbar im Papierkorb",
           top_id not in [m["id"] for m in k.modelle()] and [m["id"] for m in k.modelle(ansicht="papierkorb")] == [top_id])
-    # Der Anwender legt eine Kopie der gelöschten Datei zurück in den Ordner.
-    kopie = os.path.join(sammlung, "Haushalt", "Top_Plate zurueck.3mf")
-    shutil.copy(os.path.join(b.pfad("papierkorb"), sorted(os.listdir(b.pfad("papierkorb")))[0]), kopie)
-    st = scannen()
-    check("Scan holt ein gelöschtes Modell nicht still zurück, wenn seine Datei wieder auftaucht",
-          st["im_papierkorb"] == 1 and st["neu"] == 1 and top_id not in [m["id"] for m in k.modelle()]
-          and [m["name"] for m in k.modelle(suche="plate")] == [])
-    os.remove(kopie)
     k.wiederherstellen(top_id)
     zurueck = k.modell(top_id)
     check("Wiederherstellen: Dateien zurück an ihrem Ort, Modell mit Tags wieder da",
           os.path.exists(os.path.join(sammlung, "Drohne", "Top_Plate.3mf"))
           and os.path.exists(os.path.join(downloads, "Top_Plate (1).3mf"))
           and len(zurueck["orte"]) == 2 and "mehrteilig" in zurueck["tags"])
+
+    # Dieselbe Datei liegt wieder im Ordner — wie man es von einem Papierkorb erwartet: das Modell kommt zurück, nicht der Papierkorb-Eintrag
+    extra_pfad = os.path.join(sammlung, "Haushalt", "Extra.stl")
+    muster.stl_binaer(extra_pfad, 31, 12, 13)
+    scannen()
+    extra = {m["name"]: m for m in k.modelle()}["Extra"]
+    extra_tags = k.modell(extra["id"])["tags"]
+    k.loeschen(extra["id"])
+    shutil.copy(os.path.join(b.pfad("papierkorb"), sorted(os.listdir(b.pfad("papierkorb")))[0]), extra_pfad)
+    st = scannen()
+    check("Datei wieder im Ordner: ihr Modell kommt aus dem Papierkorb zurück, mit Tags, nicht als neues",
+          st["zurueckgeholt"] == 1 and st["neu"] == 0 and extra["id"] in [m["id"] for m in k.modelle()]
+          and k.modell(extra["id"])["tags"] == extra_tags and os.path.exists(extra_pfad))
+    check("Datei wieder im Ordner: der Papierkorb ist danach leer, die Kopie dort war dieselbe Datei",
+          os.listdir(b.pfad("papierkorb")) == [] and k.modelle(ansicht="papierkorb") == []
+          and [m["name"] for m in k.modelle(suche="extra")] == ["Extra"])
+    k.loeschen(extra["id"])
+    k.papierkorb_leeren()                      # aufräumen: die späteren Prüfungen kennen dieses Modell nicht
 
     # -- Auftrag während eines Laufs: läuft danach nochmal
     # Der erste Lauf wird nach seiner Arbeit angehalten: so liegt die neue
@@ -417,6 +427,10 @@ if __name__ == "__main__":
     check("FCStd mit „Nein“: wird nicht geladen und es wird nicht erneut gefragt",
           fz_s.status["fcstd_frage"] == 0 and fz()["cad"] == "ausstehend")
     fz_b.einstellungen_setzen(fcstd_freecad="ja")
+    muster.stl_binaer(os.path.join(fz_dir, "Neu.stl"), 16, 12, 13)
+    fz_s.lauf(nur_cad=True)
+    check("Nach der Zusage läuft nur die FreeCAD-Umwandlung: eine neue Datei im Ordner wird dabei nicht eingelesen",
+          fz_s.status["nur_cad"] is True and fz_s.status["phase"] == "fertig" and "Neu" not in {m["name"] for m in fz_k.modelle()})
     fz_s.lauf()
     d = fz_k.db.get_node(f"PART_GEOMETRY/{fz()['hash']}", readonly=True)
     check("FCStd mit „Ja“: Netz, Maße und berechnetes Vorschaubild; das schärfere Bild steht vor dem Thumbnail aus der Datei",

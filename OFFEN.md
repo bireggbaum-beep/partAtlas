@@ -339,6 +339,12 @@ Dazu: **Dateien, deren Inhalt als Modell im Papierkorb liegt, nimmt der Scan bew
 Papierkorb (dort wiederherstellen)“. Geprüft in `test_verwalten` (59/59). **Offen / Entscheidung:** soll eine zurückgelegte Datei das Modell stattdessen selbst aus dem Papierkorb holen?
 Ausserdem zeigt der Baum leere Ordner nicht — von aussen ist ein Rest unsichtbar.
 
+**Zurückgelegte Datei und „nur FreeCAD“ (0.29.7):** (1) Eine Datei, deren Inhalt als Modell im Papierkorb liegt, kommt jetzt **ins Modell zurück** statt stumm übergangen zu werden
+(`Katalog.aus_papierkorb_zurueck`): Modell samt Tags, Drucken und Baugruppen, neuer Ort, die Kopie im Papierkorb entfällt (dieselbe Datei). Hatte das Modell mehrere Orte, kommen die übrigen
+wie bei „Wiederherstellen“ zurück. Die Kopfzeile nennt „N aus dem Papierkorb zurückgeholt“. Das ersetzt die Regel von 0.29.6 („nicht still zurückbekommen“). (2) Nach der Zusage für
+FCStd läuft **nur die FreeCAD-Umwandlung** (`Scanner.starten(nur_cad=True)`, `POST /api/cad/starten`, auch bei „erneut versuchen“), nicht mehr ein ganzer Lauf mit Suchen und Hashen.
+Geprüft in `test_scan` (62/62) mit Gegenproben. **Offen:** die Frage nach FCStd kommt erst, wenn der Lauf fertig ist.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

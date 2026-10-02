@@ -648,8 +648,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def cad_erneut():
         n = K().cad_erneut()
         if n:
-            zustand["scanner"].starten()
+            zustand["scanner"].starten(nur_cad=True)
         return {"zurueckgesetzt": n}
+
+    @app.post("/api/cad/starten")
+    def cad_starten():
+        """Nur die Umwandlung über FreeCAD, ohne alles neu einzulesen — nach der Zusage für FCStd."""
+        return {"gestartet": zustand["scanner"].starten(nur_cad=True)}
 
     @app.post("/api/protokoll/zeigen")
     def protokoll_zeigen():
