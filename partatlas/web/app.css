@@ -517,3 +517,10 @@ body.bg-offen .nur-katalog { display: none; }
 .i-fix .gal-leiste { margin-top: 6px; }
 .i-kopf { margin-top: 10px; }
 .i-details { margin-top: 12px; }
+
+/* Seitenleiste je Rail-Symbol: Katalog oder Bereinigen. */
+.seite[data-modus="bereinigen"] .sektion:not([data-sektion="bereinigen"]),
+.seite[data-modus="katalog"] .sektion[data-sektion="bereinigen"] { display: none; }
+.rail-btn { position: relative; }
+.rail-abz { position: absolute; right: 0; top: 0; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+            background: var(--accent); color: #fff; font-size: 9px; line-height: 14px; text-align: center; }

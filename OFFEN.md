@@ -32,6 +32,13 @@ Runde 2: **c)** Inspektor: Vorschau und Name bleiben oben fest, die
 technischen Daten heissen „Modelldaten“, stehen unter „Zum Drucken“ und
 sind standardmässig offen.
 
+Runde 3: **Bereinigen** — „Aufräumen“ ist aus der Seitenleiste raus; in der
+Activity Bar sitzt statt des Papierkorbs ein Besen (🧹) mit Zählabzeichen
+(Duplikate + fehlt + unlesbar). Er schaltet die ganze Seitenleiste um:
+Papierkorb · Duplikate · Datei fehlt · Unlesbar. Ungeprüft in Chromium
+(flatgraph fehlte); die zwei angepassten Prüfungen in `tests/test_ui.py`
+stehen noch aus. Später mögliche Kategorien: Nicht verknüpft, Ohne Vorschau.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

@@ -85,8 +85,8 @@ async def oberflaeche(port):
         while api(port, "/api/stand")["scan"].get("laeuft"):
             await asyncio.sleep(0.3)
         await pg.wait_for_timeout(500)
-        check("Seitenleiste: „Aufräumen“ fehlt, solange es nichts aufzuräumen gibt",
-              await pg.locator('[data-sektion="aufraeumen"]').is_hidden())
+        check("Bereinigen: kein Zählabzeichen am Besen, solange nichts zu tun ist",
+              await pg.locator("#abz-bereinigen").is_hidden())
         await pg.click('[data-sk="tags"]')
         check("Abschnitt per Überschrift aufklappen (Tags standardmässig zu)", await pg.locator("#tag-liste").is_visible())
         await pg.click('[data-sk="tags"]')
@@ -365,9 +365,14 @@ async def oberflaeche(port):
         await pg.wait_for_selector(".karte.fehlt .fehlt-band", timeout=5000)
         check("Datei fehlt: Kachel bleibt im Raster, mit Band „Datei fehlt“",
               "Datei fehlt" in await pg.inner_text(".karte.fehlt .fehlt-band"))
-        check("… und „Aufräumen“ erscheint mit „Datei fehlt 1“",
-              "Datei fehlt" in await pg.inner_text('[data-sektion="aufraeumen"]')
-              and await pg.locator('[data-sektion="aufraeumen"] [data-ansicht="duplikate"]').is_hidden())
+        check("… und der Besen trägt das Abzeichen „1“",
+              (await pg.inner_text("#abz-bereinigen")).strip() == "1")
+        await pg.click('[data-rail="bereinigen"]')
+        check("Bereinigen: die Seitenleiste wechselt, „Datei fehlt“ zählt 1, Tags sind weg",
+              await pg.locator('[data-sektion="bereinigen"]').is_visible()
+              and (await pg.inner_text('[data-ansicht="fehlt"] em')).strip() == "1"
+              and await pg.locator('[data-sektion="tags"]').is_hidden())
+        await pg.click('[data-rail="katalog"]')
 
         await suche("Haken")
         await pg.locator(".karte").first.click()

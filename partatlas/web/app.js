@@ -123,14 +123,11 @@ async function ladeSeite() {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
-  // Aufräumen nur, wenn es etwas aufzuräumen gibt — dann aber mit Zahl.
-  let aufzuraeumen = 0;
-  for (const k of ["duplikate", "fehlt", "unlesbar"]) {
-    const n = z[k] || 0;
-    aufzuraeumen += n;
-    $(`[data-sektion="aufraeumen"] [data-ansicht="${k}"]`).hidden = !n && zustand.ansicht !== k;
-  }
-  $('[data-sektion="aufraeumen"]').hidden = !aufzuraeumen && !["duplikate", "fehlt", "unlesbar"].includes(zustand.ansicht);
+  // Das Zählabzeichen am Besen: nur, wenn etwas zu tun ist (der Papierkorb zählt nicht).
+  const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0);
+  const abz = $("#abz-bereinigen");
+  abz.hidden = !zu;
+  abz.textContent = zu > 99 ? "99+" : zu;
   abgleichen($("#formate"), Object.entries(z.formate).sort().map(([f, n]) =>
     `<button class="eintrag ${zustand.format === f ? "aktiv" : ""}" data-format="${esc(f)}"><span>${esc(endung[f] || f)}</span><em>${n}</em></button>`).join(""));
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
@@ -151,11 +148,16 @@ function zweig(k, tiefe) {
   return html;
 }
 
+const BEREINIGEN = ["papierkorb", "duplikate", "fehlt", "unlesbar"];
+
 function markiereAnsicht() {
+  const bereinigt = BEREINIGEN.includes(zustand.ansicht);
   document.querySelectorAll("[data-ansicht]").forEach((b) =>
     b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tags.size && !zustand.material.size && !zustand.format && !zustand.sammlung));
   document.querySelectorAll(".rail-btn[data-rail]").forEach((b) =>
-    b.classList.toggle("aktiv", (b.dataset.rail === "papierkorb") === (zustand.ansicht === "papierkorb")));
+    b.classList.toggle("aktiv", (b.dataset.rail === "bereinigen") === bereinigt));
+  // Die Seitenleiste wechselt als Ganzes, wie bei VS Code: Katalog oder Bereinigen.
+  $(".seite").dataset.modus = bereinigt ? "bereinigen" : "katalog";
 }
 
 // Die Leiste über dem Raster: Material und Tags als Chips, je mit ODER.
@@ -976,7 +978,7 @@ document.addEventListener("click", async (e) => {
   const ansicht = t.closest("[data-ansicht]");
   if (ansicht) { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
   const rail = t.closest("[data-rail]");
-  if (rail) { Object.assign(zustand, { ansicht: rail.dataset.rail === "papierkorb" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
+  if (rail) { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
   const ordner = t.closest("[data-ordner]");
   if (ordner) { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); }
   const sammlung = t.closest("[data-sammlung]");

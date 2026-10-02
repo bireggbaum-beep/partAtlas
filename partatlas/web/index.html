@@ -12,7 +12,7 @@
 <div class="app">
   <nav class="rail">
     <button class="rail-btn aktiv" data-rail="katalog" title="Katalog">▦</button>
-    <button class="rail-btn" data-rail="papierkorb" title="Papierkorb">🗑</button>
+    <button class="rail-btn" data-rail="bereinigen" title="Bereinigen">🧹<span class="rail-abz" id="abz-bereinigen" hidden></span></button>
     <span class="rail-luecke"></span>
     <button class="rail-btn" id="einstellungen" title="Einstellungen">⚙</button>
     <button class="rail-btn" id="thema" title="Hell/Dunkel">◐</button>
@@ -72,9 +72,10 @@
         <div id="sammlungen"></div>
       </div>
     </section>
-    <section class="sektion" data-sektion="aufraeumen">
-      <h3><button class="sk-kopf" data-sk="aufraeumen">AUFRÄUMEN</button></h3>
+    <section class="sektion" data-sektion="bereinigen">
+      <h3><button class="sk-kopf" data-sk="bereinigen">BEREINIGEN</button></h3>
       <div class="sk-inhalt">
+        <button class="eintrag" data-ansicht="papierkorb"><span>🗑 Papierkorb</span><em id="z-papierkorb"></em></button>
         <button class="eintrag" data-ansicht="duplikate"><span>⧉ Duplikate</span><em id="z-duplikate"></em></button>
         <button class="eintrag" data-ansicht="fehlt"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
         <button class="eintrag" data-ansicht="unlesbar"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
