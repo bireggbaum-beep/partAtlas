@@ -16,6 +16,13 @@ Ablauf:
   4. Orte, die nicht mehr da sind, entfernen. Ein Modell ohne Ort „fehlt“
      und bleibt, mit Tags und Historie.
   5. Fehlende Vorschauen rendern, nach und nach.
+
+Abbrechen (`abbrechen()`): ein Ereignis, das jede Phase je Ergebnis prüft,
+nie innerhalb einer Transaktion. Was fertig ist, steht schon in der
+Datenbank; der Rest bleibt unangetastet und der nächste Lauf macht dort
+weiter (bekannte Dateien über Ort, Grösse und Zeit, ausstehende Vorschauen
+bleiben „ausstehend“). Bei Abbruch wird nichts entfernt: die Liste der
+gesehenen Orte ist dann unvollständig.
 """
 import logging
 import multiprocessing
@@ -81,6 +88,18 @@ class Scanner:
         self.status = {"laeuft": False}
         self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
         self._pool = None
+        self._stopp = threading.Event()
+
+    def abbrechen(self):
+        """Bittet den laufenden Lauf, aufzuhören. Wahr, wenn einer lief. Ein wartender Folgelauf entfällt: wer abbricht,
+        will Ruhe, nicht den nächsten Durchgang."""
+        with self._sperre:
+            if not self.status.get("laeuft"):
+                return False
+            self._nochmal = False
+            self._stopp.set()
+        self._setze(abbricht=True)
+        return True
 
     def _neuer_pool(self):
         # spawn statt fork: der Server hat Threads und eine offene Datenbank; ein geforkter Kindprozess erbte beides halb.
@@ -103,10 +122,16 @@ class Scanner:
         offen = list(aufgaben)
         welle = None
         while offen:
+            if self._stopp.is_set():
+                return
             stueck = offen if welle is None else offen[:welle]
             auftraege = {self._pool.submit(arbeit, *a): k for k, a in stueck}
             erledigt, zerbrochen = set(), False
             for f in as_completed(auftraege):
+                if self._stopp.is_set():
+                    for g in auftraege:
+                        g.cancel()
+                    return
                 k = auftraege[f]
                 try:
                     erg = f.result()
@@ -182,20 +207,25 @@ class Scanner:
 
     def lauf(self):
         t0 = time.time()
-        self._setze(laeuft=True, phase="suchen", gefunden=0, neu=0, verschoben=0, entfernt=0,
-                    unlesbar=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None,
+        self._stopp.clear()
+        self._setze(laeuft=True, phase="suchen", gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
+                    unlesbar=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
         index = self.k.ort_index()
         wurzeln = self.k.wurzeln()
         gesehen, zu_hashen = set(), []
         for wid, w in wurzeln.items():
             for pfad, rel, st in self._ablaufen(w["pfad"]):
+                if self._stopp.is_set():
+                    return self._abgebrochen(t0)
                 schluessel = (wid, rel)
                 gesehen.add(schluessel)
                 alt = index.get(schluessel)
                 if alt and alt[1] == st.st_size and alt[2] == st.st_mtime:
                     continue
                 zu_hashen.append((schluessel, pfad, st))
+        if self._stopp.is_set():
+            return self._abgebrochen(t0)
         self._setze(gefunden=len(gesehen), phase="hashen", zu_pruefen=len(zu_hashen))
 
         self._pool = self._neuer_pool()
@@ -206,6 +236,8 @@ class Scanner:
             vorgaenger = {}                           # neuer hash -> hash, der vorher an diesem Ort lag
             ortwechsel = []                           # (hash, schluessel, st, alter_hash)
             for pfad, h, fehler in pool.map(_hash, list(nach_pfad), chunksize=8):
+                if self._stopp.is_set():      # map holt die übrigen Aufträge beim Verlassen der Schleife zurück
+                    break
                 if h is None:
                     log.warning("nicht lesbar: %s (%s)", pfad, fehler)
                     continue
@@ -230,8 +262,11 @@ class Scanner:
                         self.k.ort_entfernen(alter_hash, *s)
                     if h:
                         self.k.ort_setzen(h, s[0], s[1], st.st_size, st.st_mtime)
-            self._setze(verschoben=sum(1 for o in ortwechsel if o[0]), phase="analysieren",
-                        zu_analysieren=len(neu_je_hash), analysiert=0)
+            verschoben = sum(1 for o in ortwechsel if o[0])
+            self._setze(verschoben=verschoben, bearbeitet=verschoben)
+            if self._stopp.is_set():          # gehasht ist nur ein Teil: nichts Neues anlegen, nichts entfernen
+                return self._abgebrochen(t0)
+            self._setze(phase="analysieren", zu_analysieren=len(neu_je_hash), analysiert=0)
 
             aufgaben = [(h, (faelle[0][1], self.b.vorschau_pfad(h, "extrahiert"))) for h, faelle in neu_je_hash.items()]
             gruppe = []
@@ -244,7 +279,9 @@ class Scanner:
                 if len(gruppe) >= GRUPPE:
                     self._anlegen(gruppe, neu_je_hash, vorgaenger)
                     gruppe = []
-            self._anlegen(gruppe, neu_je_hash, vorgaenger)
+            self._anlegen(gruppe, neu_je_hash, vorgaenger)    # auch beim Abbruch: was schon analysiert ist, geht nicht verloren
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
 
             # Orte, die dieser Lauf nicht mehr gesehen hat.
             weg = [(v[0], s) for s, v in index.items() if s not in gesehen and s[0] in wurzeln]
@@ -255,9 +292,14 @@ class Scanner:
             self._setze(entfernt=len(weg), phase="vorschau")
 
             self._vorschauen()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        self._setze(laeuft=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+
+    def _abgebrochen(self, t0):
+        self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.time() - t0, 1))
 
     def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
         if not gruppe:
@@ -269,7 +311,8 @@ class Scanner:
                 self.k.neue_datei(h, felder, orte, vorschau_status, fehler, vorgaenger.get(h))
         self._setze(neu=self.status["neu"] + len(gruppe),
                     unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
-                    analysiert=self.status["analysiert"] + len(gruppe))
+                    analysiert=self.status["analysiert"] + len(gruppe),
+                    bearbeitet=self.status["bearbeitet"] + len(gruppe))
 
     def _vorschauen(self):
         offen = self.k.ausstehende_vorschauen()
@@ -305,6 +348,7 @@ class Scanner:
         with self.b.db.transaction():
             for h, status in stapel:
                 self.k.vorschau_setzen(h, status)
+        self._setze(bearbeitet=self.status["bearbeitet"] + len(stapel))
 
     def _ablaufen(self, wurzel):
         """(absolut, relativ mit /, stat) je Modelldatei; versteckte Ordner

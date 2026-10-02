@@ -262,20 +262,18 @@ gemeldet und der Lauf geht weiter (`Scanner._verteilen`: erst alles parallel, na
 Vorher brach der ganze Lauf ab und scheiterte beim nächsten Mal an derselben Datei. Geprüft in `tests/test_scan.py` (42/42) mit
 Gegenprobe. **Nicht gemessen**, wie viel (1) bringt — keine grossen Bestände mehr gemessen. Daten des Testers (351 Dateien, 149 neu, 29,8 s):
 Vorschauen 25 s (84 %), Hashen 2,9 s, Analysieren 1,8 s. **Noch offen:** (3) einmal parsen statt dreimal (Hash, Analyse, Render), sowie
-eine Zeitgrenze je Datei (ein hängender Render hält den Lauf auf) und ein Abbrechen-Knopf.
+eine Zeitgrenze je Datei (ein hängender Render hält den Lauf auf).
 
-**Als Nächstes: Abbrechen-Knopf fürs Einlesen** (für den neuen Chat). Heute gibt es keinen; man muss den Server beenden.
-- *Ziel:* in der Statuszeile oben rechts, solange `scan.laeuft`, ein „Abbrechen“; danach „Abgebrochen nach X s, N Dateien“. Nichts geht verloren:
-  der nächste Lauf macht weiter (bekannte Dateien werden über Pfad, Grösse und Datum erkannt, ausstehende Vorschauen später nachgeholt).
-- *Wo:* `partatlas/scan.py` — `Scanner` läuft im Thread `_lauf_sicher`, Arbeit in `self._pool` (spawn), Phasen suchen → hashen → analysieren →
-  vorschau; `_verteilen()` liefert die Ergebnisse nach und nach. Dazu ein Endpunkt `POST /api/scan/abbrechen` in `main.py`, ein Knopf in `app.js`
-  (SSE-Meldung `scan` mit `phase`, `laeuft`), neuer Status `abbruch`/`phase="abgebrochen"`.
-- *Idee:* ein `threading.Event`, das `lauf()` zwischen den Phasen und `_verteilen()` je Ergebnis prüft; beim Abbruch `self._pool.shutdown(wait=False,
-  cancel_futures=True)`, bereits fertige Gruppen sind schon in der Datenbank (Transaktionen zu 100). Während `pool.map` des Hashens
-  (noch ohne Prüfung) genügt es, danach abzubrechen — oder das Hashen ebenfalls auf `_verteilen` umstellen.
-- *Beachten:* nie mitten in einer Transaktion abbrechen; die Statuszeile `scanErgebnis()` darf bei Abbruch keine „Eingelesen“-Zeile zeigen; Test in
-  `tests/test_scan.py` (Lauf starten, abbrechen, zweiter Lauf vollendet ohne Duplikate) mit Gegenprobe. Die UI-Suite nur nach Absprache.
-- *Dazu offen (kleiner):* Zeitgrenze je Datei, einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
+**Abbrechen-Knopf fürs Einlesen (0.26.0):** in der Kopfzeile neben der Statuszeile „Abbrechen“, solange gelesen wird; danach „Abgebrochen nach X s,
+N Dateien“ (N = neu angelegt, verschoben, Vorschauen fertig), keine „Eingelesen“-Zeile. `Scanner.abbrechen()` setzt ein `threading.Event`, das das
+Suchen, das Hashen (die Schleife über `pool.map`) und `_verteilen()` je Ergebnis prüft — nie innerhalb einer Transaktion; was analysiert ist, wird noch
+als Gruppe geschrieben. Bei Abbruch wird **nichts entfernt** (die Liste der gesehenen Orte ist unvollständig) und kein Folgelauf gestartet. Der nächste
+Lauf macht über Ort, Grösse und Zeit dort weiter; ausstehende Vorschauen bleiben „ausstehend“. Endpunkt `POST /api/scan/abbrechen` (`{"abgebrochen": bool}`).
+Geprüft in `tests/test_scan.py` (50/50) und `test_api.py` mit Gegenproben (Ereignis nie gesetzt; Prüfung in `_verteilen` weg; Prüfung nach dem
+Analysieren weg). **Nicht geprüft:** `test_ui.py` (nach Absprache), der Knopf im Browser; die Prüfungen beim Suchen und vor dem Analysieren sind
+doppelt abgesichert, eine einzelne davon zu entfernen lässt keinen Test fallen. Ein Arbeiter, der gerade eine Datei bearbeitet, läuft zu Ende
+(Abbruch wartet nicht darauf).
+**Noch offen (klein):** Zeitgrenze je Datei, einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 ## Offen, in dieser Reihenfolge
 

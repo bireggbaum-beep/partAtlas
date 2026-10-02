@@ -354,8 +354,10 @@ function zeichneLeer() {
 // Wie lange das Einlesen gedauert hat, stehen lassen: wer einen grossen Bestand prüft, will die Zahl ablesen können.
 const PHASENNAME = { suchen: "Suchen", hashen: "Hashen", analysieren: "Analysieren", vorschau: "Vorschauen" };
 function scanErgebnis(m) {
-  if (m.dauer_s == null || !m.gefunden) return "";
+  if (m.dauer_s == null || (!m.gefunden && !m.abgebrochen)) return "";
   const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
+  // Nach einem Abbruch keine „Eingelesen“-Zeile: es ist nicht alles eingelesen.
+  if (m.abgebrochen) return `Abgebrochen nach ${zeit}, ${(m.bearbeitet || 0).toLocaleString("de-DE")} Dateien`;
   // Phasen unter einer halben Sekunde sind Rauschen
   const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
@@ -1819,11 +1821,12 @@ function live() {
     if (m.art === "scan") {
       zustand.scan = m;
       if (!zustand.modelle.length) zeichneLeer();
-      $("#scan-status").textContent = m.laeuft
+      $("#scan-abbrechen").hidden = !m.laeuft || !!m.abbricht;
+      $("#scan-status").textContent = m.laeuft && m.abbricht ? "Wird abgebrochen …" : m.laeuft
         ? `Einlesen: ${m.phase}${m.analysiert != null && m.zu_analysieren ? ` ${m.analysiert}/${m.zu_analysieren}` : ""}`
         : (m.vorschauen_offen ? "" : "");
-      if (m.phase === "vorschau" && m.vorschauen_offen) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
-      if (m.phase === "fertig") {
+      if (m.phase === "vorschau" && m.vorschauen_offen && !m.abbricht) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
+      if (m.phase === "fertig" || m.abgebrochen) {
         $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
         if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
         neuLaden();
@@ -1845,7 +1848,11 @@ function live() {
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
 neuLaden();
 programmeAktualisieren();
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+$("#scan-abbrechen").onclick = async () => {
+  $("#scan-abbrechen").hidden = true;
+  try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
+};
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.

@@ -276,4 +276,60 @@ if __name__ == "__main__":
           and all(ergebnis[n] == (n * 2, None) for n in namen if n not in ("gift", "kaputt")))
     check("Eine Datei mit Ausnahme im Arbeiter wird ebenfalls einzeln gemeldet, der Lauf geht weiter",
           ergebnis["kaputt"][0] is None and "ValueError" in ergebnis["kaputt"][1])
+
+    # -- Abbrechen: nichts geht verloren, der nächste Lauf macht weiter
+    from partatlas import scan as _scan
+    _scan.GRUPPE = 5                                   # sonst wäre ein Lauf mit 30 Dateien eine einzige Gruppe
+    ab_tmp = tempfile.mkdtemp()
+    ab_dir = os.path.join(ab_tmp, "viele")
+    os.makedirs(ab_dir)
+    for i in range(30):
+        muster.stl_binaer(os.path.join(ab_dir, f"Teil_{i:02d}.stl"), 10 + i, 20, 30)
+    ab_b = Bestand(os.path.join(ab_tmp, "bestand"))
+    ab_k = Katalog(ab_b)
+    ab_k.wurzel_hinzufuegen(ab_dir)
+    nachrichten, ausgeloest = [], []
+
+    def beobachter(st):
+        nachrichten.append(dict(st))
+        if st.get("phase") == "analysieren" and st.get("analysiert", 0) >= 5 and not ausgeloest:
+            ausgeloest.append(None)                    # vorher eintragen: abbrechen() meldet selbst wieder
+            ausgeloest[0] = ab_s.abbrechen()
+
+    ab_s = Scanner(ab_b, ab_k, melden=beobachter, prozesse=2)
+    check("Abbrechen ohne laufenden Scan ist wirkungslos und meldet das", ab_s.abbrechen() is False)
+    ab_s.lauf()
+    st = ab_s.status
+    n_halb = len(ab_k.modelle())
+    check("Abbrechen mitten im Einlesen: der Lauf endet als abgebrochen, nicht als fertig",
+          ausgeloest == [True] and st["abgebrochen"] is True and st["phase"] == "abgebrochen" and st["laeuft"] is False)
+    check("Abgebrochen: ein Teil ist angelegt, der Rest nicht, und die Zahl stimmt mit dem Katalog überein",
+          0 < n_halb < 30 and st["neu"] == n_halb and st["bearbeitet"] == n_halb)
+    check("Abgebrochen: keine Meldung „fertig“ und keine abgebrochene Phase ohne Dauer",
+          not any(m.get("phase") == "fertig" for m in nachrichten) and st["dauer_s"] is not None)
+    check("Abgebrochen: danach läuft weder das Entfernen verschwundener Orte noch die Vorschau-Phase an",
+          not any(m.get("phase") == "vorschau" for m in nachrichten))
+    ab_s.lauf()
+    st = ab_s.status
+    n_ende = len(ab_k.modelle())
+    check("Der zweite Lauf vollendet das Einlesen: alle 30, keine Duplikate",
+          st["phase"] == "fertig" and st["abgebrochen"] is False and n_ende == 30 and st["neu"] == 30 - n_halb)
+    check("Der zweite Lauf holt die ausstehenden Vorschauen nach", ab_k.ausstehende_vorschauen() == [])
+
+    # Abbruch schon beim Suchen: die Liste der gesehenen Orte ist unvollständig, also darf nichts als „weg“ gelten
+    frueh = []
+
+    def frueh_abbrechen(st):
+        if st.get("phase") == "suchen" and not frueh:
+            frueh.append(None)
+            frueh[0] = ab_s2.abbrechen()
+
+    ab_s2 = Scanner(ab_b, ab_k, melden=frueh_abbrechen, prozesse=2)
+    ab_s2.lauf()
+    check("Abbruch beim Suchen: alle 30 Modelle bleiben, keines gilt als fehlend",
+          frueh == [True] and ab_s2.status["abgebrochen"] and len(ab_k.modelle()) == 30
+          and ab_k.modelle(ansicht="fehlt") == [] and ab_s2.status["entfernt"] == 0)
+    ab_b.schliessen()
+    _scan.GRUPPE = 100
+
     muster.ende()

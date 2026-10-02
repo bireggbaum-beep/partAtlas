@@ -129,6 +129,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def scan():
         return {"gestartet": zustand["scanner"].starten()}
 
+    @app.post("/api/scan/abbrechen")
+    def scan_abbrechen():
+        return {"abgebrochen": zustand["scanner"].abbrechen()}
+
     # ---------------------------------------------------------------- Modelle
 
     @app.get("/api/modelle")
