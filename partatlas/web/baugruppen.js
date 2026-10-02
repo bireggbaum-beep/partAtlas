@@ -586,7 +586,7 @@ async function einstellungen() {
       <div class="i-titel">DARSTELLUNG</div>
       ${PDF_FELDER.slice(5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}`],
     ["programme", "Programme", `
-      <p class="dim">Mit diesen beiden Programmen öffnet partAtlas ein Modell: STEP-Dateien im CAD, alles andere im Slicer.
+      <p class="dim">Mit diesen beiden Programmen öffnet partAtlas ein Modell: STEP- und FCStd-Dateien im CAD, alles andere im Slicer.
         Was auf diesem Rechner installiert ist, steht schon da.</p>
       <div id="prog-teil">${progTeil()}</div>`],
   ];

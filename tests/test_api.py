@@ -127,6 +127,11 @@ if __name__ == "__main__":
         fc = next(p["pfad"] for p in prog["programme"] if p["name"] == "FreeCAD")
         check("Standard ohne Einstellung: STEP ins CAD, 3MF und STL in den Slicer",
               prog["standard"]["step"] == fc and "prusa-slicer" in prog["standard"]["3mf"] and "prusa-slicer" in prog["standard"]["stl"])
+        # Ein eigenes Programm gilt für alle Formate; trotzdem gehört FCStd ins CAD, nicht in einen Slicer, der es nicht kennt.
+        from partatlas import programme as _prog
+        wahl = _prog.standard([{"art": "slicer", "formate": _prog.FORMATE, "pfad": "/slicer"},
+                               {"art": "cad", "formate": ("fcstd",), "pfad": "/cad"}])
+        check("Standard: FCStd geht ins CAD, auch wenn ein eigener Slicer alle Formate beansprucht", wahl["fcstd"] == "/cad")
         haken = next(m for m in liste if m["name"] == "Haken")
         r = c.post(f"/api/modelle/{zahnrad['id']}/oeffnen", json={})
         check("Hauptknopf: Standardprogramm bekommt die Datei des Modells",

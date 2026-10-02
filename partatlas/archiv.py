@@ -17,7 +17,7 @@ import zipfile
 from . import dateien
 
 ARCHIVE = (".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz")
-ERLAUBT = {".3mf", ".stl", ".obj", ".step", ".stp", ".gcode", ".bgcode",
+ERLAUBT = {".3mf", ".stl", ".obj", ".step", ".stp", ".fcstd", ".gcode", ".bgcode",
            ".png", ".jpg", ".jpeg", ".webp", ".gif", ".txt", ".md", ".pdf"}
 MAX_GESAMT = 2 * 1024**3
 MAX_EINTRAEGE = 20_000

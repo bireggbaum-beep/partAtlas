@@ -94,7 +94,10 @@ function toast(text) {
 
 const zahl = (x, stellen = 1) => x == null ? "–" : Number(x).toLocaleString("de-DE", { maximumFractionDigits: stellen });
 const masse = (m) => m ? m.map((v) => zahl(v)).join(" × ") + " mm" : "";
-const endung = { "3mf": ".3mf", stl: ".stl", obj: ".obj", step: ".step" };
+const endung = { "3mf": ".3mf", stl: ".stl", obj: ".obj", step: ".step", fcstd: ".FCStd" };
+// CAD-Formate ohne Netz: keine Masse, keine 3D-Ansicht; ein Bild nur, wenn die Datei eins mitbringt.
+const nurCad = (m) => m.format === "step" || m.format === "fcstd";
+const nurCadText = (m) => `${m.format === "fcstd" ? "FCStd" : "STEP"} · nur CAD`;
 const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()) < 7 * 864e5;
 
 // ---------------------------------------------------------------- Laden
@@ -146,7 +149,7 @@ const STATUS = { offen: "Noch nicht gedruckt", gedruckt: "Gedruckt", fehlt: "Dat
 const GRUPPEN = {
   ordner: { schluessel: ordnerSchluessel, beschriftung: ordnerBeschriftung, vergleich: ordnerVergleich },
   format: { schluessel: (m) => m.format || "", beschriftung: (k) => (endung[k] || k).replace(".", "").toUpperCase(),
-            vergleich: reihenfolge(["3mf", "stl", "obj", "step"]) },
+            vergleich: reihenfolge(["3mf", "stl", "obj", "step", "fcstd"]) },
   material: { schluessel: (m) => m.material || "", beschriftung: (k) => k || "Ohne Material",
               vergleich: (a, b) => (!a) - (!b) || natuerlich(a, b) },
   status: { schluessel: (m) => (m.fehlt ? "fehlt" : m.fehler ? "unlesbar" : m.drucke_n || m.gedruckt ? "gedruckt" : "offen"),
@@ -335,7 +338,7 @@ function zeichneLeer() {
       <p>Wähle den Ordner mit deinen 3D-Dateien. partAtlas liest ihn samt Unterordnern ein und
         katalogisiert die Dateien dort, wo sie liegen — nichts wird kopiert oder verschoben.</p>
       <ul>
-        <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP (ohne Geometrie)</li>
+        <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP und FCStd (ohne Geometrie)</li>
         <li><b>Verschieben/Umbenennen</b> im Dateimanager bleibt erkannt — Tags und Verknüpfungen hängen am Inhalt, nicht am Pfad</li>
         <li><b>Weitere Ordner</b> jederzeit über Importieren → Ordner hinzufügen</li>
       </ul>
@@ -472,7 +475,7 @@ function statusBadge(m) {
 
 function karte(m, x, y) {
   const url = bildUrl(m);
-  const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (m.format === "step" ? "STEP · nur CAD" : "keine Vorschau");
+  const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (nurCad(m) ? nurCadText(m) : "keine Vorschau");
   const markiert = zustand.auswahl.has(m.id);
   return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
     <div class="bild">${url ? bildTag(url) : `<div class="platzhalter">${platz}</div>`}
@@ -495,7 +498,7 @@ function zeileK(m, y) {
   const chips = [...(m.materialien || []).map((x) => `<span class="chip-k mat">${esc(x)}</span>`), ...m.tags.map((t) => `<span class="chip-k">#${esc(t)}</span>`)].join("");
   return `<div class="zeile-k ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
-    <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : ""}</div>`}</div>
+    <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : m.format === "fcstd" ? "FCStd" : ""}</div>`}</div>
     <div class="k-text">
       <div class="k-name" title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
@@ -993,7 +996,7 @@ async function dreiD() {
 }
 
 async function zeigeGalerie(m) {
-  const hatNetz = !m.papierkorb && !m.fehlt && !m.fehler_text && m.format !== "step";
+  const hatNetz = !m.papierkorb && !m.fehlt && !m.fehler_text && !nurCad(m);
   const v = await dreiD().catch(() => null);
   if (zustand.gewaehlt !== m.id) return;
   const kann3d = hatNetz && v && v.webglMoeglich();
@@ -1025,7 +1028,7 @@ function galerieZeigen(i) {
 }
 
 const hauptHtml = (m, f, darf) => !f
-  ? `<div class="gal-leer"><span>${m.format === "step" ? "STEP · nur CAD" : "Keine Vorschau"}</span>
+  ? `<div class="gal-leer"><span>${nurCad(m) ? nurCadText(m) : "Keine Vorschau"}</span>
       ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`
   : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
   : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
@@ -1378,7 +1381,7 @@ async function wurzelNeu() {
   const pfad = w.keinDialog ? await ordnerWaehler() : w.pfad;
   if (!pfad) return;
   if (!w.keinDialog && !w.modelle) {
-    const frage = await dialog(`<h2>Ordner ohne Modelle</h2><p>In diesem Ordner liegen keine Modelldateien (3MF, STL, OBJ, STEP).</p>
+    const frage = await dialog(`<h2>Ordner ohne Modelle</h2><p>In diesem Ordner liegen keine Modelldateien (3MF, STL, OBJ, STEP, FCStd).</p>
       <p class="dim">${esc(pfad)}</p>
       <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf" value="ja">Trotzdem hinzufügen</button></div>`);
     if (frage !== "ja") return;

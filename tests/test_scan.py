@@ -332,4 +332,22 @@ if __name__ == "__main__":
     ab_b.schliessen()
     _scan.GRUPPE = 100
 
+    # -- FreeCAD-Dokumente: mit Thumbnail ein Bild, ohne keines, und nie eine „ausstehende“ Vorschau, die nie kommt
+    fc_tmp = tempfile.mkdtemp()
+    fc_dir = os.path.join(fc_tmp, "cad")
+    os.makedirs(fc_dir)
+    muster.fcstd(os.path.join(fc_dir, "mit_bild.FCStd"))
+    muster.fcstd(os.path.join(fc_dir, "ohne_bild.FCStd"), thumbnail=False)
+    fc_b = Bestand(os.path.join(fc_tmp, "bestand"))
+    fc_k = Katalog(fc_b)
+    fc_k.wurzel_hinzufuegen(fc_dir)
+    fc_s = Scanner(fc_b, fc_k, prozesse=2)
+    fc_s.lauf()
+    fc = {m["name"]: m for m in fc_k.modelle()}
+    check("FCStd im Scan: mit Thumbnail „eingebettet“, ohne „keine“, nichts bleibt ausstehend",
+          sorted(fc) == ["mit_bild", "ohne_bild"] and fc["mit_bild"]["vorschau"] == "eingebettet"
+          and fc["ohne_bild"]["vorschau"] == "keine" and fc_k.ausstehende_vorschauen() == []
+          and fc_s.status["vorschauen_offen"] == 0)
+    fc_b.schliessen()
+
     muster.ende()

@@ -123,6 +123,23 @@ def step(pfad):
         fh.write("ISO-10303-21;\nHEADER;\nFILE_NAME('Welle','2026-09-30',(''),(''),'','','');\nENDSEC;\nEND-ISO-10303-21;\n")
 
 
+def fcstd(pfad, thumbnail=True, document=True):
+    """FreeCAD-Dokument: Zip mit Document.xml (erst die Eigenschaften des Dokuments, dann ein Objekt mit eigenem Label),
+    einer BREP-Datei und, wenn verlangt, dem Thumbnail."""
+    xml = ('<?xml version="1.0" encoding="utf-8"?><Document SchemaVersion="4"><Properties Count="2">'
+           '<Property name="Label" type="App::PropertyString"><String value="Gehaeuse"/></Property>'
+           '<Property name="CreatedBy" type="App::PropertyString"><String value="Tester"/></Property></Properties>'
+           '<Objects Count="1"><Object type="Part::Box" name="Box"><Properties Count="1">'
+           '<Property name="Label" type="App::PropertyString"><String value="Objektlabel"/></Property>'
+           '</Properties></Object></Objects></Document>')
+    with zipfile.ZipFile(pfad, "w") as z:
+        if document:
+            z.writestr("Document.xml", xml)
+        z.writestr("PartShape.brp", b"DBRep_DrawableShape")
+        if thumbnail:
+            z.writestr("thumbnails/Thumbnail.png", PNG_1PX)
+
+
 # -- Arbeitsfunktionen für die Absturz-Prüfungen des Scans (müssen in einem importierbaren Modul liegen: die Arbeiter starten per spawn)
 def arbeit_test(x):
     if x == "gift":

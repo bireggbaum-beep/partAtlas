@@ -220,7 +220,7 @@ td:first-child { white-space: nowrap; }
     <tr><td><code>"arm front"</code></td><td>Genau diese Wortfolge.</td></tr>
     <tr><td><code>-deckel</code></td><td>Schließt das Wort aus.</td></tr>
     <tr><td><code>tag:arm</code></td><td>Nur Modelle mit dem Tag „arm“ (genau, nicht „armatur“).</td></tr>
-    <tr><td><code>format:stl</code></td><td>Nur ein Format: <code>3mf</code>, <code>stl</code>, <code>obj</code>, <code>step</code>.</td></tr>
+    <tr><td><code>format:stl</code></td><td>Nur ein Format: <code>3mf</code>, <code>stl</code>, <code>obj</code>, <code>step</code>, <code>fcstd</code>.</td></tr>
     <tr><td><code>gedruckt:ja</code></td><td>Nur bereits gedruckte Modelle (<code>nein</code> für die übrigen).</td></tr>
     <tr><td><code>favorit:ja</code></td><td>Nur Favoriten.</td></tr>
   </table>
@@ -304,7 +304,7 @@ td:first-child { white-space: nowrap; }
   <ul>
     <li><b>Erkannt</b> werden Slicer wie PrusaSlicer, OrcaSlicer, Bambu Studio, SuperSlicer und Cura sowie FreeCAD —
     im PATH, als Flatpak oder als AppImage (z. B. in <code>~/Applications</code> oder <code>~/AppImages</code>).</li>
-    <li><b>Pro Format ein Standard:</b> STEP geht ins CAD, sonst in den Slicer. In den Einstellungen umstellbar; eigene Programme lassen sich eintragen.</li>
+    <li><b>Pro Format ein Standard:</b> STEP und FCStd gehen ins CAD, sonst in den Slicer. In den Einstellungen umstellbar; eigene Programme lassen sich eintragen.</li>
     <li><b>Mit dem System öffnen</b> (xdg-open) geht immer.</li>
     <li><b>Im Ordner zeigen</b> öffnet den Dateimanager an der Datei.</li>
   </ul>
@@ -373,6 +373,7 @@ td:first-child { white-space: nowrap; }
     <tr><td>STL</td><td>Geometrie, Maße, Volumen, Gewicht. Vorschau wird berechnet.</td></tr>
     <tr><td>OBJ</td><td>Geometrie, Maße. Vorschau wird berechnet.</td></tr>
     <tr><td>STEP / STP</td><td>Wird katalogisiert und im CAD geöffnet.</td></tr>
+    <tr><td>FCStd</td><td>FreeCAD-Dokument. Titel und Urheber kommen aus der Datei. Als Vorschau dient das Bild, das FreeCAD beim Speichern mitlegt, falls vorhanden; Maße gibt es nicht. Öffnet in FreeCAD.</td></tr>
   </table>
 </section>
 

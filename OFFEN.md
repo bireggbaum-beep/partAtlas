@@ -275,6 +275,14 @@ doppelt abgesichert, eine einzelne davon zu entfernen lässt keinen Test fallen.
 (Abbruch wartet nicht darauf).
 **Noch offen (klein):** Zeitgrenze je Datei, einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
+**FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht
+der Objekte). Vorschau nur aus `thumbnails/Thumbnail.png`, wenn FreeCAD es beim Speichern mitlegt (Einstellung in FreeCAD); ohne Thumbnail steht
+„FCStd · nur CAD“ wie bei STEP. **Keine Masse, kein Volumen, keine 3D-Ansicht:** die Formen liegen als BREP-Dateien im Zip und brauchen Open CASCADE.
+„Öffnen“ geht ins CAD (FreeCAD), nie in einen Slicer (`programme.CAD_FORMATE`). Geprüft in `test_formate`, `test_scan`, `test_api` mit Gegenproben.
+**Nicht geprüft:** an einer echten FCStd-Datei (nur ein nachgebautes Zip mit der Struktur aus dem FreeCAD-Format), und `test_ui.py`.
+**Offen, falls das Thumbnail zu klein ist:** FreeCAD legt es in kleiner Auflösung ab; ein berechnetes Bild bräuchte FreeCAD selbst (`freecadcmd`) oder
+Open CASCADE — Aufwand 3–4, erst nach Rückmeldung des Testers.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

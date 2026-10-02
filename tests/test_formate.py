@@ -46,6 +46,21 @@ muster.step(os.path.join(d, "w.step"))
 a = formate.analysiere(os.path.join(d, "w.step"))
 check("STEP: aufgenommen ohne Geometrie, Titel aus dem Kopf", a.format == "step" and a.titel == "Welle" and a.masse_mm is None)
 
+muster.fcstd(os.path.join(d, "g.FCStd"))
+a = formate.analysiere(os.path.join(d, "g.FCStd"))
+check("FCStd: Titel und Urheber aus den Eigenschaften des Dokuments, nicht eines Objekts",
+      a.format == "fcstd" and a.titel == "Gehaeuse" and a.designer == "Tester")
+check("FCStd: das Thumbnail der Datei ist die Vorschau, Geometrie gibt es nicht",
+      a.vorschau_png == muster.PNG_1PX and a.masse_mm is None and a.netz is None)
+muster.fcstd(os.path.join(d, "ohne.fcstd"), thumbnail=False)
+check("FCStd ohne Thumbnail: aufgenommen, ohne Vorschau", formate.analysiere(os.path.join(d, "ohne.fcstd")).vorschau_png is None)
+muster.fcstd(os.path.join(d, "kein_fc.fcstd"), document=False)
+try:
+    formate.analysiere(os.path.join(d, "kein_fc.fcstd"))
+    check("Ein Zip ohne Document.xml ist kein FreeCAD-Dokument", False)
+except formate.FormatFehler:
+    check("Ein Zip ohne Document.xml ist kein FreeCAD-Dokument", True)
+
 for name, inhalt in [("kaputt.stl", b"\x00" * 90), ("kaputt.3mf", b"PK kein zip"), ("leer.obj", b"# nichts\n")]:
     with open(os.path.join(d, name), "wb") as f:
         f.write(inhalt)

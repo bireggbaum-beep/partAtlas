@@ -1,5 +1,5 @@
 """
-Modelldateien lesen: STL, OBJ, 3MF, STEP.
+Modelldateien lesen: STL, OBJ, 3MF, STEP, FCStd.
 
 Jeder Leser liefert dasselbe Ergebnis (`Analyse`), damit Scan und
 Vorschau nichts über Formate wissen müssen. Ein Leser wirft bei einer
@@ -22,7 +22,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-FORMATE = {".3mf": "3mf", ".stl": "stl", ".obj": "obj", ".step": "step", ".stp": "step"}
+FORMATE = {".3mf": "3mf", ".stl": "stl", ".obj": "obj", ".step": "step", ".stp": "step", ".fcstd": "fcstd"}
+
+# CAD-Formate, aus denen partAtlas kein Netz bekommt: keine Masse, keine 3D-Ansicht, kein berechnetes Vorschaubild.
+# Sie öffnen im CAD; ein Bild gibt es nur, wenn die Datei eins mitbringt.
+OHNE_NETZ = ("step", "fcstd")
 
 # Obergrenzen gegen Zip-Bomben und absurde Dateien. Ein echtes 3MF mit
 # vielen Platten kommt auf einige 100 MB entpackt; mehr als 2 GB ist kein
@@ -76,7 +80,7 @@ def analysiere(pfad, mit_netz=False):
     if fmt is None:
         raise FormatFehler(f"kein Modellformat: {pfad}")
     try:
-        a = {"stl": _stl, "obj": _obj, "3mf": _3mf, "step": _step}[fmt](pfad)
+        a = {"stl": _stl, "obj": _obj, "3mf": _3mf, "step": _step, "fcstd": _fcstd}[fmt](pfad)
     except FormatFehler:
         raise
     except (OSError, ValueError, KeyError, IndexError, struct.error,
@@ -169,6 +173,31 @@ def _step(pfad):
         raise FormatFehler("kein STEP (ISO-10303-21 fehlt)")
     m = re.search(r"FILE_NAME\s*\(\s*'([^']*)'", kopf)
     return Analyse("step", titel=(m.group(1) or None) if m else None)
+
+
+# ---------------------------------------------------------------- FCStd
+
+PNG_KOPF = b"\x89PNG\r\n\x1a\n"
+
+
+def _fcstd(pfad):
+    """Ein FreeCAD-Dokument ist ein Zip: Document.xml (Eigenschaften), je Formkörper eine BREP-Datei und, wenn beim
+    Speichern eingestellt, thumbnails/Thumbnail.png. Die BREP-Formen brauchen Open CASCADE — wie bei STEP keine Geometrie
+    hier; das Bild der Datei ist die ganze Vorschau."""
+    z = _Zip(pfad)
+    xml = z.lies("Document.xml", 256 << 20)
+    if xml is None:
+        raise FormatFehler("kein FreeCAD-Dokument (Document.xml fehlt)")
+    # Nur die Eigenschaften des Dokuments selbst: die der Objekte darunter tragen gleiche Namen und gehören nicht hierher.
+    eigen = ET.fromstring(xml).find("Properties")
+    werte = {}
+    for p in (eigen if eigen is not None else []):
+        s = p.find("String")
+        if s is not None and s.get("value"):
+            werte[p.get("name")] = s.get("value")
+    bild = z.lies("thumbnails/Thumbnail.png", MAX_VORSCHAU)
+    return Analyse("fcstd", titel=werte.get("Label"), designer=werte.get("CreatedBy"),
+                   vorschau_png=bild if bild and bild.startswith(PNG_KOPF) else None)
 
 
 # ---------------------------------------------------------------- 3MF

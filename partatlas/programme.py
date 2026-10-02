@@ -18,7 +18,8 @@ import urllib.parse
 
 SLICER, CAD = "slicer", "cad"
 ARTEN = {SLICER: "Slicer", CAD: "CAD / Modeller"}
-FORMATE = ("3mf", "stl", "obj", "step")
+FORMATE = ("3mf", "stl", "obj", "step", "fcstd")
+CAD_FORMATE = ("step", "fcstd")        # gehören ins CAD, ein Slicer kennt sie nicht
 
 # name, art, Formate, Programmnamen (PATH, flatpak-Export), AppImage-Muster,
 # Windows-Muster relativ zu ProgramFiles bzw. LOCALAPPDATA\Programs.
@@ -46,7 +47,7 @@ BEKANNT = [
      ["AnycubicSlicerNext", "anycubicslicernext", "anycubic-slicer-next", "AnycubicSlicer", "anycubicslicer"],
      ["*Anycubic*Slicer*.AppImage", "*Anycubic*Slicer*.appimage"],
      [r"AnycubicSlicer*\AnycubicSlicer*.exe", r"Anycubic*\AnycubicSlicer*.exe"]),
-    ("FreeCAD", CAD, ("step", "stl", "obj"),
+    ("FreeCAD", CAD, ("step", "stl", "obj", "fcstd"),
      ["freecad", "FreeCAD", "org.freecad.FreeCAD", "freecad-daily"],
      ["*FreeCAD*.AppImage"], [r"FreeCAD*\bin\freecad.exe"]),
 ]
@@ -163,12 +164,12 @@ def alle(einstellungen):
 
 
 def standard(programme, einstellungen=None):
-    """Je Format das Programm, das der Hauptknopf nimmt: STEP ins CAD (ein Slicer
-    würde es nur vernetzen), alles andere in den Slicer — so wie man druckt."""
+    """Je Format das Programm, das der Hauptknopf nimmt: STEP und FCStd ins CAD (ein Slicer
+    würde STEP nur vernetzen und FCStd gar nicht kennen), alles andere in den Slicer — so wie man druckt."""
     ergebnis = {}
     for fmt in FORMATE:
         passend = [p for p in programme if fmt in p["formate"]]
-        vorzug = CAD if fmt == "step" else SLICER
+        vorzug = CAD if fmt in CAD_FORMATE else SLICER
         wahl = next((p for p in passend if p["art"] == vorzug), None) or (passend[0] if passend else None)
         ergebnis[fmt] = wahl["pfad"] if wahl else None
     return ergebnis

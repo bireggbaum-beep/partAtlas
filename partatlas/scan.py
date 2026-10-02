@@ -55,7 +55,7 @@ def _analyse(pfad, vorschau_ziel):
         a = formate.analysiere(pfad)
     except formate.FormatFehler as e:
         return {"format": formate.format_von(pfad)}, "keine", str(e)
-    status = "ausstehend" if a.format != "step" else "keine"
+    status = "keine" if a.format in formate.OHNE_NETZ else "ausstehend"
     if a.vorschau_png:
         dateien.schreibe_atomar(vorschau_ziel, a.vorschau_png)
         status = "eingebettet"
