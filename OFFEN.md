@@ -283,6 +283,20 @@ der Objekte). Vorschau nur aus `thumbnails/Thumbnail.png`, wenn FreeCAD es beim 
 **Offen, falls das Thumbnail zu klein ist:** FreeCAD legt es in kleiner Auflösung ab; ein berechnetes Bild bräuchte FreeCAD selbst (`freecadcmd`) oder
 Open CASCADE — Aufwand 3–4, erst nach Rückmeldung des Testers.
 
+**STEP über FreeCAD (0.28.0):** nach dem Einlesen (Phase 6 in `scan.py`) startet partAtlas FreeCAD **ohne Fenster** (`cad.konsole_befehl`:
+FreeCADCmd neben dem erkannten Programm, Flatpak mit `--command=FreeCADCmd`, sonst die Datei mit `-c`) **einmal je Stapel von 25** und lässt `cad_skript.py`
+darin jede STEP in ein Netz umwandeln (`Part.read`, `MeshPart.meshFromShape`, 0,1 mm). Das Netz liegt abgeleitet in `<bestand>/netz/<hash>.stl` (nicht
+gesichert, mit der Datei weg); daraus kommen Maße, Volumen, Gewicht, das berechnete Vorschaubild und die 3D-Ansicht (`/api/modelle/{id}/netz` liest bei STEP
+dieses Netz). Eine Datei, die scheitert oder länger als 180 s braucht, wird als Fehler vermerkt (`cad: "fehler"`) und **nicht bei jedem Lauf wiederholt**;
+FreeCAD wird für den Rest neu gestartet. Ohne FreeCAD bleibt `cad` ausstehend und kommt beim nächsten Lauf dran. Abbrechen beendet FreeCAD sofort. Auch ältere
+Einträge ohne das Feld werden nachgeholt. Geprüft in `test_cad` (11/11), `test_scan` (56/56), `test_api` (59/59) mit Gegenproben und einer Attrappe, die das echte
+`cad_skript.py` mit Ersatz für Part/MeshPart ausführt.
+**Nicht geprüft — das echte FreeCAD:** der Aufruf (`-c` für AppImage, Flatpak-Name, ob FreeCADCmd nach dem Skript endet; die Zeile wartet sonst 5 s und beendet es),
+`Part.read`/`MeshPart.meshFromShape`, ob die ASCII-STL von `mesh.write` für grosse Teile zu langsam einzulesen ist. Der Tester sieht es beim ersten Einlesen:
+Kacheln bekommen nach einer Weile ein Bild; sonst steht der Grund im Protokoll (`partatlas.cad`, `arbeit/cad/…/ausgabe.log` nur während des Laufs).
+**Offen:** Wiederholen gescheiterter STEP-Dateien aus der Oberfläche; FCStd ohne Thumbnail über denselben Weg (Dokument laden, sichtbare Körper vernetzen);
+Auto-Export einer Baugruppe in Einzelteile (brainstorm, braucht erst eine echte Baugruppe vom Tester).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

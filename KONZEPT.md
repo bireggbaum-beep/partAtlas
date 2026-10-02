@@ -491,7 +491,8 @@ Sie gehen mit dem Modell in den Papierkorb und kommen mit ihm zurück.
 
 **Da:** Wurzelordner (mehrere), Scan mit Hash als Kennung (Verschieben,
 Umbenennen, Kopien, fehlende Dateien), Leser für STL/OBJ/3MF (Komponenten,
-Transformationen, Bild, Platten aus `slice_info`) und STEP ohne Geometrie,
+Transformationen, Bild, Platten aus `slice_info`), STEP (Maße, Vorschau und 3D-Ansicht über FreeCAD ohne Fenster, wenn es
+installiert ist; sonst nur aufgenommen) und FCStd (Vorschau aus dem Thumbnail der Datei),
 Vorschau auf dem Server in der Filamentfarbe, automatische Tags wie im
 3MF Katalog, Suche wie in pDMS (Teilwörter, alle Wörter, "Wortfolge",
 -wort, Feldfilter tag:/ordner:/baugruppe:/sammlung:/material:/format:/
@@ -607,6 +608,7 @@ Ungeprüft, zu klären vor der genannten Phase:
 | Anycubic Slicer: Programmnamen und Orte an einer echten Installation | — |
 | Druck bei ausgeschaltetem PC: Nachtrag aus der Moonraker-Historie beim Start; bei Bambu unbekannt | 2 |
 | Render-Zeit mit echten Modellen auf dem Rechner des Anwenders (hier nur erzeugte Formen gemessen) | 1 |
+| STEP über FreeCAD ohne Fenster: der Aufruf an einem echten FreeCAD (Paket, Flatpak, AppImage, Windows) und die Zeit für grosse Teile | 1 |
 | flatTSDB: Stand und Ort der Bibliothek | 3 |
 | Bambu LAN: seit den Firmware-Änderungen 2025 womöglich nur im Entwicklermodus | 4 |
 | OrcaSlicer: Slicen über die Kommandozeile mit fremder Konfiguration | 4 |

@@ -16,6 +16,8 @@ Ablauf:
   4. Orte, die nicht mehr da sind, entfernen. Ein Modell ohne Ort „fehlt“
      und bleibt, mit Tags und Historie.
   5. Fehlende Vorschauen rendern, nach und nach.
+  6. STEP-Dateien über FreeCAD (ohne Fenster) in ein Netz umwandeln; daraus kommen Vorschau, Maße und die 3D-Ansicht.
+     Ohne FreeCAD bleiben sie „ausstehend“ und kommen beim nächsten Lauf dran.
 
 Abbrechen (`abbrechen()`): ein Ereignis, das jede Phase je Ergebnis prüft,
 nie innerhalb einer Transaktion. Was fertig ist, steht schon in der
@@ -32,7 +34,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
 
-from . import dateien, formate, vorschau
+from . import cad, dateien, formate, programme, vorschau
 
 log = logging.getLogger("partatlas.scan")
 
@@ -59,7 +61,10 @@ def _analyse(pfad, vorschau_ziel):
     if a.vorschau_png:
         dateien.schreibe_atomar(vorschau_ziel, a.vorschau_png)
         status = "eingebettet"
-    return a.als_felder(), status, None
+    felder = a.als_felder()
+    if a.format == "step":
+        felder["cad"] = "ausstehend"     # Netz kommt später von FreeCAD (Phase 6), wenn es da ist
+    return felder, status, None
 
 
 def _rendern(pfad, vorschau_ziel, farbe=None):
@@ -74,11 +79,26 @@ def _rendern(pfad, vorschau_ziel, farbe=None):
     return "gerendert", None
 
 
+def _cad_bild(stl, vorschau_ziel):
+    """Aus dem Netz, das FreeCAD geschrieben hat: Maße (wie bei einer STL) und das berechnete Vorschaubild."""
+    try:
+        a = formate.analysiere(stl, mit_netz=True)
+        felder = {k: v for k, v in a.als_felder().items() if k in ("masse_mm", "volumen_cm3", "flaeche_cm2", "dreiecke")}
+        png = vorschau.rendere(a.netz)
+    except (formate.FormatFehler, MemoryError) as e:
+        return {}, "fehler", str(e)
+    if not png:
+        return felder, "keine", None
+    dateien.schreibe_atomar(vorschau_ziel, png)
+    return felder, "gerendert", None
+
+
 # ---------------------------------------------------------------- Scanner
 
 class Scanner:
-    def __init__(self, bestand, katalog, melden=None, prozesse=None):
+    def __init__(self, bestand, katalog, melden=None, prozesse=None, cad_befehl=None):
         self.b = bestand
+        self.cad_befehl = cad_befehl        # Aufruf von FreeCAD ohne Fenster; None: aus den installierten Programmen ermitteln
         self.k = katalog
         self.melden = melden or (lambda status: None)
         self.prozesse = prozesse or max(1, (os.cpu_count() or 2) - 1)
@@ -294,6 +314,9 @@ class Scanner:
             self._vorschauen()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
+            self._cad()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
         self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
@@ -339,6 +362,49 @@ class Scanner:
                 stapel = []
                 self._setze(vorschauen_offen=rest)
         self._vorschauen_speichern(stapel)
+
+    def _cad_aufruf(self):
+        if self.cad_befehl:
+            return self.cad_befehl
+        return cad.konsole_befehl((programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}).get("pfad"))
+
+    def _cad(self):
+        """STEP-Dateien ohne Netz über FreeCAD umwandeln. Das Netz liegt abgeleitet in `netz/<hash>.stl` (nicht gesichert,
+        jederzeit neu berechenbar). Ein Fehler oder eine Zeitüberschreitung betrifft nur seine Datei und wird nicht bei
+        jedem Lauf wiederholt: sonst hielte dieselbe Datei jeden Scan um die Zeitgrenze auf."""
+        offen = self.k.ausstehende_cad()
+        if not offen:
+            return
+        befehl = self._cad_aufruf()
+        if not befehl:
+            self._setze(cad_ohne_freecad=len(offen))
+            return
+        aufgaben = []
+        for h, d in offen:
+            ort = next((o for o in d.get("orte", []) if self.k.absoluter_pfad(o)), None)
+            pfad = self.k.absoluter_pfad(ort) if ort else None
+            if pfad and os.path.exists(pfad):
+                aufgaben.append((h, pfad, self.b.pfad("arbeit", "cad", f"{h}.stl")))
+        self._setze(phase="cad", cad_offen=len(aufgaben))
+        rest = len(aufgaben)
+        for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
+            rest -= 1
+            if not ok:
+                log.warning("STEP %s: %s", h[:12], info)
+                with self.b.db.transaction():
+                    self.k.cad_fehler(h, str(info))
+            else:
+                ziel = self.b.netz_pfad(h)
+                os.makedirs(os.path.dirname(ziel), exist_ok=True)
+                os.replace(self.b.pfad("arbeit", "cad", f"{h}.stl"), ziel)
+                felder, status, fehler = {}, "fehler", "Vorschau nicht berechnet"
+                for _, erg, ausnahme in self._verteilen([(h, (ziel, self.b.vorschau_pfad(h, "berechnet")))], _cad_bild):
+                    felder, status, fehler = ({}, "fehler", ausnahme) if ausnahme else erg
+                if self._stopp.is_set():
+                    break                  # abgebrochen: die Datei bleibt ausstehend, das Netz liegt schon da
+                with self.b.db.transaction():
+                    self.k.cad_ergebnis(h, felder, status, fehler)
+            self._setze(cad_offen=rest, bearbeitet=self.status["bearbeitet"] + 1)
 
     def _vorschauen_speichern(self, stapel):
         """Gruppenweise in einer Transaktion: jede einzelne Änderung kostet ihren fsync (VERTRAG §5), bei tausenden Vorschauen

@@ -228,4 +228,21 @@ if __name__ == "__main__":
         baum = c.get("/api/ordner").json()
         check("Ordnerbaum über die API", baum[0]["name"] == "3D-Druck" and baum[0]["kinder"][0]["name"] == "Technik")
         check("Oberfläche wird ausgeliefert", "partAtlas" in c.get("/").text)
+
+    # -- STEP: Netz und Vorschau kommen von FreeCAD (hier die Attrappe), die 3D-Ansicht liest das Netz
+    import sys
+    step_dir = os.path.join(tmp, "cad")
+    os.makedirs(step_dir)
+    muster.step(os.path.join(step_dir, "Welle.step"))
+    with TestClient(erstelle_app(os.path.join(tmp, "bestand_step"), prozesse=2)) as c:
+        z = c.app.state.zustand
+        z["scanner"].cad_befehl = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "cad_attrappe.py")]
+        c.post("/api/wurzeln", json={"pfad": step_dir})
+        z["scanner"].warten(120)
+        welle = c.get("/api/modelle").json()[0]
+        check("STEP nach dem Einlesen: Vorschau und Maße stehen da, FreeCAD hat das Netz geliefert",
+              welle["cad"] == "ok" and welle["vorschau"] == "gerendert" and welle["masse"] is not None)
+        r = c.get(f"/api/modelle/{welle['id']}/netz")
+        check("3D-Ansicht für STEP liest das Netz aus dem Bestand", r.status_code == 200 and r.headers["x-dreiecke"] == "12")
+        check("Das Vorschaubild wird ausgeliefert", c.get(f"/api/vorschau/{welle['hash']}.png").status_code == 200)
     muster.ende()

@@ -236,6 +236,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
         if not datei:
             raise HTTPException(404, "Datei nicht da")
+        if formate.format_von(datei) in formate.OHNE_NETZ:
+            # STEP: das Netz, das FreeCAD beim Einlesen geschrieben hat; ohne es gibt es nichts zu zeigen.
+            datei = zustand["bestand"].netz_pfad(m["hash"])
+            if not os.path.exists(datei):
+                raise HTTPException(422, "Keine Geometrie")
         try:
             a = formate.analysiere(datei, mit_netz=True)
         except formate.FormatFehler as e:

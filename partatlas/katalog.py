@@ -174,6 +174,7 @@ class Katalog:
                 os.unlink(self.b.vorschau_pfad(alt, art))
             except FileNotFoundError:
                 pass
+        self._netz_weg(alt)
         return mid
 
     def namen_angleichen(self):
@@ -204,6 +205,31 @@ class Katalog:
         d = (self.db.get_node(ref(DATEI, h), readonly=True) or self.db.get_node_raw(ref(DATEI, h))) if h else None
         v = self.vorschauen(d)
         return self.b.pfad(*v[0][1].split("/")) if v else None
+
+    def ausstehende_cad(self):
+        """STEP-Dateien, die noch ein Netz von FreeCAD brauchen. Auch ältere Einträge ohne das Feld `cad`: sie wurden vor
+        dieser Fassung aufgenommen. `fehler` ist der Lesefehler der Datei selbst, nicht der der Umwandlung."""
+        return [(h, d) for h, d in self._dateien().items()
+                if d.get("format") == "step" and d.get("cad") in (None, "ausstehend") and d.get("orte") and not d.get("fehler")]
+
+    def cad_ergebnis(self, h, felder, vorschau, fehler=None):
+        """Netz und Vorschau aus FreeCAD sind da. Der Aufrufer hält die Transaktion."""
+        if self.db.get_node(ref(DATEI, h), readonly=True) is None:
+            return
+        if vorschau == "fehler":
+            return self.cad_fehler(h, fehler or "Vorschau nicht möglich")
+        self.db.update_node(DATEI, h, {**felder, "cad": "ok", "cad_fehler": None, "vorschau": vorschau,
+                                       **({"vorschau_berechnet": self.b.vorschau_rel(h, "berechnet")} if vorschau == "gerendert" else {})})
+
+    def cad_fehler(self, h, text):
+        if self.db.get_node(ref(DATEI, h), readonly=True) is not None:
+            self.db.update_node(DATEI, h, {"cad": "fehler", "cad_fehler": text})
+
+    def _netz_weg(self, h):
+        try:
+            os.unlink(self.b.netz_pfad(h))
+        except FileNotFoundError:
+            pass
 
     def ausstehende_vorschauen(self):
         return [(h, d) for h, d in self._dateien().items() if d.get("vorschau") == "ausstehend"]
@@ -247,7 +273,7 @@ class Katalog:
             "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
             "drucke_n": m.get("drucke_n", 0),
             "favorit": m.get("favorit", False), "hash": h,
-            "vorschau": d.get("vorschau"), "fehlt": not orte and not papierkorb,
+            "vorschau": d.get("vorschau"), "cad": d.get("cad"), "fehlt": not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),
             "ordner": [f'{o["wurzel"]}/{o["pfad"].rsplit("/", 1)[0] if "/" in o["pfad"] else ""}' for o in orte],
             "tags": self.tags_von(mid) if not papierkorb else [],
@@ -1143,4 +1169,5 @@ class Katalog:
                     os.unlink(self.b.vorschau_pfad(h, art))
                 except FileNotFoundError:
                     pass
+            self._netz_weg(h)
         return len(weg)

@@ -7,6 +7,7 @@ Der Bestand von partAtlas: Ort, Aufteilung, flatgraph-Instanz.
       vorschau/<hash>.berechnet.png   von partAtlas gerendert   ─┘ (PART_GEOMETRY)
       bilder/<Name>__<k>.png          Bilder des Anwenders, Liste am Modell
     <bestand>/vault_text/  lange Texte (ab LANGTEXT_AB Zeichen)  gesichert
+    <bestand>/netz/        Netze aus FreeCAD für STEP (<hash>.stl)   abgeleitet, nicht gesichert
     <bestand>/papierkorb/  gelöschte Modelldateien           bis zum Leeren
     <bestand>/arbeit/      Arbeitsdateien, nie /tmp
 
@@ -118,6 +119,9 @@ class Bestand:
             return ziel
         except (OSError, ValueError):
             return quelle
+
+    def netz_pfad(self, datei_hash):
+        return self.pfad("netz", f"{datei_hash}.stl")
 
     def vorschau_pfad(self, datei_hash, art):
         return self.pfad(*self.vorschau_rel(datei_hash, art).split("/"))

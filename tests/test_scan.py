@@ -350,4 +350,49 @@ if __name__ == "__main__":
           and fc_s.status["vorschauen_offen"] == 0)
     fc_b.schliessen()
 
+    # -- STEP über FreeCAD: Netz, Maße und Vorschau im Hintergrund; ein Fehler betrifft nur seine Datei
+    import sys
+    from partatlas import cad as _cad
+    from partatlas import scan as _scan2
+    attrappe = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "cad_attrappe.py")]
+    st_tmp = tempfile.mkdtemp()
+    st_dir = os.path.join(st_tmp, "cad")
+    os.makedirs(st_dir)
+    muster.step(os.path.join(st_dir, "Halter.step"))
+    muster.step(os.path.join(st_dir, "kaputt.step"))
+    with open(os.path.join(st_dir, "kaputt.step"), "a") as f:
+        f.write("/* anderer Inhalt: gleiche Dateien wären nur ein Modell mit zwei Orten */\n")
+    st_log = os.path.join(st_tmp, "starts.log")
+    os.environ["CAD_ATTRAPPE_LOG"] = st_log
+    st_b = Bestand(os.path.join(st_tmp, "bestand"))
+    st_k = Katalog(st_b)
+    st_k.wurzel_hinzufuegen(st_dir)
+    _vorher = _scan2.programme.programm_fuer
+    _scan2.programme.programm_fuer = lambda *a, **kw: None       # kein echtes FreeCAD des Rechners starten
+
+    st_s = Scanner(st_b, st_k, prozesse=2)
+    st_s.lauf()
+    d1 = {m["name"]: m for m in st_k.modelle()}
+    check("STEP ohne FreeCAD: aufgenommen, bleibt ausstehend, der Lauf sagt es, nichts bricht",
+          st_s.status["phase"] == "fertig" and st_s.status["cad_ohne_freecad"] == 2 and len(st_k.ausstehende_cad()) == 2
+          and d1["Halter"]["cad"] == "ausstehend" and not os.path.exists(st_b.netz_pfad(d1["Halter"]["hash"])))
+
+    st_s = Scanner(st_b, st_k, prozesse=2, cad_befehl=attrappe)
+    st_s.lauf()
+    d2 = {m["name"]: m for m in st_k.modelle()}
+    check("STEP mit FreeCAD, beim nächsten Lauf: Maße und berechnete Vorschau stehen da, das Netz liegt im Bestand",
+          d2["Halter"]["cad"] == "ok" and d2["Halter"]["vorschau"] == "gerendert" and d2["Halter"]["masse"] is not None
+          and os.path.exists(st_b.netz_pfad(d2["Halter"]["hash"])) and os.path.exists(st_b.vorschau_pfad(d2["Halter"]["hash"], "berechnet")))
+    check("STEP: die Datei, an der FreeCAD scheitert, ist als Fehler vermerkt und hält die andere nicht auf",
+          d2["kaputt"]["cad"] == "fehler" and d2["kaputt"]["vorschau"] == "keine" and st_k.ausstehende_cad() == [])
+    st_s.lauf()
+    check("STEP: ein weiterer Lauf startet FreeCAD nicht noch einmal, auch nicht für die gescheiterte Datei",
+          open(st_log).read().count("start") == 1)
+    st_k.loeschen(d2["Halter"]["id"])
+    st_k.papierkorb_leeren()
+    check("STEP: beim endgültigen Löschen geht das abgeleitete Netz mit",
+          not os.path.exists(st_b.netz_pfad(d2["Halter"]["hash"])))
+    _scan2.programme.programm_fuer = _vorher
+    st_b.schliessen()
+
     muster.ende()

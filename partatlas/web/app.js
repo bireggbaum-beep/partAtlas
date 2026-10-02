@@ -96,8 +96,8 @@ const zahl = (x, stellen = 1) => x == null ? "–" : Number(x).toLocaleString("d
 const masse = (m) => m ? m.map((v) => zahl(v)).join(" × ") + " mm" : "";
 const endung = { "3mf": ".3mf", stl: ".stl", obj: ".obj", step: ".step", fcstd: ".FCStd" };
 // CAD-Formate ohne Netz: keine Masse, keine 3D-Ansicht; ein Bild nur, wenn die Datei eins mitbringt.
-const nurCad = (m) => m.format === "step" || m.format === "fcstd";
-const nurCadText = (m) => `${m.format === "fcstd" ? "FCStd" : "STEP"} · nur CAD`;
+const nurCad = (m) => (m.format === "step" && m.cad !== "ok") || m.format === "fcstd";
+const nurCadText = (m) => m.format === "step" && m.cad !== "fehler" && zustand.scan?.laeuft ? "Vorschau folgt (FreeCAD) …" : `${m.format === "fcstd" ? "FCStd" : "STEP"} · nur CAD`;
 const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()) < 7 * 864e5;
 
 // ---------------------------------------------------------------- Laden
@@ -338,7 +338,7 @@ function zeichneLeer() {
       <p>Wähle den Ordner mit deinen 3D-Dateien. partAtlas liest ihn samt Unterordnern ein und
         katalogisiert die Dateien dort, wo sie liegen — nichts wird kopiert oder verschoben.</p>
       <ul>
-        <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP und FCStd (ohne Geometrie)</li>
+        <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP (Vorschau und Maße über FreeCAD, wenn installiert) und FCStd (Vorschau nur aus der Datei)</li>
         <li><b>Verschieben/Umbenennen</b> im Dateimanager bleibt erkannt — Tags und Verknüpfungen hängen am Inhalt, nicht am Pfad</li>
         <li><b>Weitere Ordner</b> jederzeit über Importieren → Ordner hinzufügen</li>
       </ul>
@@ -355,7 +355,7 @@ function zeichneLeer() {
 }
 
 // Wie lange das Einlesen gedauert hat, stehen lassen: wer einen grossen Bestand prüft, will die Zahl ablesen können.
-const PHASENNAME = { suchen: "Suchen", hashen: "Hashen", analysieren: "Analysieren", vorschau: "Vorschauen" };
+const PHASENNAME = { suchen: "Suchen", hashen: "Hashen", analysieren: "Analysieren", vorschau: "Vorschauen", cad: "STEP (FreeCAD)" };
 function scanErgebnis(m) {
   if (m.dauer_s == null || (!m.gefunden && !m.abgebrochen)) return "";
   const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
@@ -1829,6 +1829,7 @@ function live() {
         ? `Einlesen: ${m.phase}${m.analysiert != null && m.zu_analysieren ? ` ${m.analysiert}/${m.zu_analysieren}` : ""}`
         : (m.vorschauen_offen ? "" : "");
       if (m.phase === "vorschau" && m.vorschauen_offen && !m.abbricht) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
+      if (m.phase === "cad" && m.laeuft && !m.abbricht) $("#scan-status").textContent = `STEP umwandeln (FreeCAD): noch ${m.cad_offen}`;
       if (m.phase === "fertig" || m.abgebrochen) {
         $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
         if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
