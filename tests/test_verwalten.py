@@ -315,9 +315,37 @@ if __name__ == "__main__":
         c.post(f"/api/modelle/{papier[0]}/wiederherstellen")
         check("Wiederherstellen nimmt das Modell wieder auf; die Datei ist nie weg gewesen",
               c.get("/api/zaehler").json()["papierkorb"] == 2 and alle_dateien() == vorher_dateien)
-        c.post("/api/papierkorb/leeren")
-        check("Papierkorb leeren löscht keine Dateien, nur die Einträge",
-              c.get("/api/zaehler").json()["papierkorb"] == 0 and alle_dateien() == vorher_dateien)
+        check("Einen Weg, den Papierkorb endgültig zu leeren, gibt es nicht; nichts geht dabei verloren",
+              c.post("/api/papierkorb/leeren").status_code in (404, 405) and c.get("/api/zaehler").json()["papierkorb"] == 2
+              and alle_dateien() == vorher_dateien)
+
+        # Wurzelordner entfernen: reversibel, nichts geht verloren, auch wenn es der letzte war
+        zst = c.app.state.zustand
+        modell = c.get("/api/modelle").json()[0]["id"]
+        c.post(f"/api/modelle/{modell}/tags", json={"tag": "wichtig"})
+        zahl_vorher = c.get("/api/zaehler").json()["alle"]
+        c.delete(f"/api/wurzeln/{w}")
+        entf = c.get("/api/wurzeln/entfernt").json()
+        check("Letzten Wurzelordner entfernt: die Modelle bleiben im Katalog (als „Datei fehlt“), der Ordner steht in der Liste der entfernten",
+              c.get("/api/wurzeln").json() == [] and c.get("/api/zaehler").json()["alle"] == zahl_vorher
+              and len(entf) == 1 and entf[0]["pfad"] == s2 and entf[0]["modelle"] and entf[0]["vorhanden"] and alle_dateien() == vorher_dateien)
+        r = c.post(f"/api/modelle/{papier[1]}/wiederherstellen")
+        check("Ein Modell wiederherstellen, dessen Ordner entfernt ist: sagt, was zu tun ist, statt es halb zurückzuholen",
+              r.status_code == 400 and "Wieder hinzufügen" in r.json().get("fehler", ""))
+        c.post(f"/api/wurzeln/{w}/wiederherstellen")
+        warten(c)
+        check("Entfernten Ordner wieder hinzugefügt: alle Modelle verbunden, nichts „Datei fehlt“, Tags noch da, die Liste der entfernten leer",
+              c.get("/api/zaehler").json()["fehlt"] == 0 and c.get("/api/wurzeln/entfernt").json() == []
+              and "wichtig" in c.get(f"/api/modelle/{modell}").json()["tags"] and len(c.get("/api/wurzeln").json()) == 1)
+        c.post(f"/api/modelle/{papier[1]}/wiederherstellen")
+        check("Danach lässt sich auch das Modell aus dem Papierkorb wiederherstellen", c.get("/api/zaehler").json()["papierkorb"] == 1)
+        os.rename(s2, s2 + "_weg")
+        c.delete(f"/api/wurzeln/{w}")
+        rr = c.post(f"/api/wurzeln/{w}/wiederherstellen")
+        check("Entfernten Ordner zurückholen, der nicht mehr da liegt: abgelehnt mit dem Pfad", rr.status_code == 400 and s2 in rr.json().get("fehler", ""))
+        os.rename(s2 + "_weg", s2)
+        c.post(f"/api/wurzeln/{w}/wiederherstellen")
+        warten(c)
         # Ein Ordner „neu“ anlegen, den es auf der Platte schon gibt: benutzen statt Fehler
         os.makedirs(os.path.join(s2, "Rest"))
         r1 = c.post("/api/verzeichnisse", json={"eltern": w, "name": "Rest"})

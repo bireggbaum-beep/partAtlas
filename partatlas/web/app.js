@@ -209,8 +209,13 @@ async function ladeModelle() {
 }
 
 async function ladeSeite() {
-  const [z, ordner, tags, sammlungen, ws] = await Promise.all([api("/api/zaehler"), api("/api/ordner"), api("/api/tags"),
-                                                              api("/api/sammlungen"), api("/api/warteschlange")]);
+  const [z, ordner, tags, sammlungen, ws, entfernt] = await Promise.all([api("/api/zaehler"), api("/api/ordner"), api("/api/tags"),
+                                                              api("/api/sammlungen"), api("/api/warteschlange"),
+                                                              api("/api/wurzeln/entfernt").catch(() => [])]);   // ein älterer Server kennt den Endpunkt nicht: die Seite muss trotzdem aufgehen
+  zustand.entfernteWurzeln = entfernt;
+  // Der Willkommensschirm gehört in einen wirklich leeren Katalog. Sind alle Ordner entfernt, die Modelle aber noch da (als „Datei fehlt“),
+  // wäre er falsch: er versteckt Bereinigen und lässt aussehen, als sei alles weg.
+  zustand.katalogLeer = !((z.alle || 0) + (z.papierkorb || 0) + entfernt.length);
   zustand.sammlungen = sammlungen;
   abgleichen($("#sammlungen"), sammlungen.map((x) =>
     `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("")
@@ -243,6 +248,7 @@ async function ladeSeite() {
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
+  zeichneHinweisLeiste();
   abgleichen($("#tag-liste"), tags.slice(0, 30).map((t) =>
     `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join(""));
   markiereAnsicht();
@@ -327,7 +333,7 @@ function zeichneFilterzeile() {
 // nehmen: ein Ordner, ein Klick, dann sieht man das Einlesen laufen.
 function zeichneLeer() {
   const leer = $("#leer");
-  const erst = zustand.hatWurzeln === false;
+  const erst = zustand.hatWurzeln === false && zustand.katalogLeer !== false;
   document.body.classList.toggle("erststart", erst);
   leer.hidden = zustand.modelle.length > 0;
   if (leer.hidden) return;
@@ -562,10 +568,7 @@ function zeichneStapel() {
   const n = zustand.auswahl.size;
   // Dezent unten: wie viele Modelle die Liste zeigt, und wie viele davon gewählt sind.
   $("#anzahl").textContent = `${zustand.modelle.length.toLocaleString("de-DE")} Modelle${n ? ` · ${n} ausgewählt` : ""}`;
-  // Papierkorb: der Knopf zum endgültigen Leeren (der Server konnte das, die Oberfläche bot es nirgends an).
-  const pk = zustand.ansicht === "papierkorb" && zustand.modelle.length > 0;
-  $("#pk-leiste").hidden = !pk;
-  if (pk) $("#pk-text").textContent = `🗑 ${zustand.modelle.length.toLocaleString("de-DE")} ${zustand.modelle.length === 1 ? "Modell" : "Modelle"} im Papierkorb`;
+  zeichneHinweisLeiste();
   const st = $("#stapel");
   st.hidden = n === 0;
   if (!n) return;
@@ -650,25 +653,39 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
   }
 }
 
-// Papierkorb leeren: die Einträge verschwinden endgültig aus dem Katalog (Tags, Drucke, Verknüpfungen). Die Dateien in den Ordnern bleiben —
-// partAtlas löscht sie nie. Liegt eine noch im Ordner, kommt sie beim nächsten Einlesen als neues Modell wieder.
-async function papierkorbLeeren() {
-  const n = zustand.modelle.length;
-  const a = await dialog(`<h2>Papierkorb leeren?</h2>
-    <p>${n.toLocaleString("de-DE")} ${n === 1 ? "Modell wird" : "Modelle werden"} endgültig aus dem Katalog entfernt, samt Tags, Drucken und Verknüpfungen. Wiederherstellen geht danach nicht mehr.</p>
-    <p><b>Die Dateien in deinen Ordnern bleiben liegen</b> — partAtlas löscht sie nie. Wenn du sie nicht selbst im Dateimanager löschst, kommen sie beim
-      nächsten Einlesen als neue Modelle wieder, ohne Tags und Drucke.</p>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Endgültig entfernen</button></div>`);
-  if (a !== "ja") return;
-  try {
-    const r = await api("/api/papierkorb/leeren", { method: "POST" });
-    toast(`${r.geloescht} ${r.geloescht === 1 ? "Modell" : "Modelle"} endgültig aus dem Katalog entfernt.`);
-    waehle(null);
-    await ladeSeite();
-    neuLaden();
-  } catch (e) { toast(e.message); }
+// Die Leiste über der Liste. Im Papierkorb: was drin liegt und die entfernten Ordner mit „Wieder hinzufügen“. Ohne eingetragenen Ordner, aber
+// mit Modellen im Katalog: was los ist und wie es zurückgeht. Einen „Papierkorb leeren“ gibt es bewusst nicht: er räumte per Müllsammler alles
+// Gelöschte auf einmal ab (auch entfernte Ordner, Baugruppen, Drucke) und liesse sich nicht rückgängig machen.
+function zeichneHinweisLeiste() {
+  const entf = zustand.entfernteWurzeln || [];
+  const zeilen = [];
+  if (zustand.ansicht === "papierkorb") {
+    const n = zustand.modelle.length;
+    zeilen.push(`<div class="pk-zeile"><span>🗑 ${n ? `${n.toLocaleString("de-DE")} ${n === 1 ? "Modell" : "Modelle"}` : "Keine Modelle"} im Papierkorb. Er wird nie von selbst geleert; „Wiederherstellen“ holt ein Modell zurück.</span></div>`);
+    for (const w of entf) {
+      zeilen.push(`<div class="pk-zeile"><span>📁 Entfernter Ordner <b>${esc(w.name || "")}</b> <code>${esc(w.pfad || "")}</code>${w.modelle ? ` · ${w.modelle.toLocaleString("de-DE")} Modelle` : ""}${w.vorhanden ? "" : " · liegt dort nicht mehr"}</span>
+        ${w.vorhanden ? `<button class="knopf klein" data-wurzel-zurueck="${esc(w.id)}">Wieder hinzufügen</button>` : ""}</div>`);
+    }
+  } else if (zustand.hatWurzeln === false && zustand.katalogLeer === false) {
+    zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben im Katalog, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du unter Bereinigen › Papierkorb zurück." : ""}</span>
+      <button class="knopf klein" id="wurzel-neu-4">Ordner hinzufügen …</button></div>`);
+  }
+  $("#pk-leiste").hidden = !zeilen.length;
+  $("#pk-leiste").innerHTML = zeilen.join("");
 }
-$("#pk-leeren").addEventListener("click", papierkorbLeeren);
+document.addEventListener("click", async (e) => {
+  const zurueck = e.target.closest("[data-wurzel-zurueck]");
+  if (zurueck) {
+    try {
+      await api(`/api/wurzeln/${encodeURIComponent(zurueck.dataset.wurzelZurueck)}/wiederherstellen`, { method: "POST" });
+      toast("Ordner wieder eingetragen, wird eingelesen …");
+      await ladeSeite();
+      neuLaden();
+    } catch (err) { toast(err.message); }
+  }
+  if (e.target.closest("#wurzel-neu-4")) wurzelNeu();
+});
+
 
 async function loeschenViele(modelle) {
   if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) { zustand.auswahl.clear(); waehle(null); }
@@ -2123,7 +2140,8 @@ async function wurzelEntfernen({ id, name, pfad, anzahl }) {
   const a = await dialog(`<h2>Ordner aus partAtlas entfernen?</h2>
     <p><b>${esc(name)}</b>${anzahl ? ` — ${anzahl} ${anzahl === 1 ? "Modell" : "Modelle"}` : ""}<br><code>${esc(pfad)}</code></p>
     <p class="dim">Die Dateien auf der Platte bleiben unberührt. Tags, Bilder und Verknüpfungen der Modelle bleiben erhalten;
-      die Modelle gelten als „Datei fehlt“, bis der Ordner wieder hinzugefügt wird.</p>
+      die Modelle gelten als „Datei fehlt“, bis der Ordner wieder hinzugefügt wird. Du findest ihn unter Bereinigen › Papierkorb und holst ihn
+      dort mit einem Klick zurück.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
   if (a !== "ja") return;
   try {

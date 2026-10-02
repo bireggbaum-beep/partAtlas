@@ -355,6 +355,17 @@ Kopien. Weiter schreibt partAtlas in den Ordnern: Verschieben und Umbenennen auf
 `test_api` (59/59) mit Gegenproben; der Test fand dabei einen echten Fehler (`papierkorb_leeren` ohne `ablage`). **Offen:** leere Ordner sieht man im Baum nicht; ein Papierkorb-Eintrag, dessen Datei der
 Anwender selbst gelöscht hat, bleibt bis zum Leeren; „Papierkorb leeren“ lässt Dateien stehen, die danach wieder auftauchen — ein „Ignorieren“ (Eintrag behalten) wäre ein eigener Schritt.
 
+**Nichts darf versehentlich verloren gehen (0.30.1):** gemeldet: Wurzelordner entfernt, dann „bei Bereinigen ist nichts mehr, ich kann nichts wiederherstellen“. Befund: (1) Der Katalog war *nicht* leer —
+die Modelle standen als „Datei fehlt“ da —, aber ohne eingetragenen Ordner zeigte die Oberfläche den **Willkommensschirm** und versteckte Bereinigen und alle Felder der Seitenleiste (`body.erststart`).
+(2) Es gab keinen Weg zurück für einen entfernten Ordner. (3) **„Papierkorb leeren“ rief den Müllsammler von flatgraph auf, der *alles* Gelöschte abräumt** — auch entfernte Ordner, gelöschte
+Baugruppen, Drucke, Sammlungen, Tags; bei früheren Fassungen zudem die in den Papierkorb von partAtlas verschobenen Dateien. Jetzt: **„Papierkorb leeren“ ist ganz entfernt** (Knopf, Endpunkt, `Katalog.papierkorb_leeren`); nichts ruft
+`run_garbage_collection` auf, der Papierkorb wächst nur. Ein entfernter Wurzelordner bleibt als Eintrag (`wurzel_entfernen` merkt Zeit und Zahl) und steht unter Bereinigen › Papierkorb mit „Wieder hinzufügen“ (`entfernte_wurzeln`,
+`wurzel_wiederherstellen`, `GET /api/wurzeln/entfernt`, `POST /api/wurzeln/{id}/wiederherstellen`; der nächste Scan verbindet die Modelle über den Inhalt, Tags und Drucke sind noch da). Der Willkommensschirm erscheint nur noch in einem
+wirklich leeren Katalog; sonst eine Leiste „Es ist kein Ordner mehr eingetragen …“. Ein Modell wiederherstellen, dessen Ordner entfernt ist, sagt, was zu tun ist, statt es halb zurückzuholen. Geprüft in `test_verwalten` (63/63),
+`test_scan` (65/65) und mit einem Playwright-Skript an genau diesem Zustand (null Ordner, Modelle da). **Ausdrücklich nicht gebaut:** ein „endgültig löschen“; käme es je, dann nur je Modell, mit Tippbestätigung und ohne Müllsammler.
+**Offen:** Baugruppen, Drucke, Sammlungen und Tags löscht die Oberfläche weiter per `soft_delete` (also wiederherstellbar im Graph), aber ohne Ansicht dafür; Browser-Dateien und laufender Server können nach `git pull` ohne Neustart auseinanderlaufen — die Seite bricht dann
+nicht mehr ab (der neue Endpunkt ist abgefangen), ein Hinweis „bitte neu starten“ fehlt noch.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

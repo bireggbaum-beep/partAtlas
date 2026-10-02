@@ -197,7 +197,6 @@ if __name__ == "__main__":
           st["zurueckgeholt"] == 1 and st["neu"] == 0 and extra["id"] in [m["id"] for m in k.modelle()]
           and k.modell(extra["id"])["tags"] == extra_tags and os.listdir(b.pfad("papierkorb")) == [])
     k.loeschen(extra["id"])
-    k.papierkorb_leeren()
     os.remove(extra_pfad)                      # aufräumen (der Test, nicht partAtlas): die späteren Prüfungen kennen dieses Modell nicht
 
     # -- Auftrag während eines Laufs: läuft danach nochmal
@@ -285,9 +284,10 @@ if __name__ == "__main__":
           and not os.path.exists(b.pfad("cache")))
 
     k.loeschen(top_id)
-    n = k.papierkorb_leeren()
-    check("Papierkorb leeren: endgültig, Datei und Vorschau weg", n == 1 and os.listdir(b.pfad("papierkorb")) == []
-          and not os.path.exists(b.vorschau_pfad(top["hash"], "extrahiert")))
+    check("Modell entfernt: Vorschau und Eintrag bleiben, es lässt sich jederzeit wiederherstellen; nichts wird endgültig gelöscht",
+          os.path.exists(b.vorschau_pfad(top["hash"], "extrahiert")) and top_id in [m["id"] for m in k.modelle(ansicht="papierkorb")])
+    check("Es gibt keinen Weg, den Papierkorb endgültig zu leeren: der Müllsammler räumte auch entfernte Ordner, Baugruppen und Drucke ab",
+          not hasattr(k, "papierkorb_leeren"))
     b.schliessen()
 
     # -- Ein Arbeiter, der hart stirbt, reisst nicht den ganzen Lauf mit
@@ -421,9 +421,8 @@ if __name__ == "__main__":
           and {m["name"]: m for m in st_k.modelle()}["kaputt"]["cad"] == "ausstehend"
           and {m["name"]: m for m in st_k.modelle()}["Halter"]["cad"] == "ok")
     st_k.loeschen(d2["Halter"]["id"])
-    st_k.papierkorb_leeren()
-    check("STEP: beim endgültigen Löschen geht das abgeleitete Netz mit",
-          not os.path.exists(st_b.netz_pfad(d2["Halter"]["hash"])))
+    check("STEP: beim Entfernen des Modells bleibt sein Netz liegen (es kann zurückkommen)",
+          os.path.exists(st_b.netz_pfad(d2["Halter"]["hash"])))
     _scan2.programme.programm_fuer = _vorher
     st_b.schliessen()
 

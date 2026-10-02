@@ -120,6 +120,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         modelle, vollstaendig = durchsuchen.zaehlen(pfad)
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
 
+    @app.get("/api/wurzeln/entfernt")
+    def wurzeln_entfernt():
+        return K().entfernte_wurzeln()
+
+    @app.post("/api/wurzeln/{wid}/wiederherstellen")
+    def wurzel_zurueck(wid: str):
+        K().wurzel_wiederherstellen(wid)
+        zustand["scanner"].starten()
+        return {"ok": True}
+
     @app.delete("/api/wurzeln/{wid}")
     def wurzel_weg(wid: str):
         K().wurzel_entfernen(wid)
@@ -221,9 +231,6 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         K().wiederherstellen(mid)
         return {"ok": True}
 
-    @app.post("/api/papierkorb/leeren")
-    def papierkorb_leeren():
-        return {"geloescht": K().papierkorb_leeren()}
 
     # Netz für die 3D-Ansicht: Dreiecke als float32, little endian, 9 Werte
     # je Dreieck. Ausgedünnt, damit ein Modell mit 2 Mio. Dreiecken nicht

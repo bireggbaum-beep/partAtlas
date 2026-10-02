@@ -52,7 +52,7 @@ class Katalog:
         w = self.db.get_node(ref(WURZEL, wid), readonly=True)
         return w["pfad"] if w else None
 
-    def wurzel_hinzufuegen(self, pfad):
+    def _wurzel_pruefen(self, pfad, ausser=None):
         pfad = os.path.abspath(os.path.expanduser(pfad))
         if not os.path.isdir(pfad):
             raise KatalogFehler(f"Kein Ordner: {pfad}")
@@ -67,8 +67,12 @@ class Katalog:
             raise KatalogFehler("Der Ordner überschneidet sich mit dem Bestand von partAtlas.")
         for wid, w in self.wurzeln().items():
             vorhanden = w["pfad"]
-            if pfad == vorhanden or pfad.startswith(vorhanden + os.sep) or vorhanden.startswith(pfad + os.sep):
+            if wid != ausser and (pfad == vorhanden or pfad.startswith(vorhanden + os.sep) or vorhanden.startswith(pfad + os.sep)):
                 raise KatalogFehler(f"Überschneidet sich mit dem Wurzelordner {vorhanden}.")
+        return pfad
+
+    def wurzel_hinzufuegen(self, pfad):
+        pfad = self._wurzel_pruefen(pfad)
         wid = self.db.next_id(WURZEL, "w_", 3)
         self.db.create_node(WURZEL, wid, {"pfad": pfad, "name": os.path.basename(pfad) or pfad,
                                           "angelegt": jetzt()})
@@ -76,13 +80,37 @@ class Katalog:
 
     def wurzel_entfernen(self, wid):
         """Nur der Eintrag geht; Dateien bleiben, ihre Orte unter dieser Wurzel
-        verschwinden. Modelle ohne anderen Ort gelten danach als fehlend."""
+        verschwinden. Modelle ohne anderen Ort gelten danach als fehlend — samt Tags, Drucken und Verknüpfungen, die am Inhalt hängen.
+        Der Eintrag selbst bleibt im Papierkorb (`entfernte_wurzeln`) und lässt sich zurückholen."""
         with self.db.transaction():
+            n = 0
             for h, d in self._dateien().items():
                 orte = [o for o in d.get("orte", []) if o["wurzel"] != wid]
                 if len(orte) != len(d.get("orte", [])):
+                    n += 1
                     self.db.update_node(DATEI, h, {"orte": orte})
+            self.db.update_node(WURZEL, wid, {"entfernt": jetzt(), "modelle_n": n})
             self.db.soft_delete(WURZEL, wid)
+
+    def entfernte_wurzeln(self):
+        """Die entfernten Ordner, jüngste zuerst — ohne die, die der Anwender inzwischen unter anderer Nummer wieder hinzugefügt hat."""
+        live = {w["pfad"] for w in self.wurzeln().values()}
+        liste = []
+        for wid, d in self.db.list_nodes(WURZEL, include_deleted=True, readonly=True).items():
+            if wid in self.wurzeln() or d.get("pfad") in live:
+                continue
+            liste.append({"id": wid, "name": d.get("name"), "pfad": d.get("pfad"), "modelle": d.get("modelle_n"),
+                          "entfernt": d.get("entfernt"), "vorhanden": os.path.isdir(d.get("pfad") or "")})
+        return sorted(liste, key=lambda x: x["entfernt"] or "", reverse=True)
+
+    def wurzel_wiederherstellen(self, wid):
+        """Einen entfernten Ordner zurückholen. Die Orte der Modelle kommen beim nächsten Scan über den Inhalt zurück."""
+        roh = self.db.get_node_raw(ref(WURZEL, wid))
+        if roh is None or self.db.get_node(ref(WURZEL, wid), readonly=True) is not None:
+            raise KatalogFehler("Diesen entfernten Ordner gibt es nicht.")
+        self._wurzel_pruefen(roh["pfad"], ausser=wid)
+        with self.db.transaction():
+            self.db.restore_node(WURZEL, wid)
 
     # ------------------------------------------------------------ Dateien und Orte
 
@@ -1209,12 +1237,17 @@ class Katalog:
             return
         h = self._datei_im_papierkorb(mid)
         d = self.db.get_node_raw(ref(DATEI, h)) if h else None
+        for a in (d or {}).get("papierkorb", []):
+            if self.wurzel_pfad(a["wurzel"]) is None:
+                # Der Ordner ist entfernt: ohne ihn hat das Modell keinen Ort, und eine Datei aus einer früheren Fassung bliebe im Papierkorb von
+                # partAtlas liegen. Erst den Ordner zurückholen, dann geht beides.
+                w = self.db.get_node_raw(ref(WURZEL, a["wurzel"])) or {}
+                raise KatalogFehler(f"Der Ordner {w.get('pfad') or a['wurzel']} ist nicht mehr eingetragen. Hole ihn zuerst unter "
+                                    f"Bereinigen › Papierkorb mit „Wieder hinzufügen“ zurück; dann lässt sich das Modell wiederherstellen.")
         orte, erledigt = [], []
         try:
             for a in (d or {}).get("papierkorb", []):
                 wpfad = self.wurzel_pfad(a["wurzel"])
-                if wpfad is None:
-                    continue
                 if "ablage" not in a:
                     # Seit 0.30 bleibt die Datei beim Löschen, wo sie ist: ist sie noch da, ist das Modell damit wieder im Katalog;
                     # hat der Anwender sie inzwischen selbst entfernt, gilt es als „Datei fehlt“.
@@ -1240,34 +1273,3 @@ class Katalog:
             self.db.restore_node(MODELL, mid)
             if h is not None:
                 self.db.update_node(DATEI, h, {"orte": orte, "papierkorb": [], "geloescht": None})
-
-    def papierkorb_leeren(self):
-        """Endgültig aus dem Katalog: die Einträge im Papierkorb verschwinden, dann der Müllsammler. Dateien in den Ordnern des Anwenders
-        bleiben — nur was frühere Fassungen in den Papierkorb von partAtlas verschoben haben, wird dort gelöscht. Eine Datei, die noch
-        im Ordner liegt, kommt beim nächsten Einlesen als neues Modell wieder (ohne Tags und Historie)."""
-        weg = []
-        for mid in [x["id"] for x in self.modelle(ansicht="papierkorb")]:
-            h = self._datei_im_papierkorb(mid)
-            d = self.db.get_node_raw(ref(DATEI, h)) if h else None
-            for a in (d or {}).get("papierkorb", []):
-                if "ablage" not in a:
-                    continue               # seit 0.30 bleibt die Datei im Ordner des Anwenders: nichts zu löschen
-                try:
-                    os.unlink(self.b.pfad(a["ablage"]))
-                except FileNotFoundError:
-                    pass
-            if h:
-                weg.append(h)
-            # Bilder des Anwenders gehen ins Archiv, nicht ins Nichts.
-            for b in (self.db.get_node_raw(ref(MODELL, mid)) or {}).get("bilder") or []:
-                self._archivieren(b["datei"])
-        self.db.run_garbage_collection()
-        for h in weg:
-            for art in VORSCHAU_ARTEN:
-                try:
-                    # Vorschauen sind abgeleitet: mit der Datei weg.
-                    os.unlink(self.b.vorschau_pfad(h, art))
-                except FileNotFoundError:
-                    pass
-            self._netz_weg(h)
-        return len(weg)
