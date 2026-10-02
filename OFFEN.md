@@ -396,10 +396,20 @@ Eine Ablage wie in pDMS wäre bei grossen 3D-Dateien doppelter Platz oder nähme
 die der Anwender selbst gelöscht hat (Eintrag mit Drucken, Bildern usw. soll bleiben):
 
 1. **Ansehen ohne Datei:** im Backlog (unten, „Idee, noch nicht gebaut“), nicht Priorität.
-2. **„Datei fehlt“ mit drei Wegen:** *Suchen …* (Ordner zeigen, Nachbarn mitfinden), *Ohne Datei behalten* (kein Problem mehr, ruhiges
+2. **Gebaut in 0.34.0** — **„Datei fehlt“ mit drei Wegen:** *Suchen …* (Ordner zeigen, Nachbarn mitfinden), *Ohne Datei behalten* (kein Problem mehr, ruhiges
    Zeichen, verschwindet von selbst, wenn die Datei zurückkommt), *Aus dem Katalog entfernen*. „Datei fehlt“ bleibt als Warnung der Standard.
 3. **Wiedererkennen:** automatisch nur bei gleichem Inhalt (gibt es schon). Name, Ort, Form höchstens als bestätigter Vorschlag mit beiden
    Vorschauen — eine automatische Zuordnung wäre fehleranfällig.
+
+**„Datei fehlt“ mit drei Wegen (0.34.0):** Inspektor: *Suchen …* (Ordner zeigen; `Katalog.fehlende_suchen` erkennt fehlende Dateien
+am Inhalt, auch die anderer Modelle, hasht nur gleich grosse, wenn alle Grössen bekannt sind; liegt der Ordner im Katalog, verbindet der
+Scan, sonst bietet der Dialog „Ordner hinzufügen“ an), *Ohne Datei behalten* (Feld `ohne_datei` am Datei-Knoten: zählt nicht im
+Zähler/Abzeichen, nicht in Bereinigen › Datei fehlt, Kachel zeigt ruhig „ohne Datei“; verschwindet von selbst, wenn die Datei
+zurückkommt), *Aus dem Katalog entfernen …* (der bisherige Löschdialog). Neu `zuletzt_ort`: der letzte Ort bleibt, wenn der letzte
+verschwindet („Lag zuletzt in …“). `test_verwalten` 73/73, `test_ui` 63/63; Gegenproben (Zähler zählt Behaltene, Markierung bleibt
+bei Rückkehr, kein letzter Ort, Behalten ohne Prüfung, Suche ohne Inhaltsvergleich) fallen. **Offen:** bei fehlender Datei zeigt der
+Inspektor oben weiter die Öffnen-Knöpfe (Slicer/CAD) — Öffnen scheitert dann (schon vorher so, Aufwand 1). Modelle, die vor 0.34
+fehlten, haben keinen `zuletzt_ort`: kein „Lag zuletzt in“, und „Suchen“ hasht dann jede Modelldatei im Ordner.
 
 ## Offen, in dieser Reihenfolge
 

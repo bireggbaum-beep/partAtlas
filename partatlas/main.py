@@ -168,7 +168,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             formate[m["format"]] = formate.get(m["format"], 0) + 1
         return {
             "alle": len(alle), "favoriten": sum(m["favorit"] for m in alle),
-            "duplikate": sum(m["duplikat"] for m in alle), "fehlt": sum(m["fehlt"] for m in alle),
+            "duplikate": sum(m["duplikat"] for m in alle), "fehlt": sum(m["fehlt"] and not m["ohne_datei"] for m in alle),
             "unlesbar": sum(m["fehler"] for m in alle),
             "papierkorb": len(k.modelle(ansicht="papierkorb")), "formate": formate,
             "warteschlange": sum(m["warteschlange"] is not None for m in alle),
@@ -235,6 +235,20 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     def wiederherstellen(mid: str):
         K().wiederherstellen(mid)
         return {"ok": True}
+
+    @app.post("/api/modelle/{mid}/ohne_datei")
+    async def ohne_datei(mid: str, request: Request):
+        d = await request.json() if await request.body() else {}
+        K().ohne_datei(mid, d.get("an", True))
+        return {"ok": True}
+
+    @app.post("/api/fehlende/suchen")
+    async def fehlende_suchen(request: Request):
+        r = K().fehlende_suchen((await request.json()).get("pfad", ""))
+        # Liegt der Ordner schon im Katalog, verbindet der Scan die Treffer am Inhalt.
+        if r["treffer"] and r["wurzel"]:
+            zustand["scanner"].starten()
+        return r
 
     @app.get("/api/modelle/{mid}/endgueltig")
     def endgueltig_vorschau(mid: str):

@@ -97,7 +97,7 @@ class Katalog:
                 orte = [o for o in d.get("orte", []) if o["wurzel"] != wid]
                 if len(orte) != len(d.get("orte", [])):
                     n += 1
-                    self.db.update_node(DATEI, h, {"orte": orte})
+                    self._orte_setzen(h, d, orte)
             self.db.update_node(WURZEL, wid, {"entfernt": jetzt(), "modelle_n": n})
             self.db.soft_delete(WURZEL, wid)
 
@@ -187,14 +187,24 @@ class Katalog:
         orte = [o for o in d.get("orte", []) if (o["wurzel"], o["pfad"]) != (wurzel, pfad)]
         orte.append({"wurzel": wurzel, "pfad": pfad, "groesse": groesse, "mtime": mtime})
         orte.sort(key=lambda o: (o["wurzel"], o["pfad"]))
-        self.db.update_node(DATEI, h, {"orte": orte})
+        self._orte_setzen(h, d, orte)
 
     def ort_entfernen(self, h, wurzel, pfad):
         d = self.db.get_node(ref(DATEI, h))
         if d is None:
             return
         orte = [o for o in d.get("orte", []) if (o["wurzel"], o["pfad"]) != (wurzel, pfad)]
-        self.db.update_node(DATEI, h, {"orte": orte})
+        self._orte_setzen(h, d, orte)
+
+    def _orte_setzen(self, h, d, orte):
+        """Verschwindet der letzte Ort, bleibt er als `zuletzt_ort` stehen — für „Lag zuletzt in“ und als Grösse, an der „Suchen …“ die
+        Datei vorab erkennt. Kommt sie zurück, gilt „ohne Datei behalten“ nicht mehr: verschwindet sie wieder, ist das wieder eine Warnung."""
+        werte = {"orte": orte}
+        if not orte and d.get("orte"):
+            werte["zuletzt_ort"] = d["orte"][0]
+        if orte and d.get("ohne_datei"):
+            werte["ohne_datei"] = None
+        self.db.update_node(DATEI, h, werte)
 
     def neue_datei(self, h, felder, orte, vorschau, fehler=None, vorgaenger=None):
         """Datei, Modell und automatische Tags in einem Zug. Aufrufer hält die Transaktion.
@@ -356,6 +366,8 @@ class Katalog:
             "drucke_n": m.get("drucke_n", 0),
             "favorit": m.get("favorit", False), "hash": h,
             "vorschau": d.get("vorschau"), "cad": d.get("cad"), "fehlt": not orte and not papierkorb,
+            # Der Anwender hat gesagt: die Datei ist absichtlich weg. Dann kein Problem mehr, nur ein ruhiges Zeichen.
+            "ohne_datei": bool(d.get("ohne_datei")) and not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),
             "ordner": [f'{o["wurzel"]}/{o["pfad"].rsplit("/", 1)[0] if "/" in o["pfad"] else ""}' for o in orte],
             "tags": self.tags_von(mid) if not papierkorb else [],
@@ -431,7 +443,7 @@ class Katalog:
         elif ansicht == "duplikate":
             liste = [x for x in liste if x["duplikat"]]
         elif ansicht == "fehlt":
-            liste = [x for x in liste if x["fehlt"]]
+            liste = [x for x in liste if x["fehlt"] and not x["ohne_datei"]]
         elif ansicht == "unlesbar":
             liste = [x for x in liste if x["fehler"]]
         elif ansicht == "warteschlange":
@@ -467,6 +479,7 @@ class Katalog:
             "platten": d.get("platten") or [], "fehler_text": d.get("fehler"), "cad_fehler": d.get("cad_fehler"),
             "quelle_url": m.get("quelle_url"), "eingelesen": d.get("eingelesen"),
             "papierkorb_ablage": d.get("papierkorb", []),
+            "zuletzt": self._zuletzt_absolut(d.get("zuletzt_ort")) if kurz["fehlt"] else None,
             "sammlungen": [] if papierkorb else self.sammlungen_von(mid),
             "material_herkunft": self.materialien_von(mid, kurz["hash"]) if not papierkorb else None,
             "ansichten": self.ansichten(mid, m, d),
@@ -1323,3 +1336,60 @@ class Katalog:
             for art in VORSCHAU_ARTEN:
                 self.b.entfernen(self.b.vorschau_pfad(h, art))
             self._netz_weg(h)
+
+    # ------------------------------------------------------------ Datei fehlt
+
+    def _zuletzt_absolut(self, ort):
+        """Wo die Datei zuletzt lag, auch wenn ihr Ordner inzwischen entfernt ist."""
+        if not ort:
+            return None
+        w = self.db.get_node_raw(ref(WURZEL, ort["wurzel"])) or {}
+        return os.path.join(w["pfad"], *ort["pfad"].split("/")) if w.get("pfad") else ort["pfad"]
+
+    def ohne_datei(self, mid, an=True):
+        """„Ohne Datei behalten“: das Modell bleibt mit allem im Katalog und zählt nicht mehr als Problem. Nur für ein Modell, dessen Datei
+        fehlt; kommt sie zurück, verschwindet die Markierung von selbst (`_orte_setzen`)."""
+        h = self.datei_von(mid)
+        d = self.db.get_node(ref(DATEI, h)) if h else None
+        if d is None or d.get("orte"):
+            raise KatalogFehler("Die Datei dieses Modells ist da.")
+        self.db.update_node(DATEI, h, {"ohne_datei": jetzt() if an else None})
+
+    def fehlende_suchen(self, pfad, grenze=60_000):
+        """Liegen fehlende Dateien in diesem Ordner? Erkannt wird nur gleicher Inhalt (Hash) — eine geänderte Fassung nicht, das wäre
+        geraten. Kennt partAtlas die Grösse jeder fehlenden Datei, wird nur gehasht, was gleich gross ist. Ändert nichts; verbunden wird
+        über den Scan, wenn der Ordner zum Katalog gehört oder hinzugefügt wird."""
+        pfad = os.path.abspath(os.path.expanduser(pfad))
+        if not os.path.isdir(pfad):
+            raise KatalogFehler(f"Kein Ordner: {pfad}")
+        fehlend, groessen = {}, set()
+        for h, d in self._dateien().items():
+            if not d.get("orte"):
+                mid = self.modell_von(h)
+                if mid and self.db.get_node(ref(MODELL, mid), readonly=True) is not None:
+                    fehlend[h] = mid
+                    groessen.add((d.get("zuletzt_ort") or {}).get("groesse"))
+        alle_groessen_bekannt = None not in groessen
+        treffer, gesehen = {}, 0
+        for ordner, unter, namen in os.walk(pfad):
+            unter[:] = [u for u in unter if not u.startswith((".", "$"))]
+            for n in namen:
+                gesehen += 1
+                voll = os.path.join(ordner, n)
+                if not fehlend or os.path.splitext(n)[1].lower() not in formate.FORMATE:
+                    continue
+                try:
+                    if alle_groessen_bekannt and os.path.getsize(voll) not in groessen:
+                        continue
+                    h = formate.datei_hash(voll)
+                except OSError:
+                    continue
+                if h in fehlend and h not in treffer:
+                    treffer[h] = voll
+            if gesehen > grenze:
+                break
+        wurzel = next((wid for wid, w in self.wurzeln().items()
+                       if pfad == w["pfad"] or pfad.startswith(w["pfad"] + os.sep)), None)
+        return {"pfad": pfad, "wurzel": wurzel, "vollstaendig": gesehen <= grenze,
+                "treffer": sorted(({"id": fehlend[h], "name": (self.db.get_node(ref(MODELL, fehlend[h]), readonly=True) or {}).get("name"),
+                                    "pfad": p} for h, p in treffer.items()), key=lambda x: (x["name"] or "").lower())}

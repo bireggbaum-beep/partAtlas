@@ -478,7 +478,8 @@ function bildUrl(m) {
 
 function statusBadge(m) {
   // Ruhig: ein Haken, bei mehreren Drucken mit Zahl. Gewicht und Material stehen im Inspektor.
-  return m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
+  return m.ohne_datei ? `<span class="badge ohne" title="Ohne Datei behalten">ohne Datei</span>`
+    : m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
     : m.fehler ? `<span class="badge warn">unlesbar</span>`
     : m.drucke_n ? `<span class="badge gedruckt" title="${m.drucke_n}× gedruckt">✓${m.drucke_n > 1 ? " " + m.drucke_n + "×" : ""}</span>` : "";
 }
@@ -487,12 +488,12 @@ function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (nurCad(m) ? nurCadText(m) : "keine Vorschau");
   const markiert = zustand.auswahl.has(m.id);
-  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
+  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}">
     <div class="bild">${url ? bildTag(url) : `<div class="platzhalter">${platz}</div>`}
       ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
-      ${m.fehlt ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
+      ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
       <div class="tags">${m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "&nbsp;"}</div></div></div>`;
@@ -503,10 +504,10 @@ function zeileK(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
   const ordner = (m.ordner[0] || "").split("/").slice(1).join("/");
-  const status = m.fehlt ? "⚠ Datei fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
+  const status = m.ohne_datei ? "ohne Datei" : m.fehlt ? "⚠ Datei fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   const fakten = [masse(m.masse), m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : "", m.groesse ? zahl(m.groesse / 1024, 0) + " KB" : ""].filter(Boolean).join(" · ");
   const chips = [...(m.materialien || []).map((x) => `<span class="chip-k mat">${esc(x)}</span>`), ...m.tags.map((t) => `<span class="chip-k">#${esc(t)}</span>`)].join("");
-  return `<div class="zeile-k ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
+  return `<div class="zeile-k ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
     <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : m.format === "fcstd" ? "FCStd" : ""}</div>`}</div>
     <div class="k-text">
@@ -524,8 +525,8 @@ const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["G
 function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
-  const status = m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
-  return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
+  const status = m.ohne_datei ? "ohne Datei" : m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
+  return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
     <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}</span>
@@ -589,6 +590,47 @@ function zeichneStapel() {
     <button class="knopf" data-stapel="verschieben">Verschieben …</button>
     <button class="knopf gefahr" data-stapel="loeschen">Löschen</button>
     <button class="knopf" data-stapel="keine">✕</button>`);
+}
+
+// Datei fehlt: drei Wege, wie bei Manyfold „delete it, or find where it went“ — und dazu „behalten“, wenn sie absichtlich weg ist.
+function fehltTeil(m) {
+  const zuletzt = m.zuletzt ? `<div class="dim">Lag zuletzt in <code>${esc(m.zuletzt)}</code></div>` : "";
+  const suchen = `<button class="knopf" id="datei-suchen">Suchen …</button>`;
+  if (m.ohne_datei) {
+    return `<div class="fehlt-teil ruhig"><p><b>Ohne Datei behalten.</b> Tags, Drucke und Bilder bleiben. Kommt die Datei zurück, ist sie
+      wieder verbunden.</p>${zuletzt}<div class="knoepfe-zeile">${suchen}<button class="knopf" id="ohne-datei-aus">Wieder als fehlend zeigen</button></div></div>`;
+  }
+  return `<div class="fehlt-teil"><p><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr: gelöscht, ausserhalb der Ordner von
+    partAtlas verschoben oder auf einem Laufwerk, das gerade fehlt. Tags, Drucke und Bilder sind noch da.</p>${zuletzt}
+    <div class="knoepfe-zeile">${suchen}<button class="knopf" id="ohne-datei">Ohne Datei behalten</button>
+      <button class="knopf gefahr" id="fehlt-entfernen">Aus dem Katalog entfernen …</button></div></div>`;
+}
+
+// Einen Ordner zeigen; partAtlas prüft, ob fehlende Dateien darin liegen (gleicher Inhalt), auch die anderer Modelle.
+async function dateiSuchen() {
+  let w;
+  try { w = await api("/api/wurzeln/waehlen", { method: "POST" }); } catch (e) { return toast(e.message); }
+  if (w.abgebrochen) return;
+  const pfad = w.keinDialog ? await ordnerWaehler() : w.pfad;
+  if (!pfad) return;
+  let r;
+  try { r = await api("/api/fehlende/suchen", { method: "POST", body: { pfad } }); } catch (e) { return toast(e.message); }
+  const n = r.treffer.length;
+  if (!n) {
+    return dialog(`<h2>Nicht gefunden</h2><p>In <code>${esc(r.pfad)}</code> liegt keine der fehlenden Dateien.</p>
+      <p class="dim">Erkannt wird nur dieselbe Datei. Eine geänderte Fassung erkennt partAtlas nicht von selbst — sie kommt beim Einlesen als
+      neues Modell.${r.vollstaendig ? "" : " Der Ordner ist sehr gross; durchsucht wurde nur ein Teil."}</p>
+      <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
+  }
+  const liste = `<ul>${r.treffer.slice(0, 8).map((t) => `<li>${esc(t.name)} <span class="dim">· ${esc(t.pfad)}</span></li>`).join("")}${n > 8 ? `<li>… und ${n - 8} weitere</li>` : ""}</ul>`;
+  if (r.wurzel) return toast(`${n} ${n === 1 ? "Datei" : "Dateien"} gefunden — wird verbunden.`);
+  const a = await dialog(`<h2>${n} ${n === 1 ? "fehlende Datei" : "fehlende Dateien"} gefunden</h2>${liste}
+    <p>Der Ordner gehört noch nicht zum Katalog. Fügst du ihn hinzu, sind sie wieder verbunden, mit Tags, Drucken und Bildern.</p>
+    <p class="dim">Alle anderen Modelle in diesem Ordner kommen dabei ebenfalls in den Katalog.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Ordner hinzufügen</button></div>`);
+  if (a !== "ja") return;
+  try { await api("/api/wurzeln", { method: "POST", body: { pfad: r.pfad } }); toast("Wird eingelesen …"); }
+  catch (e) { toast(e.message); }
 }
 
 // Vorgesehen setzt der Anwender (entfernbar); aus der Datei kommt aus den
@@ -819,7 +861,7 @@ async function waehle(id, live = false) {
       ${reiterKopf}
     </div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
-    ${m.fehlt ? `<p class="fehler"><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr — gelöscht, umbenannt ausserhalb der Ordner von partAtlas oder auf einem Laufwerk, das gerade fehlt. Tags, Bilder und Verknüpfungen sind noch da: legt man die Datei zurück, ist beim nächsten Einlesen alles wieder verbunden. Braucht man das Modell nicht mehr: „Löschen“.</p>` : ""}
+    ${m.fehlt ? fehltTeil(m) : ""}
 
     <div class="i-tafel" data-reiter="uebersicht">
     ${papierkorb ? "" : `<div class="i-schalter">
@@ -1716,6 +1758,13 @@ $("#gruppierung").value = zustand.gruppierung;
       catch (e2) { toast(e2.message); }
       return;
     case "endgueltig": return endgueltigEntfernen(id);
+    case "datei-suchen": return dateiSuchen();
+    case "fehlt-entfernen": return loeschen(id);
+    case "ohne-datei": case "ohne-datei-aus":
+      // Die Markierung steht am Datei-Knoten; die Live-Meldung zeichnet nur die Liste neu, der Inspektor folgt hier.
+      try { await api(`/api/modelle/${id}/ohne_datei`, { method: "POST", body: { an: t.id === "ohne-datei" } }); waehle(id); }
+      catch (e2) { toast(e2.message); }
+      return;
     case "thema": {
       const neu = document.documentElement.dataset.app === "dark" ? "light" : "dark";
       document.documentElement.dataset.app = neu;

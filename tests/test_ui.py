@@ -397,6 +397,18 @@ async def oberflaeche(port):
               and (await pg.inner_text('[data-ansicht="fehlt"] em')).strip() == "1"
               and await pg.locator('[data-sektion="tags"]').is_hidden())
         await pg.click('[data-rail="katalog"]')
+        await suche("Arm")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector("#ohne-datei")
+        text = await pg.inner_text(".fehlt-teil")
+        check("Datei fehlt im Inspektor: drei Wege (Suchen, Ohne Datei behalten, Entfernen) und wo sie zuletzt lag",
+              await pg.locator("#datei-suchen").is_visible() and await pg.locator("#fehlt-entfernen").is_visible()
+              and "Arm.stl" in text)
+        await pg.click("#ohne-datei")
+        await pg.wait_for_selector(".karte .badge.ohne", timeout=5000)
+        check("Ohne Datei behalten: ruhiges Zeichen statt Band, das Abzeichen am Besen verschwindet",
+              await pg.locator(".fehlt-band").count() == 0 and await pg.locator("#abz-bereinigen").is_hidden()
+              and await pg.locator("#ohne-datei-aus").is_visible())
 
         await suche("Haken")
         await pg.locator(".karte").first.click()

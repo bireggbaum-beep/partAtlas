@@ -100,6 +100,14 @@ button, input, select { font: inherit; color: inherit; }
 .badge { position: absolute; font: 12px var(--mono); padding: 1px 6px; border-radius: 999px; }
 .badge.gedruckt { bottom: var(--s3); right: var(--s3); color: var(--accent); background: var(--panel); }
 .badge.warn { bottom: var(--s3); right: var(--s3); border: 1px solid var(--warn); color: var(--warn); background: var(--panel); }
+.badge.ohne { bottom: var(--s3); right: var(--s3); color: var(--ink-3); background: var(--panel); border: 1px solid var(--line); }
+.fehlt-teil { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 8px; font-size: 13.5px; }
+.fehlt-teil.ruhig { border-color: var(--line); }
+.fehlt-teil p { margin: 0 0 6px; }
+.fehlt-teil b { color: var(--warn); }
+.fehlt-teil.ruhig b { color: var(--ink); }
+.fehlt-teil code { word-break: break-all; }
+.knoepfe-zeile { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .neu-punkt { position: absolute; top: var(--s3); left: var(--s3); width: var(--s3); height: var(--s3); border-radius: 50%; background: var(--accent); }
 /* Schalter auf der Kachel erst beim Darüberfahren — oder ständig, wenn schon etwas gewählt ist */
 .karte .wahl, .karte .herz { opacity: 0; transition: opacity 0.12s; }

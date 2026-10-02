@@ -364,4 +364,46 @@ if __name__ == "__main__":
               r2.status_code == 400 and "Datei" in r2.json().get("fehler", ""))
         kommt = c.post("/api/ordner/im_ordner", json={"id": f"{w}/../.."})
         check("Im Dateimanager zeigen: ein Pfad aus der Wurzel hinaus wird abgelehnt", kommt.status_code == 400)
+
+    # -- Datei fehlt: suchen, ohne Datei behalten, entfernen
+    tmp3 = tempfile.mkdtemp()
+    s3, woanders = os.path.join(tmp3, "Sammlung"), os.path.join(tmp3, "Woanders")
+    os.makedirs(s3)
+    os.makedirs(woanders)
+    muster.stl_binaer(os.path.join(s3, "Weg.stl"), 31, 12, 13)
+    muster.stl_binaer(os.path.join(s3, "Bleibt.stl"), 32, 12, 13)
+    muster.stl_binaer(os.path.join(woanders, "Anderes.stl"), 33, 12, 13)    # sonst wäre „Woanders“ danach leer (gilt als nicht erreichbar)
+    with TestClient(erstelle_app(os.path.join(tmp3, "bestand"), prozesse=2)) as c:
+        w3 = c.post("/api/wurzeln", json={"pfad": s3}).json()["id"]
+        warten(c)
+        mid = ids(c)["Weg"]
+        c.post(f"/api/modelle/{mid}/tags", json={"tag": "behalten"})
+        os.replace(os.path.join(s3, "Weg.stl"), os.path.join(woanders, "Weg.stl"))
+        c.post("/api/scan")
+        warten(c)
+        m3 = c.get(f"/api/modelle/{mid}").json()
+        check("Datei selbst gelöscht: das Modell bleibt mit Tags, zählt als „Datei fehlt“ und weiss, wo sie zuletzt lag",
+              m3["fehlt"] and not m3["ohne_datei"] and "behalten" in m3["tags"] and c.get("/api/zaehler").json()["fehlt"] == 1
+              and m3["zuletzt"] == os.path.join(s3, "Weg.stl"))
+        r = c.post("/api/fehlende/suchen", json={"pfad": tmp3 + "/../" + os.path.basename(tmp3) + "/Sammlung"}).json()
+        check("Suchen im eigenen Ordner, wo sie nicht mehr liegt: kein Treffer", r["treffer"] == [] and r["wurzel"] == w3)
+        r = c.post("/api/fehlende/suchen", json={"pfad": woanders}).json()
+        check("Suchen in einem anderen Ordner findet sie am Inhalt und sagt, dass er nicht zum Katalog gehört",
+              [t["id"] for t in r["treffer"]] == [mid] and r["wurzel"] is None and ids(c).get("Weg") == mid)
+        c.post(f"/api/modelle/{mid}/ohne_datei", json={"an": True})
+        check("Ohne Datei behalten: kein Problem mehr (Zähler, Ansicht „Datei fehlt“), das Modell bleibt im Katalog",
+              c.get("/api/zaehler").json()["fehlt"] == 0 and c.get("/api/modelle", params={"ansicht": "fehlt"}).json() == []
+              and c.get(f"/api/modelle/{mid}").json()["ohne_datei"] and "behalten" in c.get(f"/api/modelle/{mid}").json()["tags"])
+        check("Ohne Datei behalten geht nur, wenn die Datei fehlt",
+              c.post(f"/api/modelle/{ids(c)['Bleibt']}/ohne_datei", json={"an": True}).status_code == 400)
+        c.post("/api/wurzeln", json={"pfad": woanders})
+        warten(c)
+        m3 = c.get(f"/api/modelle/{mid}").json()
+        check("Ordner hinzugefügt: dasselbe Modell ist wieder verbunden, mit Tags; die Markierung ist weg",
+              not m3["fehlt"] and not m3["ohne_datei"] and "behalten" in m3["tags"] and list(ids(c).values()).count(mid) == 1
+              and len(c.get("/api/modelle").json()) == 3)
+        os.remove(os.path.join(woanders, "Weg.stl"))
+        c.post("/api/scan")
+        warten(c)
+        check("Verschwindet sie danach wieder, ist das wieder eine Warnung", c.get("/api/zaehler").json()["fehlt"] == 1)
     muster.ende()
