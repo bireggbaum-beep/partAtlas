@@ -297,6 +297,12 @@ Kacheln bekommen nach einer Weile ein Bild; sonst steht der Grund im Protokoll (
 **Offen:** Wiederholen gescheiterter STEP-Dateien aus der Oberfläche; FCStd ohne Thumbnail über denselben Weg (Dokument laden, sichtbare Körper vernetzen);
 Auto-Export einer Baugruppe in Einzelteile (brainstorm, braucht erst eine echte Baugruppe vom Tester).
 
+**Inspektor ausblenden (0.29.0):** wie in pDMS — Knopf ⇥/⇤ in der Kopfzeile und, solange er weg ist, ein Griff ‹ am rechten Rand; ein Klick blendet ihn
+aus oder ein, die Wahl bleibt gemerkt (`localStorage` „partatlas.inspektor“). Die letzte Spalte wird 0 breit, die Liste bekommt die Breite
+(`inspektorSichtbar()` in `app.js`, `.app.insp-versteckt` in `app.css`). Geprüft mit einem Playwright-Skript (aus, Neuladen bleibt aus, Griff holt ihn zurück),
+nicht mit `test_ui.py`. **Offen:** bei ausgeblendetem Inspektor zeigt ein Klick auf ein Modell nichts an (wie in pDMS gewollt); die Baugruppen-Übersicht
+rechts ist dann ebenfalls weg.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

@@ -50,6 +50,7 @@
     <span class="kopf-luecke"></span>
     <span class="scan-status" id="scan-status"></span>
     <button class="knopf" id="scan-abbrechen" hidden>Abbrechen</button>
+    <button class="knopf insp-umschalten" id="insp-umschalten" title="Details ausblenden — die Liste bekommt die ganze Breite" aria-pressed="true">⇥</button>
   </header>
 
   <aside class="seite">
@@ -117,6 +118,8 @@
   </aside>
   <div class="griff links" data-griff="seite" title="Breite ändern (Doppelklick: zurücksetzen)"></div>
   <div class="griff rechts" data-griff="inspektor" title="Breite ändern (Doppelklick: zurücksetzen)"></div>
+  <!-- Ist der Inspektor ausgeblendet, bleibt dieser Griff am rechten Rand: wer ihn weggeklickt hat, findet ihn so wieder. -->
+  <button class="insp-auf" id="insp-auf" hidden title="Details wieder einblenden">‹</button>
 </div>
 
 <dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>

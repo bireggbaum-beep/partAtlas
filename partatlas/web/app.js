@@ -2084,6 +2084,22 @@ document.addEventListener("scroll", () => { $("#kontext").hidden = true; }, true
 
 // ---------------------------------------------------------------- Breite der Seitenleisten
 //
+// Inspektor (rechte Seitenleiste) aus- und einblenden, wie in pDMS: ein Klick, die Wahl überlebt den Neustart. Der Griff am
+// rechten Rand bleibt, solange er weg ist — ohne ihn fände ihn niemand wieder.
+function inspektorSichtbar(an) {
+  $(".app").classList.toggle("insp-versteckt", !an);
+  $("#insp-auf").hidden = an;
+  const knopf = $("#insp-umschalten");
+  knopf.textContent = an ? "⇥" : "⇤";
+  knopf.title = an ? "Details ausblenden — die Liste bekommt die ganze Breite" : "Details wieder einblenden";
+  knopf.setAttribute("aria-pressed", String(an));
+  localStorageSchreiben("inspektor", an ? "auf" : "zu");
+  requestAnimationFrame(() => raster.neu());          // die Liste gewinnt oder verliert Breite: Spalten und Kacheln neu legen
+}
+inspektorSichtbar(localStorageLesen("inspektor") !== "zu");
+$("#insp-umschalten").addEventListener("click", () => inspektorSichtbar($(".app").classList.contains("insp-versteckt")));
+$("#insp-auf").addEventListener("click", () => inspektorSichtbar(true));
+
 // Die Griffe sitzen auf den Rändern; Ziehen ändert die Spaltenbreite, die
 // Zahl bleibt gemerkt, ein Doppelklick stellt die Vorgabe wieder her.
 

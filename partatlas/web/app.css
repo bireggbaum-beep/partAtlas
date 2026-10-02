@@ -437,6 +437,15 @@ body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 *:hover { scrollbar-color: var(--ink-3) transparent; }
 
+/* Ausgeblendeter Inspektor: die letzte Spalte auf 0. Kein display:none auf dem Raster-Eintrag, sonst verschöbe sich die Zuordnung. */
+.app.insp-versteckt { grid-template-columns: var(--s7) var(--seite-b, 233px) 1fr 0; }
+.app.insp-versteckt .inspektor, .app.insp-versteckt .griff.rechts { display: none; }
+.insp-umschalten { padding: 4px 8px; }
+.insp-auf { position: absolute; top: 50%; right: 0; transform: translateY(-50%); z-index: 40; width: 14px; padding: 18px 0;
+            border: 1px solid var(--line); border-right: 0; border-radius: 5px 0 0 5px; background: var(--panel); color: var(--ink-3);
+            cursor: pointer; font: inherit; line-height: 1; }
+.insp-auf:hover { color: var(--accent); border-color: var(--accent); }
+
 /* Griffe zum Ändern der Breite der Seitenleisten */
 .griff { position: absolute; top: 44px; bottom: 0; width: 7px; cursor: col-resize; z-index: 30; touch-action: none; }
 .griff.links { left: calc(var(--s7) + var(--seite-b, 233px) - 4px); }
