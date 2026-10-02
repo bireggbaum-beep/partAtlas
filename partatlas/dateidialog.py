@@ -66,4 +66,4 @@ def _waehlen(titel, ordner):
         tk = ("import tkinter, tkinter.filedialog as f; r = tkinter.Tk(); r.withdraw(); "
               f"print(f.{frage}(title={titel!r}, initialdir={start!r}))")
         return _lauf([sys.executable, "-c", tk])
-    raise KeinDialog("Auf diesem Rechner lässt sich kein Dateidialog öffnen. Installiere zenity oder kdialog.")
+    raise KeinDialog("Auf diesem Rechner lässt sich kein Dateidialog öffnen. Installiere zenity oder kdialog (Manjaro/Arch: sudo pacman -S zenity).")

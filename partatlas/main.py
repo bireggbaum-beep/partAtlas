@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import subprocess
+import sys
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -614,6 +615,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         if not pfad:
             return {"abgebrochen": True}
         if not programme.ausfuehrbar(pfad):
+            if os.path.isfile(pfad) and not sys.platform.startswith("win"):
+                raise KatalogFehler("Die Datei ist nicht ausführbar. Im Dateimanager: Rechtsklick › Eigenschaften › Berechtigungen › "
+                                    "„Als Programm ausführen“ — danach erneut auswählen.")
             raise KatalogFehler("Das ist kein ausführbares Programm.")
         return {**programme.eintrag_fuer(pfad, art), "automatisch": False}
 
@@ -646,7 +650,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         pfad = daten.get("pfad") or std.get(m["format"])
         if pfad not in {p["pfad"] for p in liste}:
             raise KatalogFehler("Dieses Programm kennt partAtlas nicht.")
-        programme.oeffnen(pfad, datei)
+        try:
+            programme.oeffnen(pfad, datei)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"{next(p['name'] for p in liste if p['pfad'] == pfad)} ließ sich nicht starten: {e}")
         return {"ok": True, "programm": next(p["name"] for p in liste if p["pfad"] == pfad)}
 
     # ---------------------------------------------------------------- Oberfläche

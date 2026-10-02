@@ -159,6 +159,32 @@ if __name__ == "__main__":
         check("„Automatisch“: Slicer ist wieder der gefundene",
               c.get("/api/einstellungen").json()["programm"]["slicer"]["name"] == "PrusaSlicer")
 
+        # -- Erkennung auf einem Linux-Rechner mit AppImage und Flatpak (z. B. Anycubic Slicer Next 1.3.9.4)
+        from partatlas import programme as prog_mod
+        heim = os.path.join(tmp, "heim")
+        os.makedirs(os.path.join(heim, "Downloads")); os.makedirs(os.path.join(heim, ".local/share/flatpak/exports/bin"))
+        alt_heim, os.environ["HOME"] = os.environ.get("HOME"), heim
+        try:
+            app = os.path.join(heim, "Downloads", "AnycubicSlicer-1.3.9.4-x86_64.AppImage")
+            open(app, "w").close()
+            fp = os.path.join(heim, ".local/share/flatpak/exports/bin", "io.github.unbekannt.AnycubicSlicer")
+            open(fp, "w").close(); os.chmod(fp, 0o755)
+            pfade = lambda: [e["pfad"] for e in prog_mod.erkennen() if e["name"] == "Anycubic Slicer"]
+            check("Erkennung: Flatpak mit unbekannter Kennung wird über das Stichwort gefunden, die AppImage ohne Ausführrecht nicht",
+                  pfade() == [fp])
+            os.chmod(app, 0o755)
+            check("… mit Ausführrecht auch die AppImage in Downloads", app in pfade())
+            with open(app, "w") as f:
+                f.write("#!/bin/sh\nexit 127\n")
+            try:
+                prog_mod.oeffnen(app, os.path.join(sammlung, "Haken.stl"))
+                gemeldet = ""
+            except OSError as e:
+                gemeldet = str(e)
+            check("AppImage, die sich sofort beendet: sagt es (FUSE) statt still zu scheitern", "FUSE" in gemeldet and "sofort" in gemeldet)
+        finally:
+            os.environ["HOME"] = alt_heim
+
         # -- Löschen über die API
         v = c.get(f"/api/modelle/{zahnrad['id']}/loeschen").json()
         check("Löschvorschau über die API", len(v["dateien"]) == 1 and len(v["knoten"]) == 1)

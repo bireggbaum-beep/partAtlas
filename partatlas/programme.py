@@ -53,10 +53,17 @@ BEKANNT = [
 
 def _linux_ordner():
     home = os.path.expanduser("~")
-    return ["/usr/bin", "/usr/local/bin", "/var/lib/flatpak/exports/bin",
-            os.path.join(home, ".local/share/flatpak/exports/bin"), os.path.join(home, ".local/bin"),
-            os.path.join(home, "Applications"), os.path.join(home, "AppImages"),
-            os.path.join(home, "Downloads")]
+    return ["/usr/bin", "/usr/local/bin", "/opt", "/var/lib/flatpak/exports/bin",
+            os.path.join(home, ".local/share/flatpak/exports/bin"), os.path.join(home, ".local/bin"), os.path.join(home, "bin"),
+            os.path.join(home, "Applications"), os.path.join(home, "AppImages"), os.path.join(home, "Apps"),
+            os.path.join(home, "Downloads"), os.path.join(home, "Desktop"), os.path.join(home, "Schreibtisch")]
+
+
+# Flatpak legt die Programme unter ihrer Kennung ab („org.freecad.FreeCAD“); bei Programmen, deren Kennung wir nicht
+# kennen (Anycubic Slicer: Flatpak von Dritten), genügt das Stichwort im Namen.
+STICHWORT = {"Bambu Studio": "bambustudio", "OrcaSlicer": "orcaslicer", "PrusaSlicer": "prusaslicer", "SuperSlicer": "superslicer",
+             "UltiMaker Cura": ".cura", "Anycubic Slicer": "anycubic", "FreeCAD": "freecad"}
+FLATPAK_ORDNER = ("/var/lib/flatpak/exports/bin", os.path.join("~", ".local/share/flatpak/exports/bin"))
 
 
 def _eintrag(name, art, formate, pfad):
@@ -89,7 +96,18 @@ def erkennen():
                         gefunden.append(_eintrag(name, art, formate, p))
                 for muster in appimages:
                     for p in glob.glob(os.path.join(ordner, muster)):
-                        gefunden.append(_eintrag(name, art, formate, p))
+                        # Ohne Ausführrecht startet eine AppImage nicht: erst gar nicht anbieten, der Anwender wählt sie dann
+                        # selbst und bekommt gesagt, woran es liegt.
+                        if os.access(p, os.X_OK):
+                            gefunden.append(_eintrag(name, art, formate, p))
+            wort = STICHWORT.get(name)
+            for ordner in FLATPAK_ORDNER:
+                ordner = os.path.expanduser(ordner)
+                if wort and os.path.isdir(ordner):
+                    for datei in sorted(os.listdir(ordner)):
+                        p = os.path.join(ordner, datei)
+                        if wort in datei.lower() and os.path.isfile(p) and os.access(p, os.X_OK):
+                            gefunden.append(_eintrag(name, art, formate, p))
             for prog in programme:
                 for p in glob.glob(f"/opt/{prog}*/{prog}"):
                     gefunden.append(_eintrag(name, art, formate, p))
@@ -174,7 +192,17 @@ def _optionen():
 
 def oeffnen(programm, datei):
     befehl = ["open", "-a", programm, datei] if programm.endswith(".app") else [programm, datei]
-    subprocess.Popen(befehl, **_optionen())
+    prozess = subprocess.Popen(befehl, **_optionen())
+    if programm.lower().endswith(".appimage"):
+        # Eine AppImage, die sich sofort beendet, ist meist an fehlendem FUSE gescheitert; die Ausgabe geht ins Leere,
+        # also sonst würde „wird geöffnet …“ stehen und nichts passieren.
+        try:
+            code = prozess.wait(timeout=1.5)
+        except subprocess.TimeoutExpired:
+            return
+        if code != 0:
+            raise OSError(f"{os.path.basename(programm)} beendete sich sofort (Code {code}). "
+                          "AppImages brauchen FUSE — auf Manjaro/Arch: sudo pacman -S fuse2")
 
 
 def mit_system(datei):
