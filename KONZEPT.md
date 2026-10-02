@@ -24,8 +24,9 @@ flatgraph und geht dort weiter, wo der 3MF Katalog aufhört.
 Tauri 2 (Rust) + React, SQLite, rund 50 000 Zeilen.
 
 - Katalogisiert vorhandene Ordner **an Ort und Stelle**; Ordner in der App
-  sind echte Verzeichnisse — Verschieben, Umbenennen, Löschen wirken auf
-  der Platte. Gelöschtes geht in einen eigenen Papierkorb (7 Tage).
+  sind echte Verzeichnisse — Verschieben und Umbenennen wirken auf
+  der Platte, Löschen nur im Katalog (Papierkorb); seit partAtlas 0.30 löscht
+  partAtlas keine Datei (KONZEPT §3.1).
 - 3MF, STL, OBJ, STEP (Open CASCADE); Masse, Volumen, Objektzahl.
 - Vorschau: eingebettetes 3MF-Bild, sonst Schnappschuss per three.js
   **in der Oberfläche** (WebGL), als PNG-BLOB in der Datenbank.
@@ -148,14 +149,17 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   | verschoben, umbenannt (App oder Dateimanager) | folgt, alles bleibt dran |
   | Kopie mit gleichem Inhalt | ein Container, zwei Orte („Duplikat“) |
   | überschrieben (gleicher Ort, neuer Inhalt) | derselbe Container mit neuem Inhalt — sofern der alte Inhalt nirgends mehr liegt; sonst ist es eine abgezweigte Kopie mit eigenem Container (0.14) |
-  | in partAtlas gelöscht | mit in den Papierkorb (Dialog zeigt, was dranhängt) |
+  | in partAtlas gelöscht | nur aus dem Katalog (Papierkorb von partAtlas, Dialog zeigt, was dranhängt); **die Datei bleibt im Ordner liegen** (seit 0.30). Der Scan lässt sie danach in Ruhe; „Wiederherstellen“ nimmt das Modell wieder auf; „Papierkorb leeren“ vergisst die Einträge, löscht aber keine Datei |
   | im Dateimanager gelöscht | bleibt, auf der Kachel deutlich als „Datei fehlt“ |
 - **Eine Datei wird an ihrem Inhalt erkannt** (SHA-256 als Kennung).
   Verschoben oder umbenannt außerhalb der App → der nächste Scan findet sie
   wieder, Tags und Historie bleiben dran. Verschwunden → Knoten wird als
   „fehlt“ markiert, nicht gelöscht; die Druckhistorie bleibt.
-- **Schreiben im Ordner wie beim 3MF Katalog** (Verschieben, Umbenennen,
-  Löschen in den Papierkorb), aber nur über sichere Wege: auf demselben
+- **Schreiben im Ordner: Verschieben und Umbenennen, nie Löschen.** partAtlas
+  löscht keine Datei des Anwenders und verschiebt keine zum „Löschen“; was
+  weg soll, löscht er im Dateimanager („Im Dateimanager zeigen“ im Menü der
+  Ordner und Modelle). Entschieden 02.10.2026, abweichend vom 3MF Katalog.
+  Verschieben und Umbenennen nur über sichere Wege: auf demselben
   Dateisystem `rename`; über Dateisystemgrenzen kopieren, `fsync`, dann
   erst die Quelle entfernen. Nie etwas überschreiben.
 

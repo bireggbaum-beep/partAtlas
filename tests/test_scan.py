@@ -152,11 +152,15 @@ if __name__ == "__main__":
           vorschau["knoten"] == [f"PART_GEOMETRY/{top['hash']}"])
     check("Löschvorschau nennt beide Dateien auf der Platte", len(vorschau["dateien"]) == 2)
     k.loeschen(top_id)
-    check("Löschen: beide Dateien liegen im Papierkorb von partAtlas, nicht mehr im Ordner",
-          not os.path.exists(os.path.join(sammlung, "Drohne", "Top_Plate.3mf"))
-          and len(os.listdir(b.pfad("papierkorb"))) == 2)
+    check("Löschen: die Dateien bleiben, wo sie sind — partAtlas löscht und verschiebt nichts; der Papierkorb von partAtlas bleibt leer",
+          os.path.exists(os.path.join(sammlung, "Drohne", "Top_Plate.3mf"))
+          and os.path.exists(os.path.join(downloads, "Top_Plate (1).3mf")) and os.listdir(b.pfad("papierkorb")) == [])
     check("Löschen: Modell weg aus dem Katalog, sichtbar im Papierkorb",
           top_id not in [m["id"] for m in k.modelle()] and [m["id"] for m in k.modelle(ansicht="papierkorb")] == [top_id])
+    st = scannen()
+    check("Scan nach dem Löschen: die im Ordner gebliebenen Dateien kommen weder neu noch zurück (und werden nicht neu gelesen)",
+          st["im_papierkorb"] == 2 and st["zurueckgeholt"] == 0 and [m["name"] for m in k.modelle(suche="plate")] == []
+          and top_id not in [m["id"] for m in k.modelle()])
     k.wiederherstellen(top_id)
     zurueck = k.modell(top_id)
     check("Wiederherstellen: Dateien zurück an ihrem Ort, Modell mit Tags wieder da",
@@ -164,23 +168,37 @@ if __name__ == "__main__":
           and os.path.exists(os.path.join(downloads, "Top_Plate (1).3mf"))
           and len(zurueck["orte"]) == 2 and "mehrteilig" in zurueck["tags"])
 
-    # Dieselbe Datei liegt wieder im Ordner — wie man es von einem Papierkorb erwartet: das Modell kommt zurück, nicht der Papierkorb-Eintrag
+    # Modell entfernen, Datei bleibt: der Scan lässt sie in Ruhe; „Wiederherstellen“ nimmt das Modell wieder auf
     extra_pfad = os.path.join(sammlung, "Haushalt", "Extra.stl")
     muster.stl_binaer(extra_pfad, 31, 12, 13)
     scannen()
     extra = {m["name"]: m for m in k.modelle()}["Extra"]
     extra_tags = k.modell(extra["id"])["tags"]
     k.loeschen(extra["id"])
-    shutil.copy(os.path.join(b.pfad("papierkorb"), sorted(os.listdir(b.pfad("papierkorb")))[0]), extra_pfad)
     st = scannen()
-    check("Datei wieder im Ordner: ihr Modell kommt aus dem Papierkorb zurück, mit Tags, nicht als neues",
+    check("Entferntes Modell: die Datei liegt noch im Ordner und wird nicht noch einmal aufgenommen",
+          st["im_papierkorb"] == 1 and st["neu"] == 0 and extra["id"] not in [m["id"] for m in k.modelle()]
+          and os.path.exists(extra_pfad) and [m["id"] for m in k.modelle(ansicht="papierkorb")] == [extra["id"]])
+    k.wiederherstellen(extra["id"])
+    check("Wiederherstellen nimmt das Modell mit Tags wieder auf, an dem Ort, wo die Datei geblieben ist",
+          k.modell(extra["id"])["tags"] == extra_tags and [o["absolut"] for o in k.modell(extra["id"])["orte"]] == [extra_pfad])
+    # Ein Modell, das eine frühere Fassung in den Papierkorb von partAtlas verschoben hat (Datei weg aus dem Ordner): kommt die Datei
+    # zurück, kommt das Modell zurück.
+    h = k.datei_von(extra["id"])
+    alt = os.path.join(b.pfad("papierkorb"), f"{h[:12]}__Extra.stl")
+    shutil.move(extra_pfad, alt)
+    with b.db.transaction():
+        b.db.update_node("PART_GEOMETRY", h, {"orte": [], "papierkorb": [{"wurzel": w1, "pfad": "Haushalt/Extra.stl",
+                                                                          "ablage": os.path.relpath(alt, b.wurzel)}], "geloescht": "alt"})
+        b.db.soft_delete("MODEL_ASSET", extra["id"])
+    shutil.copy(alt, extra_pfad)
+    st = scannen()
+    check("Altes Löschen (Datei im Papierkorb von partAtlas): legt der Anwender sie zurück, kommt das Modell zurück, die Kopie entfällt",
           st["zurueckgeholt"] == 1 and st["neu"] == 0 and extra["id"] in [m["id"] for m in k.modelle()]
-          and k.modell(extra["id"])["tags"] == extra_tags and os.path.exists(extra_pfad))
-    check("Datei wieder im Ordner: der Papierkorb ist danach leer, die Kopie dort war dieselbe Datei",
-          os.listdir(b.pfad("papierkorb")) == [] and k.modelle(ansicht="papierkorb") == []
-          and [m["name"] for m in k.modelle(suche="extra")] == ["Extra"])
+          and k.modell(extra["id"])["tags"] == extra_tags and os.listdir(b.pfad("papierkorb")) == [])
     k.loeschen(extra["id"])
-    k.papierkorb_leeren()                      # aufräumen: die späteren Prüfungen kennen dieses Modell nicht
+    k.papierkorb_leeren()
+    os.remove(extra_pfad)                      # aufräumen (der Test, nicht partAtlas): die späteren Prüfungen kennen dieses Modell nicht
 
     # -- Auftrag während eines Laufs: läuft danach nochmal
     # Der erste Lauf wird nach seiner Arbeit angehalten: so liegt die neue

@@ -114,9 +114,11 @@ class Katalog:
         d = self.db.get_node_raw(ref(DATEI, h))
         teile = self.db.get_connected(ref(DATEI, h), direction="in", rel_type=HAT_DATEI, include_deleted=True)
         mid = teile[0].split("/", 1)[1] if teile else None
-        if d is None or mid is None:
+        ablage = (d or {}).get("papierkorb", [])
+        # Nur für Modelle, deren Dateien eine frühere Fassung in den Papierkorb von partAtlas verschoben hat. Seit 0.30 bleibt die Datei
+        # beim Löschen im Ordner; dort ist sie kein „Zurücklegen“, sondern der Normalfall, und das Modell bleibt im Papierkorb.
+        if d is None or mid is None or not ablage or any("ablage" not in a for a in ablage):
             return False
-        ablage = d.get("papierkorb", [])
         if len(ablage) > 1:
             self.wiederherstellen(mid)
             with self.db.transaction():
@@ -132,6 +134,18 @@ class Katalog:
             except FileNotFoundError:
                 pass
         return True
+
+    def ignorierte_orte(self):
+        """{(wurzel, pfad): (hash, groesse, mtime)} der Dateien, deren Modell im Papierkorb liegt, die Datei aber im Ordner geblieben ist:
+        der Scan überspringt sie, ohne sie bei jedem Lauf neu zu lesen."""
+        orte = {}
+        for h, d in self.db.list_nodes(DATEI, include_deleted=True, readonly=True).items():
+            if d.get("ersetzt_durch"):
+                continue
+            for o in d.get("papierkorb") or []:
+                if "ablage" not in o:
+                    orte[(o["wurzel"], o["pfad"])] = (h, o.get("groesse"), o.get("mtime"))
+        return orte
 
     def ort_setzen(self, h, wurzel, pfad, groesse, mtime):
         d = self.db.get_node(ref(DATEI, h))
@@ -568,22 +582,15 @@ class Katalog:
                 "mehrfach": mehrfach, "andere": sorted(andere)}
 
     def ordner_loeschen(self, ordner_id, tags=(), sammlungen=()):
-        """Die Modelle im Ordner in den Papierkorb, danach die leeren Verzeichnisse darunter und der Ordner selbst. Dateien,
-        die keine Modelle sind, bleiben — dann bleibt auch der Ordner, und der Aufrufer sagt dem Anwender, wo er liegt.
-        Ein Wurzelordner geht hier nicht: er wird nur aus partAtlas entfernt."""
+        """Alle Modelle des Ordners aus dem Katalog nehmen (Papierkorb). Der Ordner und alles darin bleibt auf der Platte, auch die
+        leeren Verzeichnisse: partAtlas löscht in den Ordnern des Anwenders nichts. Ein Wurzelordner geht hier nicht: er wird nur
+        aus partAtlas entfernt."""
         i = self.ordner_inhalt(ordner_id)
         if i["wurzel"]:
             raise KatalogFehler("Ein Wurzelordner wird nicht gelöscht, nur aus partAtlas entfernt.")
         fehler = self.loeschen_mit(i["modelle"], tags, sammlungen) if i["modelle"] else []
-        # Von unten nach oben: rmdir nimmt nur leere Verzeichnisse, mehr als das gibt es nicht zu verlieren.
-        for ordner, _, _ in os.walk(i["pfad"], topdown=False):
-            try:
-                os.rmdir(ordner)
-            except OSError:
-                pass
-        rest = self.ordner_inhalt(ordner_id) if os.path.isdir(i["pfad"]) else None
-        return {"fehler": fehler, "entfernt": rest is None, "modelle": len(i["modelle"]) - len(fehler), "pfad": i["pfad"],
-                "geblieben": {"andere": len(rest["andere"]), "modelle": len(rest["modelle"]) + len(rest["mehrfach"])} if rest else None}
+        return {"fehler": fehler, "modelle": len(i["modelle"]) - len(fehler), "pfad": i["pfad"],
+                "mehrfach": len(i["mehrfach"]), "andere": len(i["andere"])}
 
     def verschieben(self, mid, ordner_id):
         h = self.datei_von(mid)
@@ -754,7 +761,7 @@ class Katalog:
                                       "name": n, "groesse": os.path.getsize(p)})
         return liste
 
-    def archiv_entpacken(self, archiv_id, original_loeschen=False):
+    def archiv_entpacken(self, archiv_id):
         wid, wpfad, pfad = self._ordner_pfad(archiv_id)
         if not os.path.isfile(pfad) or not archiv.ist_archiv(pfad):
             raise KatalogFehler("Kein Archiv.")
@@ -762,9 +769,6 @@ class Katalog:
             ziel, neu, weg = archiv.entpacken(pfad)
         except archiv.ArchivFehler as e:
             raise KatalogFehler(str(e)) from e
-        if original_loeschen:
-            # Nicht löschen, sondern in den Papierkorb von partAtlas.
-            dateien.verschiebe(pfad, dateien.freier_name(self.b.pfad("papierkorb", os.path.basename(pfad))))
         return {"ordner": os.path.relpath(ziel, wpfad), "entpackt": len(neu), "uebersprungen": weg}
 
     # ------------------------------------------------------------ Mehrere auf einmal
@@ -1188,29 +1192,16 @@ class Katalog:
         return fehler
 
     def loeschen(self, mid):
-        """Dateien in den Papierkorb von partAtlas, Modell samt Datei-Knoten in
-        den Papierkorb von flatgraph. Erst die Dateien: scheitert eine,
-        werden die schon verschobenen zurückgelegt und nichts ist passiert."""
+        """Das Modell aus dem Katalog nehmen: Modell samt Datei-Knoten in den Papierkorb von flatgraph. **Die Dateien auf der Platte
+        bleiben, wo sie sind** — partAtlas löscht und verschiebt dabei nichts. Gemerkt wird, wo sie lagen (samt Grösse und Zeit), damit
+        der Scan sie weiter kennt und nicht bei jedem Lauf neu liest, und damit „Wiederherstellen“ sie wiederfindet."""
         h = self.datei_von(mid)
         d = self.db.get_node(ref(DATEI, h)) if h else None
-        ablage, erledigt = [], []
-        try:
-            for o in (d or {}).get("orte", []):
-                quelle = self.absoluter_pfad(o)
-                if not quelle or not os.path.exists(quelle):
-                    continue
-                ziel = dateien.freier_name(self.b.pfad("papierkorb", f"{h[:12]}__{os.path.basename(quelle)}"))
-                dateien.verschiebe(quelle, ziel)
-                erledigt.append((ziel, quelle))
-                ablage.append({"wurzel": o["wurzel"], "pfad": o["pfad"],
-                               "ablage": os.path.relpath(ziel, self.b.wurzel)})
-        except OSError:
-            self._zurueck(erledigt)
-            raise
+        gemerkt = [{"wurzel": o["wurzel"], "pfad": o["pfad"], "groesse": o.get("groesse"), "mtime": o.get("mtime")}
+                   for o in (d or {}).get("orte", [])]
         with self.db.transaction():
             if d is not None:
-                self.db.update_node(DATEI, h, {"orte": [], "papierkorb": ablage,
-                                               "geloescht": jetzt()})
+                self.db.update_node(DATEI, h, {"orte": [], "papierkorb": gemerkt, "geloescht": jetzt()})
             self.db.soft_delete(MODELL, mid)
 
     def wiederherstellen(self, mid):
@@ -1221,9 +1212,20 @@ class Katalog:
         orte, erledigt = [], []
         try:
             for a in (d or {}).get("papierkorb", []):
-                quelle = self.b.pfad(a["ablage"])
                 wpfad = self.wurzel_pfad(a["wurzel"])
-                if wpfad is None or not os.path.exists(quelle):
+                if wpfad is None:
+                    continue
+                if "ablage" not in a:
+                    # Seit 0.30 bleibt die Datei beim Löschen, wo sie ist: ist sie noch da, ist das Modell damit wieder im Katalog;
+                    # hat der Anwender sie inzwischen selbst entfernt, gilt es als „Datei fehlt“.
+                    pfad = os.path.join(wpfad, *a["pfad"].split("/"))
+                    if os.path.isfile(pfad):
+                        st = os.stat(pfad)
+                        orte.append({"wurzel": a["wurzel"], "pfad": a["pfad"], "groesse": st.st_size, "mtime": st.st_mtime})
+                    continue
+                # Frühere Fassungen haben die Datei in den Papierkorb von partAtlas verschoben: zurücklegen.
+                quelle = self.b.pfad(a["ablage"])
+                if not os.path.exists(quelle):
                     continue
                 ziel = dateien.freier_name(os.path.join(wpfad, *a["pfad"].split("/")))
                 dateien.verschiebe(quelle, ziel)
@@ -1240,12 +1242,16 @@ class Katalog:
                 self.db.update_node(DATEI, h, {"orte": orte, "papierkorb": [], "geloescht": None})
 
     def papierkorb_leeren(self):
-        """Endgültig: Dateien im Papierkorb löschen, dann der Müllsammler."""
+        """Endgültig aus dem Katalog: die Einträge im Papierkorb verschwinden, dann der Müllsammler. Dateien in den Ordnern des Anwenders
+        bleiben — nur was frühere Fassungen in den Papierkorb von partAtlas verschoben haben, wird dort gelöscht. Eine Datei, die noch
+        im Ordner liegt, kommt beim nächsten Einlesen als neues Modell wieder (ohne Tags und Historie)."""
         weg = []
         for mid in [x["id"] for x in self.modelle(ansicht="papierkorb")]:
             h = self._datei_im_papierkorb(mid)
             d = self.db.get_node_raw(ref(DATEI, h)) if h else None
             for a in (d or {}).get("papierkorb", []):
+                if "ablage" not in a:
+                    continue               # seit 0.30 bleibt die Datei im Ordner des Anwenders: nichts zu löschen
                 try:
                     os.unlink(self.b.pfad(a["ablage"]))
                 except FileNotFoundError:

@@ -154,7 +154,7 @@ td:first-child { white-space: nowrap; }
     <div class="karte"><b>Ordnen</b><span>Tags, Material, Sammlungen und Favoriten, ohne die Ordner auf der Platte anzufassen.</span></div>
     <div class="karte"><b>Zusammenstellen</b><span>Baugruppen mit Stückliste, Kaufteilen und Export als PDF.</span></div>
     <div class="karte"><b>Festhalten</b><span>Drucke mit Gewicht, Zeit, Filament und Fotos; „gedruckt“ ergibt sich daraus.</span></div>
-    <div class="karte"><b>Aufräumen</b><span>Duplikate, fehlende und unlesbare Dateien auf einen Blick; Löschen mit Papierkorb.</span></div>
+    <div class="karte"><b>Aufräumen</b><span>Duplikate, fehlende und unlesbare Dateien auf einen Blick; Entfernen aus dem Katalog mit Papierkorb — deine Dateien bleiben.</span></div>
   </div>
   <div class="hinweis">partAtlas läuft als kleines Programm auf deinem Rechner. Die Oberfläche öffnet
   sich im Browser unter <code>http://127.0.0.1:8765</code>. Schließt du das Terminal, in dem es
@@ -172,7 +172,7 @@ td:first-child { white-space: nowrap; }
     <tr><td>Datei verschieben oder umbenennen</td><td>Das Modell folgt; Tags, Material und Drucke bleiben dran.</td></tr>
     <tr><td>Datei kopieren</td><td>Ein Modell, zwei Orte — partAtlas zeigt es als Duplikat.</td></tr>
     <tr><td>Datei im Dateimanager löschen</td><td>Das Modell bleibt und ist deutlich als „Datei fehlt“ markiert. Die Druckhistorie geht nicht verloren.</td></tr>
-    <tr><td>In partAtlas löschen</td><td>Papierkorb. Vorher zeigt ein Dialog, was am Modell hängt.</td></tr>
+    <tr><td>In partAtlas löschen</td><td>Das Modell kommt in den Papierkorb von partAtlas und ist damit aus dem Katalog. <b>Die Datei bleibt unverändert im Ordner liegen</b>; partAtlas löscht keine Dateien. Vorher zeigt ein Dialog, was am Modell hängt.</td></tr>
   </table>
   <p>Eigenes — Tags, Material, Sammlungen, Baugruppen, eigene Bilder, Drucke — bearbeitest du bewusst
   in partAtlas. Es liegt in einem eigenen Bestand, nicht in deinen Ordnern.</p>
@@ -319,15 +319,15 @@ td:first-child { white-space: nowrap; }
   Duplikate, fehlende und unlesbare Dateien zusammen.</p>
   <table>
     <tr><th>Ansicht</th><th>Inhalt</th></tr>
-    <tr><td>Papierkorb</td><td>In partAtlas gelöschte Modelle; einzeln oder gewählt wiederherstellbar. Oben in der Ansicht steht „Papierkorb leeren …“: das löscht die Dateien endgültig von der Platte (nach einer Rückfrage).</td></tr>
+    <tr><td>Papierkorb</td><td>In partAtlas gelöschte Modelle; einzeln oder gewählt wiederherstellbar. Oben in der Ansicht steht „Papierkorb leeren …“: das entfernt die Einträge endgültig aus dem Katalog (nach einer Rückfrage). Die Dateien in deinen Ordnern bleiben auch dann; liegen sie noch dort, kommen sie beim nächsten Einlesen als neue Modelle wieder.</td></tr>
     <tr><td>Duplikate</td><td>Dateien mit gleichem Inhalt an mehreren Orten.</td></tr>
     <tr><td>Datei fehlt</td><td>Im Katalog vorhanden, auf der Platte nicht mehr.</td></tr>
     <tr><td>Unlesbar</td><td>Dateien, die partAtlas nicht auswerten konnte.</td></tr>
   </table>
-  <h3>Ordner löschen</h3>
-  <p>Rechtsklick auf einen Unterordner in der Seitenleiste: <b>Ordner löschen …</b>. Die Modelle darin gehen in den Papierkorb, die leeren
-  Verzeichnisse werden entfernt. Dateien, die keine Modelle sind (Bilder, PDFs, Texte aus einem entpackten Archiv), rührt partAtlas nie an:
-  liegt noch etwas darin, bleibt der Ordner stehen, und ein Knopf führt dich im Dateimanager dorthin. Dasselbe Menü hat bei jedem Ordner,
+  <h3>Ordner aus dem Katalog entfernen</h3>
+  <p>Rechtsklick auf einen Unterordner in der Seitenleiste: <b>Ordner aus dem Katalog entfernen …</b>. Die Modelle darin gehen in den Papierkorb
+  von partAtlas. <b>Der Ordner und alles darin bleiben auf der Platte</b>, auch leere Verzeichnisse und Dateien, die keine Modelle sind. Willst du
+  den Ordner auch von der Platte löschen, tust du das im Dateimanager; ein Knopf führt dich dorthin. Dasselbe Menü hat bei jedem Ordner,
   auch bei den Wurzelordnern, <b>Im Dateimanager zeigen</b>.</p>
   <h3>Löschen mit Auskunft</h3>
   <p>Vor dem Löschen zeigt partAtlas, was am Modell hängt: Dateien, eigene Bilder, Baugruppen,
@@ -360,7 +360,7 @@ td:first-child { white-space: nowrap; }
   <table>
     <tr><th>Ort</th><th>Inhalt</th></tr>
     <tr><td><code>~/.local/share/partatlas</code></td><td>Der Bestand: Katalog, Vorschaubilder, eigene Bilder, Drucke. Anderer Ort mit <code>PARTATLAS_BESTAND</code>.</td></tr>
-    <tr><td>Deine Modell-Ordner</td><td>Bleiben, wo sie sind. partAtlas schreibt dort nur auf deine ausdrückliche Aktion: Verschieben, Umbenennen, Löschen in den Papierkorb.</td></tr>
+    <tr><td>Deine Modell-Ordner</td><td>Bleiben, wo sie sind. partAtlas schreibt dort nur auf deine ausdrückliche Aktion: Verschieben und Umbenennen. <b>Es löscht keine Datei.</b></td></tr>
   </table>
   <ul>
     <li><b>Nur lokal:</b> Der Server hört auf <code>127.0.0.1</code> und ist von außen nicht erreichbar. Es gibt noch kein Passwort.</li>

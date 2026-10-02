@@ -365,7 +365,8 @@ function scanErgebnis(m) {
   // Phasen unter einer halben Sekunde sind Rauschen
   const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
-  const korb = m.zurueckgeholt ? `; ${m.zurueckgeholt.toLocaleString("de-DE")} aus dem Papierkorb zurückgeholt (Datei lag wieder im Ordner)` : "";
+  const korb = (m.zurueckgeholt ? `; ${m.zurueckgeholt.toLocaleString("de-DE")} aus dem Papierkorb zurückgeholt` : "")
+    + (m.im_papierkorb ? `; ${m.im_papierkorb.toLocaleString("de-DE")} im Papierkorb (aus dem Katalog entfernt) übergangen` : "");
   return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""}${korb} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
 }
 
@@ -649,18 +650,19 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
   }
 }
 
-// Papierkorb endgültig leeren: die Dateien gehen von der Platte, danach ist nichts mehr wiederherzustellen. Eigene Bilder werden
-// archiviert und gehen nicht verloren.
+// Papierkorb leeren: die Einträge verschwinden endgültig aus dem Katalog (Tags, Drucke, Verknüpfungen). Die Dateien in den Ordnern bleiben —
+// partAtlas löscht sie nie. Liegt eine noch im Ordner, kommt sie beim nächsten Einlesen als neues Modell wieder.
 async function papierkorbLeeren() {
   const n = zustand.modelle.length;
-  const a = await dialog(`<h2>Papierkorb endgültig leeren?</h2>
-    <p>${n.toLocaleString("de-DE")} ${n === 1 ? "Modell wird" : "Modelle werden"} samt ${n === 1 ? "seiner Datei" : "ihren Dateien"} von der Platte gelöscht. Danach lässt sich nichts davon wiederherstellen.</p>
-    <p class="dim">Eigene Bilder, die du hinzugefügt hattest, werden archiviert und gehen nicht verloren.</p>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Endgültig löschen</button></div>`);
+  const a = await dialog(`<h2>Papierkorb leeren?</h2>
+    <p>${n.toLocaleString("de-DE")} ${n === 1 ? "Modell wird" : "Modelle werden"} endgültig aus dem Katalog entfernt, samt Tags, Drucken und Verknüpfungen. Wiederherstellen geht danach nicht mehr.</p>
+    <p><b>Die Dateien in deinen Ordnern bleiben liegen</b> — partAtlas löscht sie nie. Wenn du sie nicht selbst im Dateimanager löschst, kommen sie beim
+      nächsten Einlesen als neue Modelle wieder, ohne Tags und Drucke.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Endgültig entfernen</button></div>`);
   if (a !== "ja") return;
   try {
     const r = await api("/api/papierkorb/leeren", { method: "POST" });
-    toast(`${r.geloescht} ${r.geloescht === 1 ? "Modell" : "Modelle"} endgültig gelöscht.`);
+    toast(`${r.geloescht} ${r.geloescht === 1 ? "Modell" : "Modelle"} endgültig aus dem Katalog entfernt.`);
     waehle(null);
     await ladeSeite();
     neuLaden();
@@ -669,7 +671,7 @@ async function papierkorbLeeren() {
 $("#pk-leeren").addEventListener("click", papierkorbLeeren);
 
 async function loeschenViele(modelle) {
-  if (await loeschDialog(modelle, `${modelle.length} Modelle löschen?`)) { zustand.auswahl.clear(); waehle(null); }
+  if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) { zustand.auswahl.clear(); waehle(null); }
 }
 
 // ---------------------------------------------------------------- Ordner wählen, Hochladen, Archive
@@ -714,14 +716,13 @@ async function archiveEntpacken() {
   if (!liste.length) return toast("Keine Archive in den Ordnern.");
   const a = await dialog(`<h2>Archive entpacken</h2><p class="dim">Jedes in einen Unterordner daneben. Heraus kommen nur Modelle, G-Code, Bilder und Texte — nie Programme.</p>
     ${liste.map((x, i) => `<label><input type="checkbox" data-archiv="${esc(x.id)}" ${i < 50 ? "checked" : ""}> ${esc(x.id.split("/").slice(1).join("/"))} <span class="dim">${zahl(x.groesse / 1048576, 1)} MB</span></label>`).join("")}
-    <label><input type="checkbox" id="archiv-weg"> Original danach in den Papierkorb von partAtlas</label>
+    <p class="dim">Das Archiv selbst bleibt unverändert liegen.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Entpacken</button></div>`);
   if (a !== "ja") return;
-  const weg = $("#archiv-weg").checked;
   const gewaehlt = [...document.querySelectorAll("[data-archiv]:checked")].map((x) => x.dataset.archiv);
   let n = 0;
   for (const id of gewaehlt) {
-    try { n += (await api("/api/archive/entpacken", { method: "POST", body: { id, original_loeschen: weg } })).entpackt; }
+    try { n += (await api("/api/archive/entpacken", { method: "POST", body: { id } })).entpackt; }
     catch (e) { toast(`${id}: ${e.message}`); }
   }
   toast(`${n} Dateien entpackt, wird eingelesen …`);
@@ -1193,7 +1194,7 @@ document.addEventListener("contextmenu", (e) => {
     // Wie in VS Code: „Im Dateimanager zeigen“ für jeden Ordner. Löschen nur für Unterordner; die Wurzel wird nur entfernt.
     menu.innerHTML = `<button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
       + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`
-                   : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner löschen …</button>`);
+                   : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner aus dem Katalog entfernen …</button>`);
     kontextMenu.ziel = { ordner: { id: eintrag.dataset.ordner, name: eintrag.dataset.wurzelName || eintrag.dataset.ordner.split("/").pop() },
                          wurzel: istWurzel ? { id: eintrag.dataset.wurzel, name: eintrag.dataset.wurzelName, pfad: eintrag.title, anzahl: Number(eintrag.querySelector("em")?.textContent) || 0 } : null };
     menu.hidden = false;
@@ -1347,7 +1348,7 @@ $("#dialog-inhalt").addEventListener("keydown", (e) => {
 
 async function loeschen(id) {
   const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${id}`);
-  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ löschen?`)) waehle(null);
+  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus dem Katalog entfernen?`)) waehle(null);
 }
 
 // Was am Modell hängt, aus der Nachbarschaft im Graphen — damit man weiss,
@@ -1361,7 +1362,7 @@ async function loeschDialog(modelle, titel, ordner = null) {
   const nurS = v.sammlungen.filter((x) => !x.sonst), andereS = v.sammlungen.filter((x) => x.sonst);
   const zeile = (symbol, html) => `<div class="lz"><span class="lz-s">${symbol}</span><div>${html}</div></div>`;
   const dateien = v.dateien.length
-    ? zeile("📄", `${v.dateien.length === 1 ? "<b>Die Datei</b> verschwindet aus ihrem Ordner" : `<b>${v.dateien.length} Dateien</b> verschwinden aus ihren Ordnern`}:
+    ? zeile("📄", `${v.dateien.length === 1 ? "<b>Die Datei</b> bleibt in ihrem Ordner liegen" : `<b>${v.dateien.length} Dateien</b> bleiben in ihren Ordnern liegen`}:
         <ul>${v.dateien.slice(0, 6).map((d) => `<li>${esc(d)}</li>`).join("")}${v.dateien.length > 6 ? `<li>… und ${v.dateien.length - 6} weitere</li>` : ""}</ul>`)
     : zeile("📄", "Keine Datei auf der Platte (fehlt schon).");
   const bilder = v.bilder ? zeile("🖼", `<b>${v.bilder} eigene${v.bilder === 1 ? "s Bild" : " Bilder"}</b> gehen mit.`) : "";
@@ -1376,16 +1377,12 @@ async function loeschDialog(modelle, titel, ordner = null) {
         ${nurT.map((t) => `<span class="chip">#${esc(t.name)}</span>`).join(" ")}</label>
         <p class="lz-warn" hidden>Kommen beim Wiederherstellen nicht mit zurück.</p></div>` : ""}`) : "";
   const o = ordner?.inhalt;
-  const ordnerZeile = !o ? "" : o.andere_n || o.mehrfach.length
-    ? zeile("📁", `<b>Der Ordner bleibt stehen</b>, weil noch etwas darin liegt, das partAtlas nicht löscht:
-        <ul>${o.andere.slice(0, 6).map((d) => `<li>${esc(d)}</li>`).join("")}${o.andere_n > 6 ? `<li>… und ${o.andere_n - 6} weitere</li>` : ""}
-          ${o.mehrfach.length ? `<li>${o.mehrfach.length} ${o.mehrfach.length === 1 ? "Modell hat" : "Modelle haben"} eine Kopie ausserhalb und bleiben</li>` : ""}</ul>
-        Den Rest löschst du danach im Dateimanager; der Knopf dort hin kommt gleich.`)
-    : zeile("📁", "Der Ordner wird danach entfernt: er ist dann leer.");
+  const ordnerZeile = !o ? "" : zeile("📁", `<b>Der Ordner bleibt mit allem, was darin liegt, auf der Platte.</b>${o.andere_n ? ` Darin liegen auch ${o.andere_n} ${o.andere_n === 1 ? "andere Datei" : "andere Dateien"}, die keine Modelle sind.` : ""}${o.mehrfach.length ? `<br>${o.mehrfach.length} ${o.mehrfach.length === 1 ? "Modell hat" : "Modelle haben"} eine Kopie ausserhalb und bleiben im Katalog.` : ""}`);
   const a = await dialog(`<h2>${titel}</h2>
-    <p class="dim">Alles kommt in den Papierkorb von partAtlas. „Wiederherstellen“ legt es an seinen Ort zurück; endgültig weg ist es erst, wenn der Papierkorb geleert wird.</p>
+    <p class="dim">Das Modell kommt in den Papierkorb von partAtlas und ist damit aus dem Katalog. <b>Die Dateien bleiben unverändert in ihren
+      Ordnern</b> — partAtlas löscht und verschiebt nichts. „Wiederherstellen“ nimmt das Modell wieder auf.</p>
     <div class="loesch-liste">${ordnerZeile}${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">In den Papierkorb</button></div>`);
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Aus dem Katalog entfernen</button></div>`);
   if (a !== "ja") return false;
   const wahl = {
     tags: $("#mit-tags")?.checked ? nurT.map((t) => t.name) : [],
@@ -1398,7 +1395,7 @@ async function loeschDialog(modelle, titel, ordner = null) {
   try {
     const r = await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } });
     if (r.fehler.length) toast(`${modelle.length - r.fehler.length} gelöscht, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
-    else toast(viele ? `${modelle.length} Modelle im Papierkorb.` : "In den Papierkorb gelegt.");
+    else toast(viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt.");
     return true;
   } catch (e) { toast(e.message); return false; }
 }
@@ -2094,40 +2091,30 @@ async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }
 }
 
-// Ordner löschen: die Modelle darin gehen in den Papierkorb, leere Verzeichnisse werden entfernt. Was keine Modelldatei ist
-// (Bilder, PDFs aus einem entpackten Archiv), rührt partAtlas nicht an — dann bleibt der Ordner, und der Anwender räumt den Rest
-// im Dateimanager selbst ab; dorthin führt der Knopf.
+// Ordner aus dem Katalog entfernen: die Modelle darin gehen in den Papierkorb von partAtlas. Der Ordner und alles darin bleibt auf der
+// Platte — partAtlas löscht in den Ordnern des Anwenders nichts; wer ihn auch loswerden will, tut das im Dateimanager, dorthin führt
+// der Knopf. (Der Ordnerbaum zeigt nur Ordner mit Modellen: nach dem Entfernen verschwindet er aus der Seitenleiste.)
 async function ordnerLoeschen(id, name) {
   let i;
   try { i = await api(`/api/ordner/inhalt?id=${encodeURIComponent(id)}`); } catch (e) { return toast(e.message); }
-  const rest = i.andere_n || i.mehrfach.length;
-  let r;
-  if (i.modelle.length) {
-    r = await loeschDialog(i.modelle, `Ordner „${esc(name)}“ löschen?`, { id, inhalt: i });
-    if (!r) return;
-    if (r.fehler?.length) toast(`${r.fehler.length} Modelle ließen sich nicht löschen: ${r.fehler[0].fehler}`);
-  } else if (rest) {
-    const a = await dialog(`<h2>Ordner „${esc(name)}“ lässt sich hier nicht löschen</h2>
-      <p>Es liegen keine Modelle des Katalogs darin, aber ${i.andere_n} ${i.andere_n === 1 ? "andere Datei" : "andere Dateien"}, die partAtlas nicht anrührt:</p>
-      <ul>${i.andere.slice(0, 8).map((d) => `<li>${esc(d)}</li>`).join("")}${i.andere_n > 8 ? `<li>… und ${i.andere_n - 8} weitere</li>` : ""}</ul>
+  if (!i.modelle.length) {
+    const a = await dialog(`<h2>Ordner „${esc(name)}“</h2>
+      <p>Es liegen keine Modelle des Katalogs darin${i.andere_n ? `, aber ${i.andere_n} ${i.andere_n === 1 ? "andere Datei" : "andere Dateien"}` : ""}. Es gibt nichts aus dem Katalog zu entfernen,
+        und partAtlas löscht in deinen Ordnern nichts.</p>
       <div class="knoepfe"><button class="knopf" value="nein">Schließen</button><button class="knopf akzent" value="zeigen">Im Dateimanager zeigen</button></div>`);
     if (a === "zeigen") ordnerZeigen(id);
     return;
-  } else {
-    if (await dialog(`<h2>Leeren Ordner löschen?</h2><p><b>${esc(name)}</b> ist leer.</p>
-      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Löschen</button></div>`) !== "ja") return;
-    try { r = await api("/api/ordner/loeschen", { method: "POST", body: { id } }); } catch (e) { return toast(e.message); }
   }
+  const r = await loeschDialog(i.modelle, `Ordner „${esc(name)}“ aus dem Katalog entfernen?`, { id, inhalt: i });
+  if (!r) return;
+  if (r.fehler?.length) toast(`${r.fehler.length} Modelle ließen sich nicht entfernen: ${r.fehler[0].fehler}`);
   if (zustand.ordner === id || zustand.ordner.startsWith(id + "/")) zustand.ordner = id.slice(0, id.lastIndexOf("/"));
   await ladeSeite();
   neuLaden();
-  if (r.entfernt) return toast("Ordner gelöscht.");
-  const g = r.geblieben;
-  const a = await dialog(`<h2>Der Ordner bleibt stehen</h2>
-    <p>${r.modelle ? `${r.modelle} ${r.modelle === 1 ? "Modell liegt" : "Modelle liegen"} im Papierkorb. ` : ""}Der Ordner enthält noch
-      ${g.andere ? `${g.andere} ${g.andere === 1 ? "andere Datei" : "andere Dateien"}` : ""}${g.andere && g.modelle ? " und " : ""}${g.modelle ? `${g.modelle} ${g.modelle === 1 ? "Modell" : "Modelle"}` : ""},
-      die partAtlas nicht löscht.</p>
+  const a = await dialog(`<h2>Aus dem Katalog entfernt</h2>
+    <p>${r.modelle} ${r.modelle === 1 ? "Modell liegt" : "Modelle liegen"} im Papierkorb von partAtlas. <b>Der Ordner und seine Dateien liegen unverändert auf der Platte:</b></p>
     <p class="dim">${esc(r.pfad)}</p>
+    <p>Willst du ihn auch von der Platte löschen, geht das im Dateimanager.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Schließen</button><button class="knopf akzent" value="zeigen">Im Dateimanager zeigen</button></div>`);
   if (a === "zeigen") ordnerZeigen(id);
 }

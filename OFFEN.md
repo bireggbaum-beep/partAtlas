@@ -345,6 +345,16 @@ wie bei „Wiederherstellen“ zurück. Die Kopfzeile nennt „N aus dem Papierk
 FCStd läuft **nur die FreeCAD-Umwandlung** (`Scanner.starten(nur_cad=True)`, `POST /api/cad/starten`, auch bei „erneut versuchen“), nicht mehr ein ganzer Lauf mit Suchen und Hashen.
 Geprüft in `test_scan` (62/62) mit Gegenproben. **Offen:** die Frage nach FCStd kommt erst, wenn der Lauf fertig ist.
 
+**partAtlas löscht keine Dateien mehr (0.30.0):** Vorgabe des Anwenders: „die Dateien sollten niemals gelöscht werden, sondern nur in der Datenbank“. „Löschen“ eines Modells oder Ordners
+nimmt nur den Katalogeintrag in den Papierkorb (flatgraph-Papierkorb, `Katalog.loeschen`); **die Datei bleibt im Ordner**, ihr Ort wird samt Grösse und Zeit in `papierkorb` gemerkt, damit der Scan sie
+überspringt, ohne sie bei jedem Lauf neu zu lesen (`ignorierte_orte`). „Wiederherstellen“ nimmt das Modell am gemerkten Ort wieder auf (fehlt die Datei inzwischen: „Datei fehlt“). „Papierkorb
+leeren“ vergisst die Einträge, löscht aber keine Datei; eine noch vorhandene Datei kommt beim nächsten Einlesen als neues Modell wieder. „Ordner löschen“ heisst jetzt „aus dem Katalog entfernen“ und
+rührt Verzeichnisse nicht an. Die Option „Archiv-Original in den Papierkorb“ entfällt. Frühere Fassungen hatten die Dateien in den Papierkorb von partAtlas *verschoben*: solche Einträge
+(`ablage` gesetzt) werden weiter zurückgelegt, und legt der Anwender die Datei wieder in den Ordner, kommt das Modell zurück (`aus_papierkorb_zurueck`); „Papierkorb leeren“ löscht dort nur diese verschobenen
+Kopien. Weiter schreibt partAtlas in den Ordnern: Verschieben und Umbenennen auf Wunsch (nie überschreibend) und die entpackten Archive. Geprüft in `test_scan` (64/64), `test_verwalten` (58/58),
+`test_api` (59/59) mit Gegenproben; der Test fand dabei einen echten Fehler (`papierkorb_leeren` ohne `ablage`). **Offen:** leere Ordner sieht man im Baum nicht; ein Papierkorb-Eintrag, dessen Datei der
+Anwender selbst gelöscht hat, bleibt bis zum Leeren; „Papierkorb leeren“ lässt Dateien stehen, die danach wieder auftauchen — ein „Ignorieren“ (Eintrag behalten) wäre ein eigener Schritt.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

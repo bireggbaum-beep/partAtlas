@@ -218,8 +218,8 @@ if __name__ == "__main__":
         check("Zip: .exe, ../-Pfad, __MACOSX und Symlink bleiben drin",
               r["entpackt"] == 2 and not os.path.exists(os.path.join(tmp, "ausserhalb.stl"))
               and not os.path.exists(os.path.join(os.path.dirname(tmp), "ausserhalb.stl")))
-        check("Original auf Wunsch in den Papierkorb von partAtlas, nicht gelöscht",
-              not os.path.exists(zp) and os.path.exists(os.path.join(tmp, "bestand", "papierkorb", "Paket.zip")))
+        check("Das Archiv bleibt unverändert liegen, auch wenn die Anfrage das Löschen verlangt (partAtlas löscht keine Dateien)",
+              os.path.exists(zp) and not os.path.exists(os.path.join(tmp, "bestand", "papierkorb", "Paket.zip")))
         c.post("/api/archive/entpacken", json={"id": liste["Satz.tar.gz"]})
         check("tar.gz: Datei heraus, Symlink nicht, Original bleibt",
               os.listdir(os.path.join(samm, "Technik", "Satz", "Satz")) == ["Teil B.stl"] and os.path.exists(tp))
@@ -270,7 +270,7 @@ if __name__ == "__main__":
               and [f["id"] for f in r["fehler"]] == [m["Doppel"]])
         check("Unbekannte Aktion abgelehnt", c.post("/api/stapel", json={"aktion": "formatieren", "modelle": drei}).status_code == 400)
 
-    # -- Ordner löschen: Modelle in den Papierkorb, leere Verzeichnisse weg, alles andere bleibt
+    # -- Ordner aus dem Katalog entfernen: die Modelle in den Papierkorb, auf der Platte bleibt alles
     tmp2 = tempfile.mkdtemp()
     s2 = os.path.join(tmp2, "Sammlung")
     arch = os.path.join(s2, "Testarchiv")
@@ -283,9 +283,17 @@ if __name__ == "__main__":
         f.write("gehört nicht zu den Modellen")
     muster.stl_binaer(os.path.join(s2, "Draussen.stl"), 14, 12, 13)
     muster.stl_binaer(os.path.join(arch, "Kopie.stl"), 14, 12, 13)         # gleicher Inhalt wie Draussen: eine Datei, zwei Orte
+
+    def alle_dateien():
+        return sorted(os.path.relpath(os.path.join(d, f), tmp2) for d, _, fs in os.walk(tmp2) for f in fs if "bestand" not in d)
+
+    def alle_ordner():
+        return sorted(os.path.relpath(os.path.join(d, x), tmp2) for d, xs, _ in os.walk(tmp2) for x in xs if "bestand" not in d)
+
     with TestClient(erstelle_app(os.path.join(tmp2, "bestand"), prozesse=2)) as c:
         w = c.post("/api/wurzeln", json={"pfad": s2}).json()["id"]
         warten(c)
+        vorher_dateien, vorher_ordner = alle_dateien(), alle_ordner()
         i = c.get("/api/ordner/inhalt", params={"id": f"{w}/Testarchiv"}).json()
         check("Ordnerinhalt: drei Modelle ganz darin, eins mit Kopie ausserhalb, die Textdatei als „andere“",
               len(i["modelle"]) == 3 and len(i["mehrfach"]) == 1 and i["andere"] == ["Anleitung.txt"])
@@ -293,26 +301,24 @@ if __name__ == "__main__":
               c.get("/api/ordner/inhalt", params={"id": f"{w}/../.."}).status_code == 400)
         check("Ein Wurzelordner wird nicht gelöscht", c.post("/api/ordner/loeschen", json={"id": w}).status_code == 400)
         r = c.post("/api/ordner/loeschen", json={"id": f"{w}/Testarchiv"}).json()
-        check("Ordner löschen: die drei Modelle im Papierkorb, der Ordner bleibt wegen Textdatei und Kopie",
-              r["entfernt"] is False and r["modelle"] == 3 and r["geblieben"] == {"andere": 1, "modelle": 1}
-              and not os.path.exists(os.path.join(arch, "A.stl")) and os.path.exists(os.path.join(arch, "Anleitung.txt"))
-              and os.path.exists(os.path.join(arch, "Kopie.stl")) and os.path.exists(os.path.join(s2, "Draussen.stl")))
-        check("Ordner löschen: die leeren Unterverzeichnisse sind weg, auch die, die nie ein Modell hatten",
-              not os.path.exists(os.path.join(arch, "Leer")) and not os.path.exists(os.path.join(arch, "Teile")))
-        check("Ordner löschen: die drei Modelle stehen im Papierkorb", c.get("/api/zaehler").json()["papierkorb"] == 3)
-        os.unlink(os.path.join(arch, "Anleitung.txt"))
-        os.unlink(os.path.join(arch, "Kopie.stl"))
+        check("Ordner entfernen: drei Modelle im Papierkorb, das mit der Kopie ausserhalb bleibt im Katalog",
+              r["modelle"] == 3 and r["mehrfach"] == 1 and r["andere"] == 1 and c.get("/api/zaehler").json()["papierkorb"] == 3)
+        check("Ordner entfernen: auf der Platte ändert sich nichts — keine Datei, kein Ordner fehlt, auch kein leerer",
+              alle_dateien() == vorher_dateien and alle_ordner() == vorher_ordner)
         c.post("/api/scan")
         warten(c)
-        i2 = c.get("/api/ordner/inhalt", params={"id": f"{w}/Testarchiv"}).json()
-        check("Nach dem Aufräumen von Hand: der Ordner ist leer, auch im Katalog", i2["modelle"] == [] and i2["andere"] == [])
-        r = c.post("/api/ordner/loeschen", json={"id": f"{w}/Testarchiv"}).json()
-        check("Leerer Ordner: wird entfernt", r["entfernt"] is True and not os.path.exists(arch))
+        st = c.app.state.zustand["scanner"].status
+        check("Der nächste Scan lässt die entfernten Dateien in Ruhe: weder neu eingelesen noch zurückgeholt",
+              st["neu"] == 0 and st["zurueckgeholt"] == 0 and st["im_papierkorb"] == 3 and st["zu_pruefen"] == 0 and c.get("/api/zaehler").json()["papierkorb"] == 3
+              and alle_dateien() == vorher_dateien)
         papier = [m["id"] for m in c.get("/api/modelle", params={"ansicht": "papierkorb"}).json()]
         c.post(f"/api/modelle/{papier[0]}/wiederherstellen")
-        check("Wiederherstellen legt das Modell zurück, auch wenn sein Ordner inzwischen weg ist",
-              any(os.path.exists(os.path.join(arch, *pf)) for pf in (("A.stl",), ("Teile", "B.stl"), ("Teile", "Unten", "C.stl"))))
-        # Ein Ordner „neu“ anlegen, den es auf der Platte schon gibt (Rest eines gelöschten Modells): benutzen statt Fehler
+        check("Wiederherstellen nimmt das Modell wieder auf; die Datei ist nie weg gewesen",
+              c.get("/api/zaehler").json()["papierkorb"] == 2 and alle_dateien() == vorher_dateien)
+        c.post("/api/papierkorb/leeren")
+        check("Papierkorb leeren löscht keine Dateien, nur die Einträge",
+              c.get("/api/zaehler").json()["papierkorb"] == 0 and alle_dateien() == vorher_dateien)
+        # Ein Ordner „neu“ anlegen, den es auf der Platte schon gibt: benutzen statt Fehler
         os.makedirs(os.path.join(s2, "Rest"))
         r1 = c.post("/api/verzeichnisse", json={"eltern": w, "name": "Rest"})
         check("Neuer Unterordner, den es schon gibt: wird benutzt, kein Fehler", r1.status_code == 200 and r1.json()["id"] == f"{w}/Rest")

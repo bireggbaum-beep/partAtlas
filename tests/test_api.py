@@ -220,10 +220,10 @@ if __name__ == "__main__":
         v = c.get(f"/api/modelle/{zahnrad['id']}/loeschen").json()
         check("Löschvorschau über die API", len(v["dateien"]) == 1 and len(v["knoten"]) == 1)
         c.post(f"/api/modelle/{zahnrad['id']}/loeschen", headers={"Sec-Fetch-Site": "same-origin"})
-        check("Gelöscht: Datei weg aus dem Ordner", not os.path.exists(os.path.join(sammlung, "Technik", "Zahnrad.3mf")))
+        check("Gelöscht: die Datei bleibt im Ordner liegen, nur der Katalogeintrag geht", os.path.exists(os.path.join(sammlung, "Technik", "Zahnrad.3mf")))
         check("Zähler: Papierkorb 1", c.get("/api/zaehler").json()["papierkorb"] == 1)
         c.post(f"/api/modelle/{zahnrad['id']}/wiederherstellen")
-        check("Wiederhergestellt: Datei zurück", os.path.exists(os.path.join(sammlung, "Technik", "Zahnrad.3mf")))
+        check("Wiederhergestellt: Modell wieder im Katalog, Datei unverändert", os.path.exists(os.path.join(sammlung, "Technik", "Zahnrad.3mf")) and c.get(f"/api/modelle/{zahnrad['id']}").json()["papierkorb"] is False)
 
         baum = c.get("/api/ordner").json()
         check("Ordnerbaum über die API", baum[0]["name"] == "3D-Druck" and baum[0]["kinder"][0]["name"] == "Technik")

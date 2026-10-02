@@ -347,7 +347,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/archive/entpacken")
     async def archiv_entpacken(request: Request):
         d = await request.json()
-        ergebnis = K().archiv_entpacken(d.get("id", ""), bool(d.get("original_loeschen")))
+        ergebnis = K().archiv_entpacken(d.get("id", ""))
         zustand["scanner"].starten()
         return ergebnis
 

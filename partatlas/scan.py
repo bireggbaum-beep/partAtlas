@@ -237,9 +237,10 @@ class Scanner:
         if nur_cad:
             return self._lauf_nur_cad(t0)
         self._setze(laeuft=True, phase="suchen", nur_cad=False, gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
-                    unlesbar=0, zurueckgeholt=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
+                    unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
         index = self.k.ort_index()
+        ignoriert = self.k.ignorierte_orte()
         wurzeln = self.k.wurzeln()
         gesehen, zu_hashen = set(), []
         for wid, w in wurzeln.items():
@@ -250,6 +251,10 @@ class Scanner:
                 gesehen.add(schluessel)
                 alt = index.get(schluessel)
                 if alt and alt[1] == st.st_size and alt[2] == st.st_mtime:
+                    continue
+                ign = ignoriert.get(schluessel)
+                if ign and ign[1] == st.st_size and ign[2] == st.st_mtime:
+                    self.status["im_papierkorb"] += 1     # aus dem Katalog entfernt, die Datei liegt noch im Ordner: so lassen
                     continue
                 zu_hashen.append((schluessel, pfad, st))
         if self._stopp.is_set():
@@ -276,7 +281,9 @@ class Scanner:
                 if status == "lebt":
                     ortwechsel.append((h, s, st, alt[0] if alt and alt[0] != h else None))
                 elif status == "papierkorb":
-                    # Dieselbe Datei liegt wieder im Ordner: das Modell kommt aus dem Papierkorb zurück (der Inhalt ist die Kennung).
+                    # Der Inhalt ist die Kennung: ein Modell im Papierkorb, dessen Datei der Anwender wieder in den Ordner legt, kommt
+                    # zurück, wenn frühere Fassungen die Datei verschoben hatten; sonst bleibt es im Papierkorb (Datei und Modell sind
+                    # beide noch da, der Anwender hat nur den Katalogeintrag entfernt).
                     zurueck.append((h, s, st))
                 else:
                     neu_je_hash.setdefault(h, []).append((s, pfad, st))
@@ -293,6 +300,8 @@ class Scanner:
             for h, s, st in zurueck:
                 if self.k.aus_papierkorb_zurueck(h, s[0], s[1], st):
                     self._setze(zurueckgeholt=self.status["zurueckgeholt"] + 1)
+                else:
+                    self.status["im_papierkorb"] += 1
             verschoben = sum(1 for o in ortwechsel if o[0])
             self._setze(verschoben=verschoben, bearbeitet=verschoben)
             if self._stopp.is_set():          # gehasht ist nur ein Teil: nichts Neues anlegen, nichts entfernen
