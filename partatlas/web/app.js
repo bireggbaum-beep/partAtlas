@@ -190,6 +190,11 @@ function gruppenKopf(g, y) {
 }
 
 async function ladeModelle() {
+  // Aufräumen ist keine Kachelliste, sondern eine eigene Fläche (aufraeumen.js).
+  if (typeof zeigeAufraeumen === "function") {
+    zeigeAufraeumen(zustand.ansicht === "aufraeumen");
+    if (zustand.ansicht === "aufraeumen") return ladeAufraeumen();
+  }
   const p = new URLSearchParams({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format,
                                   ansicht: zustand.ansicht, sammlung: zustand.sammlung, leiste: 1,
                                   tags: [...zustand.tags].join(","), material: [...zustand.material].join(",") });
@@ -272,7 +277,7 @@ function zweig(k, tiefe) {
 }
 
 // Die Seitenleiste wechselt als Ganzes (wie bei VS Code): Katalog oder Bereinigen.
-const BEREINIGEN = ["papierkorb", "duplikate", "fehlt", "unlesbar"];
+const BEREINIGEN = ["aufraeumen", "papierkorb", "duplikate", "fehlt", "unlesbar"];
 
 function markiereAnsicht() {
   const bereinigt = BEREINIGEN.includes(zustand.ansicht);
@@ -344,7 +349,7 @@ function zeichneLeer() {
   const leer = $("#leer");
   const erst = zustand.hatWurzeln === false && zustand.katalogLeer !== false;
   document.body.classList.toggle("erststart", erst);
-  leer.hidden = zustand.modelle.length > 0;
+  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen";      // Aufräumen hat seine eigene Fläche
   if (leer.hidden) return;
   const scan = zustand.scan;
   if (erst) {
@@ -2135,7 +2140,8 @@ function bilanz(m) {
   if (m.aus_datei) z.push(`${anzahl(m.aus_datei)} ${m.aus_datei === 1 ? "Vorschaubild" : "Vorschaubilder"} aus der Datei übernommen`);
   if (m.verschoben) z.push(`${anzahl(m.verschoben)} bekannte Modelle an neuem Ort erkannt (verschoben, umbenannt oder kopiert)`);
   if (m.zurueckgeholt) z.push(`${anzahl(m.zurueckgeholt)} aus dem Papierkorb zurückgeholt`);
-  if (m.entfernt) z.push(`${anzahl(m.entfernt)} nicht mehr im Ordner — siehe Bereinigen › Datei fehlt`);
+  if (m.aufgeraeumt) z.push(`${anzahl(m.aufgeraeumt)} ${m.aufgeraeumt === 1 ? "Entwurf" : "Entwürfe"} aufgeräumt (Datei gelöscht) — im Papierkorb, falls doch`);
+  if (m.entfernt - (m.aufgeraeumt || 0) > 0) z.push(`${anzahl(m.entfernt - (m.aufgeraeumt || 0))} nicht mehr im Ordner — siehe Bereinigen › Datei fehlt`);
   if (m.unlesbar) z.push(`${anzahl(m.unlesbar)} unlesbar — siehe Bereinigen › Unlesbar`);
   if (m.nicht_erreichbar?.length) z.push(`Nicht erreichbar: ${esc(m.nicht_erreichbar.join(", "))} (nichts als fehlend markiert)`);
   if (m.fcstd_frage) z.push(`${anzahl(m.fcstd_frage)} ${m.fcstd_frage === 1 ? "FCStd-Datei wartet" : "FCStd-Dateien warten"} auf deine Zusage für FreeCAD — die Frage kommt nach OK`);

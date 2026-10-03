@@ -558,6 +558,26 @@ async def oberflaeche(port):
         }""")
         check("Ordner hineingezogen: alles darin mit Unterordnern, versteckte Ordner bleiben draussen",
               sorted(baum) == [["Projekt/Teile/a.stl", "Projekt/Teile"], ["Projekt/b.txt", "Projekt"]])
+        # -- Aufräumen: eigene Fläche unter Bereinigen, Gruppen mit Grund und Grösse, Auswahl mit Summe, Behalten
+        nimm = next(x["id"] for x in api(port, "/api/modelle") if x["name"] == "Nimm")
+        api(port, f"/api/modelle/{nimm}", {"entwurf": True}, "PATCH")
+        await pg.click('[data-rail="bereinigen"]')
+        await pg.click('[data-ansicht="aufraeumen"]')
+        await pg.wait_for_selector('#aufraeumen:not([hidden]) .af-gruppe')
+        zeile = pg.locator(".af-zeile", has_text="Nimm")
+        await pg.wait_for_timeout(500)
+        check("Aufräumen: eigene Fläche statt Kacheln (kein Leer-Hinweis), der Entwurf steht mit Grund, Grösse und Pfad da",
+              await pg.locator("#raster").is_hidden() and await pg.locator("#leer").is_hidden() and await zeile.count() == 1
+              and "als Entwurf markiert" in await zeile.inner_text() and "Nimm.stl" in await zeile.inner_text())
+        await zeile.locator("input").check()
+        await pg.wait_for_selector(".af-leiste:not([hidden])")
+        check("Auswahl: Leiste mit Anzahl und Summe, Pfade als CSV speicherbar", (await pg.inner_text(".af-leiste")).startswith("1 gewählt")
+              and await pg.locator("[data-af-csv]").count() == 1)
+        await zeile.locator("[data-af-behalten]").click()
+        await pg.wait_for_selector(".af-zeile:has-text('Nimm')", state="detached")
+        check("Behalten: nicht mehr vorgeschlagen, als Ausnahme gezählt", "1 Ausnahme" in await pg.inner_text(".af-kopf"))
+        await pg.click('[data-rail="katalog"]')
+        check("Zurück im Katalog: die Kacheln sind wieder da", await pg.locator("#raster").is_visible())
         check("Keine Fehler in der Browser-Konsole", fehler == [])
         if fehler:
             print("   ", fehler)

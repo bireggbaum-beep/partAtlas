@@ -92,6 +92,7 @@
     <section class="sektion" data-sektion="bereinigen">
       <h3><button class="sk-kopf" data-sk="bereinigen">Bereinigen</button></h3>
       <div class="sk-inhalt">
+        <button class="eintrag" data-ansicht="aufraeumen"><span>🧹 Aufräumen</span><em id="z-aufraeumen"></em></button>
         <button class="eintrag" data-ansicht="papierkorb"><span>🗑 Papierkorb</span><em id="z-papierkorb"></em></button>
         <button class="eintrag" data-ansicht="duplikate"><span>⧉ Duplikate</span><em id="z-duplikate"></em></button>
         <button class="eintrag" data-ansicht="fehlt"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
@@ -111,6 +112,7 @@
     <div class="raster" id="raster"><div class="raster-innen" id="raster-innen"></div></div>
     <div class="leer" id="leer" hidden></div>
     <div class="bg-ansicht" id="bg-ansicht" hidden></div>
+    <div class="aufraeumen" id="aufraeumen" hidden></div>
     <div class="statuszeile"><span id="anzahl"></span></div>
   </main>
 
@@ -136,6 +138,7 @@
 <div class="abwurf" id="abwurf" hidden>Dateien hier ablegen zum Hochladen</div>
 <script src="/web/app.js"></script>
 <script src="/web/baugruppen.js"></script>
+<script src="/web/aufraeumen.js"></script>
 <script src="/web/roadmap.js"></script>
 </body>
 </html>

@@ -455,7 +455,17 @@ entschieden: ein einziger Zustand *Entwurf* (Feld `entwurf` am Modell), kein „
 Baugruppe aus Ordner und Ordner-Vorschläge ohne Entwürfe; eine bestehende Position mit Entwurf sagt „ist das der richtige Stand?“,
 getauscht wird nichts. `test_baugruppen` 48/48, `test_ui` 70/70; Gegenproben fallen.
 
-**Als Nächstes (vom Anwender gewünscht, 03.10.2026): Aufräumen-Ansicht** — „ein echtes Bereinigen mit echten Vorschlägen und
+**Aufräumen-Ansicht gebaut (0.38.0):** Bereinigen › 🧹 Aufräumen, eigene Fläche (`aufraeumen.js`, Server `aufraeumen.py`). Gruppen
+mit Anzahl und Summe: Entwürfe · Kopien gleichen Inhalts (zählt nur die überzähligen) · grosse Dateien ohne Verwendung (ab 10 MB) ·
+lange nicht angefasst (über 365 Tage unverändert). Je Zeile Grund, Grösse, alle Pfade (📂 nur für eigene Pfade des Modells), was daran
+hängt (gedruckt, Baugruppe, Favorit; Zeile dann getönt). Auswahl mit Summe → „Pfade speichern (CSV)“ oder „Behalten“ (Ausnahme,
+`aufraeumen_behalten` am Modell, unter „Ausnahmen“ zurücknehmbar); „Kein Entwurf“ je Zeile. Der Scan legt einen Entwurf, dessen
+Datei gelöscht wurde, in den Papierkorb (`aufgeraeumt`, Bilanz nennt es). `test_aufraeumen` 13/13 (neu), `test_ui` 74/74;
+Gegenproben (Verwendetes vorgeschlagen, Kopien voll gezählt, Behalten wirkungslos, kein Aufräumen beim Scan, beliebiger Pfad,
+Leer-Hinweis über der Fläche) fallen. **Offen:** Zähler am Eintrag „Aufräumen“ (Summe in GB) — kostet je Seitenaufbau einen Durchgang;
+„lange nicht angefasst“ misst die Dateizeit, nicht wann man das Modell zuletzt angesehen hat (wird nicht mehr geschrieben).
+
+**Wunsch dazu (03.10.2026): Aufräumen-Ansicht** — „ein echtes Bereinigen mit echten Vorschlägen und
 Übersichten, die kontrollierte, detaillierte Entscheidungen ermöglichen“, Vorbild: feingranulare Firewall mit voller Kontrolle. Der
 Tester: „Das Zumüllen ist echt das Problem“. Gruppen mit Platzangabe (Entwürfe, Duplikate, grösste Dateien, nie gedruckt + in keiner
 Baugruppe + lange nicht angesehen), je Zeile der Grund und was daran hängt; Gedrucktes und Verbautes nie als Vorschlag. Löschen vorerst

@@ -35,6 +35,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
 
 from . import cad, dateien, formate, programme, vorschau
+from .bestand import DATEI, MODELL
 
 log = logging.getLogger("partatlas.scan")
 
@@ -247,7 +248,7 @@ class Scanner:
         # `lauf` zählt die Läufe: der Einlesen-Dialog weiss so, welcher Lauf seiner ist. `geprueft`, `je_format`, `aus_datei`,
         # `einlesen_s`, `vorschauen_gesamt`, `cad_gesamt`: was der Dialog und die Anzeige am Zahnrad zeigen (Fortschritt, Bilanz).
         self._setze(lauf=self.status["lauf"] + 1, geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0,
-                    cad_gesamt=0, zu_pruefen=0, zu_analysieren=0, analysiert=0, kopien=0)
+                    cad_gesamt=0, zu_pruefen=0, zu_analysieren=0, analysiert=0, kopien=0, aufgeraeumt=0)
         self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
                     unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
@@ -358,6 +359,18 @@ class Scanner:
                 for h, s in weg:
                     self.k.ort_entfernen(h, *s)
                 self.k.namen_angleichen()
+            # Ein Entwurf, dessen Datei der Anwender gelöscht hat, ist aufgeräumt, nicht „fehlt“: still in den Papierkorb (dort
+            # zurückholbar), die Bilanz nennt ihn. Ein nicht erreichbarer Ordner steht nicht in `weg`, dort geht nichts.
+            aufgeraeumt = set()
+            for h, _ in weg:
+                d = self.b.db.get_node(f"{DATEI}/{h}", readonly=True)
+                mid = self.k.modell_von(h) if d is not None and not d.get("orte") else None
+                if mid and (self.b.db.get_node(f"{MODELL}/{mid}", readonly=True) or {}).get("entwurf"):
+                    aufgeraeumt.add(mid)
+            for mid in sorted(aufgeraeumt):
+                self.k.loeschen(mid)
+            if aufgeraeumt:
+                self._setze(aufgeraeumt=len(aufgeraeumt))
             # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
             # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
             # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.

@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from . import dateidialog, durchsuchen, formate, programme, sicherung
+from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -726,6 +726,20 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
         return {"ok": True, "pfad": pfad}
 
+    @app.get("/api/aufraeumen")
+    def aufraeumen_vorschlaege():
+        return aufraeumen.vorschlaege(K(), B())
+
+    @app.get("/api/aufraeumen/behalten")
+    def aufraeumen_behaltene():
+        return aufraeumen.behaltene(K())
+
+    @app.post("/api/modelle/{mid}/behalten")
+    async def aufraeumen_behalten(mid: str, request: Request):
+        d = await request.json() if await request.body() else {}
+        aufraeumen.behalten(K(), mid, d.get("an", True))
+        return {"ok": True}
+
     @app.post("/api/protokoll/zeigen")
     def protokoll_zeigen():
         pfad = zustand["bestand"].pfad("partatlas.log")
@@ -747,9 +761,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/modelle/{mid}/im_ordner")
-    def im_ordner(mid: str):
+    async def im_ordner(mid: str, request: Request):
+        # Mit {"pfad": …}: genau diese Kopie (Aufräumen zeigt jede einzeln) — nur einer der Orte des Modells.
+        d = await request.json() if await request.body() else {}
         m = K().modell(mid)
-        datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
+        datei = aufraeumen.pfad_von(K(), mid, d["pfad"]) if d.get("pfad") else \
+            next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
         if not datei:
             raise KatalogFehler("Die Datei ist nicht da.")
         try:

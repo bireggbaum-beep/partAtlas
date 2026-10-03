@@ -864,3 +864,33 @@ dialog.einlesen { width: min(460px, calc(100vw - 32px)); }
 .badge.entwurf { top: var(--s3); left: calc(var(--s3) + 14px); color: var(--ink-2); background: var(--panel); border: 1px dashed var(--line-strong); }
 .entwurf-zeichen { color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: 999px; padding: 0 6px; font-size: 11px; }
 .leiste-luecke { flex: 1; }
+
+/* Aufräumen: Gruppen mit Summe, je Zeile Grund, was daran hängt, Pfade zum Zeigen, Grösse, Entscheidung */
+.aufraeumen { flex: 1; overflow-y: auto; padding: 14px 18px 90px; position: relative; }
+.af-kopf h2 { margin: 0 0 6px; }
+.af-kopf p { margin: 4px 0; max-width: 80ch; font-size: 13.5px; }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
+.af-gruppe { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+.af-gkopf { display: flex; align-items: center; gap: 8px; }
+.af-gtitel { background: none; border: 0; padding: 0; font: 600 14.5px var(--sans, inherit); color: var(--ink); cursor: pointer; }
+.af-gzahl { margin-left: auto; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
+.af-erkl { margin: 2px 0 6px 26px; font-size: 12.5px; }
+.af-leer { margin-left: 26px; }
+.af-zeile { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: start; padding: 8px 6px;
+            border-bottom: 1px solid var(--line); }
+.af-zeile.vorsicht { background: color-mix(in oklch, var(--warn) 7%, transparent); }
+.af-zeile input, .af-gkopf input { accent-color: var(--accent); margin-top: 3px; }
+.af-name { background: none; border: 0; padding: 0; color: var(--ink); font-weight: 600; cursor: pointer; text-align: left; }
+.af-grund { font-size: 12.5px; color: var(--ink-2); }
+.af-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.af-haengt { font-size: 11.5px; padding: 0 6px; }
+.af-pfade { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; }
+.af-pfad { background: none; border: 0; padding: 0; text-align: left; font: 11.5px var(--mono); color: var(--ink-3); cursor: pointer;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.af-pfad:hover { color: var(--accent); }
+.af-was { min-width: 0; }
+.af-groesse { font: 12.5px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.af-aktion { display: flex; gap: 4px; }
+.af-leiste { position: sticky; bottom: 10px; margin: 16px auto 0; width: max-content; max-width: 100%; display: flex; gap: 8px;
+             align-items: center; flex-wrap: wrap; padding: 8px 12px; background: var(--panel); border: 1px solid var(--accent);
+             border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; }
