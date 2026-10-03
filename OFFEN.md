@@ -444,8 +444,9 @@ Ordner (webkitGetAsEntry, versteckte Ordner aussen vor), `dateiListe()` zeigt Mo
 nach (nur Neues, nichts überschrieben, `..`/versteckt/ausserhalb abgelehnt). Das Hochladen zählt im Einlesen-Fenster („Hochgeladen:
 12 von 120“, abbrechbar), dann folgt dort das Einlesen. `test_verwalten` 76/76, `test_ui` 69/69 (Ordner-Durchlauf mit nachgebauten
 Einträgen; einen echten Ordner-Drop kann Playwright nicht auslösen). Gegenproben: Häkchen wirkungslos, Unterordner flach, kein Schutz
-vor versteckten Unterordnern — fallen. **Nicht gebaut:** Ausschliessen beim *Hinzufügen eines Ordners an Ort und Stelle* (Wurzel):
-dort hiesse Ausschliessen eine dauerhafte Ausnahmeliste, die jeder Scan beachtet — eigene Sache.
+vor versteckten Unterordnern — fallen. **Entschieden 03.10.2026: kein Ausschliessen beim Hinzufügen eines Ordners an Ort und Stelle.** Später soll partAtlas Dateien wieder
+selbst verschieben und löschen können (ohne Dateimanager), dann aber sicher (KONZEPT §3.3) — nicht wie vor 0.30. Bis dahin bleibt der
+Stand fürs Anwendertesten so, wie er ist: partAtlas löscht und verschiebt nichts von sich aus.
 
 ## Offen, in dieser Reihenfolge
 
