@@ -411,6 +411,13 @@ bei Rückkehr, kein letzter Ort, Behalten ohne Prüfung, Suche ohne Inhaltsvergl
 Inspektor oben weiter die Öffnen-Knöpfe (Slicer/CAD) — Öffnen scheitert dann (schon vorher so, Aufwand 1). Modelle, die vor 0.34
 fehlten, haben keinen `zuletzt_ort`: kein „Lag zuletzt in“, und „Suchen“ hasht dann jede Modelldatei im Ordner.
 
+**FCStd-Zusage las alles neu ein (0.34.1, gemeldet 03.10.2026):** „Ja, einlesen“ startet nur die FreeCAD-Umwandlung (seit 0.29.7) —
+ausser es lief gerade ein Einlesen (etwa das beim Start, und der Ordner kam kurz danach): dann merkte sich der Scanner nur „nochmal“,
+und aus „nur FreeCAD“ wurde ein ganzer Lauf. Ausserdem kam die Frage schon am Ende eines Laufs, dem gleich ein zweiter folgte. Jetzt
+merkt sich der Scanner die Art des Folgelaufs (`_nochmal`: "cad" oder ganz; ganz schliesst die Umwandlung ein), und die Frage wartet,
+solange ein Lauf folgt (`weiter`). `test_scan` 67/67; die zwei neuen Prüfungen fallen gegen 0.34.0. Nicht nachgestellt mit echtem
+FreeCAD; isoliert (ohne laufenden Scan) war das Verhalten schon richtig.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

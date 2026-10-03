@@ -104,7 +104,7 @@ class Scanner:
         self.prozesse = prozesse or max(1, (os.cpu_count() or 2) - 1)
         self._sperre = threading.Lock()
         self._faden = None
-        self._nochmal = False
+        self._nochmal = False               # Folgelauf nach dem laufenden: False, "cad" (nur FreeCAD) oder True (ganz)
         self.status = {"laeuft": False}
         self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
         self._pool = None
@@ -205,7 +205,9 @@ class Scanner:
         Mit `nur_cad`: nur die Umwandlung über FreeCAD, ohne Suchen und Hashen — etwa nachdem der Anwender FCStd erlaubt hat."""
         with self._sperre:
             if self._faden and self._faden.is_alive():
-                self._nochmal = True
+                # Den Wunsch merken, nicht nur „nochmal“: vorher wurde aus „nur FreeCAD“ (nach der FCStd-Zusage) ein ganzer
+                # Lauf, der alles neu einlas. Ein ganzer Folgelauf schliesst die Umwandlung ein.
+                self._nochmal = True if not nur_cad or self._nochmal is True else "cad"
                 return False
             self._nochmal = False
             self._nur_cad = nur_cad
@@ -228,12 +230,13 @@ class Scanner:
             with self._sperre:
                 if not self._nochmal:
                     return
+                self._nur_cad = self._nochmal == "cad"
                 self._nochmal = False
 
     def lauf(self, nur_cad=False):
         t0 = time.time()
         self._stopp.clear()
-        self._setze(fcstd_frage=0, cad_ohne_freecad=0)
+        self._setze(fcstd_frage=0, cad_ohne_freecad=0, weiter=False)
         if nur_cad:
             return self._lauf_nur_cad(t0)
         self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
@@ -352,7 +355,8 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+        # `weiter`: gleich folgt ein Lauf — die Oberfläche fragt dann noch nicht nach FCStd, sonst ginge die Antwort im Folgelauf unter.
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1), weiter=bool(self._nochmal))
 
     def _lauf_nur_cad(self, t0):
         """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""
@@ -365,7 +369,8 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+        # `weiter`: gleich folgt ein Lauf — die Oberfläche fragt dann noch nicht nach FCStd, sonst ginge die Antwort im Folgelauf unter.
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1), weiter=bool(self._nochmal))
 
     def _abgebrochen(self, t0):
         self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.time() - t0, 1))
