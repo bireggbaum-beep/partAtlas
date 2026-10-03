@@ -448,6 +448,20 @@ vor versteckten Unterordnern — fallen. **Entschieden 03.10.2026: kein Ausschli
 selbst verschieben und löschen können (ohne Dateimanager), dann aber sicher (KONZEPT §3.3) — nicht wie vor 0.30. Bis dahin bleibt der
 Stand fürs Anwendertesten so, wie er ist: partAtlas löscht und verschiebt nichts von sich aus.
 
+**Entwurf (0.37.0, Anlass: Tester mit vielen Konstruktionsständen im Ordner „Peltierkühler“):** Versionsverwaltung war ihm zu viel;
+entschieden: ein einziger Zustand *Entwurf* (Feld `entwurf` am Modell), kein „Final“. Setzen im Inspektor (Schalter), per Auswahlleiste
+(schaltet zurück, wenn alle schon Entwurf sind) und Rechtsklick. Kachel: ruhiges Etikett oben links; Listen: Kennzeichen am Namen.
+„Entwürfe ausblenden“ als Chip rechts in der Leiste, gemerkt (`partatlas.ohneEntwuerfe`), mit Zahl („3 Entwürfe ausgeblendet ×“).
+Baugruppe aus Ordner und Ordner-Vorschläge ohne Entwürfe; eine bestehende Position mit Entwurf sagt „ist das der richtige Stand?“,
+getauscht wird nichts. `test_baugruppen` 48/48, `test_ui` 70/70; Gegenproben fallen.
+
+**Als Nächstes (vom Anwender gewünscht, 03.10.2026): Aufräumen-Ansicht** — „ein echtes Bereinigen mit echten Vorschlägen und
+Übersichten, die kontrollierte, detaillierte Entscheidungen ermöglichen“, Vorbild: feingranulare Firewall mit voller Kontrolle. Der
+Tester: „Das Zumüllen ist echt das Problem“. Gruppen mit Platzangabe (Entwürfe, Duplikate, grösste Dateien, nie gedruckt + in keiner
+Baugruppe + lange nicht angesehen), je Zeile der Grund und was daran hängt; Gedrucktes und Verbautes nie als Vorschlag. Löschen vorerst
+selbst über „Im Ordner zeigen“; ein gelöschter Entwurf/Vorschlag gilt dann als aufgeräumt (still in den Papierkorb, Bilanz nennt es)
+statt als „Datei fehlt“. Später, wenn partAtlas sicher löschen darf: „In den Papierkorb des Systems“ direkt aus der Ansicht.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

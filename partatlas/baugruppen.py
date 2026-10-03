@@ -356,7 +356,8 @@ class Baugruppen:
             if art == "modell":
                 kurz, daten = self._modell_daten(kid, kante.get("material"), kante.get("farbe"))
                 eintrag.update(name=kurz["name"], format=kurz["format"], hash=kurz["hash"], vorschau=kurz["vorschau"],
-                               bild=kurz["bild"], fehlt=kurz["fehlt"], masse=kurz["masse"], **{f"je_{k}": v for k, v in daten.items()})
+                               bild=kurz["bild"], fehlt=kurz["fehlt"], entwurf=kurz["entwurf"], masse=kurz["masse"],
+                               **{f"je_{k}": v for k, v in daten.items()})
                 eintrag["material"] = daten["material"]
                 eintrag["farbe"] = daten["farbe"]
                 eintrag["material_angenommen"] = daten["material_angenommen"]
@@ -487,9 +488,11 @@ class Baugruppen:
         return self.aus_modellen(s["name"], [x["id"] for x in self.k.modelle(sammlung=sid)])
 
     def aus_ordner(self, ordner_id):
-        modelle = self.k.modelle(ordner=ordner_id)
+        # Entwürfe nicht: der Ordner eines Projekts hält oft viele Konstruktionsstände, die Stückliste braucht den einen.
+        alle = self.k.modelle(ordner=ordner_id)
+        modelle = [m for m in alle if not m["entwurf"]]
         if not modelle:
-            raise KatalogFehler("Im Ordner liegen keine Modelle.")
+            raise KatalogFehler("Im Ordner liegen nur Entwürfe." if alle else "Im Ordner liegen keine Modelle.")
         name = ordner_id.rstrip("/").split("/")[-1] if "/" in ordner_id else (self.k.wurzeln().get(ordner_id, {}).get("name") or ordner_id)
         return self.aus_modellen(name, [m["id"] for m in modelle])
 
@@ -499,6 +502,8 @@ class Baugruppen:
         namen = {b["name"].lower() for b in self.liste()}
         zaehler = {}
         for m in self.k.modelle():
+            if m["entwurf"]:
+                continue
             for o in m["ordner"]:
                 if "/" in o and o.split("/", 1)[1]:
                     zaehler.setdefault(o, []).append(m["id"])

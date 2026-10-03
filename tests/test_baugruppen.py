@@ -202,4 +202,20 @@ if __name__ == "__main__":
         sid = c.post("/api/sammlungen", json={"name": "Kiste", "modelle": [m["Einzelteil"], m["Halter"]]}).json()["id"]
         neu = c.post("/api/baugruppen", json={"aus_sammlung": sid}).json()["id"]
         check("Sammlung in Baugruppe umwandeln", [p["name"] for p in c.get(f"/api/baugruppen/{neu}").json()["positionen"]] == ["Einzelteil", "Halter"])
+
+        # -- Entwurf: ein Etikett, das neue Baugruppen aus Ordnern nicht übernehmen
+        r = c.post("/api/stapel", json={"aktion": "entwurf", "modelle": [m["Halter"], m["Top_Plate"]], "wert": True})
+        check("Entwurf für mehrere auf einmal setzen", r.status_code == 200
+              and all(c.get(f"/api/modelle/{x}").json()["entwurf"] for x in (m["Halter"], m["Top_Plate"])))
+        neu2 = c.post("/api/baugruppen", json={"aus_ordner": f"{w}/Drohne V2"}).json()["id"]
+        check("Baugruppe aus Ordner nimmt keine Entwürfe",
+              [p["name"] for p in c.get(f"/api/baugruppen/{neu2}").json()["positionen"]] == ["Arm_x4"])
+        d = c.get(f"/api/baugruppen/{neu}").json()
+        check("Eine bestehende Stückliste behält den Entwurf, die Position sagt es",
+              {p["name"]: p["entwurf"] for p in d["positionen"]} == {"Einzelteil": False, "Halter": True})
+        c.patch(f"/api/modelle/{m['Arm_x4']}", json={"entwurf": True})
+        r = c.post("/api/baugruppen", json={"aus_ordner": f"{w}/Drohne V2"})
+        check("Nur Entwürfe im Ordner: abgelehnt mit Grund", r.status_code == 400 and "Entwürfe" in r.json().get("fehler", ""))
+        c.patch(f"/api/modelle/{m['Arm_x4']}", json={"entwurf": False})
+        check("Entwurf zurücknehmen", c.get(f"/api/modelle/{m['Arm_x4']}").json()["entwurf"] is False)
     muster.ende()

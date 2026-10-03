@@ -16,6 +16,7 @@ const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
+  ohneEntwuerfe: localStorageLesen("ohneEntwuerfe") === "1",
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
   sortierung: "name", gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
   gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
@@ -198,9 +199,13 @@ async function ladeModelle() {
   if (s === "neu") liste.sort((a, b) => (b.angelegt || "").localeCompare(a.angelegt || ""));
   if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
   if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
-  const g = gruppiere(liste);
+  // Entwürfe ausblenden: gemerkt; die Leiste sagt, wie viele fehlen, damit niemand ein Modell vermisst.
+  zustand.entwuerfeN = liste.filter((m) => m.entwurf).length;
+  const sichtbar = zustand.ohneEntwuerfe && zustand.ansicht !== "papierkorb" ? liste.filter((m) => !m.entwurf) : liste;
+  const g = gruppiere(sichtbar);
   zustand.modelle = g.liste;
   zustand.gruppen = g.gruppen;
+  zeichneLeiste(leiste);
   zeichneFilterzeile();
   zeichneStapel();
   zeichneListenkopf();
@@ -293,10 +298,14 @@ function zeichneLeiste(l) {
   const fmt = Object.entries(zustand.formate || {}).sort().map(([f, n]) => chip("format", zustand.format === f, f, esc((endung[f] || f).slice(1).toUpperCase()), n)).join("");
   const tags = [...zustand.tags].map((t) => `<button class="chip aktiv" data-tag="${esc(t)}" title="Filter entfernen">#${esc(t)} ×</button>`).join("");
   const leer = !zustand.tags.size && !zustand.material.size && !zustand.format;
+  const entwuerfe = zustand.entwuerfeN || zustand.ohneEntwuerfe
+    ? `<button class="chip ${zustand.ohneEntwuerfe ? "aktiv" : ""}" id="entwuerfe-aus" title="Als Entwurf markierte Modelle ausblenden">${zustand.ohneEntwuerfe
+      ? `${zustand.entwuerfeN || 0} ${zustand.entwuerfeN === 1 ? "Entwurf" : "Entwürfe"} ausgeblendet ×` : `Entwürfe ausblenden<em>${zustand.entwuerfeN}</em>`}</button>` : "";
   abgleichen($("#tagleiste"), `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
     + (fmt ? `<span class="leiste-titel">FORMAT</span>${fmt}` : "")
-    + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : ""));
+    + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : "")
+    + (entwuerfe ? `<span class="leiste-luecke"></span>${entwuerfe}` : ""));
 }
 
 // Der Weg zum gewählten Ordner, dezent über der Liste: „Alle › 3D-Druck › Technik“. Jeder Teil führt dorthin zurück.
@@ -493,6 +502,7 @@ function karte(m, x, y) {
       ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
+      ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
@@ -529,7 +539,7 @@ function zeileL(m, y) {
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
-    <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}</span>
+    <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}</span>
     <span class="mono">${esc(endung[m.format] || "")}</span>
     <span class="mono">${esc(masse(m.masse))}</span>
     <span class="mono">${m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : ""}</span>
@@ -587,6 +597,7 @@ function zeichneStapel() {
     <button class="knopf" data-stapel="material">Material …</button>
     <button class="knopf" data-stapel="gedruckt">✓ Gedruckt</button>
     <button class="knopf" data-stapel="favorit">♥ Favorit</button>
+    <button class="knopf" data-stapel="entwurf" title="Alle gewählten als Entwurf markieren — oder, wenn sie es schon sind, nicht mehr">✎ Entwurf</button>
     <button class="knopf" data-stapel="verschieben">Verschieben …</button>
     <button class="knopf gefahr" data-stapel="loeschen">Löschen</button>
     <button class="knopf" data-stapel="keine">✕</button>`);
@@ -667,6 +678,8 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
     case "baugruppe": return zuBaugruppe(modelle);
     case "gedruckt": return stapel("gedruckt", true, modelle);
     case "favorit": return stapel("favorit", true, modelle);
+    // Sind schon alle Entwurf, nimmt derselbe Knopf es zurück.
+    case "entwurf": return stapel("entwurf", !modelle.every((x) => zustand.modelle.find((m) => m.id === x)?.entwurf), modelle);
     case "material": {
       const alle = await api("/api/materialien");
       const a = await dialog(`<h2>Material für ${modelle.length} Modelle</h2>
@@ -960,6 +973,7 @@ async function waehle(id, live = false) {
         <button class="schalter ${m.warteschlange != null ? "an" : ""}" data-ab-phase="2" id="ws-knopf" title="${m.warteschlange != null ? "Aus der Warteschlange nehmen" : "Zum Drucken vormerken"}">☰ ${m.warteschlange != null ? `Warteschlange · Platz ${m.warteschlange + 1}` : "In Warteschlange"}</button>
         <button class="schalter ${m.gedruckt ? "an" : ""}" id="gedruckt" title="${m.drucke_n ? "Zu den Drucken" : "Als gedruckt markieren"}">${m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : "○ Noch nicht gedruckt"}</button>
         <button class="schalter ${m.favorit ? "an" : ""}" id="favorit" title="Favorit">♥</button>
+        <button class="schalter ${m.entwurf ? "an" : ""}" id="entwurf" title="${m.entwurf ? "Kein Entwurf mehr" : "Als Entwurf markieren — ausblendbar, nicht in neuen Baugruppen"}">✎ Entwurf</button>
       </div>`}
     <div class="i-titel">ZUM DRUCKEN</div>
     <div class="i-karte">${drucken.map(zeile).join("")}${platten}</div>
@@ -1786,6 +1800,10 @@ $("#gruppierung").value = zustand.gruppierung;
   }
   const id = $("#inspektor").dataset.id;
   switch (t.id) {
+    case "entwuerfe-aus":
+      zustand.ohneEntwuerfe = !zustand.ohneEntwuerfe;
+      localStorageSchreiben("ohneEntwuerfe", zustand.ohneEntwuerfe ? "1" : "0");
+      return ladeModelle();
     case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return neuLaden();
     case "sammlung-neu": case "sammlung-neu-2": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
@@ -1849,6 +1867,7 @@ $("#gruppierung").value = zustand.gruppierung;
       return waehle(id);
     }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
+    case "entwurf": { const m = await api(`/api/modelle/${id}`); await aendern(id, { entwurf: !m.entwurf }); return waehle(id); }
     case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.oeffnePfad }); }
     case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
     case "gal-plus-menu": $("#mehr-menu").hidden = true; return $("#bild-wahl").click();
@@ -2311,7 +2330,7 @@ async function kontextMenu(e, id) {
   } else if (mehrere) {
     eintraege = [
       ["kopf", `${modelle.length} Modelle`],
-      ["warteschlange", "☰ In die Warteschlange"], ["druck", "🖨 Zusammen gedruckt …"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"],
+      ["warteschlange", "☰ In die Warteschlange"], ["druck", "🖨 Zusammen gedruckt …"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"], ["entwurf", "✎ Entwurf ein/aus"],
       ["-"], ["tag", "＃ Tag …"], ["material", "Material …"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
   } else {
@@ -2332,6 +2351,7 @@ async function kontextMenu(e, id) {
       ["druck1", "🖨 Druck anlegen …"],
       ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],
       ["favorit1", m.favorit ? "♡ Kein Favorit mehr" : "♥ Favorit"],
+      ["entwurf1", m.entwurf ? "✎ Kein Entwurf mehr" : "✎ Als Entwurf markieren"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
@@ -2496,6 +2516,7 @@ async function kontextAktion(k, knopf) {
     case "druck1": return druckAnlegen([id]);
     case "gedruckt1": return aendern(id, { gedruckt: !m.gedruckt });
     case "favorit1": return aendern(id, { favorit: !m.favorit });
+    case "entwurf1": return aendern(id, { entwurf: !m.entwurf });
     case "umbenennen": return umbenennen(id);
     case "loeschen": return modelle.length > 1 ? loeschenViele(modelle) : loeschen(id);
     case "wiederherstellen":

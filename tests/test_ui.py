@@ -505,6 +505,27 @@ async def oberflaeche(port):
         check("… Enter entfernt genau dieses Modell aus dem Papierkorb",
               api(port, "/api/zaehler")["papierkorb"] == im_korb - 1
               and await pg.locator(".karte", has_text="Haken").count() == 0)
+        # -- Entwurf: im Inspektor setzen, ruhiges Zeichen auf der Kachel, ausblenden mit Zahl, gemerkt
+        await pg.click('[data-rail="katalog"]')
+        await suche("Vase")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector("#entwurf")
+        await pg.click("#entwurf")
+        await pg.wait_for_selector(".karte .badge.entwurf", timeout=5000)
+        await pg.wait_for_selector("#entwuerfe-aus")
+        await pg.click("#entwuerfe-aus")
+        await pg.wait_for_timeout(600)
+        check("Entwurf: Zeichen auf der Kachel; „Entwürfe ausblenden“ nimmt ihn aus der Liste und sagt, wie viele fehlen",
+              await pg.locator(".karte").count() == 0 and "1 Entwurf ausgeblendet" in await pg.inner_text("#entwuerfe-aus")
+              and await pg.evaluate("localStorage.getItem('partatlas.ohneEntwuerfe')") == "1")
+        await pg.click("#entwuerfe-aus")
+        await pg.wait_for_selector(".karte .badge.entwurf", timeout=5000)
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector("#entwurf.an")
+        await pg.click("#entwurf")
+        await pg.wait_for_selector(".karte .badge.entwurf", state="detached", timeout=5000)
+        await suche("")
+
         # -- Hochladen wie SecureSafe: erst die Liste, Häkchen weg = nicht übernommen; hineingezogene Ordner behalten ihre Struktur
         hl = os.path.join(os.path.dirname(SAMMLUNG), "hochladen")
         os.makedirs(hl, exist_ok=True)

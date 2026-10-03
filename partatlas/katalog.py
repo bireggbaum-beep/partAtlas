@@ -364,7 +364,7 @@ class Katalog:
             "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None, "gewicht_herkunft": gewicht_herkunft,
             "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
             "drucke_n": m.get("drucke_n", 0),
-            "favorit": m.get("favorit", False), "hash": h,
+            "favorit": m.get("favorit", False), "entwurf": bool(m.get("entwurf")), "hash": h,
             "vorschau": d.get("vorschau"), "cad": d.get("cad"), "fehlt": not orte and not papierkorb,
             # Der Anwender hat gesagt: die Datei ist absichtlich weg. Dann kein Problem mehr, nur ein ruhiges Zeichen.
             "ohne_datei": bool(d.get("ohne_datei")) and not orte and not papierkorb,
@@ -488,7 +488,9 @@ class Katalog:
         }
 
     def modell_aendern(self, mid, werte):
-        erlaubt = {"favorit": bool, "gedruckt": bool, "quelle_url": (str, type(None))}
+        # entwurf: ein Konstruktionsstand, der nicht gebraucht wird — ausblendbar, nicht in neuen Baugruppen. Kein Versionsbaum,
+        # nur ein Etikett, das der Anwender setzt (03.10.2026: Versionsverwaltung war zu viel).
+        erlaubt = {"favorit": bool, "gedruckt": bool, "entwurf": bool, "quelle_url": (str, type(None))}
         neu = {}
         for k, v in werte.items():
             if k not in erlaubt or not isinstance(v, erlaubt[k]):
@@ -836,10 +838,10 @@ class Katalog:
         """Eine Aktion für viele Modelle; reine Graph-Änderungen in einer
         Transaktion, Dateiaktionen einzeln (jede für sich rückgängig)."""
         fehler = []
-        if aktion in ("favorit", "gedruckt", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange"):
+        if aktion in ("favorit", "gedruckt", "entwurf", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange"):
             with self.db.transaction():
                 for mid in modelle:
-                    if aktion in ("favorit", "gedruckt"):
+                    if aktion in ("favorit", "gedruckt", "entwurf"):
                         self.modell_aendern(mid, {aktion: bool(wert)})
                     elif aktion == "tag":
                         self._tag_verbinden(mid, wert)

@@ -859,3 +859,8 @@ dialog.einlesen { width: min(460px, calc(100vw - 32px)); }
 .dl-pfad { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .dl-groesse { font-family: var(--mono); color: var(--ink-3); font-size: 12px; }
 .dl-zeile input, .dl-kopf input { accent-color: var(--accent); }
+
+/* Entwurf: ein ruhiges Etikett, kein Alarm */
+.badge.entwurf { top: var(--s3); left: calc(var(--s3) + 14px); color: var(--ink-2); background: var(--panel); border: 1px dashed var(--line-strong); }
+.entwurf-zeichen { color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: 999px; padding: 0 6px; font-size: 11px; }
+.leiste-luecke { flex: 1; }

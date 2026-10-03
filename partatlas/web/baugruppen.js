@@ -250,7 +250,8 @@ function position(p, nr) {
     const url = bildUrl(p);
     vorschau = url ? `<img loading="lazy" src="${url}" alt="">` : "🧊";
     name = `${esc(p.name)}<span class="endung">${esc(endung[p.format] || "")}</span>`;
-    unter = [p.fehlt ? "⚠ Datei fehlt" : "", masse(p.masse), p.je_gewicht_g ? `je ${zahl(p.je_gewicht_g, 1)} g${p.je_geschaetzt ? " *" : ""}` : ""].filter(Boolean).join(" · ");
+    // Ein Entwurf in der Stückliste ist meist ein Versehen: sagen, nicht still tauschen.
+    unter = [p.fehlt ? "⚠ Datei fehlt" : "", p.entwurf ? "✎ Entwurf — ist das der richtige Stand?" : "", masse(p.masse), p.je_gewicht_g ? `je ${zahl(p.je_gewicht_g, 1)} g${p.je_geschaetzt ? " *" : ""}` : ""].filter(Boolean).join(" · ");
   } else if (p.art === "kaufteil") {
     vorschau = symbolFuer(p.kategorie);
     name = esc(p.name);
