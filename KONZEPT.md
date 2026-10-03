@@ -619,6 +619,37 @@ Katalog ist vorher benutzbar.
 
 ---
 
+### Kaufteile, Einkäufe und Händler als Knoten (Entwurf)
+
+03.10.2026, derselbe Container, flatgraph 4.1.0, die echten Klassen (`Bestand`, `Katalog`, `Baugruppen`). Skript:
+`messung/kaufteile_mess.py`, Ergebnis `messung/ergebnis_kaufteile_2026-10-03.json`. Eingefügt wird **zusätzlich** zu den 199 Normteilen;
+Einkäufe sind Knoten mit zwei Kanten (zur Ware und zum Händler). Die Mengen sind eine Annahme, keine Messung eines echten Bestands:
+*klein* = ein Bastler (300 Kaufteile, 1 000 Einkäufe), *mittel* (1 500 / 8 000), *gross* = Kleinbetrieb (5 000 / 30 000, 60 Händler,
+60 Baugruppen mit je 150 Positionen). Median aus mehreren Läufen, Abfragen in einem frischen Prozess.
+
+| | nur Normteile | klein | mittel | gross |
+|---|---|---|---|---|
+| neue Knoten / Kanten | – | 1 320 / 2 400 | 9 560 / 18 400 | 35 120 / 69 000 |
+| Öffnen warm | 1,5 ms | 14,7 ms | 130 ms | 583 ms |
+| Arbeitsspeicher nach dem Öffnen | 34 MB | 37 MB | 58 MB | 126 MB |
+| Platte / Dateien | 0,1 MB / 21 | 0,7 MB / 168 | 4,9 MB / 1 138 | 18,2 MB / 4 184 |
+| Sicherung kopieren | 4 ms | 26 ms | 331 ms | 384 ms |
+| Kaufteile-Liste, alle, sortiert | 0,8 ms | 1,9 ms | 5,4 ms | 20,8 ms |
+| Kaufteile suchen (zwei Wörter) | 0,3 ms | 1,1 ms | 1,6 ms | 5,3 ms |
+| Baugruppe öffnen (alle Positionen) | 0,15 ms | 1,0 ms | 1,2 ms | 2,1 ms |
+| Baugruppe: Kosten aus dem letzten Einkauf | 0,03 ms | 0,5 ms | 1,0 ms | 1,9 ms |
+| Verlauf eines Kaufteils | < 0,01 ms | 0,01 ms | 0,01 ms | 0,01 ms |
+| Ausgaben je Monat über alle Einkäufe | – | 0,6 ms | 2,7 ms | 10,2 ms |
+| Einkäufe je Händler (alle Händler) | – | 0,8 ms | 4,2 ms | 19,1 ms |
+| Kaufteil anlegen / ändern | 0,9 / 1,1 ms | 1,1 / 0,9 ms | 0,7 / 0,7 ms | 1,0 / 0,9 ms |
+| Einkauf anlegen (Knoten + 2 Kanten) | 4,1 ms | 3,9 ms | 3,2 ms | 5,0 ms |
+
+Was daraus folgt: **Lesen wächst mit der Menge, bleibt aber überall unter 21 ms; Schreiben ist von der Menge unabhängig** (Speicherform 3).
+Was wirklich wächst, ist das Öffnen (linear, rund 17 µs je Knoten wie in `flatgraphdb/bench`) und der Arbeitsspeicher. Beim Anlegen
+(*gross*, in einer Transaktion) dauert der Aufbau 6,5 s. Nicht gemessen: das Ausliefern von 5 000 Zeilen an den Browser (die Liste dort muss
+wie die des Katalogs virtuell scrollen) und das Öffnen zusammen mit einem Katalog von 10 000 Modellen (die Öffnungszeiten addieren sich
+voraussichtlich, gemessen ist es nicht). Abfragen im Katalog berühren diese Sammlungen nicht.
+
 ## 9. Offen
 
 Ungeprüft, zu klären vor der genannten Phase:

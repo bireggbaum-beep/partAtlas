@@ -485,6 +485,12 @@ Baugruppen (dessen Grid-Regeln überschrieben meine) — jetzt `#zuordnen`/`.zw-
 Wege (Tag-Eingabe, „+ Material …“, „+ Sammlung …“, „+ Baugruppe …“ als Auswahllisten) — dasselbe Fenster würde auch dort passen
 (Aufwand 1–2); Entfernen aus dem Fenster (Dreiwert-Häkchen wie bei Gmail-Labels) würde je Art eine Entfernen-Schnittstelle brauchen.
 
+**Kaufteile als eigene Knoten — Leistung gemessen (03.10.2026, KONZEPT §8):** Rückfrage „was kostet das technisch?“. Kaufteile sind schon
+Knoten (`PURCHASED_PART`); der Entwurf (Verwaltung, Einkäufe, Händler) fügt Knoten und Kanten hinzu. Bei *klein* (300 Kaufteile, 1 000
+Einkäufe) +13 ms Öffnen und +3 MB; bei *gross* (5 000 / 30 000) +580 ms und +92 MB, jede Abfrage unter 21 ms, Schreiben unabhängig von der
+Menge. Daraus: kein Leistungsgrund gegen den Entwurf; die Kaufteile-Liste braucht ab einigen tausend Zeilen virtuelles Scrollen, und die
+Sicherung wächst mit (384 ms, 18 MB bei *gross*). Skript und Ergebnis liegen in `messung/`. Gebaut ist davon noch nichts.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
