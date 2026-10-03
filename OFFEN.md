@@ -437,6 +437,16 @@ FCStd-Frage wartet, bis das Fenster zu ist. Neu im Scanner: `lauf`, `geprueft`, 
 von selbst) fallen. **Offen:** Betriebsprotokoll in den Einstellungen lesbar (heute öffnet „Protokoll“ nur die Datei); Fortschritt mit
 echter grosser Sammlung nicht angesehen (hier dauerte das Einlesen unter 1 s).
 
+**Hochladen mit Liste wie SecureSafe (0.36.0):** Ordner ins Fenster ziehen ging vorher gar nicht (der Browser liefert den Ordner als
+leere Datei, „weder Modell noch Archiv“), und Hochgeladenes landete flach im Zielordner. Jetzt: `abgelegtes()` durchläuft hineingezogene
+Ordner (webkitGetAsEntry, versteckte Ordner aussen vor), `dateiListe()` zeigt Modelle und Archive mit Häkchen, Pfad und Grösse
+(„Ausgewählt: 5 von 6 · 17,4 MB“, andere Dateien nur gezählt), danach der Zielordner; `/api/hochladen?unterordner=` legt die Struktur
+nach (nur Neues, nichts überschrieben, `..`/versteckt/ausserhalb abgelehnt). Das Hochladen zählt im Einlesen-Fenster („Hochgeladen:
+12 von 120“, abbrechbar), dann folgt dort das Einlesen. `test_verwalten` 76/76, `test_ui` 69/69 (Ordner-Durchlauf mit nachgebauten
+Einträgen; einen echten Ordner-Drop kann Playwright nicht auslösen). Gegenproben: Häkchen wirkungslos, Unterordner flach, kein Schutz
+vor versteckten Unterordnern — fallen. **Nicht gebaut:** Ausschliessen beim *Hinzufügen eines Ordners an Ort und Stelle* (Wurzel):
+dort hiesse Ausschliessen eine dauerhafte Ausnahmeliste, die jeder Scan beachtet — eigene Sache.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

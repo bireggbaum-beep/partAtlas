@@ -390,8 +390,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/hochladen")
-    async def hochladen(request: Request, ordner: str, name: str):
-        neu = K().hochladen(ordner, name, await request.body())
+    async def hochladen(request: Request, ordner: str, name: str, unterordner: str = ""):
+        neu = K().hochladen(ordner, name, await request.body(), unterordner)
         return {"dateien": len(neu), "lauf": scan_starten()}
 
     @app.get("/api/archive")

@@ -505,6 +505,38 @@ async def oberflaeche(port):
         check("… Enter entfernt genau dieses Modell aus dem Papierkorb",
               api(port, "/api/zaehler")["papierkorb"] == im_korb - 1
               and await pg.locator(".karte", has_text="Haken").count() == 0)
+        # -- Hochladen wie SecureSafe: erst die Liste, Häkchen weg = nicht übernommen; hineingezogene Ordner behalten ihre Struktur
+        hl = os.path.join(os.path.dirname(SAMMLUNG), "hochladen")
+        os.makedirs(hl, exist_ok=True)
+        for n, x in (("Nimm.stl", 51), ("Lass.stl", 52)):
+            muster.stl_binaer(os.path.join(hl, n), x, 12, 13)
+        open(os.path.join(hl, "Notiz.txt"), "w").write("kein Modell")
+        await pg.set_input_files("#datei-wahl", [os.path.join(hl, n) for n in ("Nimm.stl", "Lass.stl", "Notiz.txt")])
+        await pg.wait_for_selector("#dialog[open] .dl-liste")
+        zeilen = await pg.locator(".dl-zeile").count()
+        text = await pg.inner_text("#dialog")
+        await pg.locator(".dl-zeile", has_text="Lass.stl").locator("input").uncheck()
+        summe = await pg.inner_text("#dl-summe")
+        check("Hochladen: Liste mit Häkchen, Pfad und Grösse; andere Dateien nur gezählt; die Summe folgt den Häkchen",
+              zeilen == 2 and "kB" in text and "1 andere Datei" in text and summe.startswith("Ausgewählt: 1 von 2"))
+        await pg.click("#dl-weiter")
+        await pg.wait_for_selector("#dialog[open] #ordner-ziel")
+        await pg.click('#dialog button[value="ja"]')
+        await pg.wait_for_selector("#ein-ok", timeout=60000)
+        check("… nur das Angehakte liegt danach im Ordner und ist eingelesen",
+              os.path.exists(os.path.join(SAMMLUNG, "Nimm.stl")) and not os.path.exists(os.path.join(SAMMLUNG, "Lass.stl"))
+              and "neu eingelesen" in await pg.inner_text("#einlesen"))
+        await pg.click("#ein-ok")
+        baum = await pg.evaluate("""async () => {
+          const datei = (name) => ({ name, isFile: true, isDirectory: false, file: (ok) => ok(new File(["x"], name)) });
+          const ordner = (name, kinder) => ({ name, isFile: false, isDirectory: true,
+            createReader: () => { let gelesen = false; return { readEntries: (ok) => { ok(gelesen ? [] : kinder); gelesen = true; } }; } });
+          const wurzel = ordner("Projekt", [ordner("Teile", [datei("a.stl")]), datei("b.txt"), ordner(".git", [datei("x.stl")])]);
+          const r = await abgelegtes({ items: [{ webkitGetAsEntry: () => wurzel }], files: [] });
+          return r.map((x) => [x.pfad, x.unterordner]);
+        }""")
+        check("Ordner hineingezogen: alles darin mit Unterordnern, versteckte Ordner bleiben draussen",
+              sorted(baum) == [["Projekt/Teile/a.stl", "Projekt/Teile"], ["Projekt/b.txt", "Projekt"]])
         check("Keine Fehler in der Browser-Konsole", fehler == [])
         if fehler:
             print("   ", fehler)

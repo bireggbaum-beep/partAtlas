@@ -186,6 +186,17 @@ if __name__ == "__main__":
               os.path.exists(os.path.join(samm, "ausbruch.stl")) and not os.path.exists(os.path.join(tmp, "ausbruch.stl")))
         check("Anderes als Modell oder Archiv wird nicht angenommen",
               c.post("/api/hochladen", params={"ordner": w, "name": "boese.sh"}, content=b"rm -rf ~").status_code == 400)
+        r = c.post("/api/hochladen", params={"ordner": w, "name": "Rahmen.stl", "unterordner": "Projekt/Teile"}, content=stl_bytes(41))
+        check("Hineingezogener Ordner: die Unterordner bleiben (Projekt/Teile/Rahmen.stl)",
+              r.status_code == 200 and os.path.exists(os.path.join(samm, "Projekt", "Teile", "Rahmen.stl")))
+        r2 = c.post("/api/hochladen", params={"ordner": w, "name": "Rahmen.stl", "unterordner": "Projekt/Teile"}, content=stl_bytes(42))
+        check("… noch einmal dieselbe Stelle: der Ordner wird mitbenutzt, die Datei nicht überschrieben",
+              r2.status_code == 200 and os.path.exists(os.path.join(samm, "Projekt", "Teile", "Rahmen (2).stl"))
+              and os.path.getsize(os.path.join(samm, "Projekt", "Teile", "Rahmen.stl")) == len(stl_bytes(41)))
+        check("Unterordner mit ../, versteckt oder absolut: abgelehnt, nichts angelegt",
+              all(c.post("/api/hochladen", params={"ordner": w, "name": "x.stl", "unterordner": u}, content=stl_bytes(43)).status_code == 400
+                  for u in ("../draussen", "Projekt/../../draussen", ".versteckt"))
+              and not os.path.exists(os.path.join(tmp, "draussen")) and not os.path.exists(os.path.join(samm, ".versteckt")))
         warten(c)
 
         # -- Archive

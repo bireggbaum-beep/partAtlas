@@ -753,26 +753,114 @@ async function ordnerWahl(titel, hinweis, vorwahl = "") {
   return ziel;
 }
 
-async function hochladen(dateiliste) {
-  const dateien = [...dateiliste];
-  if (!dateien.length) return;
+// Was übernommen werden kann: Modelle und Archive (wie das Dateifeld „Hochladen“). Alles andere wird nur gezählt.
+const UEBERNEHMBAR = /\.(3mf|stl|obj|step|stp|fcstd|zip|tar|gz|tgz|bz2|xz)$/i;
+const groesseText = (b) => (b < 1048576 ? `${zahl(b / 1024, 0)} kB` : `${zahl(b / 1048576, 1)} MB`);
+
+// Was hineingezogen wurde, als [{datei, pfad, unterordner}]. Ordner werden durchlaufen, versteckte (.name) bleiben aussen vor wie beim
+// Einlesen. `webkitGetAsEntry` muss noch im Drop-Ereignis laufen — deshalb zuerst, vor jedem await.
+function abgelegtes(dt) {
+  const eintraege = [...(dt.items || [])].map((i) => i.webkitGetAsEntry?.()).filter(Boolean);
+  if (!eintraege.some((e) => e.isDirectory)) return Promise.resolve([...dt.files].map((f) => ({ datei: f, pfad: f.name, unterordner: "" })));
+  return (async () => {
+    const aus = [];
+    async function lauf(e, ordner) {
+      if (e.name.startsWith(".")) return;
+      if (e.isFile) {
+        const f = await new Promise((ok, nein) => e.file(ok, nein));
+        aus.push({ datei: f, pfad: ordner ? `${ordner}/${f.name}` : f.name, unterordner: ordner });
+        return;
+      }
+      const leser = e.createReader(), hier = ordner ? `${ordner}/${e.name}` : e.name;
+      for (;;) {
+        const teil = await new Promise((ok, nein) => leser.readEntries(ok, nein));
+        if (!teil.length) break;
+        for (const x of teil) await lauf(x, hier);
+      }
+    }
+    for (const e of eintraege) await lauf(e, "");
+    return aus;
+  })();
+}
+
+// Wie in SecureSafe: erst die Liste, Häkchen weg = nicht übernehmen. Ein Archiv ist eine Zeile (sein Inhalt kommt ganz).
+async function dateiListe(eintraege) {
+  const liste = eintraege.filter((x) => UEBERNEHMBAR.test(x.datei.name) && !x.datei.name.startsWith("."))
+    .sort((a, b) => a.pfad.localeCompare(b.pfad, "de"));
+  const andere = eintraege.length - liste.length;
+  if (!liste.length) {
+    await dialog(`<h2>Nichts zu übernehmen</h2><p>Darin liegen keine Modelldateien (3MF, STL, OBJ, STEP, FCStd) und keine Archive.</p>
+      <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
+    return null;
+  }
+  const fertig = dialog(`<h2>${anzahl(liste.length)} ${liste.length === 1 ? "Datei" : "Dateien"} hinzufügen</h2>
+    <p class="dim">Häkchen weg = wird nicht übernommen. Archive kommen ganz und werden in einen Unterordner entpackt.</p>
+    <div class="dl-kopf"><label><input type="checkbox" id="dl-alle" checked> Alle</label><span id="dl-summe"></span></div>
+    <div class="dl-liste">${liste.map((x, i) => `<label class="dl-zeile"><input type="checkbox" data-dl="${i}" checked>
+      <span class="dl-pfad" title="${esc(x.pfad)}">${esc(x.pfad)}</span><span class="dl-groesse">${groesseText(x.datei.size)}</span></label>`).join("")}</div>
+    ${andere ? `<p class="dim">${anzahl(andere)} ${andere === 1 ? "andere Datei" : "andere Dateien"} (Bilder, Texte …) ${andere === 1 ? "wird" : "werden"} nicht übernommen.</p>` : ""}
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja" id="dl-weiter">Weiter</button></div>`);
+  $("#dialog").classList.add("breit");
+  dateiListeSumme(liste);
+  const a = await fertig;
+  $("#dialog").classList.remove("breit");
+  if (a !== "ja") return null;
+  return liste.filter((_, i) => $(`[data-dl="${i}"]`)?.checked);
+}
+
+function dateiListeSumme(liste) {
+  const kaesten = [...document.querySelectorAll("[data-dl]")];
+  const an = kaesten.filter((k) => k.checked);
+  const bytes = an.reduce((s, k) => s + liste[+k.dataset.dl].datei.size, 0);
+  $("#dl-summe").textContent = `Ausgewählt: ${anzahl(an.length)} von ${anzahl(kaesten.length)} · ${groesseText(bytes)}`;
+  $("#dl-alle").checked = an.length === kaesten.length;
+  $("#dl-alle").indeterminate = an.length > 0 && an.length < kaesten.length;
+  $("#dl-weiter").disabled = !an.length;
+  dateiListeSumme.liste = liste;
+}
+$("#dialog-inhalt").addEventListener("change", (e) => {
+  if (e.target.id === "dl-alle") document.querySelectorAll("[data-dl]").forEach((k) => { k.checked = e.target.checked; });
+  if (e.target.id === "dl-alle" || e.target.dataset?.dl != null) dateiListeSumme(dateiListeSumme.liste);
+});
+
+// Dateien oder hineingezogene Ordner hochladen: Liste → Zielordner → Hochladen mit Fortschritt im Einlesen-Fenster → Einlesen.
+async function hochladen(quelle) {
+  const eintraege = Array.isArray(quelle) ? quelle : [...quelle].map((f) => ({ datei: f, pfad: f.name, unterordner: "" }));
+  if (!eintraege.length) return;
+  const dateien = await dateiListe(eintraege);
+  if (!dateien?.length) return;
   const je = {};
-  for (const f of dateien) { const e = (f.name.match(/\.([^.]+)$/) || [, "?"])[1].toLowerCase(); je[e] = (je[e] || 0) + 1; }
-  const ziel = await ordnerWahl(`${dateien.length} Datei${dateien.length > 1 ? "en" : ""} hochladen`,
-    `${formatListe(je)}. Archive (zip, tar) werden in einen Unterordner entpackt. Nichts wird überschrieben.`, zustand.ordner);
+  for (const x of dateien) { const e = (x.datei.name.match(/\.([^.]+)$/) || [, "?"])[1].toLowerCase(); je[e] = (je[e] || 0) + 1; }
+  const ordner = dateien.some((x) => x.unterordner);
+  const ziel = await ordnerWahl(`${anzahl(dateien.length)} ${dateien.length === 1 ? "Datei" : "Dateien"} hochladen — wohin?`,
+    `${formatListe(je)}.${ordner ? " Die Unterordner bleiben, wie sie sind." : ""} Nichts wird überschrieben.`, zustand.ordner);
   if (!ziel) return;
   let ok = 0, lauf = null;
-  for (const [i, f] of dateien.entries()) {
-    toast(`Hochladen ${i + 1}/${dateien.length}: ${f.name}`);
+  const fehler = [];
+  einlesen.stopp = false;
+  einlesen.lauf = null;
+  if (!$("#einlesen").open) $("#einlesen").showModal();
+  for (const [i, x] of dateien.entries()) {
+    if (einlesen.stopp) break;
+    hochladenZeichnen(i, dateien.length, x.pfad);
     try {
-      lauf = await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(f.name)}`, { method: "POST", body: f })
+      lauf = await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(x.datei.name)}&unterordner=${encodeURIComponent(x.unterordner)}`,
+        { method: "POST", body: x.datei })
         .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); return (await r.json()).lauf; });
       ok++;
-    } catch (e) { toast(`${f.name}: ${e.message}`); await new Promise((w) => setTimeout(w, 1500)); }
+    } catch (e) { fehler.push(`${x.pfad}: ${e.message}`); }
   }
-  if (ok < dateien.length) toast(`${ok} von ${dateien.length} hochgeladen.`);
+  if (fehler.length) toast(`${fehler.length} nicht hochgeladen: ${fehler[0]}`);
   // Jede Datei startet das Einlesen; der Folgelauf der letzten sieht alle.
-  einlesenZeigen(lauf, `${ok} ${ok === 1 ? "Datei" : "Dateien"} einlesen`);
+  if (lauf) einlesenZeigen(lauf, `${anzahl(ok)} ${ok === 1 ? "Datei" : "Dateien"} einlesen`);
+  else $("#einlesen").close();
+}
+
+function hochladenZeichnen(i, n, pfad) {
+  abgleichen($("#einlesen-inhalt"), `<h2>Hochladen</h2>
+    <div class="balken"><i style="width:${Math.round((i / n) * 100)}%"></i></div>
+    <p class="ein-zeile">Hochgeladen: <b>${anzahl(i)} von ${anzahl(n)}</b></p><p class="dim dl-pfad">${esc(pfad)}</p>
+    <div class="knoepfe"><button class="knopf" data-einlesen="hochladen-stopp">Abbrechen</button></div>`);
 }
 
 async function archiveEntpacken() {
@@ -2040,6 +2128,7 @@ function bilanz(m) {
 $("#einlesen").addEventListener("click", async (e) => {
   const k = e.target.closest("[data-einlesen]");
   if (!k) return;
+  if (k.dataset.einlesen === "hochladen-stopp") { einlesen.stopp = true; return; }
   if (k.dataset.einlesen === "abbrechen") {
     try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
     return;
@@ -2155,7 +2244,7 @@ window.addEventListener("drop", (e) => {
   // Nur Bilder, aber nirgends, wo sie hingehören: nicht als Modelldatei einlesen wollen.
   const dateien = [...e.dataTransfer.files];
   if (dateien.length && dateien.every((f) => f.type.startsWith("image/"))) return toast("Bilder gehören auf die Vorschau oder auf einen Druck.");
-  hochladen(e.dataTransfer.files);
+  abgelegtes(e.dataTransfer).then(hochladen).catch((err) => toast(err.message));
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
 

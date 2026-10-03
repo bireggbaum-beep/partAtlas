@@ -772,15 +772,27 @@ class Katalog:
 
     # ------------------------------------------------------------ Hochladen und Archive
 
-    def hochladen(self, ordner_id, name, daten):
+    def hochladen(self, ordner_id, name, daten, unterordner=""):
         """Eine Datei aus dem Browser in einen Ordner legen, nie überschreiben.
-        Ein Archiv wird gleich entpackt. Gibt die neuen Pfade zurück."""
+        Ein Archiv wird gleich entpackt. Gibt die neuen Pfade zurück.
+
+        `unterordner`: wo die Datei in einem hineingezogenen Ordner lag (`Projekt/Teile`) — die Struktur bleibt. Angelegt wird nur
+        Neues; ein schon vorhandener Unterordner wird mitbenutzt, eine Datei darin nie überschrieben."""
         name = os.path.basename((name or "").replace("\\", "/"))
         if not name or name.startswith("."):
             raise KatalogFehler("Ungültiger Dateiname.")
         if formate.format_von(name) is None and not archiv.ist_archiv(name):
             raise KatalogFehler(f"„{name}“ ist weder Modell noch Archiv.")
-        _, _, zielordner = self._ordner_pfad(ordner_id)
+        _, wpfad, zielordner = self._ordner_pfad(ordner_id)
+        teile = [t for t in (unterordner or "").replace("\\", "/").split("/") if t]
+        if any(t in (".", "..") or t.startswith(".") for t in teile):
+            raise KatalogFehler("Ungültiger Unterordner.")
+        if teile:
+            zielordner = os.path.join(zielordner, *teile)
+            echt, wurzel = os.path.realpath(zielordner), os.path.realpath(wpfad)
+            if not echt.startswith(wurzel + os.sep):
+                raise KatalogFehler("Ziel liegt ausserhalb des Wurzelordners.")
+            os.makedirs(zielordner, exist_ok=True)
         if archiv.ist_archiv(name):
             # Das Archiv selbst landet nur im Bestand (arbeit/), entpackt wird in einen neuen Unterordner des Ziels: so muss partAtlas
             # im Ordner des Anwenders nichts wieder wegräumen.
