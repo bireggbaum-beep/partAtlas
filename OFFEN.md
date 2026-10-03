@@ -485,6 +485,19 @@ Baugruppen (dessen Grid-Regeln überschrieben meine) — jetzt `#zuordnen`/`.zw-
 Wege (Tag-Eingabe, „+ Material …“, „+ Sammlung …“, „+ Baugruppe …“ als Auswahllisten) — dasselbe Fenster würde auch dort passen
 (Aufwand 1–2); Entfernen aus dem Fenster (Dreiwert-Häkchen wie bei Gmail-Labels) würde je Art eine Entfernen-Schnittstelle brauchen.
 
+**Eigene Komponente — erste Fassung (0.40.0, 03.10.2026, ausdrücklich zum Ausprobieren):** Dritte Art Bauteil neben Druck- und Kaufteil:
+ein freies Objekt (Name, Bild, Notiz, optional Maße, freie „Art“ wie Lagerteil/Eigenbau/Fundstück) für Teile, die weder gedruckt noch
+gekauft sind (60 Jahre altes Kugellager ohne Angaben). Knoten `CUSTOM_COMPONENT`, in der Baugruppe eine Position wie ein Kaufteil,
+wiederverwendbar. **Bewusst nicht:** Bestandsverwaltung, Lagerort, Einkäufe — die Menge ist der Bedarf. Zählt nicht zu Filament oder
+Einkaufsliste; erscheint in Stückliste (Struktur-PDF mit Bild), CSV und Markdown („Eigene Komponenten“). Bedienung: „＋ Eigene Komponente“
+in der Baugruppe (Suche über vorhandene, darunter Neuanlage mit Name/Art/Maße/Notiz/Bild per Datei oder Strg+V, legt gleich in die
+Baugruppe); Klick auf die Zeile = bearbeiten; löschen nur, wenn in keiner Baugruppe. `test_eigene` 11/11 (neu), `test_baugruppen` 48/48,
+`test_schutz` 22/22. **Wenn es nichts taugt, wieder weg:** `partatlas/eigene.py`, `web/eigene.js`, `tests/test_eigene.py` löschen und die
+mit „EIGENE“ markierten Stellen in `baugruppen.py`, `stueckliste.py`, `main.py`, `web/baugruppen.js`, `web/index.html`, `web/app.css`
+entfernen; bestehende Daten (Knoten `CUSTOM_COMPONENT`) stören die Übrigen nicht. **Feinschliff, falls es bleibt:** eigener Bereich „Teile“
+statt nur im Baugruppen-Dialog, Bilder mehrfach/Galerie, Umbenennen der Art für alle, Vorschlag „aus einem Foto“, Löschvorschau,
+CSV-Import, Kennzeichnung in der Karten-/Teileliste, Menge mit Einheit.
+
 **Kaufteile als eigene Knoten — Leistung gemessen (03.10.2026, KONZEPT §8):** Rückfrage „was kostet das technisch?“. Kaufteile sind schon
 Knoten (`PURCHASED_PART`); der Entwurf (Verwaltung, Einkäufe, Händler) fügt Knoten und Kanten hinzu. Bei *klein* (300 Kaufteile, 1 000
 Einkäufe) +13 ms Öffnen und +3 MB; bei *gross* (5 000 / 30 000) +580 ms und +92 MB, jede Abfrage unter 21 ms, Schreiben unabhängig von der

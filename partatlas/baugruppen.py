@@ -23,9 +23,10 @@ from .katalog import KatalogFehler, jetzt, ref
 
 BAUGRUPPE = "ASSEMBLY"
 KAUFTEIL = "PURCHASED_PART"
+EIGEN = "CUSTOM_COMPONENT"            # EIGENE: eigene Komponenten, siehe eigene.py
 ENTHAELT = "CONTAINS"
 
-ARTEN = {MODELL: "modell", BAUGRUPPE: "baugruppe", KAUFTEIL: "kaufteil"}
+ARTEN = {MODELL: "modell", BAUGRUPPE: "baugruppe", KAUFTEIL: "kaufteil", EIGEN: "eigen"}
 POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
 
 # Gewicht ohne Slicer-Daten, geschätzt wie ein Slicer mit Standardwerten
@@ -304,10 +305,11 @@ class Baugruppen:
     def fortschritt(self, bid):
         """Stück, getrennt nach Druck- und Kaufteilen — zusammengezählt hiess
         „3 von 45“, und niemand wusste, was die 45 sind."""
-        f = {"bedarf": 0, "erledigt": 0, "druck_bedarf": 0, "druck_erledigt": 0, "kauf_bedarf": 0, "kauf_erledigt": 0}
+        f = {"bedarf": 0, "erledigt": 0, "druck_bedarf": 0, "druck_erledigt": 0, "kauf_bedarf": 0, "kauf_erledigt": 0,
+             "eigen_bedarf": 0, "eigen_erledigt": 0}
         for art, _, kante, b in self._aufloesen(bid):
             fertig = min(kante.get("erledigt", 0), b)
-            teil = "druck" if art == "modell" else "kauf"
+            teil = {"modell": "druck", "eigen": "eigen"}.get(art, "kauf")      # EIGENE
             f[f"{teil}_bedarf"] += b
             f[f"{teil}_erledigt"] += fertig
             f["bedarf"] += b
@@ -365,6 +367,10 @@ class Baugruppen:
             elif art == "kaufteil":
                 t = self.db.get_node(r, readonly=True)
                 eintrag.update(name=t["name"], kategorie=t.get("kategorie"), einheit=t.get("einheit", "Stück"))
+            elif art == "eigen":      # EIGENE
+                e = self.db.get_node(r, readonly=True)
+                eintrag.update(name=e["name"], eigen_art=e.get("art") or "", eigen_masse=e.get("masse") or "",
+                               eigen_notiz=e.get("notiz") or "", eigen_bild=(e.get("bild") or {}).get("k"))
             else:
                 u = self.db.get_node(r, readonly=True)
                 f = self.fortschritt(kid)
@@ -386,6 +392,7 @@ class Baugruppen:
         ohne_daten = 0
         filament, kauf = {}, {}
         druckteile = kaufteile = 0
+        eigene = {}      # EIGENE
         ohne_zeit = 0
         for art, kid, kante, bedarf in self._aufloesen(bid):
             offen = max(0, bedarf - kante.get("erledigt", 0))
@@ -412,6 +419,11 @@ class Baugruppen:
                 eintrag["offen_g"] += d["gewicht_g"] * offen
                 if d["material_angenommen"]:
                     eintrag["angenommen_g"] += d["gewicht_g"] * bedarf
+            elif art == "eigen":      # EIGENE: zählt weder zu Filament noch zum Einkauf
+                e = self.db.get_node(f"{EIGEN}/{kid}", readonly=True)
+                x = eigene.setdefault(kid, {"id": kid, "name": e["name"], "art": e.get("art") or "", "bedarf": 0,
+                                            "bild": (e.get("bild") or {}).get("k")})
+                x["bedarf"] += bedarf
             else:
                 kaufteile += bedarf
                 t = self.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
@@ -444,6 +456,7 @@ class Baugruppen:
             "filament": sorted(({**v, "gesamt_g": runden(v["gesamt_g"]), "offen_g": runden(v["offen_g"])}
                                 for v in filament.values()), key=lambda x: -x["gesamt_g"]),
             "einkauf": sorted(kauf.values(), key=lambda x: (x["kategorie"] or "", x["name"])),
+            "eigene": sorted(eigene.values(), key=lambda x: x["name"].lower()),      # EIGENE
             "materialien": materialien,
             "rolle_g": standard["rolle_g"], "standard": standard,
             # Druckzeit je Teil, längste zuerst — „was frisst die Zeit?“
@@ -463,9 +476,12 @@ class Baugruppen:
         d = self.detail(bid)
         zeilen = [("Art", "Menge", "Einheit", "Erledigt", "Name", "Material", "Farbe", "Notiz")]
         for p in d["positionen"]:
-            zeilen.append(({"modell": "Druckteil", "kaufteil": "Kaufteil", "baugruppe": "Baugruppe"}[p["art"]],
+            notiz = p.get("notiz") or ""
+            if p["art"] == "eigen":      # EIGENE: Art, Maße und Notiz des Teils stehen mit in der Zeile
+                notiz = ", ".join(x for x in (p.get("eigen_art"), p.get("eigen_masse"), p.get("eigen_notiz"), notiz) if x)
+            zeilen.append(({"modell": "Druckteil", "kaufteil": "Kaufteil", "baugruppe": "Baugruppe", "eigen": "Eigene Komponente"}[p["art"]],
                            p["menge"], p.get("einheit") or "Stück", p["erledigt"], p["name"],
-                           p.get("material") or "", p.get("farbe") or "", p.get("notiz") or ""))
+                           p.get("material") or "", p.get("farbe") or "", notiz))
         if art == "csv":
             puffer = io.StringIO()
             csv.writer(puffer, delimiter=";").writerows(zeilen)
@@ -476,6 +492,9 @@ class Baugruppen:
         s = d["summen"]
         if s["einkauf"]:
             md += ["", "## Einkaufsliste (alle Ebenen)", ""] + [f"- {e['bedarf']} {e['einheit']} {e['name']}" for e in s["einkauf"]]
+        if s["eigene"]:      # EIGENE
+            md += ["", "## Eigene Komponenten (alle Ebenen)", ""] + [
+                f"- {e['bedarf']}× {e['name']}" + (f" ({e['art']})" if e["art"] else "") for e in s["eigene"]]
         if s["filament"]:
             md += ["", "## Filament", ""] + [f"- {m['material']}: {m['gesamt_g']} g (" + ", ".join(
                 f"{x['farbe'] or 'Farbe offen'} {x['gesamt_g']} g" for x in m["farben"]) + ")" for m in s["materialien"]]

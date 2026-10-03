@@ -29,7 +29,7 @@ from reportlab.pdfgen import canvas as rl_canvas
 from reportlab.platypus import (Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table,
                                 TableStyle)
 
-from .baugruppen import ARTEN, BAUGRUPPE, KAUFTEIL
+from .baugruppen import ARTEN, BAUGRUPPE, EIGEN, KAUFTEIL
 
 AKZENT = colors.HexColor("#c8553d")
 TINTE = colors.HexColor("#222222")
@@ -131,14 +131,20 @@ class Stueckliste:
         self.k = baugruppen.k
         self.b = baugruppen.k.b
 
+    def eigene_bild(self, eid):      # EIGENE
+        b = (self.k.db.get_node(f"{EIGEN}/{eid}", readonly=True) or {}).get("bild")
+        return self.b.pfad(*b["datei"].split("/")) if b else None
+
     def _ok(self, gefuellt=False):
         return _kaestchen(gefuellt) if self.opt["kaestchen"] else ""
 
     def _bild(self, kurz, seite=11 * mm):
         if not self.opt["bilder"]:
             return ""
-        pfad = None
-        if kurz.get("bild"):
+        pfad = kurz.get("pfad")      # EIGENE: Bild einer eigenen Komponente
+        if pfad:
+            pass
+        elif kurz.get("bild"):
             pfad = self.k.bild_pfad(kurz["id"])
         elif kurz.get("hash"):
             pfad = self.k.vorschau_datei(kurz["hash"])
@@ -185,6 +191,12 @@ class Stueckliste:
                                                  f"Kaufteil{' · ' + _esc(t['norm']) if t.get('norm') else ''}</font>", S["zelle"]),
                                str(menge), f"{gesamt}" + ("" if t.get("einheit", "Stück") == "Stück" else f" {t['einheit']}"), "", "", "",
                                self._ok(kante.get("erledigt", 0) >= gesamt)])
+            elif art == "eigen":      # EIGENE
+                e = self.k.db.get_node(f"{EIGEN}/{kid}", readonly=True)
+                detail = " · ".join(x for x in ("Eigene Komponente", e.get("art"), e.get("masse")) if x)
+                zeilen.append([nr, self._bild({"id": kid, "pfad": self.eigene_bild(kid)}, 9 * mm),
+                               Paragraph(f"{einzug}{_esc(e['name'])}<br/>{einzug}<font size='6.5' color='#888888'>{_esc(detail)}</font>", S["zelle"]),
+                               str(menge), str(gesamt), "", "", "", self._ok(kante.get("erledigt", 0) >= gesamt)])
             else:
                 u = self.k.db.get_node(ziel, readonly=True)
                 zeilen.append([nr, "", Paragraph(f"{einzug}<b>{_esc(u['name'])}</b> <font size='6.5' color='#888888'>Baugruppe</font>",

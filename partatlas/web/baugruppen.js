@@ -209,12 +209,13 @@ function stuecklisteTafel(d, leer, offenDruck) {
     </ol>
     <p class="dim">Dann zeigt partAtlas, wie viel Filament welcher Farbe du brauchst und was du kaufen musst.</p>
     <div class="i-knoepfe"><button class="knopf akzent" data-bg-aktion="teile">＋ Druckteile wählen</button>
-      <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button><button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button></div>
+      <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button><button class="knopf" data-bg-aktion="eigene">＋ Eigene Komponente</button><button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button></div>
   </div>`;
   return `
   <div class="bg-werkzeug">
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
+    <button class="knopf" data-bg-aktion="eigene">＋ Eigene Komponente</button>      <!-- EIGENE -->
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
     <span class="bg-luecke"></span>
     <button class="knopf" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
@@ -256,6 +257,10 @@ function position(p, nr) {
     vorschau = symbolFuer(p.kategorie);
     name = esc(p.name);
     unter = `${esc(p.kategorie || "")}${p.einheit && p.einheit !== "Stück" ? " · in " + esc(p.einheit) : ""}`;
+  } else if (p.art === "eigen") {      // EIGENE
+    vorschau = p.eigen_bild ? `<img loading="lazy" src="/api/eigene/${esc(p.id)}/bild?t=1" alt="">` : "🔩";
+    name = esc(p.name);
+    unter = ["Eigene Komponente", p.eigen_art, p.eigen_masse].filter(Boolean).map(esc).join(" · ");
   } else {
     vorschau = "🧩";
     name = `${esc(p.name)} ›`;
@@ -265,7 +270,7 @@ function position(p, nr) {
     ? `<button class="mat-knopf ${p.material_angenommen ? "standard" : ""}" data-bg-material="${r}"
         title="${p.material_angenommen ? "Keine Angabe — Standard aus den Einstellungen. Klicken zum Festlegen." : "Material und Farbe festlegen"}">${tupfer(p.farbe)}${esc(p.material)}</button>` : "";
   const gewicht = p.art === "modell" && p.je_gewicht_g ? `${zahl(p.je_gewicht_g * p.menge, 0)} g${p.je_geschaetzt ? " *" : ""}` : "";
-  const zeile = p.art === "modell" ? `data-bg-modell="${esc(p.id)}" title="Im Inspektor zeigen"`
+  const zeile = p.art === "eigen" ? `data-bg-eigen="${esc(p.id)}" title="Bearbeiten"` : p.art === "modell" ? `data-bg-modell="${esc(p.id)}" title="Im Inspektor zeigen"`
     : p.art === "baugruppe" ? `data-bg-unter="${esc(p.id)}" title="Öffnen"` : "";
   return `<div class="bz ${p.art === "modell" && zustand.gewaehlt === p.id ? "gewaehlt" : ""}" ${zeile}>
     <span class="bz-nr">${nr}</span>
@@ -434,6 +439,7 @@ async function bgAktion(aktion) {
   const d = bgDaten;
   switch (aktion) {
     case "teile": case "kaufteile": case "unter": return waehler(aktion);
+    case "eigene": return eigeneWaehlen();      // EIGENE, siehe eigene.js
 
     case "warteschlange": {
       const { eingereiht } = await api(`/api/baugruppen/${bid()}/warteschlange`, { method: "POST" });

@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
+from .eigene import Eigene      # EIGENE
 from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
@@ -49,7 +50,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             log.error("Keine Sicherung beim Start möglich: %s", e)
         k = Katalog(b)
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), prozesse=prozesse)
-        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=Baugruppen(k))
+        bg = Baugruppen(k)
+        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))      # EIGENE
         if scan_beim_start and k.wurzeln():
             s.starten()
         yield
@@ -64,6 +66,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     def B():
         return zustand["baugruppen"]
+
+    def E():      # EIGENE
+        return zustand["eigene"]
 
     # -- Wache: schreibende Anfragen nur von der eigenen Oberfläche. Ein
     # fremder Tab im selben Browser könnte sonst Dateien umbenennen oder
@@ -633,6 +638,43 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     async def kaufteil_neu(request: Request):
         d = await request.json()
         return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}
+
+    # EIGENE: Eigene Komponenten — Anfang
+    @app.get("/api/eigene")
+    def eigene_liste(q: str = ""):
+        return E().liste(q or None)
+
+    @app.get("/api/eigene/arten")
+    def eigene_arten():
+        return E().arten()
+
+    @app.post("/api/eigene")
+    async def eigene_neu(request: Request):
+        d = await request.json()
+        return {"id": E().anlegen(d.get("name", ""), d.get("art", ""), d.get("masse", ""), d.get("notiz", ""))}
+
+    @app.get("/api/eigene/{eid}")
+    def eigene_detail(eid: str):
+        return E().detail(eid)
+
+    @app.patch("/api/eigene/{eid}")
+    async def eigene_aendern(eid: str, request: Request):
+        E().aendern(eid, await request.json())
+        return E().detail(eid)
+
+    @app.delete("/api/eigene/{eid}")
+    def eigene_loeschen(eid: str):
+        E().loeschen(eid)
+        return {"ok": True}
+
+    @app.get("/api/eigene/{eid}/bild")
+    def eigene_bild(eid: str, t: int = 0):
+        return _bild_antwort(E().bild_pfad(eid), bool(t))
+
+    @app.post("/api/eigene/{eid}/bild")
+    async def eigene_bild_setzen(eid: str, request: Request):
+        return {"k": E().bild_setzen(eid, await request.body())}
+    # EIGENE: Ende
 
     @app.get("/api/tags")
     def tags():

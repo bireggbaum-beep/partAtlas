@@ -930,3 +930,12 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .zw-fuss { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-3); min-height: 1.6em; }
 .zw-status { color: var(--ink-2); }
 body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
+
+/* EIGENE: Eigene Komponenten */
+.eig-form { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--s3); margin-top: var(--s3); }
+.eig-bild { width: 96px; height: 96px; border-radius: 8px; border: 1px dashed var(--line); background: var(--plate); display: grid; place-items: center;
+  color: var(--ink-3); cursor: pointer; overflow: hidden; font-size: 13px; }
+.eig-bild:hover { border-color: var(--accent); }
+.eig-bild img { width: 100%; height: 100%; object-fit: contain; }
+.eig-felder { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.eig-felder textarea { resize: vertical; font: inherit; padding: 6px 8px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; }
