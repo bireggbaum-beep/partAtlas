@@ -834,3 +834,18 @@ dialog { max-height: 92vh; overflow-y: auto; }
 /* Kopfzeile: Knopf und Fassung brechen nie um; die lange Einlese-Zeile kürzt sich selbst. */
 .kopf .knopf, .logo { white-space: nowrap; }
 .scan-status { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Einlesen (wie pDMS): Fenster mit Balken, danach Bilanz; Hintergrundarbeit klein beim Zahnrad */
+dialog.einlesen { width: min(460px, calc(100vw - 32px)); }
+.einlesen h2 { margin-top: 0; }
+.balken { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 12px 0 8px; }
+.balken i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width .3s ease; }
+.balken.unbestimmt i { width: 30% !important; animation: balken-wandern 1.2s ease-in-out infinite; }
+@keyframes balken-wandern { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
+.balken.klein { height: 4px; margin: 6px 0 0; }
+.ein-zeile { font-size: 14px; margin: 4px 0; }
+.bilanz { margin: 8px 0; padding-left: 18px; font-size: 13.5px; line-height: 1.6; }
+.hintergrund { position: fixed; left: calc(var(--s7) + 8px); bottom: 60px; z-index: 30; width: 240px; padding: 8px 10px; font-size: 12.5px;
+               background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.hg-kopf { display: flex; justify-content: space-between; gap: 8px; }
+.hg-zahl { font-family: var(--mono); color: var(--ink-3); }

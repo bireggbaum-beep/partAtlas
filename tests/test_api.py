@@ -40,9 +40,17 @@ if __name__ == "__main__":
 
     with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=2)) as c:
         z = c.app.state.zustand
+        u = c.post("/api/wurzeln/uebersicht", json={"pfad": sammlung}).json()
+        z["scanner"].warten(120)           # das Einlesen beim Start
+        vorher, wurzeln_vorher = z["scanner"].status["lauf"], c.get("/api/wurzeln").json()
         r = c.post("/api/wurzeln", json={"pfad": sammlung})
-        check("Ordner hinzufügen startet das Einlesen", r.status_code == 200)
+        check("Übersicht vor dem Einlesen: Modelldateien je Format, ohne etwas einzutragen",
+              u["modelle"] == sum(u["je_format"].values()) > 0 and u["vollstaendig"] and wurzeln_vorher == [])
+        check("Ordner hinzufügen startet das Einlesen und nennt den Lauf, dem der Dialog folgt", r.status_code == 200
+              and r.json()["lauf"] == vorher + 1)
         z["scanner"].warten(120)
+        check("… dieser Lauf ist es, und er sah alle Dateien der Übersicht",
+              z["scanner"].status["lauf"] == r.json()["lauf"] and z["scanner"].status["neu"] == u["modelle"])
         ph = z["scanner"].status.get("phasen", {})
         check("Scan hält die Dauer je Phase fest (Hashen, Analysieren …), zusammen höchstens die Gesamtdauer",
               {"hashen", "analysieren"} <= set(ph) and sum(ph.values()) <= z["scanner"].status["dauer_s"] + 0.3)

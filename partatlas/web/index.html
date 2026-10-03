@@ -124,6 +124,10 @@
 </div>
 
 <dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>
+<!-- Einlesen mit Fortschritt (wie pDMS): eigenes Fenster, damit eine Rückfrage (#dialog) es nicht ersetzt. -->
+<dialog id="einlesen" class="einlesen"><div id="einlesen-inhalt"></div></dialog>
+<!-- Was im Hintergrund läuft (Vorschaubilder, FreeCAD, Einlesen beim Start), klein beim Zahnrad. -->
+<div class="hintergrund" id="hintergrund" hidden></div>
 <div class="toast" id="toast" hidden></div>
 <div class="menu kontext" id="kontext" hidden></div>
 <input type="file" id="datei-wahl" multiple hidden accept=".3mf,.stl,.obj,.step,.stp,.fcstd,.zip,.tar,.gz,.tgz,.bz2,.xz">

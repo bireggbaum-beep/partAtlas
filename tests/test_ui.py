@@ -70,6 +70,18 @@ async def oberflaeche(port):
         check("Erster Start: Willkommenskarte, leere Rubriken der Seitenleiste ausgeblendet",
               "Wurzelordner wählen" in await pg.inner_text(".willkommen") and not await pg.locator("text=SAMMLUNGEN").is_visible())
         await pg.click("#wurzel-neu-3")                    # der Ordnerdialog des Rechners (Attrappe) wählt die Sammlung
+        await pg.wait_for_selector("#dialog[open]")
+        text = await pg.inner_text("#dialog")
+        check("Vor dem Einlesen eine Übersicht: wie viele Modelldateien, je Format, mit Einlesen oder Abbrechen",
+              "Modelldateien" in text and "STL" in text and await pg.locator('#dialog button[value="nein"]').count() == 1)
+        await pg.click('#dialog button[value="ja"]')
+        await pg.wait_for_selector("#einlesen[open] .balken")
+        await pg.wait_for_selector("#ein-ok", timeout=60000)
+        text = await pg.inner_text("#einlesen")
+        check("Einlesen im Fenster mit Balken; am Ende bleibt es mit der Bilanz stehen (neu, je Format, Dauer), bis man OK drückt",
+              "neu eingelesen" in text and "STL" in text and await pg.locator("#einlesen[open]").count() == 1)
+        await pg.click("#ein-ok")
+        check("OK schliesst das Fenster", await pg.locator("#einlesen[open]").count() == 0)
         await pg.wait_for_selector(".karte", timeout=60000)
         check("Ordner über den Dialog des Rechners gewählt: es wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
               await pg.locator("text=SAMMLUNGEN").is_visible())

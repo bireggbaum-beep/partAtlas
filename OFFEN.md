@@ -425,6 +425,18 @@ merkt sich der Scanner die Art des Folgelaufs (`_nochmal`: "cad" oder ganz; ganz
 solange ein Lauf folgt (`weiter`). `test_scan` 67/67; die zwei neuen Prüfungen fallen gegen 0.34.0. Nicht nachgestellt mit echtem
 FreeCAD; isoliert (ohne laufenden Scan) war das Verhalten schon richtig.
 
+**Einlesen sichtbar wie in pDMS (0.35.0):** vorher eine Übersicht (Ordner hinzufügen: Modelldateien je Format, Einlesen/Abbrechen;
+Hochladen: je Endung im Zieldialog), dann ein Fenster `#einlesen` mit Balken — „Dateien prüfen: x von y“, dann „Eingelesen: x von y“ —,
+das am Ende mit der Bilanz stehen bleibt bis OK (neu, je Format, Kopien gleichen Inhalts, Bilder aus der Datei, an neuem Ort erkannt,
+nicht mehr im Ordner, unlesbar, nicht erreichbar, FCStd wartet; Dauer des eigentlichen Einlesens). Was danach läuft (Vorschaubilder,
+FreeCAD, Einlesen beim Start), zeigt `#hintergrund` beim Zahnrad mit kleinem Balken; die Kopfzeile zeigt nur noch das Ergebnis des
+letzten Laufs. Der Dialog folgt genau seinem Lauf (`lauf`, von den startenden Endpunkten zurückgegeben, vor `starten` gelesen). Die
+FCStd-Frage wartet, bis das Fenster zu ist. Neu im Scanner: `lauf`, `geprueft`, `je_format`, `aus_datei`, `kopien`, `einlesen_s`,
+`vorschauen_gesamt`, `cad_gesamt`; behoben: `vorschauen_offen` blieb nach den Vorschauen stehen (wurde nur alle 100 nachgeführt).
+`test_scan` 70/70, `test_api` 61/61, `test_ui` 66/66; Gegenproben (Prüfzähler, Formate, Kopien, Dauer, falscher Lauf, Fenster schliesst
+von selbst) fallen. **Offen:** Betriebsprotokoll in den Einstellungen lesbar (heute öffnet „Protokoll“ nur die Datei); Fortschritt mit
+echter grosser Sammlung nicht angesehen (hier dauerte das Einlesen unter 1 s).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

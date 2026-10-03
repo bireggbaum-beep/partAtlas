@@ -629,7 +629,7 @@ async function dateiSuchen() {
     <p class="dim">Alle anderen Modelle in diesem Ordner kommen dabei ebenfalls in den Katalog.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Ordner hinzufügen</button></div>`);
   if (a !== "ja") return;
-  try { await api("/api/wurzeln", { method: "POST", body: { pfad: r.pfad } }); toast("Wird eingelesen …"); }
+  try { einlesenZeigen((await api("/api/wurzeln", { method: "POST", body: { pfad: r.pfad } })).lauf, "Ordner einlesen"); }
   catch (e) { toast(e.message); }
 }
 
@@ -721,8 +721,8 @@ document.addEventListener("click", async (e) => {
   const zurueck = e.target.closest("[data-wurzel-zurueck]");
   if (zurueck) {
     try {
-      await api(`/api/wurzeln/${encodeURIComponent(zurueck.dataset.wurzelZurueck)}/wiederherstellen`, { method: "POST" });
-      toast("Ordner wieder eingetragen, wird eingelesen …");
+      const r = await api(`/api/wurzeln/${encodeURIComponent(zurueck.dataset.wurzelZurueck)}/wiederherstellen`, { method: "POST" });
+      einlesenZeigen(r.lauf, "Ordner wieder einlesen");
       await ladeSeite();
       neuLaden();
     } catch (err) { toast(err.message); }
@@ -756,19 +756,23 @@ async function ordnerWahl(titel, hinweis, vorwahl = "") {
 async function hochladen(dateiliste) {
   const dateien = [...dateiliste];
   if (!dateien.length) return;
+  const je = {};
+  for (const f of dateien) { const e = (f.name.match(/\.([^.]+)$/) || [, "?"])[1].toLowerCase(); je[e] = (je[e] || 0) + 1; }
   const ziel = await ordnerWahl(`${dateien.length} Datei${dateien.length > 1 ? "en" : ""} hochladen`,
-    "Archive (zip, tar) werden in einen Unterordner entpackt. Nichts wird überschrieben.", zustand.ordner);
+    `${formatListe(je)}. Archive (zip, tar) werden in einen Unterordner entpackt. Nichts wird überschrieben.`, zustand.ordner);
   if (!ziel) return;
-  let ok = 0;
+  let ok = 0, lauf = null;
   for (const [i, f] of dateien.entries()) {
     toast(`Hochladen ${i + 1}/${dateien.length}: ${f.name}`);
     try {
-      await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(f.name)}`, { method: "POST", body: f })
-        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); });
+      lauf = await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(f.name)}`, { method: "POST", body: f })
+        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); return (await r.json()).lauf; });
       ok++;
     } catch (e) { toast(`${f.name}: ${e.message}`); await new Promise((w) => setTimeout(w, 1500)); }
   }
-  toast(`${ok} von ${dateien.length} hochgeladen, wird eingelesen …`);
+  if (ok < dateien.length) toast(`${ok} von ${dateien.length} hochgeladen.`);
+  // Jede Datei startet das Einlesen; der Folgelauf der letzten sieht alle.
+  einlesenZeigen(lauf, `${ok} ${ok === 1 ? "Datei" : "Dateien"} einlesen`);
 }
 
 async function archiveEntpacken() {
@@ -781,12 +785,12 @@ async function archiveEntpacken() {
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Entpacken</button></div>`);
   if (a !== "ja") return;
   const gewaehlt = [...document.querySelectorAll("[data-archiv]:checked")].map((x) => x.dataset.archiv);
-  let n = 0;
+  let n = 0, lauf = null;
   for (const id of gewaehlt) {
-    try { n += (await api("/api/archive/entpacken", { method: "POST", body: { id } })).entpackt; }
+    try { const r = await api("/api/archive/entpacken", { method: "POST", body: { id } }); n += r.entpackt; lauf = r.lauf; }
     catch (e) { toast(`${id}: ${e.message}`); }
   }
-  toast(`${n} Dateien entpackt, wird eingelesen …`);
+  einlesenZeigen(lauf, `${anzahl(n)} entpackte Dateien einlesen`);
 }
 
 // ---------------------------------------------------------------- Inspektor
@@ -1511,19 +1515,24 @@ async function wurzelNeu() {
   // Ohne Dateidialog auf dem Rechner (kein zenity, kdialog, Tk) bleibt der eigene Ordnerbaum.
   const pfad = w.keinDialog ? await ordnerWaehler() : w.pfad;
   if (!pfad) return;
-  if (!w.keinDialog && !w.modelle) {
-    const frage = await dialog(`<h2>Ordner ohne Modelle</h2><p>In diesem Ordner liegen keine Modelldateien (3MF, STL, OBJ, STEP, FCStd).</p>
-      <p class="dim">${esc(pfad)}</p>
+  // Erst zeigen, was kommt (wie pDMS), dann einlesen.
+  let u;
+  try { u = await api("/api/wurzeln/uebersicht", { method: "POST", body: { pfad } }); } catch (e) { return toast(e.message); }
+  const frage = await dialog(u.modelle
+    ? `<h2>Ordner einlesen?</h2><p><code>${esc(u.pfad)}</code></p>
+      <p><b>${u.vollstaendig ? "" : "Über "}${anzahl(u.modelle)} ${u.modelle === 1 ? "Modelldatei" : "Modelldateien"}</b>: ${formatListe(u.je_format)}</p>
+      <p class="dim">Die Dateien bleiben, wo sie sind. Während des Einlesens siehst du, wie weit es ist.</p>
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Einlesen</button></div>`
+    : `<h2>Ordner ohne Modelle</h2><p>In diesem Ordner liegen keine Modelldateien (3MF, STL, OBJ, STEP, FCStd).</p>
+      <p class="dim">${esc(u.pfad)}</p>
       <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf" value="ja">Trotzdem hinzufügen</button></div>`);
-    if (frage !== "ja") return;
-  }
+  if (frage !== "ja") return;
   try {
-    await api("/api/wurzeln", { method: "POST", body: { pfad } });
+    const r = await api("/api/wurzeln", { method: "POST", body: { pfad } });
     zustand.hatWurzeln = true;
-    zustand.scan = { laeuft: true };
     zeichneLeer();
-    toast(w.modelle ? `${w.vollstaendig ? "" : "Über "}${w.modelle.toLocaleString("de-DE")} ${w.modelle === 1 ? "Modelldatei wird" : "Modelldateien werden"} eingelesen …` : "Ordner wird eingelesen …");
     ladeSeite();
+    einlesenZeigen(r.lauf, "Ordner einlesen");
   } catch (e) { toast(e.message); }
 }
 
@@ -1739,7 +1748,11 @@ $("#gruppierung").value = zustand.gruppierung;
       if (a === "ja") await aendern(id, { quelle_url: $("#quelle-url").value });
       return;
     }
-    case "neu-einlesen": case "neu-einlesen-2": $("#import-menu").hidden = true; await api("/api/scan", { method: "POST" }); return toast("Wird neu eingelesen …");
+    case "neu-einlesen": case "neu-einlesen-2": {
+      $("#import-menu").hidden = true;
+      const r = await api("/api/scan", { method: "POST" });
+      return einlesenZeigen(r.lauf, "Neu einlesen");
+    }
     case "gedruckt": {
       // Mit Drucken führt der Knopf zu ihnen; ohne legt er einen leeren an.
       const m = zustand.modelle.find((x) => x.id === id);
@@ -1953,6 +1966,112 @@ function vorSetzen(liste, wer, vor) {
   return ohne;
 }
 
+// ---------------------------------------------------------------- Einlesen sichtbar machen (wie pDMS)
+//
+// Vorher eine Übersicht (was kommt), während des Einlesens ein Fenster mit Balken und „129 von 341“, am Ende bleibt es mit der Bilanz
+// stehen, bis man OK drückt. Was danach noch läuft (Vorschaubilder, FreeCAD), zeigt eine kleine Anzeige beim Zahnrad. Vorher lief das
+// alles unsichtbar: eine Zeile oben rechts und eine Meldung, die nach Sekunden verschwand.
+
+const FORMATNAME = { stl: "STL", "3mf": "3MF", obj: "OBJ", step: "STEP", fcstd: "FCStd" };
+const anzahl = (n) => Number(n || 0).toLocaleString("de-DE");
+const formatListe = (je) => Object.entries(je || {}).sort((a, b) => b[1] - a[1])
+  .map(([f, n]) => `${anzahl(n)} ${FORMATNAME[f] || f.toUpperCase()}`).join(" · ");
+const sekunden = (s) => (s == null ? "" : s < 1 ? "unter 1 s" : s < 60 ? `${zahl(s, 1)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`);
+const einlesen = { lauf: null, titel: "" };
+
+// `lauf`: die Nummer, die der Server beim Starten zurückgibt — der Dialog folgt genau diesem Lauf.
+function einlesenZeigen(lauf, titel = "Einlesen") {
+  if (!lauf) return;
+  Object.assign(einlesen, { lauf, titel });
+  $("#einlesen-inhalt")._html = null;
+  if (!$("#einlesen").open) $("#einlesen").showModal();
+  einlesenZeichnen(zustand.scan || {});
+  hintergrundZeichnen(zustand.scan || {});
+}
+
+function einlesenZeichnen(m) {
+  if (!$("#einlesen").open || einlesen.lauf == null) return;
+  const meiner = (m.lauf || 0) >= einlesen.lauf;
+  const fertig = meiner && (m.einlesen_s != null || m.abgebrochen || (!m.laeuft && m.phase === "fertig" && !m.nur_cad));
+  let anteil = null, zeile, unten = "";
+  if (!meiner) zeile = "Wartet, bis das laufende Einlesen fertig ist …";
+  else if (m.abgebrochen) { anteil = 1; zeile = `Abgebrochen nach ${sekunden(m.dauer_s)}.`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog.</p>`; }
+  else if (fertig) { anteil = 1; zeile = bilanzKopf(m); unten = bilanz(m); }
+  else if (m.phase === "suchen") zeile = "Ordner durchsuchen …";
+  else if (m.phase === "hashen") {
+    anteil = m.zu_pruefen ? m.geprueft / m.zu_pruefen : 1;
+    zeile = `Dateien prüfen: <b>${anzahl(m.geprueft)} von ${anzahl(m.zu_pruefen)}</b>`;
+    unten = `<p class="dim">Neue und geänderte Dateien erkennen.</p>`;
+  } else {
+    anteil = m.zu_analysieren ? m.analysiert / m.zu_analysieren : 1;
+    zeile = `Eingelesen: <b>${anzahl(m.analysiert)} von ${anzahl(m.zu_analysieren)}</b>`;
+    unten = `<p class="dim">Masse, Material und Vorschaubild aus jeder Datei lesen.</p>`;
+  }
+  const balken = `<div class="balken ${anteil == null ? "unbestimmt" : ""}"><i style="width:${Math.round((anteil ?? 0.3) * 100)}%"></i></div>`;
+  const knoepfe = fertig || m.abgebrochen
+    ? `<button class="knopf akzent" data-einlesen="ok" id="ein-ok">OK</button>`
+    : `<button class="knopf" data-einlesen="abbrechen">Abbrechen</button>`;
+  abgleichen($("#einlesen-inhalt"), `<h2>${esc(einlesen.titel)}</h2>${balken}<p class="ein-zeile">${zeile}</p>${unten}<div class="knoepfe">${knoepfe}</div>`);
+  if (fertig && $("#ein-ok") && document.activeElement !== $("#ein-ok")) $("#ein-ok").focus();
+}
+
+function bilanzKopf(m) {
+  if (!m.neu) return `Fertig in ${sekunden(m.einlesen_s ?? m.dauer_s)}. <b>Nichts Neues</b> — alle ${anzahl(m.gefunden)} Dateien sind schon im Katalog.`;
+  return `<b>${anzahl(m.neu)} ${m.neu === 1 ? "Modell" : "Modelle"} neu eingelesen</b> in ${sekunden(m.einlesen_s ?? m.dauer_s)}`;
+}
+
+// Knapp: was dazukam, woher die Bilder sind, was zu tun bleibt — nicht jede Phase einzeln.
+function bilanz(m) {
+  const z = [];
+  if (m.neu) z.push(formatListe(m.je_format));
+  if (m.kopien) z.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Datei ist eine Kopie" : "Dateien sind Kopien"} mit gleichem Inhalt — je ein Modell, siehe Bereinigen › Duplikate`);
+  if (m.aus_datei) z.push(`${anzahl(m.aus_datei)} ${m.aus_datei === 1 ? "Vorschaubild" : "Vorschaubilder"} aus der Datei übernommen`);
+  if (m.verschoben) z.push(`${anzahl(m.verschoben)} bekannte Modelle an neuem Ort erkannt (verschoben, umbenannt oder kopiert)`);
+  if (m.zurueckgeholt) z.push(`${anzahl(m.zurueckgeholt)} aus dem Papierkorb zurückgeholt`);
+  if (m.entfernt) z.push(`${anzahl(m.entfernt)} nicht mehr im Ordner — siehe Bereinigen › Datei fehlt`);
+  if (m.unlesbar) z.push(`${anzahl(m.unlesbar)} unlesbar — siehe Bereinigen › Unlesbar`);
+  if (m.nicht_erreichbar?.length) z.push(`Nicht erreichbar: ${esc(m.nicht_erreichbar.join(", "))} (nichts als fehlend markiert)`);
+  if (m.fcstd_frage) z.push(`${anzahl(m.fcstd_frage)} ${m.fcstd_frage === 1 ? "FCStd-Datei wartet" : "FCStd-Dateien warten"} auf deine Zusage für FreeCAD — die Frage kommt nach OK`);
+  const weiter = m.laeuft ? `<p class="dim">Vorschaubilder${m.cad_gesamt || m.phase === "cad" ? " und FreeCAD" : ""} entstehen jetzt im Hintergrund.
+    Den Stand siehst du unten links beim Zahnrad.</p>` : "";
+  return (z.length ? `<ul class="bilanz">${z.map((x) => `<li>${x}</li>`).join("")}</ul>` : "") + weiter;
+}
+
+$("#einlesen").addEventListener("click", async (e) => {
+  const k = e.target.closest("[data-einlesen]");
+  if (!k) return;
+  if (k.dataset.einlesen === "abbrechen") {
+    try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
+    return;
+  }
+  $("#einlesen").close();
+});
+// Schliessen (OK oder Esc): das Einlesen läuft weiter, die Anzeige am Zahnrad übernimmt; eine offene FCStd-Frage kommt jetzt.
+$("#einlesen").addEventListener("close", () => {
+  einlesen.lauf = null;
+  const m = zustand.scan || {};
+  hintergrundZeichnen(m);
+  if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+});
+
+// Klein beim Zahnrad: was gerade im Hintergrund läuft, mit Balken. Weg, sobald nichts mehr läuft.
+function hintergrundZeichnen(m) {
+  const h = $("#hintergrund");
+  if (!m.laeuft || $("#einlesen").open) { h.hidden = true; return; }
+  let text, fertig = null, gesamt = null;
+  if (m.abbricht) text = "Wird abgebrochen …";
+  else if (m.phase === "suchen") text = "Einlesen: Ordner durchsuchen";
+  else if (m.phase === "hashen") { text = "Einlesen: Dateien prüfen"; [fertig, gesamt] = [m.geprueft, m.zu_pruefen]; }
+  else if (m.phase === "analysieren") { text = "Einlesen"; [fertig, gesamt] = [m.analysiert, m.zu_analysieren]; }
+  else if (m.phase === "vorschau") { text = "Vorschaubilder berechnen"; [fertig, gesamt] = [(m.vorschauen_gesamt || 0) - (m.vorschauen_offen || 0), m.vorschauen_gesamt]; }
+  else if (m.phase === "cad") { text = "FreeCAD wandelt um"; [fertig, gesamt] = [(m.cad_gesamt || 0) - (m.cad_offen || 0), m.cad_gesamt]; }
+  else text = "Läuft …";
+  const anteil = gesamt ? fertig / gesamt : null;
+  h.hidden = false;
+  abgleichen(h, `<div class="hg-kopf"><span>${text}</span>${gesamt ? `<span class="hg-zahl">${anzahl(fertig)} / ${anzahl(gesamt)}</span>` : ""}</div>
+    <div class="balken klein ${anteil == null ? "unbestimmt" : ""}"><i style="width:${Math.round((anteil ?? 0.3) * 100)}%"></i></div>`);
+}
+
 // ---------------------------------------------------------------- Live (flatgraph bei_aenderung → SSE)
 
 let liveZeit, liveBetrifft = false;
@@ -1962,17 +2081,16 @@ function live() {
     const m = JSON.parse(e.data);
     if (m.art === "scan") {
       zustand.scan = m;
+      einlesenZeichnen(m);
+      hintergrundZeichnen(m);
       if (!zustand.modelle.length) zeichneLeer();
       $("#scan-abbrechen").hidden = !m.laeuft || !!m.abbricht;
-      $("#scan-status").textContent = m.laeuft && m.abbricht ? "Wird abgebrochen …" : m.laeuft
-        ? `Einlesen: ${m.phase}${m.analysiert != null && m.zu_analysieren ? ` ${m.analysiert}/${m.zu_analysieren}` : ""}`
-        : (m.vorschauen_offen ? "" : "");
-      if (m.phase === "vorschau" && m.vorschauen_offen && !m.abbricht) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
-      if (m.phase === "cad" && m.laeuft && !m.abbricht) $("#scan-status").textContent = `STEP umwandeln (FreeCAD): noch ${m.cad_offen}`;
-      if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+      // Was läuft, zeigt das Einlesen-Fenster bzw. die Anzeige beim Zahnrad; oben bleibt nur das Ergebnis des letzten Laufs.
+      if (m.laeuft) $("#scan-status").textContent = "";
+      // Während des Einlesen-Fensters wartet die Frage; es nennt sie in der Bilanz und stellt sie nach OK.
+      if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
       if (m.phase === "fertig" || m.abgebrochen) {
         $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
-        if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
         neuLaden();
       }
       return;
@@ -1996,7 +2114,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.

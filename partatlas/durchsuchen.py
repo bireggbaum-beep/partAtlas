@@ -22,16 +22,25 @@ def _sichtbar(name):
 
 def zaehlen(pfad):
     """(Modelldateien, vollständig gezählt?)."""
+    modelle, ganz, _ = zaehlen_je_format(pfad)
+    return modelle, ganz
+
+
+def zaehlen_je_format(pfad):
+    """(Modelldateien, vollständig gezählt?, {format: Anzahl}) — für die Übersicht vor dem Einlesen."""
     modelle = gesehen = 0
+    je_format = {}
     for ordner, unter, dateien in os.walk(pfad):
         unter[:] = [u for u in unter if _sichtbar(u)]
         for d in dateien:
             gesehen += 1
-            if os.path.splitext(d)[1].lower() in FORMATE:
+            f = FORMATE.get(os.path.splitext(d)[1].lower())
+            if f:
                 modelle += 1
+                je_format[f] = je_format.get(f, 0) + 1
         if gesehen > ZAEHL_GRENZE:
-            return modelle, False
-    return modelle, True
+            return modelle, False, je_format
+    return modelle, True, je_format
 
 
 def sprungziele():

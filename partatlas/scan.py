@@ -105,7 +105,7 @@ class Scanner:
         self._sperre = threading.Lock()
         self._faden = None
         self._nochmal = False               # Folgelauf nach dem laufenden: False, "cad" (nur FreeCAD) oder True (ganz)
-        self.status = {"laeuft": False}
+        self.status = {"laeuft": False, "lauf": 0}
         self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
         self._pool = None
         self._stopp = threading.Event()
@@ -215,6 +215,11 @@ class Scanner:
             self._faden.start()
             return True
 
+    def naechster_lauf(self):
+        """Die Nummer des Laufs, der die Änderung von eben sieht — VOR `starten` lesen: läuft einer, ist es sein Folgelauf, sonst der
+        neue. Danach gelesen könnte der neue Lauf schon mitgezählt sein."""
+        return self.status.get("lauf", 0) + 1
+
     def warten(self, zeit=None):
         if self._faden:
             self._faden.join(zeit)
@@ -239,6 +244,10 @@ class Scanner:
         self._setze(fcstd_frage=0, cad_ohne_freecad=0)
         if nur_cad:
             return self._lauf_nur_cad(t0)
+        # `lauf` zählt die Läufe: der Einlesen-Dialog weiss so, welcher Lauf seiner ist. `geprueft`, `je_format`, `aus_datei`,
+        # `einlesen_s`, `vorschauen_gesamt`, `cad_gesamt`: was der Dialog und die Anzeige am Zahnrad zeigen (Fortschritt, Bilanz).
+        self._setze(lauf=self.status["lauf"] + 1, geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0,
+                    cad_gesamt=0, zu_pruefen=0, zu_analysieren=0, analysiert=0, kopien=0)
         self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
                     unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
@@ -285,9 +294,11 @@ class Scanner:
             vorgaenger = {}                           # neuer hash -> hash, der vorher an diesem Ort lag
             ortwechsel = []                           # (hash, schluessel, st, alter_hash)
             zurueck = []                              # (hash, schluessel, st): Dateien, deren Modell im Papierkorb liegt
-            for pfad, h, fehler in pool.map(_hash, list(nach_pfad), chunksize=8):
+            for i, (pfad, h, fehler) in enumerate(pool.map(_hash, list(nach_pfad), chunksize=8), 1):
                 if self._stopp.is_set():      # map holt die übrigen Aufträge beim Verlassen der Schleife zurück
                     break
+                if i % 20 == 0 or i == len(nach_pfad):
+                    self._setze(geprueft=i)
                 if h is None:
                     log.warning("nicht lesbar: %s (%s)", pfad, fehler)
                     continue
@@ -322,7 +333,9 @@ class Scanner:
             self._setze(verschoben=verschoben, bearbeitet=verschoben)
             if self._stopp.is_set():          # gehasht ist nur ein Teil: nichts Neues anlegen, nichts entfernen
                 return self._abgebrochen(t0)
-            self._setze(phase="analysieren", zu_analysieren=len(neu_je_hash), analysiert=0)
+            # Inhaltsgleiche Kopien werden ein Modell mit mehreren Orten: die Bilanz nennt sie, sonst fehlen scheinbar Dateien.
+            self._setze(phase="analysieren", zu_analysieren=len(neu_je_hash), analysiert=0,
+                        kopien=sum(len(f) - 1 for f in neu_je_hash.values()))
 
             aufgaben = [(h, (faelle[0][1], self.b.vorschau_pfad(h, "extrahiert"))) for h, faelle in neu_je_hash.items()]
             gruppe = []
@@ -348,7 +361,7 @@ class Scanner:
             # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
             # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
             # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.
-            self._setze(entfernt=len(weg), phase="vorschau", fcstd_frage=self._fcstd_offen())
+            self._setze(entfernt=len(weg), phase="vorschau", fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.time() - t0, 1))
 
             self._vorschauen()
             if self._stopp.is_set():
@@ -362,6 +375,7 @@ class Scanner:
 
     def _lauf_nur_cad(self, t0):
         """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""
+        self._setze(lauf=self.status["lauf"] + 1, einlesen_s=None)
         self._setze(laeuft=True, phase="cad", nur_cad=True, bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
         self._pool = self._neuer_pool()
@@ -384,7 +398,12 @@ class Scanner:
                 orte = [{"wurzel": s[0], "pfad": s[1], "groesse": st.st_size, "mtime": st.st_mtime}
                         for s, _, st in neu_je_hash[h]]
                 self.k.neue_datei(h, felder, orte, vorschau_status, fehler, vorgaenger.get(h))
-        self._setze(neu=self.status["neu"] + len(gruppe),
+        je_format = dict(self.status["je_format"])
+        for _, felder, _, _ in gruppe:
+            f = felder.get("format") or "?"
+            je_format[f] = je_format.get(f, 0) + 1
+        self._setze(neu=self.status["neu"] + len(gruppe), je_format=je_format,
+                    aus_datei=self.status["aus_datei"] + sum(1 for g in gruppe if g[2] == "eingebettet"),
                     unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
                     analysiert=self.status["analysiert"] + len(gruppe),
                     bearbeitet=self.status["bearbeitet"] + len(gruppe))
@@ -403,6 +422,7 @@ class Scanner:
             if pfad:
                 aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)))
         rest, stapel = len(aufgaben), []
+        self._setze(vorschauen_gesamt=len(aufgaben), vorschauen_offen=rest)
         for h, erg, fehler in self._verteilen(aufgaben, _rendern):
             status, fehler = ("fehler", fehler) if fehler else erg
             if fehler:
@@ -412,8 +432,10 @@ class Scanner:
             if len(stapel) >= GRUPPE:
                 self._vorschauen_speichern(stapel)
                 stapel = []
-                self._setze(vorschauen_offen=rest)
+            if rest % 10 == 0:
+                self._setze(vorschauen_offen=rest)      # die Anzeige beim Zahnrad zählt mit, nicht nur alle hundert
         self._vorschauen_speichern(stapel)
+        self._setze(vorschauen_offen=0)
 
     def _cad(self):
         """STEP-Dateien ohne Netz über FreeCAD umwandeln. Das Netz liegt abgeleitet in `netz/<hash>.stl` (nicht gesichert,
@@ -444,7 +466,7 @@ class Scanner:
             pfad = self.k.absoluter_pfad(ort) if ort else None
             if pfad and os.path.exists(pfad):
                 aufgaben.append((h, pfad, self.b.pfad("arbeit", "cad", f"{h}.stl")))
-        self._setze(phase="cad", cad_offen=len(aufgaben))
+        self._setze(phase="cad", cad_offen=len(aufgaben), cad_gesamt=len(aufgaben))
         rest = len(aufgaben)
         for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
             rest -= 1

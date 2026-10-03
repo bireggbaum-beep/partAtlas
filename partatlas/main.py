@@ -101,6 +101,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     # ---------------------------------------------------------------- Wurzeln und Scan
 
+    def scan_starten():
+        """Startet das Einlesen und gibt die Nummer des Laufs zurück, der die Änderung sieht — der Einlesen-Dialog folgt genau ihm."""
+        lauf = zustand["scanner"].naechster_lauf()
+        zustand["scanner"].starten()
+        return lauf
+
     @app.get("/api/wurzeln")
     def wurzeln():
         return [{"id": k, **v} for k, v in K().wurzeln().items()]
@@ -109,8 +115,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     async def wurzel_neu(request: Request):
         daten = await request.json()
         wid = K().wurzel_hinzufuegen(daten.get("pfad", ""))
-        zustand["scanner"].starten()
-        return {"id": wid}
+        return {"id": wid, "lauf": scan_starten()}
 
     @app.post("/api/wurzeln/waehlen")
     def wurzel_waehlen():
@@ -125,6 +130,15 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         modelle, vollstaendig = durchsuchen.zaehlen(pfad)
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
 
+    @app.post("/api/wurzeln/uebersicht")
+    async def wurzel_uebersicht(request: Request):
+        """Was ein Ordner mitbringt, bevor er eingelesen wird: Modelldateien je Format (wie in pDMS vor dem Hinzufügen)."""
+        pfad = os.path.abspath(os.path.expanduser((await request.json()).get("pfad", "")))
+        if not os.path.isdir(pfad):
+            raise KatalogFehler(f"Kein Ordner: {pfad}")
+        modelle, vollstaendig, je_format = durchsuchen.zaehlen_je_format(pfad)
+        return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig, "je_format": je_format}
+
     @app.get("/api/wurzeln/entfernt")
     def wurzeln_entfernt():
         return K().entfernte_wurzeln()
@@ -132,8 +146,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/wurzeln/{wid}/wiederherstellen")
     def wurzel_zurueck(wid: str):
         K().wurzel_wiederherstellen(wid)
-        zustand["scanner"].starten()
-        return {"ok": True}
+        return {"ok": True, "lauf": scan_starten()}
 
     @app.delete("/api/wurzeln/{wid}")
     def wurzel_weg(wid: str):
@@ -142,7 +155,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
 
     @app.post("/api/scan")
     def scan():
-        return {"gestartet": zustand["scanner"].starten()}
+        lauf = zustand["scanner"].naechster_lauf()
+        return {"gestartet": zustand["scanner"].starten(), "lauf": lauf}
 
     @app.post("/api/scan/abbrechen")
     def scan_abbrechen():
@@ -378,8 +392,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/hochladen")
     async def hochladen(request: Request, ordner: str, name: str):
         neu = K().hochladen(ordner, name, await request.body())
-        zustand["scanner"].starten()
-        return {"dateien": len(neu)}
+        return {"dateien": len(neu), "lauf": scan_starten()}
 
     @app.get("/api/archive")
     def archive():
@@ -389,8 +402,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     async def archiv_entpacken(request: Request):
         d = await request.json()
         ergebnis = K().archiv_entpacken(d.get("id", ""))
-        zustand["scanner"].starten()
-        return ergebnis
+        return {**ergebnis, "lauf": scan_starten()}
 
     # ---------------------------------------------------------------- Bilder des Anwenders
 

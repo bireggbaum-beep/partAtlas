@@ -72,6 +72,10 @@ if __name__ == "__main__":
           alle["Arm_Front_v2"]["vorschau"] == "gerendert"
           and os.path.getsize(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")) > 500)
     check("STEP: aufgenommen, Vorschau „keine“", alle["Welle"]["vorschau"] == "keine")
+    check("Bilanz für den Einlesen-Dialog: Laufnummer, geprüft x von y, je Format, Bilder aus der Datei, Dauer des Einlesens",
+          st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and st["analysiert"] == st["zu_analysieren"] == 5
+          and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and st["aus_datei"] == 1
+          and st["einlesen_s"] is not None and st["vorschauen_gesamt"] == 2 and st["vorschauen_offen"] == 0 and st["kopien"] == 0)
     dat = lambda m: {k: v for k, v in b.db.get_node(f"PART_GEOMETRY/{m['hash']}", readonly=True).items()
                      if k.startswith("vorschau_") and v}
     check("Vorschau gehört zur Datei, die Art steht im Namen: aus der Datei vs. berechnet, STEP ohne",
@@ -479,6 +483,21 @@ if __name__ == "__main__":
     check("STEP und FCStd: die Frage kommt vor dem ersten FreeCAD-Start; mit sofortigem „Ja“ ist die FCStd im selben Lauf umgewandelt",
           sf_ablauf == ["frage", "cad"] and sf["Gehaeuse"]["cad"] == "ok" and sf["Halter"]["cad"] == "ok")
     sf_b.schliessen()
+
+    # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)
+    kp_tmp = tempfile.mkdtemp()
+    os.makedirs(os.path.join(kp_tmp, "s", "b"))
+    for rel in ("A.stl", "b/A_Kopie.stl", "b/A_nochmal.stl"):
+        muster.stl_binaer(os.path.join(kp_tmp, "s", rel), 10, 11, 12)
+    muster.stl_binaer(os.path.join(kp_tmp, "s", "B.stl"), 13, 11, 12)
+    kp_b = Bestand(os.path.join(kp_tmp, "bestand"))
+    kp_k = Katalog(kp_b)
+    kp_k.wurzel_hinzufuegen(os.path.join(kp_tmp, "s"))
+    kp_s = Scanner(kp_b, kp_k, prozesse=2)
+    kp_s.lauf()
+    check("Bilanz: vier Dateien, zwei Modelle, zwei Kopien", kp_s.status["gefunden"] == 4 and kp_s.status["neu"] == 2
+          and kp_s.status["kopien"] == 2)
+    kp_b.schliessen()
 
     # -- Folgelauf: „nur FreeCAD“ während eines Laufs bleibt „nur FreeCAD“ (nach der FCStd-Zusage las er sonst alles neu ein)
     import threading as _th
