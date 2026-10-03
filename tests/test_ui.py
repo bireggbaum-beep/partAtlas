@@ -212,11 +212,41 @@ async def oberflaeche(port):
         await pg.locator(".karte .wahl").nth(2).click(modifiers=["Shift"])
         check("Kästchen und Umschalt-Klick: Bereich von drei gewählt, Leiste zeigt es",
               "3 ausgewählt" in await pg.inner_text("#stapel"))
+        # Alle vier Zuordnungen (Tag, Material, Sammlung, Baugruppe) laufen über dasselbe Fenster: Suchfeld, Liste mit Stand, Neu anlegen.
         await pg.click('[data-stapel="tag"]')
-        await pg.fill("#s-name", "Stapel")
-        await pg.click('dialog button[value="ja"]')
-        await pg.wait_for_timeout(1000)
-        check("Tag für alle Gewählten", len(api(port, "/api/modelle?tag=stapel")) == 3)
+        await pg.wait_for_selector("#zuordnen:not([hidden]) .zw-suche")
+        box, knopf = await pg.locator("#zuordnen").bounding_box(), await pg.locator('[data-stapel="tag"]').bounding_box()
+        check("Zuordnen-Fenster hängt am Knopf (darüber), Suchfeld hat den Fokus, es nennt die Zahl der Modelle",
+              box["y"] + box["height"] <= knopf["y"] and await pg.evaluate("document.activeElement.className") == "zw-suche"
+              and "für 3 Modelle" in await pg.inner_text(".zw-kopf"))
+        await pg.keyboard.type("Stapel")
+        check("Unbekannter Name: die Liste bietet an, ihn neu anzulegen", "Neuer Tag „Stapel“ anlegen" in await pg.inner_text("#zuordnen .zw-zeile.neu"))
+        await pg.keyboard.press("Enter")
+        await pg.wait_for_selector(".zw-zeile:has-text('#stapel') .zw-stand.voll", timeout=5000)
+        check("Enter legt an und vergibt für alle drei; das Fenster bleibt offen, der Stand der Zeile zeigt „alle“",
+              len(api(port, "/api/modelle?tag=stapel")) == 3 and await pg.locator("#zuordnen").is_visible()
+              and "angelegt" in await pg.inner_text(".zw-status"))
+        await pg.keyboard.press("Escape")
+        check("Esc schliesst das Fenster, die Auswahl bleibt", await pg.locator("#zuordnen").is_hidden() and "3 ausgewählt" in await pg.inner_text("#stapel"))
+        await pg.click('[data-stapel="tag"]')
+        await pg.wait_for_selector("#zuordnen:not([hidden]) .zw-suche")
+        await pg.wait_for_selector("#zuordnen .zw-zeile")
+        await pg.keyboard.type("stap")
+        zeilen = await pg.locator("#zuordnen .zw-zeile").all_inner_texts()
+        await pg.keyboard.press("Enter")
+        await pg.wait_for_timeout(500)
+        check("Teil eines vorhandenen Namens tippen und Enter: nimmt den vorhandenen, legt keinen neuen Tag „stap“ an",
+              "#stapel" in zeilen[0] and "anlegen" in zeilen[-1] and not any(t["name"] == "stap" for t in api(port, "/api/tags")))
+        await pg.keyboard.press("Escape")
+        await pg.click('[data-stapel="sammlung"]')
+        await pg.wait_for_selector("#zuordnen:not([hidden]) .zw-suche")
+        await pg.keyboard.type("Auswahl-Sammlung")
+        await pg.keyboard.press("Enter")
+        await pg.wait_for_selector(".zw-zeile:has-text('Auswahl-Sammlung') .zw-stand.voll", timeout=5000)
+        check("Dasselbe Fenster für Sammlungen: neu angelegt mit den drei Gewählten",
+              any(x["name"] == "Auswahl-Sammlung" and x["anzahl"] == 3 for x in api(port, "/api/sammlungen")))
+        await pg.click('[data-stapel="sammlung"]')                      # derselbe Knopf schliesst wieder
+        check("Derselbe Knopf schaltet das Fenster wieder aus", await pg.locator("#zuordnen").is_hidden())
         await pg.locator(".karte").nth(1).click(button="right")
         await pg.wait_for_selector("#kontext:not([hidden])")
         check("Rechtsklick in eine Auswahl: Menü für alle drei", "3 MODELLE" in (await pg.inner_text("#kontext")).upper())
@@ -520,6 +550,15 @@ async def oberflaeche(port):
               and await pg.evaluate("localStorage.getItem('partatlas.ohneEntwuerfe')") == "1")
         await pg.click("#entwuerfe-aus")
         await pg.wait_for_selector(".karte .badge.entwurf", timeout=5000)
+        # Das Etikett gehört in jede Ansicht, nicht nur ins Raster (die Karten-Ansicht hatte es vergessen).
+        zeigt = {}
+        for layout, wahl in (("liste", ".zeile-l .entwurf-zeichen"), ("karten", ".zeile-k .entwurf-zeichen")):
+            await pg.click(f'[data-layout="{layout}"]')
+            await pg.wait_for_timeout(500)
+            zeigt[layout] = await pg.locator(wahl).count()
+        await pg.click('[data-layout="raster"]')
+        await pg.wait_for_selector(".karte .badge.entwurf", timeout=5000)
+        check("Entwurf-Etikett in allen drei Ansichten: Raster, Liste, Karten", zeigt == {"liste": 1, "karten": 1})
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#entwurf.an")
         await pg.click("#entwurf")

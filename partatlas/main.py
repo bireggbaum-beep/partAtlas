@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung
+from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -725,6 +725,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         except (OSError, subprocess.SubprocessError) as e:
             raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
         return {"ok": True, "pfad": pfad}
+
+    @app.post("/api/stapel/optionen")
+    async def stapel_optionen(request: Request):
+        d = await request.json()
+        return zuordnen.optionen(K(), B(), d.get("art"), d.get("modelle") or [])
+
+    @app.post("/api/stapel/zuordnen")
+    async def stapel_zuordnen(request: Request):
+        d = await request.json()
+        return zuordnen.zuordnen(K(), B(), d.get("art"), d.get("modelle") or [], d.get("ziel"), d.get("neu"))
 
     @app.get("/api/aufraeumen")
     def aufraeumen_vorschlaege():

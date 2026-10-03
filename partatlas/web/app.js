@@ -526,7 +526,7 @@ function zeileK(m, y) {
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
     <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : m.format === "fcstd" ? "FCStd" : ""}</div>`}</div>
     <div class="k-text">
-      <div class="k-name" title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
+      <div class="k-name" title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}</div>
       <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
       <div class="k-chips">${chips}</div>
       <div class="k-ordner" title="${esc(ordner)}">${ordner ? "▸ " + esc(ordner) : ""}</div>
@@ -590,22 +590,31 @@ function zeichneStapel() {
   st.hidden = n === 0;
   if (!n) return;
   abgleichen(st, zustand.ansicht === "papierkorb"
-    ? `<b>${n} ausgewählt</b><button class="knopf" data-stapel="wiederherstellen">Wiederherstellen</button>
-       <button class="knopf" data-stapel="alle">Alle auswählen</button><button class="knopf" data-stapel="keine">✕ Auswahl aufheben</button>`
-    : `<b>${n} ausgewählt</b>
-    <button class="knopf" data-stapel="alle">Alle auswählen (${zustand.modelle.length})</button>
-    <button class="knopf" data-stapel="baugruppe">🧩 Zu Baugruppe …</button>
-    <button class="knopf" data-ab-phase="2" data-stapel="warteschlange">☰ In Warteschlange</button>
-    <select class="knopf" id="stapel-sammlung"><option value="">Zu Sammlung …</option>${zustand.sammlungen.map((x) =>
-      `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}<option value="__neu">Neue Sammlung …</option></select>
-    <button class="knopf" data-stapel="tag">＃ Tag …</button>
-    <button class="knopf" data-stapel="material">Material …</button>
-    <button class="knopf" data-stapel="gedruckt">✓ Gedruckt</button>
-    <button class="knopf" data-stapel="favorit">♥ Favorit</button>
-    <button class="knopf" data-stapel="entwurf" title="Alle gewählten als Entwurf markieren — oder, wenn sie es schon sind, nicht mehr">✎ Entwurf</button>
-    <button class="knopf" data-stapel="verschieben">Verschieben …</button>
-    <button class="knopf gefahr" data-stapel="loeschen">Löschen</button>
-    <button class="knopf" data-stapel="keine">✕</button>`);
+    ? `<div class="st-kopf"><b>${n} ausgewählt</b>
+        <button class="link" data-stapel="alle">Alle ${anzahl(zustand.modelle.length)} auswählen</button>
+        <button class="st-zu" data-stapel="keine" title="Auswahl aufheben (Esc)" aria-label="Auswahl aufheben">✕</button></div>
+       <div class="st-aktionen"><div class="st-gruppe"><button class="knopf" data-stapel="wiederherstellen">↩ Wiederherstellen</button></div></div>`
+    : `<div class="st-kopf"><b>${n} ausgewählt</b>
+        <button class="link" data-stapel="alle">Alle ${anzahl(zustand.modelle.length)} auswählen</button>
+        <button class="st-zu" data-stapel="keine" title="Auswahl aufheben (Esc)" aria-label="Auswahl aufheben">✕</button></div>
+      <div class="st-aktionen">
+        <div class="st-gruppe" role="group" aria-label="Zuordnen">
+          <button class="knopf waehl" data-stapel="tag" aria-haspopup="listbox">＃ Tag</button>
+          <button class="knopf waehl" data-stapel="material" aria-haspopup="listbox">◍ Material</button>
+          <button class="knopf waehl" data-stapel="sammlung" aria-haspopup="listbox">▤ Sammlung</button>
+          <button class="knopf waehl" data-stapel="baugruppe" aria-haspopup="listbox">🧩 Baugruppe</button>
+        </div>
+        <div class="st-gruppe" role="group" aria-label="Markieren">
+          <button class="knopf" data-stapel="favorit" title="Als Favorit markieren">♥ Favorit</button>
+          <button class="knopf" data-stapel="entwurf" title="Als Entwurf markieren — oder, wenn sie es schon sind, nicht mehr">✎ Entwurf</button>
+          <button class="knopf" data-stapel="gedruckt" title="Als gedruckt markieren">✓ Gedruckt</button>
+          <button class="knopf" data-ab-phase="2" data-stapel="warteschlange">☰ Warteschlange</button>
+        </div>
+        <div class="st-gruppe" role="group" aria-label="Dateien">
+          <button class="knopf" data-stapel="verschieben">Verschieben …</button>
+          <button class="knopf gefahr" data-stapel="loeschen">Löschen …</button>
+        </div>
+      </div>`);
 }
 
 // Datei fehlt: drei Wege, wie bei Manyfold „delete it, or find where it went“ — und dazu „behalten“, wenn sie absichtlich weg ist.
@@ -675,32 +684,16 @@ async function stapel(aktion, wert, modelle = [...zustand.auswahl]) {
   } catch (e) { toast(e.message); }
 }
 
-async function stapelAktion(aktion, modelle = [...zustand.auswahl]) {
+async function stapelAktion(aktion, modelle = [...zustand.auswahl], anker = null) {
   switch (aktion) {
+    case "tag": case "material": case "sammlung": case "baugruppe": return zuordnenOeffnen(aktion, modelle, anker);
     case "alle": zustand.modelle.forEach((m) => zustand.auswahl.add(m.id)); zeichneStapel(); return raster.zeichne();
     case "keine": zustand.auswahl.clear(); zeichneStapel(); return raster.zeichne();
     case "warteschlange": return stapel("warteschlange", null, modelle);
-    case "baugruppe": return zuBaugruppe(modelle);
     case "gedruckt": return stapel("gedruckt", true, modelle);
     case "favorit": return stapel("favorit", true, modelle);
     // Sind schon alle Entwurf, nimmt derselbe Knopf es zurück.
     case "entwurf": return stapel("entwurf", !modelle.every((x) => zustand.modelle.find((m) => m.id === x)?.entwurf), modelle);
-    case "material": {
-      const alle = await api("/api/materialien");
-      const a = await dialog(`<h2>Material für ${modelle.length} Modelle</h2>
-        <p class="dim">Wird als „vorgesehen“ ergänzt; vorhandene Angaben bleiben.</p>
-        <div class="kategorien">${alle.map((x) => `<button type="button" class="chip" data-mat-wahl="${esc(x)}">${esc(x)}</button>`).join("")}</div>
-        <input type="text" id="s-name" placeholder="oder neues Material">
-        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
-      if (a === "ja" && $("#s-name").value.trim()) return stapel("material", $("#s-name").value.trim(), modelle);
-      return;
-    }
-    case "tag": {
-      const a = await dialog(`<h2>Tag für ${modelle.length} Modelle</h2><input type="text" id="s-name" placeholder="z. B. Funktional">
-        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Setzen</button></div>`);
-      if (a === "ja") return stapel("tag", $("#s-name").value, modelle);
-      return;
-    }
     case "verschieben": {
       const ziel = await ordnerWahl(`${modelle.length} Modelle verschieben`, "Die Dateien werden auf der Platte verschoben. Nichts wird überschrieben.");
       if (ziel) { await stapel("verschieben", ziel, modelle); }
@@ -1727,7 +1720,7 @@ document.addEventListener("click", async (e) => {
   const hv = t.closest("[data-hv]");
   if (hv) { e.stopImmediatePropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }
   const st = t.closest("[data-stapel]");
-  if (st) return stapelAktion(st.dataset.stapel);
+  if (st) return stapelAktion(st.dataset.stapel, undefined, st);
   const lay = t.closest("[data-layout]");
   if (lay) {
     zustand.layout = lay.dataset.layout;
@@ -1923,12 +1916,6 @@ document.addEventListener("change", async (e) => {
     e.target.value = "";
     if (sid === "__neu") return sammlungNeu([id]);
     await api(`/api/sammlungen/${sid}/modelle`, { method: "POST", body: { modelle: [id] } }).catch((err) => toast(err.message));
-  }
-  if (e.target.id === "stapel-sammlung" && e.target.value) {
-    const sid = e.target.value;
-    e.target.value = "";
-    if (sid === "__neu") return sammlungNeu([...zustand.auswahl]);
-    return stapel("sammlung", sid);
   }
   if (e.target.id === "datei-wahl") { const f = e.target.files; await hochladen(f); e.target.value = ""; return; }
   if (e.target.id === "bild-wahl" && e.target.files.length) {
@@ -2529,22 +2516,9 @@ async function kontextAktion(k, knopf) {
       for (const x of modelle) await api(`/api/modelle/${x}/wiederherstellen`, { method: "POST" }).catch((err) => toast(err.message));
       return;
     case "endgueltig": return endgueltigEntfernen(id);
-    case "sammlung": return sammlungWahl(modelle);
     case "druck": return druckAnlegen(modelle);
     default: return stapelAktion(k, modelle);
   }
-}
-
-async function sammlungWahl(modelle) {
-  const a = await dialog(`<h2>Zu Sammlung${modelle.length > 1 ? ` (${modelle.length} Modelle)` : ""}</h2>
-    <select id="s-wahl">${zustand.sammlungen.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
-      <option value="__neu">Neue Sammlung …</option></select>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Hinzufügen</button></div>`);
-  if (a !== "ja") return;
-  const sid = $("#s-wahl").value;
-  if (sid === "__neu") return sammlungNeu(modelle);
-  await api(`/api/sammlungen/${sid}/modelle`, { method: "POST", body: { modelle } }).catch((err) => toast(err.message));
-  toast("Zur Sammlung hinzugefügt.");
 }
 
 document.addEventListener("click", (e) => {

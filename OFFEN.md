@@ -472,6 +472,19 @@ Baugruppe + lange nicht angesehen), je Zeile der Grund und was daran hängt; Ged
 selbst über „Im Ordner zeigen“; ein gelöschter Entwurf/Vorschlag gilt dann als aufgeräumt (still in den Papierkorb, Bilanz nennt es)
 statt als „Datei fehlt“. Später, wenn partAtlas sicher löschen darf: „In den Papierkorb des Systems“ direkt aus der Ansicht.
 
+**Zuordnen-Fenster und Leiste (0.39.0, Rückmeldung 03.10.2026: „gebastelt, keine hochprofessionelle Software“):** Tag war ein Textfeld, Material ein
+Dialog mit Chips, Baugruppe ein Dialog mit Auswahlliste, Sammlung eine Auswahlliste in der Leiste. Jetzt ein Bauteil (`zuordnen.js`,
+Server `zuordnen.py`, `/api/stapel/optionen` und `/api/stapel/zuordnen`): Fenster am Knopf, über der Leiste wachsend; Suchfeld, Liste mit
+Stand („✓ alle“, „2 von 5“), ↑↓/Enter/Esc, Klick fügt allen hinzu, Fenster bleibt offen; „… anlegen“ steht hinter den Treffern und wird nur
+vorausgewählt, wenn es keinen Treffer gibt (sonst legte „kue“ + Enter einen Müll-Tag an). Nur Hinzufügen. Baugruppe: Modelle, die schon
+drinstehen, werden übersprungen (sonst erhöhte jeder weitere Klick die Menge). Auch das Rechtsklick-Menü bei Mehrfachauswahl öffnet es
+(an der Klickstelle). Leiste neu geordnet: Kopf (Anzahl, „Alle n auswählen“, ✕), darunter Gruppen Zuordnen · Markieren · Dateien; die
+Papierkorb-Leiste ebenso. Entwurf-Etikett fehlte in der Ansicht „Karten“ (Raster und Liste hatten es) — behoben, für alle drei geprüft.
+`test_zuordnen` 12/12 (neu), `test_ui` 81/81. Beim Bau: meine Klassen `.waehler`/`.w-zeile` kollidierten mit dem Teile-Wähler der
+Baugruppen (dessen Grid-Regeln überschrieben meine) — jetzt `#zuordnen`/`.zw-…`. **Offen:** der Inspektor (ein Modell) hat noch seine eigenen
+Wege (Tag-Eingabe, „+ Material …“, „+ Sammlung …“, „+ Baugruppe …“ als Auswahllisten) — dasselbe Fenster würde auch dort passen
+(Aufwand 1–2); Entfernen aus dem Fenster (Dreiwert-Häkchen wie bei Gmail-Labels) würde je Art eine Entfernen-Schnittstelle brauchen.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:

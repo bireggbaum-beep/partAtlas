@@ -189,8 +189,8 @@ dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top
 .stapel { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 20; width: max-content; max-width: calc(100% - 28px);
           display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 8px 12px;
           background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; }
-.mitte:has(> .stapel:not([hidden])) .raster { padding-bottom: 72px; }
-body:has(#stapel:not([hidden])) .toast { bottom: 96px; }
+.mitte:has(> .stapel:not([hidden])) .raster { padding-bottom: 130px; }
+body:has(#stapel:not([hidden])) .toast { bottom: 150px; }
 .stapel b { margin-right: 6px; }
 .stapel .knopf, .stapel select { padding: 2px 8px; font-size: 13px; }
 
@@ -894,3 +894,39 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .af-leiste { position: sticky; bottom: 10px; margin: 16px auto 0; width: max-content; max-width: 100%; display: flex; gap: 8px;
              align-items: center; flex-wrap: wrap; padding: 8px 12px; background: var(--panel); border: 1px solid var(--accent);
              border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; }
+
+/* Auswahlleiste: Kopf (Anzahl), darunter die Aktionen in Gruppen; Gruppen brechen ganz um, nie mitten drin */
+.stapel { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; }
+.st-kopf { display: flex; align-items: center; gap: 12px; }
+.st-kopf .link { font-size: 12.5px; }
+.st-zu { margin-left: auto; background: none; border: 0; color: var(--ink-3); cursor: pointer; font-size: 14px; padding: 0 4px; }
+.st-zu:hover { color: var(--ink); }
+.st-aktionen { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
+.st-gruppe { display: inline-flex; gap: 4px; white-space: nowrap; }
+.knopf.waehl::after { content: "▾"; margin-left: 6px; font-size: 10px; color: var(--ink-3); }
+
+/* Zuordnen-Fenster: Kopf, Suchfeld, Liste mit Stand, Fuss mit Rückmeldung */
+.zuordnen { position: fixed; z-index: 45; width: 320px; max-height: min(440px, 62vh); display: flex; flex-direction: column;
+           background: var(--panel); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.zuordnen[hidden] { display: none; }
+.zw-kopf { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px 6px; font-size: 13px; }
+.zw-titel { font-weight: 600; }
+.zw-fuer { color: var(--ink-3); font-size: 12px; }
+.zw-suche { margin: 0 10px 8px; padding: 7px 9px; font-size: 13.5px; border: 1px solid var(--line-strong); border-radius: 6px;
+           background: var(--bg); color: var(--ink); outline: none; }
+.zw-suche:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.zw-liste { overflow-y: auto; padding: 0 4px 4px; min-height: 0; }
+.zw-zeile { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: none;
+           color: var(--ink); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+.zw-zeile.aktiv, .zw-zeile:hover { background: var(--accent-soft); }
+.zw-zeile.fertig { color: var(--ink-3); cursor: default; }
+.zw-zeile.fertig:hover { background: none; }
+.zw-zeile.neu { color: var(--accent); }
+.zw-plus { width: 14px; text-align: center; }
+.zw-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zw-stand { font: 11.5px var(--mono); color: var(--ink-3); min-width: 3.2em; text-align: right; }
+.zw-stand.voll { color: var(--good); }
+.zw-leer { padding: 14px 10px; color: var(--ink-3); font-size: 13px; }
+.zw-fuss { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-3); min-height: 1.6em; }
+.zw-status { color: var(--ink-2); }
+body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
