@@ -46,7 +46,9 @@ async function zuordnenOeffnen(art, modelle, anker) {
 
 function zuordnenPlatzieren(anker) {
   const el = $("#zuordnen"), breite = el.offsetWidth;
-  const r = anker instanceof Element ? anker.getBoundingClientRect() : { left: zeiger.x, right: zeiger.x, top: zeiger.y, bottom: zeiger.y };
+  // Eine Kopie: die Seiten eines DOMRect sind schreibgeschützt.
+  const { left, right, top, bottom } = anker instanceof Element ? anker.getBoundingClientRect() : { left: zeiger.x, right: zeiger.x, top: zeiger.y, bottom: zeiger.y };
+  const r = { left, right, top, bottom };
   const links = Math.max(8, Math.min(r.left, innerWidth - breite - 8));
   // Von der Leiste aus gemessen, nicht vom Knopf: sonst läge das Fenster über ihrer Kopfzeile („4 ausgewählt“).
   const huelle = anker instanceof Element ? anker.closest("#stapel") : null;

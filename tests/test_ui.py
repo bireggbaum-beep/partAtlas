@@ -215,9 +215,10 @@ async def oberflaeche(port):
         # Alle vier Zuordnungen (Tag, Material, Sammlung, Baugruppe) laufen über dasselbe Fenster: Suchfeld, Liste mit Stand, Neu anlegen.
         await pg.click('[data-stapel="tag"]')
         await pg.wait_for_selector("#zuordnen:not([hidden]) .zw-suche")
-        box, knopf = await pg.locator("#zuordnen").bounding_box(), await pg.locator('[data-stapel="tag"]').bounding_box()
-        check("Zuordnen-Fenster hängt am Knopf (darüber), Suchfeld hat den Fokus, es nennt die Zahl der Modelle",
-              box["y"] + box["height"] <= knopf["y"] and await pg.evaluate("document.activeElement.className") == "zw-suche"
+        await pg.wait_for_selector("#zuordnen .zw-zeile")
+        box, leiste = await pg.locator("#zuordnen").bounding_box(), await pg.locator("#stapel").bounding_box()
+        check("Zuordnen-Fenster steht über der Leiste und verdeckt nichts davon (auch nicht „n ausgewählt“), Suchfeld hat den Fokus, es nennt die Zahl der Modelle",
+              box["y"] + box["height"] <= leiste["y"] and await pg.evaluate("document.activeElement.className") == "zw-suche"
               and "für 3 Modelle" in await pg.inner_text(".zw-kopf"))
         await pg.keyboard.type("Stapel")
         check("Unbekannter Name: die Liste bietet an, ihn neu anzulegen", "Neuer Tag „Stapel“ anlegen" in await pg.inner_text("#zuordnen .zw-zeile.neu"))
