@@ -11,14 +11,17 @@ function eigeneFormular(w = {}, arten = []) {
       <datalist id="eig-arten">${arten.map((a) => `<option value="${esc(a)}">`).join("")}</datalist>
       <input type="text" id="eig-masse" placeholder="Maße (optional), z. B. 40×17×12" value="${esc(w.masse || "")}" maxlength="60">
       <textarea id="eig-notiz" data-enter="" rows="2" placeholder="Notiz (optional)" maxlength="500">${esc(w.notiz || "")}</textarea>
+      <div class="eig-datei"><button type="button" class="knopf" id="eig-datei-knopf">＋ Datei hinzufügen</button>
+        <span class="dim" id="eig-datei-name">${w.datei ? `<a href="/api/eigene/${esc(w.id)}/datei">${esc(w.datei)}</a>` : "FCStd, STEP, 3MF, STL oder OBJ — oder hierher ziehen. Nur für Bild und zum Öffnen, nicht im 3D-Katalog."}</span></div>
     </div>
+    <input type="file" id="eig-cad" accept=".fcstd,.step,.stp,.3mf,.stl,.obj" hidden>
     <input type="file" id="eig-datei" accept="image/png,image/jpeg,image/webp" hidden>
   </div>`;
 }
 
 // Das gewählte Bild bleibt im Browser, bis gespeichert wird; Vorschau sofort.
 function eigeneBildWahl(d) {
-  const st = { datei: null };
+  const st = { datei: null, cad: null };
   const kachel = d.querySelector("#eig-bild");
   const nimm = (f) => {
     if (!f || !/^image\/(png|jpeg|webp)$/.test(f.type)) return f && toast("Nur PNG, JPG oder WebP.");
@@ -28,11 +31,32 @@ function eigeneBildWahl(d) {
   kachel.addEventListener("click", () => d.querySelector("#eig-datei").click());
   d.querySelector("#eig-datei").addEventListener("change", (e) => nimm(e.target.files[0]));
   d.addEventListener("paste", (e) => nimm([...(e.clipboardData?.files || [])][0]));
+  // Konstruktionsdatei: Knopf oder auf den Dialog ziehen; ein Bild darauf ist das Bild, alles andere die Datei.
+  const cad = (f) => {
+    if (!f) return;
+    if (/^image\//.test(f.type)) return nimm(f);
+    st.cad = f;
+    d.querySelector("#eig-datei-name").textContent = `${f.name} — wird beim Speichern eingelesen`;
+  };
+  d.querySelector("#eig-datei-knopf").addEventListener("click", () => d.querySelector("#eig-cad").click());
+  d.querySelector("#eig-cad").addEventListener("change", (e) => cad(e.target.files[0]));
+  d.addEventListener("dragover", (e) => e.preventDefault());
+  d.addEventListener("drop", (e) => { e.preventDefault(); cad(e.dataTransfer.files[0]); });
   return st;
 }
 
 const eigeneWerte = (d) => ({ name: d.querySelector("#eig-name").value.trim(), art: d.querySelector("#eig-art").value.trim(),
   masse: d.querySelector("#eig-masse").value.trim(), notiz: d.querySelector("#eig-notiz").value.trim() });
+
+// Die Datei zuerst: aus ihr kann das Bild entstehen; ein selbst gewähltes Bild kommt danach und gewinnt.
+async function eigeneDateiSenden(id, datei) {
+  if (!datei) return;
+  toast("Datei wird eingelesen …");
+  const r = await fetch(`/api/eigene/${id}/datei?name=${encodeURIComponent(datei.name)}`, { method: "POST", body: datei });
+  const antwort = await r.json().catch(() => ({}));
+  if (!r.ok) return toast(antwort.fehler || "Datei nicht eingelesen.");
+  toast(antwort.bild_neu ? "Datei eingelesen, Bild erzeugt." : "Datei gespeichert — daraus ließ sich kein Bild erzeugen.");
+}
 
 async function eigeneBildSenden(id, datei) {
   if (!datei) return;
@@ -83,6 +107,7 @@ async function eigeneWaehlen() {
     if (!werte.name) return toast("Der Name fehlt.");
     try {
       const { id } = await api("/api/eigene", { method: "POST", body: werte });
+      await eigeneDateiSenden(id, bild.cad);
       await eigeneBildSenden(id, bild.datei);
       await api(`/api/baugruppen/${bid()}/positionen`, { method: "POST", body: { ref: `CUSTOM_COMPONENT/${id}`, menge: 1 } });
       d.close("fertig");
@@ -112,6 +137,7 @@ async function eigeneBearbeiten(id) {
   if ((await dlg) !== "ja") return;
   try {
     await api(`/api/eigene/${id}`, { method: "PATCH", body: eigeneWerte(d) });
+    await eigeneDateiSenden(id, bild.cad);
     await eigeneBildSenden(id, bild.datei);
   } catch (err) { toast(err.message); }
   ladeBaugruppe();

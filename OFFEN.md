@@ -492,7 +492,13 @@ wiederverwendbar. **Bewusst nicht:** Bestandsverwaltung, Lagerort, Einkäufe —
 Einkaufsliste; erscheint in Stückliste (Struktur-PDF mit Bild), CSV und Markdown („Eigene Komponenten“). Bedienung: „＋ Eigene Komponente“
 in der Baugruppe (Suche über vorhandene, darunter Neuanlage mit Name/Art/Maße/Notiz/Bild per Datei oder Strg+V, legt gleich in die
 Baugruppe); Klick auf die Zeile = bearbeiten; löschen nur, wenn in keiner Baugruppe. `test_eigene` 11/11 (neu), `test_baugruppen` 48/48,
-`test_schutz` 22/22. **Wenn es nichts taugt, wieder weg:** `partatlas/eigene.py`, `web/eigene.js`, `tests/test_eigene.py` löschen und die
+`test_schutz` 22/22. **Mit Datei (0.41.0):** Auf den Dialog ziehen oder „＋ Datei hinzufügen“ (FCStd, STEP, 3MF, STL, OBJ): das Bild entsteht aus der Datei
+(eingebettetes Bild, sonst gerendert; STEP/FCStd ohne Bild über FreeCAD, FCStd nur nach der Zusage), Maße werden übernommen, wenn leer;
+ein selbst gewähltes Bild bleibt. Die Datei kommt **nicht** in den 3D-Katalog: eine Kopie in `vault/komponenten/` (kein Wurzelordner, den der
+Scanner sähe), im Dialog zum Zurückladen verlinkt. Anlass: ein FCStd, das nur Konstruktion ist und als Druckteil getarnt in einer Baugruppe
+stand. Offen: „Öffnen in FreeCAD“ statt nur Herunterladen; Einlesen läuft noch im Anfrage-Aufruf (ohne Fortschrittsanzeige); weitere Formate
+(PDF, DXF); keine Kopie, sondern Verweis auf den Ort, falls Dateien gross werden. `test_eigene` 17/17.
+**Wenn es nichts taugt, wieder weg:** `partatlas/eigene.py`, `web/eigene.js`, `tests/test_eigene.py` löschen und die
 mit „EIGENE“ markierten Stellen in `baugruppen.py`, `stueckliste.py`, `main.py`, `web/baugruppen.js`, `web/index.html`, `web/app.css`
 entfernen; bestehende Daten (Knoten `CUSTOM_COMPONENT`) stören die Übrigen nicht. **Feinschliff, falls es bleibt:** eigener Bereich „Teile“
 statt nur im Baugruppen-Dialog, Bilder mehrfach/Galerie, Umbenennen der Art für alle, Vorschlag „aus einem Foto“, Löschvorschau,

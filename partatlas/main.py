@@ -674,6 +674,17 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.post("/api/eigene/{eid}/bild")
     async def eigene_bild_setzen(eid: str, request: Request):
         return {"k": E().bild_setzen(eid, await request.body())}
+    @app.post("/api/eigene/{eid}/datei")
+    async def eigene_datei_setzen(eid: str, name: str, request: Request):
+        bild = E().datei_setzen(eid, name, await request.body())
+        return {**E().detail(eid), "bild_neu": bild}
+
+    @app.get("/api/eigene/{eid}/datei")
+    def eigene_datei(eid: str):
+        pfad, name = E().datei_pfad(eid)
+        if not pfad:
+            raise HTTPException(404)
+        return FileResponse(pfad, filename=name)
     # EIGENE: Ende
 
     @app.get("/api/tags")

@@ -260,7 +260,7 @@ function position(p, nr) {
   } else if (p.art === "eigen") {      // EIGENE
     vorschau = p.eigen_bild ? `<img loading="lazy" src="/api/eigene/${esc(p.id)}/bild?t=1" alt="">` : "🔩";
     name = esc(p.name);
-    unter = ["Eigene Komponente", p.eigen_art, p.eigen_masse].filter(Boolean).map(esc).join(" · ");
+    unter = ["Eigene Komponente", p.eigen_art, p.eigen_masse, p.eigen_datei].filter(Boolean).map(esc).join(" · ");
   } else {
     vorschau = "🧩";
     name = `${esc(p.name)} ›`;

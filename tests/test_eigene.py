@@ -15,6 +15,14 @@ def png():
     Image.new("RGB", (8, 8), (200, 80, 40)).save(puffer, "PNG")
     return puffer.getvalue()
 
+def png2():
+    import io
+    from PIL import Image
+    p = io.BytesIO()
+    Image.new('RGB', (8, 8), (10, 200, 40)).save(p, 'PNG')
+    return p.getvalue()
+
+
 if __name__ == "__main__":
     tmp = tempfile.mkdtemp()
     with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=2), raise_server_exceptions=False) as c:
@@ -25,6 +33,36 @@ if __name__ == "__main__":
         check("Bild setzen und abrufen", c.post(f"/api/eigene/{eid}/bild", content=png()).status_code == 200
               and c.get(f"/api/eigene/{eid}/bild").status_code == 200 and c.get(f"/api/eigene/{eid}").json()["bild"])
         check("Die Arten füllen sich von selbst, mit Vorschlägen dahinter", c.get("/api/eigene/arten").json()[:2] == ["Lagerteil", "Eigenbau"])
+
+        # -- Konstruktionsdatei: Bild daraus, aber nie im 3D-Katalog
+        fc, fc0, stl = (os.path.join(tmp, n) for n in ("Gehaeuse.FCStd", "Ohne.FCStd", "Platte.stl"))
+        muster.fcstd(fc)
+        import zipfile
+        with zipfile.ZipFile(fc) as z:                  # das Testbild aus muster ist kein gültiges PNG
+            teile = {n: z.read(n) for n in z.namelist()}
+        teile["thumbnails/Thumbnail.png"] = png()
+        with zipfile.ZipFile(fc, "w") as z:
+            for n, d in teile.items():
+                z.writestr(n, d)
+        muster.fcstd(fc0, thumbnail=False)
+        muster.stl_binaer(stl, 30, 20, 5)
+        e2 = c.post("/api/eigene", json={"name": "Gehäuse-Konstruktion"}).json()["id"]
+        r = c.post(f"/api/eigene/{e2}/datei", params={"name": "Gehaeuse.FCStd"}, content=open(fc, "rb").read()).json()
+        check("FCStd mit Vorschaubild: Bild entsteht aus der Datei", r["bild_neu"] and c.get(f"/api/eigene/{e2}/bild").status_code == 200
+              and r["datei"] == "Gehaeuse.FCStd")
+        check("Die Datei kommt nicht in den 3D-Katalog und lässt sich zurückladen",
+              c.get("/api/modelle").json() == [] and c.get(f"/api/eigene/{e2}/datei").content == open(fc, "rb").read())
+        e3 = c.post("/api/eigene", json={"name": "Platte"}).json()["id"]
+        r = c.post(f"/api/eigene/{e3}/datei", params={"name": "Platte.stl"}, content=open(stl, "rb").read()).json()
+        check("STL: Bild wird gerendert, Maße werden übernommen", r["bild_neu"] and r["masse"] == "30 × 20 × 5 mm")
+        c.post(f"/api/eigene/{e3}/bild", content=png2())
+        eigenes = c.get(f"/api/eigene/{e3}").json()["bild"]
+        r = c.post(f"/api/eigene/{e3}/datei", params={"name": "Platte.stl"}, content=open(stl, "rb").read()).json()
+        check("Ein eigenes Bild bleibt, wenn danach eine Datei kommt", r["bild"] == eigenes and not r["bild_neu"] or print(r))
+        r = c.post(f"/api/eigene/{e2}/datei", params={"name": "Ohne.FCStd"}, content=open(fc0, "rb").read())
+        check("FCStd ohne Bild: gespeichert, kein Absturz, kein Bild erfunden", r.status_code == 200 and r.json()["bild_neu"] is False)
+        check("Anderes Dateiformat: verständlicher Fehler",
+              c.post(f"/api/eigene/{e2}/datei", params={"name": "a.pdf"}, content=b"x").status_code == 400)
 
         bid = c.post("/api/baugruppen", json={"name": "Gerät"}).json()["id"]
         b2 = c.post("/api/baugruppen", json={"name": "Zweites"}).json()["id"]
@@ -50,5 +88,5 @@ if __name__ == "__main__":
         check("Umbenennen gilt in beiden Baugruppen", c.get(f"/api/baugruppen/{b2}").json()["positionen"][0]["name"] == "Kugellager 6203 (60 Jahre)")
         for b in (bid, b2):
             c.delete(f"/api/baugruppen/{b}/positionen", params={"ref": ref})
-        check("Nach dem Herausnehmen: löschbar, danach weg", c.delete(f"/api/eigene/{eid}").status_code == 200 and c.get("/api/eigene").json() == [])
+        check("Nach dem Herausnehmen: löschbar, danach weg", c.delete(f"/api/eigene/{eid}").status_code == 200 and [x["id"] for x in c.get("/api/eigene").json()] == [e2, e3])
     muster.ende()

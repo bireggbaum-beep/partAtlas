@@ -370,7 +370,8 @@ class Baugruppen:
             elif art == "eigen":      # EIGENE
                 e = self.db.get_node(r, readonly=True)
                 eintrag.update(name=e["name"], eigen_art=e.get("art") or "", eigen_masse=e.get("masse") or "",
-                               eigen_notiz=e.get("notiz") or "", eigen_bild=(e.get("bild") or {}).get("k"))
+                               eigen_notiz=e.get("notiz") or "", eigen_bild=(e.get("bild") or {}).get("k"),
+                               eigen_datei=(e.get("datei") or {}).get("name"))
             else:
                 u = self.db.get_node(r, readonly=True)
                 f = self.fortschritt(kid)

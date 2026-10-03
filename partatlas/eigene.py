@@ -8,8 +8,12 @@ Bedarf, nicht der Bestand. Die freie Angabe `art` (Lagerteil, Eigenbau, Fundstü
 Zum Entfernen, falls es dem Anwender nichts taugt: diese Datei, `web/eigene.js`, `tests/test_eigene.py` und die mit „EIGENE“
 markierten Stellen in baugruppen.py, stueckliste.py, main.py, web/baugruppen.js und index.html.
 """
+import hashlib
 import os
+import re
+import threading
 
+from . import cad, dateien, formate, programme, vorschau
 from .baugruppen import EIGEN
 from .katalog import KatalogFehler, jetzt, ref
 
@@ -29,7 +33,8 @@ class Eigene:
 
     def _kurz(self, eid, n):
         b = n.get("bild") or {}
-        return {"id": eid, "name": n["name"], "art": n.get("art") or "", "masse": n.get("masse") or "", "notiz": n.get("notiz") or "",
+        d = n.get("datei") or {}
+        return {"id": eid, "name": n["name"], "datei": d.get("name"), "datei_format": d.get("format"), "art": n.get("art") or "", "masse": n.get("masse") or "", "notiz": n.get("notiz") or "",
                 "bild": b.get("k"), "verwendet_in": [v["name"] for v in self.bg.verwendet_in(ref(EIGEN, eid))]}
 
     def liste(self, suche=None):
@@ -73,8 +78,69 @@ class Eigene:
         """Das Bild kommt wie die eigenen Bilder der Modelle in den Vault; ein ersetztes bleibt dort liegen (partAtlas löscht nichts)."""
         n = self._knoten(eid)
         k, rel = self.k.bild_ablegen(self.k.png_aus(daten), n["name"])
-        self.db.update_node(EIGEN, eid, {"bild": {"k": k, "datei": rel}})
+        self.db.update_node(EIGEN, eid, {"bild": {"k": k, "datei": rel}, "bild_aus_datei": False})
         return k
+
+    def datei_setzen(self, eid, name, daten):
+        """Eine Konstruktionsdatei (FCStd, STEP, 3MF, STL, OBJ) an die Komponente hängen. Sie läuft durch dieselbe Vorschau wie ein Modell,
+        wird aber nie in den Katalog eingelesen: eine Kopie im Vault, kein Wurzelordner, den der Scanner sähe.
+        Gibt zurück, ob dabei ein Bild entstand."""
+        n = self._knoten(eid)
+        name = os.path.basename((name or "").replace("\\", "/"))
+        fmt = formate.format_von(name)
+        if fmt is None:
+            raise KatalogFehler("Hier gehen 3MF, STL, OBJ, STEP und FCStd.")
+        h = hashlib.sha256(daten).hexdigest()[:12]
+        sicher = re.sub(r"[^\w.-]+", "_", name)[:80]
+        rel = f"vault/komponenten/{h}__{sicher}"
+        pfad = self.k.b.pfad(*rel.split("/"))
+        if not os.path.exists(pfad):
+            dateien.schreibe_atomar(pfad, daten)
+        png, masse = self._vorschau(pfad, fmt, h)
+        neu = {"datei": {"name": name, "datei": rel, "format": fmt}}
+        # Ein eigenes Bild des Anwenders bleibt; nur ein Bild aus einer früheren Datei wird ersetzt.
+        if png and not (n.get("bild") and not n.get("bild_aus_datei")):
+            try:
+                k, brel = self.k.bild_ablegen(self.k.png_aus(png), n["name"])
+                neu.update(bild={"k": k, "datei": brel}, bild_aus_datei=True)
+            except KatalogFehler:
+                png = None      # ein unlesbares eingebettetes Bild verdirbt nicht das Speichern der Datei
+        if masse and not n.get("masse"):
+            neu["masse"] = " × ".join(f"{x:g}" for x in masse) + " mm"
+        self.db.update_node(EIGEN, eid, neu)
+        return "bild" in neu
+
+    def _vorschau(self, pfad, fmt, h):
+        """(PNG | None, Maße | None): eingebettetes Bild, sonst gerendert; STEP/FCStd ohne Bild über FreeCAD, wenn es da ist
+        (FCStd nur nach der Zusage des Anwenders, wie beim Einlesen)."""
+        try:
+            a = formate.analysiere(pfad, mit_netz=fmt not in formate.OHNE_NETZ)
+            if a.vorschau_png:
+                return a.vorschau_png, a.masse_mm
+            if a.netz is not None:
+                return vorschau.rendere(a.netz), a.masse_mm
+            einst = self.k.b.einstellungen()
+            if fmt == "fcstd" and einst.get("fcstd_freecad") != "ja":
+                return None, a.masse_mm
+            prog = programme.programm_fuer(programme.CAD, einst) or {}
+            befehl = cad.konsole_befehl(prog.get("pfad"))
+            if not befehl:
+                return None, a.masse_mm
+            ziel = self.k.b.pfad("arbeit", "cad", f"komp_{h}.stl")
+            os.makedirs(os.path.dirname(ziel), exist_ok=True)
+            for _, ok, _ in cad.umwandeln(befehl, [(h, pfad, ziel)], threading.Event(), os.path.dirname(ziel)):
+                if ok:
+                    b = formate.analysiere(ziel, mit_netz=True)
+                    self.k.b.entfernen(ziel)
+                    return vorschau.rendere(b.netz), b.masse_mm
+            return None, a.masse_mm
+        except (formate.FormatFehler, MemoryError):
+            return None, None
+
+    def datei_pfad(self, eid):
+        d = (self.db.get_node(ref(EIGEN, eid), readonly=True) or {}).get("datei")
+        pfad = self.k.b.pfad(*d["datei"].split("/")) if d else None
+        return (pfad, d["name"]) if pfad and os.path.exists(pfad) else (None, None)
 
     def bild_pfad(self, eid):
         b = (self.db.get_node(ref(EIGEN, eid), readonly=True) or {}).get("bild")

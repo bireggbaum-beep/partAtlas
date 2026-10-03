@@ -28,6 +28,8 @@ ERLAUBT = {
     ("dateien.py", "schreibe_atomar", "os.replace"): "ersetzt ein Ziel — nur von den unten erlaubten Aufrufern, alle im Bestand",
     ("dateien.py", "schreibe_atomar", "os.unlink"): "eigene Arbeitsdatei (.…arbeit), eben angelegt",
     ("dateien.py", "verschiebe", "os.unlink"): "Quelle eines Verschiebens, erst nach sicherer Kopie (über Dateisystemgrenzen)",
+    ("eigene.py", "Eigene.datei_setzen", "dateien.schreibe_atomar"): "Kopie der Konstruktionsdatei einer Eigenen Komponente in vault/komponenten, "
+        "nur wenn es sie dort noch nicht gibt",
     ("katalog.py", "Katalog._archivieren", "dateien.verschiebe"): "eigenes Bild oder Datei aus dem alten Papierkorb → vault_archive/, nie weg",
     ("katalog.py", "Katalog.endgueltig_entfernen", "self.db.purge"): "ein Modell aus dem Papierkorb mit genau seiner Kaskade (flatgraph "
         "purge), auf Wunsch je Modell mit Tippbestätigung, vorher eine Sicherung; nie der ganze Papierkorb",
