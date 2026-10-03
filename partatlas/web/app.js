@@ -1969,7 +1969,7 @@ function live() {
         : (m.vorschauen_offen ? "" : "");
       if (m.phase === "vorschau" && m.vorschauen_offen && !m.abbricht) $("#scan-status").textContent = `Vorschauen: noch ${m.vorschauen_offen}`;
       if (m.phase === "cad" && m.laeuft && !m.abbricht) $("#scan-status").textContent = `STEP umwandeln (FreeCAD): noch ${m.cad_offen}`;
-      if (m.fcstd_frage && !m.laeuft && !m.weiter && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+      if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
       if (m.phase === "fertig" || m.abgebrochen) {
         $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
         if (m.dauer_s != null && m.gefunden) toast(scanErgebnis(m));
@@ -1996,7 +1996,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan?.fcstd_frage && !s.scan.laeuft && !s.scan.weiter && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
@@ -2148,7 +2148,9 @@ async function kontextMenu(e, id) {
 async function fcstdFrage(n) {
   const a = await dialog(`<h2>FreeCAD-Dateien über FreeCAD einlesen?</h2>
     <p>${n} ${n === 1 ? "FreeCAD-Datei hat" : "FreeCAD-Dateien haben"} noch keine Maße, kein Gewicht und keine 3D-Ansicht. partAtlas kann
-      ${n === 1 ? "sie" : "sie"} dafür im Hintergrund in FreeCAD laden, ohne Fenster.</p>
+      sie dafür im Hintergrund in FreeCAD laden, ohne Fenster.</p>
+    <p class="dim">Das Vorschaubild, das du vielleicht schon siehst, steckt in der Datei selbst (FreeCAD legt es beim Speichern hinein).
+      partAtlas liest es nur aus — FreeCAD wurde dafür nicht gestartet.</p>
     <p><b>Wichtig:</b> Ein FreeCAD-Dokument kann Programmcode enthalten, der beim Laden ausgeführt wird. Das ist dasselbe, als würdest du die
       Datei in FreeCAD öffnen. Mach das nur für Dateien aus Quellen, denen du vertraust; bei heruntergeladenen Archiven aus dem Netz ist das
       Risiko höher als bei eigenen Konstruktionen.</p>

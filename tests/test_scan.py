@@ -455,6 +455,31 @@ if __name__ == "__main__":
           and [a for a, _ in fz_k.vorschauen(d)] == ["berechnet", "extrahiert"])
     fz_b.schliessen()
 
+    # -- STEP und FCStd im selben Ordner (gemeldet 03.10.): die Frage kommt, bevor FreeCAD überhaupt startet — nicht erst nach der
+    #    STEP-Umwandlung. Wer gleich antwortet, bekommt die FCStd im selben Lauf.
+    sf_tmp = tempfile.mkdtemp()
+    sf_dir = os.path.join(sf_tmp, "cad")
+    os.makedirs(sf_dir)
+    muster.step(os.path.join(sf_dir, "Halter.step"))
+    muster.fcstd(os.path.join(sf_dir, "Gehaeuse.FCStd"))
+    sf_b = Bestand(os.path.join(sf_tmp, "bestand"))
+    sf_k = Katalog(sf_b)
+    sf_k.wurzel_hinzufuegen(sf_dir)
+    sf_ablauf = []
+
+    def sf_melden(st):
+        if st.get("fcstd_frage") and "frage" not in sf_ablauf:
+            sf_ablauf.append("frage")
+            sf_b.einstellungen_setzen(fcstd_freecad="ja")       # der Anwender antwortet sofort
+        if st.get("phase") == "cad" and "cad" not in sf_ablauf:
+            sf_ablauf.append("cad")
+    sf_s = Scanner(sf_b, sf_k, melden=sf_melden, prozesse=2, cad_befehl=attrappe)
+    sf_s.lauf()
+    sf = {m["name"]: m for m in sf_k.modelle()}
+    check("STEP und FCStd: die Frage kommt vor dem ersten FreeCAD-Start; mit sofortigem „Ja“ ist die FCStd im selben Lauf umgewandelt",
+          sf_ablauf == ["frage", "cad"] and sf["Gehaeuse"]["cad"] == "ok" and sf["Halter"]["cad"] == "ok")
+    sf_b.schliessen()
+
     # -- Folgelauf: „nur FreeCAD“ während eines Laufs bleibt „nur FreeCAD“ (nach der FCStd-Zusage las er sonst alles neu ein)
     import threading as _th
     fl_tmp = tempfile.mkdtemp()
@@ -472,7 +497,7 @@ if __name__ == "__main__":
 
     def laeufe():
         # je Lauf: ganz („suchen“) oder nur FreeCAD; gezählt an der Fertig-Meldung
-        return [("cad" if x.get("nur_cad") else "ganz", x.get("weiter")) for v, x in zip([{"phase": "fertig"}] + meldungen, meldungen)
+        return ["cad" if x.get("nur_cad") else "ganz" for v, x in zip([{"phase": "fertig"}] + meldungen, meldungen)
                 if x.get("phase") == "fertig" and v.get("phase") != "fertig"]
 
     fl_s = Scanner(fl_b, fl_k, melden=fl_melden, prozesse=2)
@@ -480,8 +505,8 @@ if __name__ == "__main__":
     gestartet = fl_s.starten(nur_cad=True)
     frei.set()
     fl_s.warten(60)
-    check("„Nur FreeCAD“ während eines Laufs: danach folgt nur die Umwandlung, kein zweites ganzes Einlesen; die Frage wartet auf ihn",
-          gestartet is False and laeufe() == [("ganz", True), ("cad", False)])
+    check("„Nur FreeCAD“ während eines Laufs: danach folgt nur die Umwandlung, kein zweites ganzes Einlesen",
+          gestartet is False and laeufe() == ["ganz", "cad"])
     meldungen.clear()
     frei.clear()
     fl_s.starten()
@@ -491,7 +516,7 @@ if __name__ == "__main__":
     frei.set()
     fl_s.warten(60)
     check("Ganz und „nur FreeCAD“ gewünscht: ein ganzer Folgelauf, der die Umwandlung einschliesst — nicht zwei",
-          laeufe() == [("ganz", True), ("ganz", False)])
+          laeufe() == ["ganz", "ganz"])
     fl_b.schliessen()
 
     muster.ende()

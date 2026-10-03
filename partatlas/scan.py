@@ -236,7 +236,7 @@ class Scanner:
     def lauf(self, nur_cad=False):
         t0 = time.time()
         self._stopp.clear()
-        self._setze(fcstd_frage=0, cad_ohne_freecad=0, weiter=False)
+        self._setze(fcstd_frage=0, cad_ohne_freecad=0)
         if nur_cad:
             return self._lauf_nur_cad(t0)
         self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
@@ -345,7 +345,10 @@ class Scanner:
                 for h, s in weg:
                     self.k.ort_entfernen(h, *s)
                 self.k.namen_angleichen()
-            self._setze(entfernt=len(weg), phase="vorschau")
+            # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
+            # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
+            # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.
+            self._setze(entfernt=len(weg), phase="vorschau", fcstd_frage=self._fcstd_offen())
 
             self._vorschauen()
             if self._stopp.is_set():
@@ -355,8 +358,7 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        # `weiter`: gleich folgt ein Lauf — die Oberfläche fragt dann noch nicht nach FCStd, sonst ginge die Antwort im Folgelauf unter.
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1), weiter=bool(self._nochmal))
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
 
     def _lauf_nur_cad(self, t0):
         """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""
@@ -369,8 +371,7 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        # `weiter`: gleich folgt ein Lauf — die Oberfläche fragt dann noch nicht nach FCStd, sonst ginge die Antwort im Folgelauf unter.
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1), weiter=bool(self._nochmal))
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
 
     def _abgebrochen(self, t0):
         self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.time() - t0, 1))
@@ -432,11 +433,9 @@ class Scanner:
         log.info("CAD: FreeCAD-Aufruf %s, %d Dateien offen", befehl, len(offen))
         # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut partAtlas nur nach
         # ausdrücklicher Zusage des Anwenders. Solange er nicht geantwortet hat, fragt die Oberfläche (`fcstd_frage`).
-        wahl = self.b.einstellungen().get("fcstd_freecad")
-        fcstd = [x for x in offen if x[1].get("format") == "fcstd"]
-        if wahl != "ja" and fcstd:
+        if self.b.einstellungen().get("fcstd_freecad") != "ja":
             offen = [x for x in offen if x[1].get("format") != "fcstd"]
-            self._setze(fcstd_frage=len(fcstd) if wahl is None else 0)
+            self._setze(fcstd_frage=self._fcstd_offen())
             if not offen:
                 return
         aufgaben = []
@@ -465,6 +464,12 @@ class Scanner:
                 with self.b.db.transaction():
                     self.k.cad_ergebnis(h, felder, status, fehler)
             self._setze(cad_offen=rest, bearbeitet=self.status["bearbeitet"] + 1)
+
+    def _fcstd_offen(self):
+        """Wie viele FCStd-Dateien auf die Zusage für FreeCAD warten; 0, wenn der Anwender schon geantwortet hat."""
+        if self.b.einstellungen().get("fcstd_freecad") is not None:
+            return 0
+        return sum(1 for _, d in self.k.ausstehende_cad() if d.get("format") == "fcstd")
 
     def _vorschauen_speichern(self, stapel):
         """Gruppenweise in einer Transaktion: jede einzelne Änderung kostet ihren fsync (VERTRAG §5), bei tausenden Vorschauen

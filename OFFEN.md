@@ -411,7 +411,14 @@ bei Rückkehr, kein letzter Ort, Behalten ohne Prüfung, Suche ohne Inhaltsvergl
 Inspektor oben weiter die Öffnen-Knöpfe (Slicer/CAD) — Öffnen scheitert dann (schon vorher so, Aufwand 1). Modelle, die vor 0.34
 fehlten, haben keinen `zuletzt_ort`: kein „Lag zuletzt in“, und „Suchen“ hasht dann jede Modelldatei im Ordner.
 
-**FCStd-Zusage las alles neu ein (0.34.1, gemeldet 03.10.2026):** „Ja, einlesen“ startet nur die FreeCAD-Umwandlung (seit 0.29.7) —
+**FCStd-Frage kam zu spät (0.34.2, gemeldet 03.10.2026):** Ordner mit STEP und FCStd: erst lief FreeCAD für die STEP-Dateien, dann
+kam die Frage — die FCStd-Kacheln zeigten da schon Bilder. Geprüft: an FreeCAD ging nur STEP; das FCStd-Bild ist das Vorschaubild aus
+der Datei selbst (ohne FreeCAD gelesen). Fehler war der Zeitpunkt: die Oberfläche fragte erst am Ende des Laufs. Jetzt setzt der Scan
+`fcstd_frage`, sobald die FCStd-Dateien bekannt sind (vor Vorschauen und FreeCAD), die Oberfläche fragt sofort, und der Dialog sagt,
+woher das Bild schon stammt. Antwort vor der FreeCAD-Phase: FCStd im selben Lauf; danach: Folgelauf „nur FreeCAD“ (0.34.1).
+`test_scan` 68/68, die neue Prüfung fällt gegen 0.34.1. Zuerst falsch gelesen und nur einen Nebenfehler behoben:
+
+**FCStd-Zusage während eines Laufs (0.34.1):** „Ja, einlesen“ startet nur die FreeCAD-Umwandlung (seit 0.29.7) —
 ausser es lief gerade ein Einlesen (etwa das beim Start, und der Ordner kam kurz danach): dann merkte sich der Scanner nur „nochmal“,
 und aus „nur FreeCAD“ wurde ein ganzer Lauf. Ausserdem kam die Frage schon am Ende eines Laufs, dem gleich ein zweiter folgte. Jetzt
 merkt sich der Scanner die Art des Folgelaufs (`_nochmal`: "cad" oder ganz; ganz schliesst die Umwandlung ein), und die Frage wartet,
