@@ -31,7 +31,7 @@ import multiprocessing
 import os
 import threading
 import time
-from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, ProcessPoolExecutor, wait
 from concurrent.futures import TimeoutError as FutZeit      # vor 3.11 nicht dasselbe wie das eingebaute
 from concurrent.futures.process import BrokenProcessPool
 
@@ -402,6 +402,9 @@ class Scanner:
             self._cad()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
+            self._thumbs()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
         self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
@@ -414,6 +417,9 @@ class Scanner:
         self._pool = self._neuer_pool()
         try:
             self._cad()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+            self._thumbs()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
         finally:
@@ -525,6 +531,37 @@ class Scanner:
         if self.b.einstellungen().get("fcstd_freecad") is not None:
             return 0
         return sum(1 for _, d in self.k.ausstehende_cad() if d.get("format") == "fcstd")
+
+    def _thumbs(self):
+        """Die kleinen Fassungen aller Bilder im Vault vorbauen (?t=1: Kacheln, Zeilen, Karten). Sonst erzeugt sie der erste Abruf,
+        und das erste Scrollen durch einen frischen Bestand wartet auf tausend Verkleinerungen. Vorhandene werden übersprungen
+        (`Bestand.thumb` ist wiederholbar); ein Bild, das sich nicht verkleinern lässt, schadet nicht — es bleibt beim Original.
+        Threads statt Prozessen: Pillow gibt beim Lesen und Verkleinern die Sperre frei, und es gibt nichts zu übergeben."""
+        bilder = []
+        for teil in ("vorschau", "bilder"):
+            ordner = self.b.pfad("vault", teil)
+            if os.path.isdir(ordner):
+                bilder += [os.path.join(ordner, n) for n in sorted(os.listdir(ordner)) if n.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))]
+        self._setze(phase="thumbs", thumbs_gesamt=len(bilder), thumbs_fertig=0)
+        if not bilder:
+            return
+        fertig = 0
+        with ThreadPoolExecutor(self.prozesse) as pool:
+            for _ in pool.map(self._thumb_eins, bilder):
+                fertig += 1
+                if fertig % 25 == 0:
+                    self._setze(thumbs_fertig=fertig)
+                if self._stopp.is_set():
+                    break
+        self._setze(thumbs_fertig=fertig)
+
+    def _thumb_eins(self, pfad):
+        if self._stopp.is_set():
+            return
+        try:
+            self.b.thumb(pfad)
+        except Exception as e:            # ein kaputtes Bild hält den Lauf nicht auf
+            log.warning("Thumbnail %s: %s", os.path.basename(pfad), e)
 
     def _vorschauen_speichern(self, stapel):
         """Gruppenweise in einer Transaktion: jede einzelne Änderung kostet ihren fsync (VERTRAG §5), bei tausenden Vorschauen

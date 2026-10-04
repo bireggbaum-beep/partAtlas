@@ -73,6 +73,14 @@ if __name__ == "__main__":
           alle["Arm_Front_v2"]["vorschau"] == "gerendert"
           and os.path.getsize(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")) > 500)
     check("STEP: aufgenommen, Vorschau „keine“", alle["Welle"]["vorschau"] == "keine")
+    thumb_dir = b.pfad("thumbs")
+    vorhandene = sorted(os.listdir(thumb_dir)) if os.path.isdir(thumb_dir) else []
+    # Drei Bilder im Vault; das eingebettete des Muster-3MF ist ein Platzhalter, den Pillow nicht lesen kann: für das gibt es keine kleine Fassung
+    check("Nach dem Einlesen sind die kleinen Fassungen schon da (nicht erst beim ersten Abruf): je lesbarem Bild eine, WebP; das unlesbare stört nicht",
+          len(vorhandene) == 2 and all(n.endswith(".webp") for n in vorhandene)
+          and st.get("thumbs_gesamt") == 3 and st.get("thumbs_fertig") == 3)
+    check("Zweiter Aufruf von thumb() für ein vorgebautes Bild erzeugt nichts Neues",
+          b.thumb(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")).startswith(thumb_dir) and sorted(os.listdir(thumb_dir)) == vorhandene)
     check("Bilanz für den Einlesen-Dialog: Laufnummer, geprüft x von y, je Format, Bilder aus der Datei, Dauer des Einlesens",
           st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and st["analysiert"] == st["zu_analysieren"] == 5
           and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and st["aus_datei"] == 1

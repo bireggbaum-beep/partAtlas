@@ -2166,6 +2166,7 @@ function hintergrundZeichnen(m) {
   else if (m.phase === "analysieren") { text = "Einlesen"; [fertig, gesamt] = [m.analysiert, m.zu_analysieren]; }
   else if (m.phase === "vorschau") { text = "Vorschaubilder berechnen"; [fertig, gesamt] = [(m.vorschauen_gesamt || 0) - (m.vorschauen_offen || 0), m.vorschauen_gesamt]; }
   else if (m.phase === "cad") { text = "FreeCAD wandelt um"; [fertig, gesamt] = [(m.cad_gesamt || 0) - (m.cad_offen || 0), m.cad_gesamt]; }
+  else if (m.phase === "thumbs") { text = "Kleine Bilder vorbereiten"; [fertig, gesamt] = [m.thumbs_fertig, m.thumbs_gesamt]; }
   else text = "Läuft …";
   const anteil = gesamt ? fertig / gesamt : null;
   h.hidden = false;

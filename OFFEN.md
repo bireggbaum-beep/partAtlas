@@ -159,8 +159,7 @@ Aufschub ab (Playwright-Leitung, vermutlich Bench-Artefakt) — mit Aufschub lie
 aus `<Bestand>/thumbs/` (abgeleitet, löschbar; erzeugt beim ersten Abruf; Name aus
 Pfad + Zeit + Grösse). Kacheln, Zeilen und Karten laden sie, Inspektor und Galerie
 das Original; nicht lesbare Bilder fallen auf das Original zurück. Format steht nur
-in `THUMB_ENDUNG` (`bestand.py`). Offen: Thumbs nach dem Einlesen im Hintergrund
-vorbauen (heute erst beim ersten Abruf), Thumbs aus Sicherung/Export lassen.
+in `THUMB_ENDUNG` (`bestand.py`). Thumbs aus Sicherung/Export lassen: offen.
 **Aufschub bleibt:** auch ohne Bilddaten (404) kostet das Anfordern allein beim Ziehen
 30 vs. 10,7 ms/Frame im Raster (1844 vs. 20 Anfragen) — Anfragen, nicht Bytes,
 sind der Preis.
@@ -273,7 +272,12 @@ Geprüft in `tests/test_scan.py` (50/50) und `test_api.py` mit Gegenproben (Erei
 Analysieren weg). **Nicht geprüft:** `test_ui.py` (nach Absprache), der Knopf im Browser; die Prüfungen beim Suchen und vor dem Analysieren sind
 doppelt abgesichert, eine einzelne davon zu entfernen lässt keinen Test fallen. Ein Arbeiter, der gerade eine Datei bearbeitet, läuft zu Ende
 (Abbruch wartet nicht darauf).
-**Zeitgrenze je Datei (0.41.2):** `Scanner._verteilen` wartet nur noch `ZEITGRENZE` (180 s) auf das *nächste* fertige Ergebnis; kommt keins, wird der Pool beendet (`terminate`, sonst liefe der Hänger weiter) und das Wellen-Verfahren findet die Datei, die einzeln mit derselben Grenze als Fehler „Zeitgrenze … überschritten“ gemeldet wird. Ein hängender Render kostet bis zu etwa 3 Grenzen. Gilt für Vorschauen (und alles andere über `_verteilen`), **nicht** fürs Hashen (`pool.map`). Geprüft in `test_scan` (73/73); Gegenprobe ohne `terminate` fällt (Lauf hängt), die ohne Grenze im Einzelversuch war beim Commit noch nicht ausgewertet.
+**Zeitgrenze je Datei (0.41.2):** `Scanner._verteilen` wartet nur noch `ZEITGRENZE` (180 s) auf das *nächste* fertige Ergebnis; kommt keins, wird der Pool beendet (`terminate`, sonst liefe der Hänger weiter) und das Wellen-Verfahren findet die Datei, die einzeln mit derselben Grenze als Fehler „Zeitgrenze … überschritten“ gemeldet wird. Ein hängender Render kostet bis zu etwa 3 Grenzen. Gilt für Vorschauen (und alles andere über `_verteilen`), **nicht** fürs Hashen (`pool.map`). Geprüft in `test_scan` (73/73); Gegenprobe ohne `terminate` fällt (Lauf hängt), die ohne Grenze im Einzelversuch fällt ebenfalls (Lauf hängt, Abbruch nach 200 s).
+**Thumbs vorbauen (0.41.3):** letzte Phase `thumbs` im Lauf (auch beim reinen FreeCAD-Lauf), `Scanner._thumbs`: alle Bilder in `vault/vorschau` und
+`vault/bilder`, Threads, vorhandene werden übersprungen, ein unlesbares Bild stört nicht (bleibt beim Original); Statuszeile „Kleine Bilder vorbereiten“. Bisher erzeugte sie
+erst der erste Abruf — das erste Scrollen durch einen frischen Bestand wartete auf tausend Verkleinerungen. Geprüft in `test_scan` (75/75) mit Gegenprobe, `test_api`;
+**nicht gemessen**, wie lang die Phase bei grossen Beständen dauert, und nicht in `test_ui.py` (eine Textzeile in `app.js`). Vorgebaut werden auch Bilder, die keine Kachel zeigt
+(`extrahiert` neben `berechnet`).
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 **FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht
