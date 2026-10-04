@@ -273,7 +273,8 @@ Geprüft in `tests/test_scan.py` (50/50) und `test_api.py` mit Gegenproben (Erei
 Analysieren weg). **Nicht geprüft:** `test_ui.py` (nach Absprache), der Knopf im Browser; die Prüfungen beim Suchen und vor dem Analysieren sind
 doppelt abgesichert, eine einzelne davon zu entfernen lässt keinen Test fallen. Ein Arbeiter, der gerade eine Datei bearbeitet, läuft zu Ende
 (Abbruch wartet nicht darauf).
-**Noch offen (klein):** Zeitgrenze je Datei, einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
+**Zeitgrenze je Datei (0.41.2):** `Scanner._verteilen` wartet nur noch `ZEITGRENZE` (180 s) auf das *nächste* fertige Ergebnis; kommt keins, wird der Pool beendet (`terminate`, sonst liefe der Hänger weiter) und das Wellen-Verfahren findet die Datei, die einzeln mit derselben Grenze als Fehler „Zeitgrenze … überschritten“ gemeldet wird. Ein hängender Render kostet bis zu etwa 3 Grenzen. Gilt für Vorschauen (und alles andere über `_verteilen`), **nicht** fürs Hashen (`pool.map`). Geprüft in `test_scan` (73/73); Gegenprobe ohne `terminate` fällt (Lauf hängt), die ohne Grenze im Einzelversuch war beim Commit noch nicht ausgewertet.
+**Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 **FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht
 der Objekte). Vorschau nur aus `thumbnails/Thumbnail.png`, wenn FreeCAD es beim Speichern mitlegt (Einstellung in FreeCAD); ohne Thumbnail steht

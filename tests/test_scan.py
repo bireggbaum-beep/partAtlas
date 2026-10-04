@@ -1,6 +1,7 @@
 """Scan und Katalog: was der Anwender mit seinen Ordnern tut, muss der
 Katalog richtig nachvollziehen — ohne Duplikate, ohne Verlust."""
 import os
+import time
 import shutil
 import tempfile
 
@@ -308,6 +309,33 @@ if __name__ == "__main__":
           and all(ergebnis[n] == (n * 2, None) for n in namen if n not in ("gift", "kaputt")))
     check("Eine Datei mit Ausnahme im Arbeiter wird ebenfalls einzeln gemeldet, der Lauf geht weiter",
           ergebnis["kaputt"][0] is None and "ValueError" in ergebnis["kaputt"][1])
+
+    # -- Eine Datei, die hängt, hält den Lauf nicht auf
+    pid_datei = os.path.join(tempfile.mkdtemp(), "pids")
+    os.environ["MUSTER_PID_DATEI"] = pid_datei         # die Arbeiter erben es beim Start
+    hz = _S(None, None, prozesse=2, zeitgrenze=3)
+    hz._pool = hz._neuer_pool()
+    try:
+        namen = [f"n{i}" for i in range(5)] + ["haengt"] + [f"m{i}" for i in range(3)]
+        t0 = time.time()
+        ergebnis = {k: (e, f) for k, e, f in hz._verteilen([(n, (n,)) for n in namen], muster.arbeit_test)}
+        dauer = time.time() - t0
+        time.sleep(1)
+        pids = [int(x) for x in open(pid_datei).read().split()]
+    finally:
+        hz._pool.shutdown(wait=False, cancel_futures=True)
+    check("Hängende Datei: nur sie wird als Fehler mit Zeitgrenze gemeldet, alle anderen kommen durch",
+          set(ergebnis) == set(namen) and ergebnis["haengt"][0] is None and "Zeitgrenze" in ergebnis["haengt"][1]
+          and all(ergebnis[n] == (n * 2, None) for n in namen if n != "haengt"))
+    check("Hängende Datei: der Lauf endet nach wenigen Zeitgrenzen, nicht erst nach dem Hänger (600 s)", dauer < 60)
+    def _lebt(pid):
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    check("Hängende Datei: der hängende Arbeitsprozess wird beendet, er läuft nicht weiter",
+          pids and not any(_lebt(p) for p in pids))
 
     # -- Abbrechen: nichts geht verloren, der nächste Lauf macht weiter
     from partatlas import scan as _scan

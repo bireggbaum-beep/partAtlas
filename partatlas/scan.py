@@ -31,7 +31,8 @@ import multiprocessing
 import os
 import threading
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
+from concurrent.futures import TimeoutError as FutZeit      # vor 3.11 nicht dasselbe wie das eingebaute
 from concurrent.futures.process import BrokenProcessPool
 
 from . import cad, dateien, formate, programme, vorschau
@@ -40,6 +41,7 @@ from .bestand import DATEI, MODELL
 log = logging.getLogger("partatlas.scan")
 
 GRUPPE = 100
+ZEITGRENZE = 180      # Sekunden ohne ein einziges fertiges Ergebnis, bevor eine Datei als hängend gilt (wie bei FreeCAD, cad.py)
 
 
 # ---------------------------------------------------------------- Arbeitsprozesse
@@ -97,10 +99,11 @@ def _cad_bild(stl, vorschau_ziel):
 # ---------------------------------------------------------------- Scanner
 
 class Scanner:
-    def __init__(self, bestand, katalog, melden=None, prozesse=None, cad_befehl=None):
+    def __init__(self, bestand, katalog, melden=None, prozesse=None, cad_befehl=None, zeitgrenze=None):
         self.b = bestand
         self.cad_befehl = cad_befehl        # Aufruf von FreeCAD ohne Fenster; None: aus den installierten Programmen ermitteln
         self.k = katalog
+        self.zeitgrenze = zeitgrenze or ZEITGRENZE
         self.melden = melden or (lambda status: None)
         self.prozesse = prozesse or max(1, (os.cpu_count() or 2) - 1)
         self._sperre = threading.Lock()
@@ -132,6 +135,12 @@ class Scanner:
         """Nach einem harten Absturz eines Arbeiters (etwa vom Betriebssystem beendet, weil der Speicher ausging) ist der
         ganze Pool unbrauchbar: durch einen frischen ersetzen."""
         alt, self._pool = self._pool, self._neuer_pool()
+        # Ein hängender Arbeiter lässt sich nicht bitten aufzuhören; ohne terminate() lebte er weiter und hielte die CPU.
+        for p in list((getattr(alt, "_processes", None) or {}).values()):
+            try:
+                p.terminate()
+            except Exception:
+                pass
         alt.shutdown(wait=False, cancel_futures=True)
 
     def _verteilen(self, aufgaben, arbeit):
@@ -149,23 +158,31 @@ class Scanner:
             stueck = offen if welle is None else offen[:welle]
             auftraege = {self._pool.submit(arbeit, *a): k for k, a in stueck}
             erledigt, zerbrochen = set(), False
-            for f in as_completed(auftraege):
-                if self._stopp.is_set():
-                    for g in auftraege:
-                        g.cancel()
-                    return
-                k = auftraege[f]
-                try:
-                    erg = f.result()
-                except BrokenProcessPool:
+            warten = set(auftraege)
+            while warten:
+                # Zeitgrenze = Stillstand: solange irgendeine Datei fertig wird, läuft der Lauf; kommt `zeitgrenze` Sekunden lang
+                # nichts, hängt mindestens eine. Welche, zeigt das Wellen-Verfahren unten (Pool beenden, Rest einzeln).
+                fertig, warten = wait(warten, timeout=self.zeitgrenze, return_when=FIRST_COMPLETED)
+                if not fertig:
                     zerbrochen = True
-                    continue
-                except Exception as e:       # Unvorhergesehenes in einer Datei: sie meldet es, der Lauf geht weiter
+                    break
+                for f in fertig:
+                    if self._stopp.is_set():
+                        for g in auftraege:
+                            g.cancel()
+                        return
+                    k = auftraege[f]
+                    try:
+                        erg = f.result()
+                    except BrokenProcessPool:
+                        zerbrochen = True
+                        continue
+                    except Exception as e:       # Unvorhergesehenes in einer Datei: sie meldet es, der Lauf geht weiter
+                        erledigt.add(k)
+                        yield k, None, f"{type(e).__name__}: {e}"
+                        continue
                     erledigt.add(k)
-                    yield k, None, f"{type(e).__name__}: {e}"
-                    continue
-                erledigt.add(k)
-                yield k, erg, None
+                    yield k, erg, None
             if zerbrochen:
                 self._pool_neu()
                 if welle is None:
@@ -173,10 +190,13 @@ class Scanner:
                 else:
                     for k, a in [(k, a) for k, a in stueck if k not in erledigt]:
                         try:
-                            erg, fehler = self._pool.submit(arbeit, *a).result(), None
+                            erg, fehler = self._pool.submit(arbeit, *a).result(timeout=self.zeitgrenze), None
                         except BrokenProcessPool:
                             self._pool_neu()
                             erg, fehler = None, "Arbeitsprozess beendet (vermutlich zu wenig Speicher für diese Datei)"
+                        except FutZeit:
+                            self._pool_neu()
+                            erg, fehler = None, f"Zeitgrenze von {self.zeitgrenze} s überschritten (Datei hängt oder ist zu gross)"
                         except Exception as e:
                             erg, fehler = None, f"{type(e).__name__}: {e}"
                         erledigt.add(k)

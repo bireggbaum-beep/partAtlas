@@ -2,6 +2,7 @@
 was drinsteht und was die Prüfung erwarten darf."""
 import io
 import os
+import time
 import struct
 import sys
 import zipfile
@@ -146,4 +147,8 @@ def arbeit_test(x):
         os._exit(1)                  # wie vom Betriebssystem beendet (Speichermangel): kein Fehler, der Prozess ist einfach weg
     if x == "kaputt":
         raise ValueError("kaputt")
+    if x == "haengt":
+        with open(os.environ["MUSTER_PID_DATEI"], "a") as f:
+            f.write(f"{os.getpid()}\n")
+        time.sleep(600)              # ein Render, der nie fertig wird
     return x * 2
