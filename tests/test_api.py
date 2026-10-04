@@ -82,9 +82,10 @@ if __name__ == "__main__":
               klein.headers["content-type"] == "image/webp" and bild.format == "WEBP" and max(bild.size) <= 320
               and len(klein.content) * 5 < len(gross.content) and gross.headers["content-type"] == "image/png"
               and "immutable" in klein.headers["cache-control"])
+        vor = sorted(os.listdir(os.path.join(tmp, "bestand", "thumbs")))   # der Scan hat die berechneten Vorschauen schon vorgebaut, das Foto kam danach
+        nochmal = c.get(f"/api/modelle/{mid}/bild", params={"t": 1}).content
         check("Thumbnail: liegt als Datei in thumbs/ und wird beim zweiten Abruf nicht neu erzeugt",
-              len(os.listdir(os.path.join(tmp, "bestand", "thumbs"))) == 1
-              and c.get(f"/api/modelle/{mid}/bild", params={"t": 1}).content == klein.content)
+              len(vor) >= 2 and sorted(os.listdir(os.path.join(tmp, "bestand", "thumbs"))) == vor and nochmal == klein.content)
         check("Thumbnail: ein nicht lesbares Bild fällt auf das Original zurück, kein Fehler",
               c.get(f"/api/vorschau/{zahnrad['hash']}.png", params={"t": 1}).status_code == 200)
         check("Vorschau: nur echte Hashes, kein Pfad durch die Hintertür",
