@@ -514,6 +514,25 @@ Einkäufe) +13 ms Öffnen und +3 MB; bei *gross* (5 000 / 30 000) +580 ms und +9
 Menge. Daraus: kein Leistungsgrund gegen den Entwurf; die Kaufteile-Liste braucht ab einigen tausend Zeilen virtuelles Scrollen, und die
 Sicherung wächst mit (384 ms, 18 MB bei *gross*). Skript und Ergebnis liegen in `messung/`. Gebaut ist davon noch nichts.
 
+## Absicht: partAtlas als Explorer-Ersatz (04.10.2026, noch nicht gebaut)
+
+Der Tester will die Bibliothek tatsächlich anstelle des Dateimanagers benutzen: Dateien und Ordner aus partAtlas heraus umbenennen,
+verschieben, anlegen und löschen, ohne daneben den Explorer zu öffnen. **Für das Testen bleibt der Stand unverändert** (nichts wird
+gelöscht oder überschrieben, Verschieben und Umbenennen nur auf Klick und nie überschreibend, KONZEPT §3.3; `test_schutz`).
+
+Vorgehen, wenn es soweit ist:
+- **Erst Vorbilder ansehen, nicht neu erfinden.** Software, die die Plattenstruktur eingelesener Ordner selbst verwaltet, gibt es
+  (zu prüfen, nicht aus dem Gedächtnis zu übernehmen: Foto-Verwaltungen wie digiKam und Lightroom, Manyfold, Calibre). Zu klären je Vorbild:
+  Unterscheidung „aus dem Katalog entfernen“ und „von der Platte löschen“, wohin gelöscht wird (Papierkorb des Systems?), was bei
+  Verschieben mit dem Katalog passiert, was bei Änderungen ausserhalb der App, was bei Namenskonflikten und eingehängten Laufwerken.
+- **Mindestzusagen** (Vorschlag, Aufwand insgesamt ca. 3–4): Löschen nur in den Papierkorb des Systems, nie endgültig; immer mit
+  Vorschau (was hängt daran: Drucke, Baugruppen, Kopien) und Sicherung davor; einzeln oder gezielt gewählt, bei Mehrfachauswahl mit
+  Tippbestätigung, nie „alles“ oder ein ganzer Ordner in einem Schritt; der Katalog zieht mit (Papierkorb von partAtlas, Wiederherstellen);
+  jede neue Löschstelle mit Begründung im Wächter (`ERLAUBT`).
+- **Eigener Schritt, nicht mit anderem Neuen zusammen.** Mit Tests auf Verweise, fremde Pfade, nicht erreichbare Laufwerke und Ordner,
+  die ausserhalb der App verändert wurden.
+- **Dagegen:** Sobald partAtlas Dateien wirklich anfasst, ist ein Fehler bei Pfaden kein Anzeigefehler mehr. Das braucht den Vorlauf oben.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
