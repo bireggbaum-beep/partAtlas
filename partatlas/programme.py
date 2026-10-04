@@ -24,7 +24,8 @@ CAD_FORMATE = ("step", "fcstd")        # gehören ins CAD, ein Slicer kennt sie 
 # name, art, Formate, Programmnamen (PATH, flatpak-Export), AppImage-Muster,
 # Windows-Muster relativ zu ProgramFiles bzw. LOCALAPPDATA\Programs.
 # Die Formate sind, was das Programm beim Start mit Datei öffnet: Cura
-# liest STEP nur mit Zusatz, FreeCAD 3MF nicht verlässlich.
+# liest STEP nur mit Zusatz. FreeCAD öffnet 3MF als Netz (ohne Slicer-Daten wie Platten und Farben); als Standard
+# bleibt für 3MF der Slicer, FreeCAD ist nur im Menü „Öffnen mit“.
 BEKANNT = [
     ("Bambu Studio", SLICER, ("3mf", "stl", "obj", "step"),
      ["bambu-studio", "BambuStudio", "bambustudio", "com.bambulab.BambuStudio"],
@@ -47,7 +48,7 @@ BEKANNT = [
      ["AnycubicSlicerNext", "anycubicslicernext", "anycubic-slicer-next", "AnycubicSlicer", "anycubicslicer"],
      ["*Anycubic*Slicer*.AppImage", "*Anycubic*Slicer*.appimage"],
      [r"AnycubicSlicer*\AnycubicSlicer*.exe", r"Anycubic*\AnycubicSlicer*.exe"]),
-    ("FreeCAD", CAD, ("step", "stl", "obj", "fcstd"),
+    ("FreeCAD", CAD, ("step", "stl", "obj", "fcstd", "3mf"),
      ["freecad", "FreeCAD", "org.freecad.FreeCAD", "freecad-daily"],
      ["*FreeCAD*.AppImage"], [r"FreeCAD*\bin\freecad.exe"]),
 ]

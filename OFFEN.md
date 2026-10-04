@@ -498,6 +498,10 @@ ein selbst gewähltes Bild bleibt. Die Datei kommt **nicht** in den 3D-Katalog: 
 Scanner sähe), im Dialog zum Zurückladen verlinkt. Anlass: ein FCStd, das nur Konstruktion ist und als Druckteil getarnt in einer Baugruppe
 stand. Offen: „Öffnen in FreeCAD“ statt nur Herunterladen; Einlesen läuft noch im Anfrage-Aufruf (ohne Fortschrittsanzeige); weitere Formate
 (PDF, DXF); keine Kopie, sondern Verweis auf den Ort, falls Dateien gross werden. `test_eigene` 17/17.
+**3MF in FreeCAD öffnen (0.41.1, Wunsch des Testers):** FreeCAD steht jetzt auch für 3MF im Menü „Öffnen mit“ (es liest 3MF als Netz, ohne
+Slicer-Daten wie Platten und Farben); der Hauptknopf bleibt beim Slicer. Der alte Hinweis „nicht verlässlich“ war nicht an einer
+Installation geprüft; falls es bei einer FreeCAD-Fassung ohne Mesh-Werkbank scheitert, öffnet FreeCAD leer. `test_api` 62/62.
+
 **Wenn es nichts taugt, wieder weg:** `partatlas/eigene.py`, `web/eigene.js`, `tests/test_eigene.py` löschen und die
 mit „EIGENE“ markierten Stellen in `baugruppen.py`, `stueckliste.py`, `main.py`, `web/baugruppen.js`, `web/index.html`, `web/app.css`
 entfernen; bestehende Daten (Knoten `CUSTOM_COMPONENT`) stören die Übrigen nicht. **Feinschliff, falls es bleibt:** eigener Bereich „Teile“

@@ -140,6 +140,8 @@ if __name__ == "__main__":
         wahl = _prog.standard([{"art": "slicer", "formate": _prog.FORMATE, "pfad": "/slicer"},
                                {"art": "cad", "formate": ("fcstd",), "pfad": "/cad"}])
         check("Standard: FCStd geht ins CAD, auch wenn ein eigener Slicer alle Formate beansprucht", wahl["fcstd"] == "/cad")
+        check("3MF: FreeCAD steht zur Wahl, Standard bleibt der Slicer",
+              "3mf" in next(p["formate"] for p in prog["programme"] if p["name"] == "FreeCAD") and fc not in (prog["standard"]["3mf"],))
         haken = next(m for m in liste if m["name"] == "Haken")
         r = c.post(f"/api/modelle/{zahnrad['id']}/oeffnen", json={})
         check("Hauptknopf: Standardprogramm bekommt die Datei des Modells",
