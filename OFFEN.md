@@ -313,6 +313,8 @@ Momentaufnahme fest (Ordner, Sammlung, Ansicht, Filter, Suche, Baugruppe, gewäh
 Baugruppen (auch Unter-Baugruppen) und „Verwendet“. **Nicht** im Verlauf: Filter-Chips, Tags in der Leiste, Suche tippen, Gruppieren/Sortieren — sie ändern die Ansicht, ohne einen Schritt zu setzen.
 Geprüft in `test_ui` (91/91, Gegenprobe ohne Sprung fällt), im Browser angesehen (dunkel). Nicht geprüft: Firefox (Verlauf, Alt+←), hell, Windows/Mac; nach Neuladen steht „Vor“ aus, obwohl der Browser eins hätte.
 **Offen:** Tag-Chips in der Leiste und Filter in den Verlauf nehmen; Rückverweise auch für Sammlungen/Baugruppen („welche Modelle?“ ist die Ansicht selbst), `traverse` für mehrstufige Abfragen.
+**Fassung im Tab-Titel (0.44.1), Wunsch des Testers:** „partAtlas 0.44.1“ statt „partAtlas“ (aus `/api/stand`, gesetzt in `app.js`), damit man bei mehreren Tabs sieht, welche Fassung läuft. Die Fassung kommt vom Server und wird
+beim Start gelesen: nach `git pull` ohne Neustart zeigt der Tab die alte. Geprüft in `test_ui` (92/92) mit Gegenprobe.
 **Speicher des Browsers (5.10.2026):** Firefox mit partAtlas 708 MB, leer 239 MB (Tester, 8 946 Modelle). Ursache nicht gemessen (Verdacht: ganze Modellliste im Browser, entpackte Bilder);
 `about:memory` wäre die Messung. Bewusst zurückgestellt.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.

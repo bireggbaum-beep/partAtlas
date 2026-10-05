@@ -2304,7 +2304,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 try { nav.nr = history.state?.nr ?? 0; nav.hoechste = nav.nr; history.replaceState(momentaufnahme(), ""); } catch { /* s. o. */ }
 $("#nav-zurueck")?.addEventListener("click", () => history.back());

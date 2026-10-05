@@ -88,6 +88,8 @@ async def oberflaeche(port):
         while api(port, "/api/stand")["scan"].get("laeuft"):
             await asyncio.sleep(0.3)
         await pg.wait_for_timeout(500)
+        check("Tab-Titel nennt die Fassung („partAtlas 0.x.y“): wer mehrere Tabs oder Fenster offen hat, sieht, welche Fassung läuft",
+              await pg.title() == f"partAtlas {api(port, '/api/stand')['version']}")
         check("Bereinigen: kein Zählabzeichen am Besen, solange nichts zu tun ist",
               await pg.locator("#abz-bereinigen").is_hidden())
         linien = await pg.evaluate("""() => [...document.querySelectorAll('.karte[data-f]')].map(k =>
