@@ -322,6 +322,11 @@ die des Testers). Vorher: 0,15 ms je Treffer, dazu ein Sockel von ca. 0,25 s je 
 Der Zwischenspeicher kostet bei 9 040 Modellen ca. 11,5 MB (gemessen), bei 50 000 grob 60 MB (hochgerechnet). Während eines Einlesens ändert sich der Graph ständig, dann bleibt es beim Neuaufbau.
 Geprüft in `test_api` (63/63, neue Prüfung „Liste nach Änderung sofort aktuell“ mit Gegenprobe ohne `generation`), alle anderen Suiten und `test_ui` (92/92). **Nicht gemessen:** der Browser (JSON lesen, Liste zeichnen, Sortieren, Gruppieren) und die Maschine des Testers;
 **offen**, falls es dort weiter 1–3 s dauert: Liste in Seiten laden statt alle auf einmal, `_kurz` mit weniger Graph-Abfragen (heute 4 je Modell, je mit Sperre).
+**Bilder erscheinen langsam (0.44.3), zweite Rückmeldung des Testers („2 bis 3 Sekunden, bis die Bilder da sind“):** das war nicht die Liste (siehe 0.44.2), sondern die Kacheln. Gemessen am 5.10.2026 (Maschine wie oben): eine
+Kachel mit fertiger Thumbnail 2 ms, **eine Thumbnail zu erzeugen 17 ms** (Median, max. 54) — auf dem Rechner des Testers das Drei- bis Vierfache, bei 60 sichtbaren Kacheln Sekunden. Die Vorschauen im Bestand (`vault/vorschau/*.png`) sind aber
+**schon 320 × 320 und ca. 11 KB**: die „kleine Fassung“ brachte bei ihnen nichts. Jetzt liefert `Bestand.thumb` PNGs bis 320 px und 64 KB direkt aus (kein Umweg, keine Arbeit beim ersten Abruf); grössere (Fotos, grössere eingebettete Bilder) werden weiter zu WebP.
+Ausserdem läuft die Thumbs-Phase jetzt **vor FreeCAD** und danach nochmal (vorher erst danach — bei einer grossen Library nach Stunden). Beim Start läuft ohnehin ein Einlesen (`scan_beim_start`), die Phase also auch ohne Klick.
+Geprüft in `test_scan` (79/79, Gegenproben: Reihenfolge, kleine Bilder), `test_api` (63/63), `test_ui` (92/92). **Nicht gemessen:** der Browser und die Maschine des Testers — ob es dort jetzt schnell genug ist; falls nicht, bleibt die Zahl der Anfragen (eine je Kachel) und das Entpacken der PNG im Browser.
 **Speicher des Browsers (5.10.2026):** Firefox mit partAtlas 708 MB, leer 239 MB (Tester, 8 946 Modelle). Ursache nicht gemessen (Verdacht: ganze Modellliste im Browser, entpackte Bilder);
 `about:memory` wäre die Messung. Bewusst zurückgestellt.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.

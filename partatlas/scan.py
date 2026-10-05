@@ -416,6 +416,10 @@ class Scanner:
             self._vorschauen()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
+            # Die kleinen Bilder vor FreeCAD: das braucht bei einer grossen Library Stunden, und bis dahin sollen die Kacheln schon stehen.
+            self._thumbs()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
             self._cad()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)

@@ -53,6 +53,7 @@ MATERIALIEN = ["PLA", "PLA+", "PETG", "ABS", "ASA", "TPU", "PA", "PC", "PLA-CF",
 # Transparenz kann und bei 320 px nur wenige KB wiegt; das Format steht nur hier.
 THUMB_PX = 320          # doppelt so viel, wie eine Kachel zeigt: scharf auf hochauflösenden Schirmen
 THUMB_ENDUNG = "webp"
+KLEIN_BYTES = 64 * 1024  # Bilder darunter (und höchstens THUMB_PX breit) braucht es nicht zu verkleinern
 
 
 def standard_ort():
@@ -117,7 +118,12 @@ class Bestand:
             if os.path.exists(ziel):
                 return ziel
             from PIL import Image, ImageOps
-            bild = ImageOps.exif_transpose(Image.open(quelle)).convert("RGBA")
+            roh = Image.open(quelle)                    # liest zunächst nur den Kopf
+            if quelle.endswith(".png") and max(roh.size) <= THUMB_PX and st.st_size <= KLEIN_BYTES:
+                # Die Vorschauen von partAtlas selbst sind schon 320 px und ca. 11 KB: eine kleinere Fassung brächte nichts, kostete aber
+                # beim ersten Abruf ca. 17 ms je Bild (auf einem älteren Rechner das Drei- bis Vierfache — 60 Kacheln = Sekunden bis zum Bild).
+                return quelle
+            bild = ImageOps.exif_transpose(roh).convert("RGBA")
             bild.thumbnail((THUMB_PX, THUMB_PX))
             os.makedirs(os.path.dirname(ziel), exist_ok=True)
             # Arbeitsdatei neben dem Ziel: os.replace geht nicht über Dateisystemgrenzen,

@@ -74,13 +74,19 @@ if __name__ == "__main__":
           and os.path.getsize(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")) > 500)
     check("STEP: aufgenommen, Vorschau „keine“", alle["Welle"]["vorschau"] == "keine")
     thumb_dir = b.pfad("thumbs")
-    vorhandene = sorted(os.listdir(thumb_dir)) if os.path.isdir(thumb_dir) else []
-    # Drei Bilder im Vault; das eingebettete des Muster-3MF ist ein Platzhalter, den Pillow nicht lesen kann: für das gibt es keine kleine Fassung
-    check("Nach dem Einlesen sind die kleinen Fassungen schon da (nicht erst beim ersten Abruf): je lesbarem Bild eine, WebP; das unlesbare stört nicht",
-          len(vorhandene) == 2 and all(n.endswith(".webp") for n in vorhandene)
+    klein_pfad = b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")
+    check("Die Vorschauen von partAtlas sind schon klein (320 px, wenige KB): sie werden ohne Umweg ausgeliefert, es entsteht keine zweite Fassung",
+          b.thumb(klein_pfad) == klein_pfad and (not os.path.isdir(thumb_dir) or not os.listdir(thumb_dir))
           and st.get("thumbs_gesamt") == 3 and st.get("thumbs_fertig") == 3)
-    check("Zweiter Aufruf von thumb() für ein vorgebautes Bild erzeugt nichts Neues",
-          b.thumb(b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")).startswith(thumb_dir) and sorted(os.listdir(thumb_dir)) == vorhandene)
+    from PIL import Image as _Img
+    gross_pfad = b.pfad("vault", "bilder", "gross_test.png")
+    os.makedirs(os.path.dirname(gross_pfad), exist_ok=True)
+    _Img.effect_noise((900, 900), 40).convert("RGB").save(gross_pfad, "PNG")
+    thumb_gross = b.thumb(gross_pfad)
+    check("Ein grosses Bild wird weiterhin verkleinert (WebP in thumbs/) und beim zweiten Abruf nicht neu erzeugt",
+          thumb_gross.endswith(".webp") and os.path.dirname(thumb_gross) == thumb_dir and b.thumb(gross_pfad) == thumb_gross
+          and len(os.listdir(thumb_dir)) == 1)
+    os.remove(gross_pfad)
     check("Bilanz für den Einlesen-Dialog: Laufnummer, geprüft x von y, je Format, Bilder aus der Datei, Dauer des Einlesens",
           st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and st["analysiert"] == st["zu_analysieren"] == 5
           and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and st["aus_datei"] == 1
@@ -450,6 +456,7 @@ if __name__ == "__main__":
 
     st_s = Scanner(st_b, st_k, prozesse=2, cad_befehl=attrappe)
     st_s.lauf()
+    phasen = list(st_s.status["phasen"])          # Reihenfolge der Phasen in diesem Lauf (FreeCAD hat zu tun)
     d2 = {m["name"]: m for m in st_k.modelle()}
     check("STEP mit FreeCAD, beim nächsten Lauf: Maße und berechnete Vorschau stehen da, das Netz liegt im Bestand",
           d2["Halter"]["cad"] == "ok" and d2["Halter"]["vorschau"] == "gerendert" and d2["Halter"]["masse"] is not None
@@ -457,6 +464,8 @@ if __name__ == "__main__":
     check("STEP: die Datei, an der FreeCAD scheitert, ist als Fehler vermerkt und hält die andere nicht auf",
           d2["kaputt"]["cad"] == "fehler" and d2["kaputt"]["vorschau"] == "keine" and st_k.ausstehende_cad() == [])
     st_s.lauf()
+    check("Die kleinen Bilder kommen vor FreeCAD (das dauert bei einer grossen Library Stunden), danach nochmal für das Neue",
+          "thumbs" in phasen and "cad" in phasen and phasen.index("thumbs") < phasen.index("cad"))
     check("STEP: ein weiterer Lauf startet FreeCAD nicht noch einmal, auch nicht für die gescheiterte Datei",
           open(st_log).read().count("start") == 1)
     check("STEP: der Grund des Scheiterns steht am Modell, und „erneut versuchen“ setzt nur die gescheiterten zurück",
