@@ -478,6 +478,33 @@ if __name__ == "__main__":
     _scan2.programme.programm_fuer = _vorher
     st_b.schliessen()
 
+    # -- Mehrere Läufe hintereinander (jede hochgeladene Datei stösst einen an) zählen als ein Einlesen
+    ke_tmp = tempfile.mkdtemp()
+    ke_dir = os.path.join(ke_tmp, "hoch")
+    os.makedirs(ke_dir)
+    for i in range(3):
+        muster.stl_binaer(os.path.join(ke_dir, f"Erste_{i}.stl"), 10 + i, 20, 30)
+    ke_b = Bestand(os.path.join(ke_tmp, "bestand"))
+    ke_k = Katalog(ke_b)
+    ke_k.wurzel_hinzufuegen(ke_dir)
+    ke_zahl = []
+
+    def ke_melden(st):
+        # Am Ende des ersten Laufs kommen vier weitere Dateien und ein Folgelauf wird vorgemerkt — wie beim Hochladen mehrerer Dateien.
+        if st.get("phase") == "fertig" and not ke_zahl:
+            ke_zahl.append(1)
+            for i in range(4):
+                muster.stl_binaer(os.path.join(ke_dir, f"Zweite_{i}.stl"), 30 + i, 20, 30)
+            ke_s._nochmal = True
+
+    ke_s = Scanner(ke_b, ke_k, melden=ke_melden, prozesse=2)
+    ke_s._lauf_sicher()
+    check("Zwei Läufe hintereinander: die Zeile zeigt alle neuen Dateien (3 + 4), nicht nur die des letzten Laufs",
+          ke_s.status["lauf"] == 2 and ke_s.status["neu"] == 7 and ke_s.status["gefunden"] == 7)
+    check("Zwei Läufe hintereinander: die Dauer zählt beide, die Formate auch",
+          ke_s.status["dauer_s"] >= ke_s.status["einlesen_s"] and sum(ke_s.status["je_format"].values()) == 7)
+    ke_b.schliessen()
+
     # -- FreeCAD bekommt die kleinen Dateien zuerst (frühe Bilder, ehrliche Restzeit, die grossen mit dem Hänger-Risiko am Ende)
     gr_tmp = tempfile.mkdtemp()
     gr_dir = os.path.join(gr_tmp, "cad")

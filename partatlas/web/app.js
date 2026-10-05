@@ -855,14 +855,17 @@ async function hochladen(quelle) {
     if (einlesen.stopp) break;
     hochladenZeichnen(i, dateien.length, x.pfad);
     try {
-      lauf = await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(x.datei.name)}&unterordner=${encodeURIComponent(x.unterordner)}`,
+      // Erst die letzte Datei stösst das Einlesen an: eines für alles, nicht eines je Datei (das bremste das Hochladen und zählte falsch).
+      const einlesenJetzt = i === dateien.length - 1 ? 1 : 0;
+      lauf = (await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(x.datei.name)}&unterordner=${encodeURIComponent(x.unterordner)}&einlesen=${einlesenJetzt}`,
         { method: "POST", body: x.datei })
-        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); return (await r.json()).lauf; });
+        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); return (await r.json()).lauf; })) ?? lauf;
       ok++;
     } catch (e) { fehler.push(`${x.pfad}: ${e.message}`); }
   }
   if (fehler.length) toast(`${fehler.length} nicht hochgeladen: ${fehler[0]}`);
-  // Jede Datei startet das Einlesen; der Folgelauf der letzten sieht alle.
+  // Die letzte Datei startet das Einlesen. War sie selbst nicht hochladbar, aber andere schon, wird es hier nachgeholt.
+  if (!lauf && ok) { try { lauf = (await api("/api/scan", { method: "POST" })).lauf; } catch (e) { toast(e.message); } }
   if (lauf) einlesenZeigen(lauf, `${anzahl(ok)} ${ok === 1 ? "Datei" : "Dateien"} einlesen`);
   else $("#einlesen").close();
 }
@@ -2163,6 +2166,16 @@ function einlesenZeichnen(m) {
   let anteil = null, zeile, unten = "";
   if (!meiner) zeile = "Wartet, bis das laufende Einlesen fertig ist …";
   else if (m.abgebrochen) { anteil = 1; zeile = `Abgebrochen nach ${sekunden(m.dauer_s)}.`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog.</p>`; }
+  else if (fertig && m.laeuft && !m.abbricht && !bilanzHatHinweise(m)) {
+    // Das Lesen ist fertig, Vorschauen und FreeCAD laufen noch: den Dialog schliessen, damit das Fenster unten links den Rest zeigt
+    // (wie bei pDMS die OCR). Ein modaler Dialog verdeckte es bis zum „OK“, und man sah nicht, dass im Hintergrund noch gerechnet wird.
+    // Das Ergebnis steht danach oben rechts in der Zeile und kurz als Meldung. Hat die Bilanz etwas zu sagen (unlesbare Dateien, Kopien,
+    // verschobene, nicht erreichbare Ordner, Rückfrage zu FCStd), bleibt der Dialog bis zum „OK“.
+    $("#einlesen").close();
+    einlesen.lauf = null;
+    toast(`${bilanzKopf(m).replace(/<[^>]+>/g, "")} — Vorschaubilder entstehen im Hintergrund.`);
+    return;
+  }
   else if (fertig) { anteil = 1; zeile = bilanzKopf(m); unten = bilanz(m); }
   else if (m.phase === "suchen") zeile = "Ordner durchsuchen …";
   else if (m.phase === "hashen") {
@@ -2181,6 +2194,9 @@ function einlesenZeichnen(m) {
   abgleichen($("#einlesen-inhalt"), `<h2>${esc(einlesen.titel)}</h2>${balken}<p class="ein-zeile">${zeile}</p>${unten}<div class="knoepfe">${knoepfe}</div>`);
   if (fertig && $("#ein-ok") && document.activeElement !== $("#ein-ok")) $("#ein-ok").focus();
 }
+
+const bilanzHatHinweise = (m) => !!(m.unlesbar || m.kopien || m.verschoben || m.zurueckgeholt || m.im_papierkorb || m.nicht_erreichbar?.length
+  || m.fcstd_frage || m.aufgeraeumt || (m.entfernt || 0) > 0);
 
 function bilanzKopf(m) {
   if (!m.neu) return `Fertig in ${sekunden(m.einlesen_s ?? m.dauer_s)}. <b>Nichts Neues</b> — alle ${anzahl(m.gefunden)} Dateien sind schon im Katalog.`;

@@ -403,9 +403,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/hochladen")
-    async def hochladen(request: Request, ordner: str, name: str, unterordner: str = ""):
+    async def hochladen(request: Request, ordner: str, name: str, unterordner: str = "", einlesen: int = 1):
         neu = K().hochladen(ordner, name, await request.body(), unterordner)
-        return {"dateien": len(neu), "lauf": scan_starten()}
+        # Viele Dateien nacheinander: erst die letzte stösst das Einlesen an (`einlesen=0` bei den anderen). Sonst läuft schon während des
+        # Hochladens ein Einlesen, konkurriert um die Kerne, und es folgen mehrere Läufe statt einem.
+        return {"dateien": len(neu), "lauf": scan_starten() if einlesen else None}
 
     @app.get("/api/archive")
     def archive():

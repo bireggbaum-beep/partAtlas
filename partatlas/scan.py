@@ -263,11 +263,32 @@ class Scanner:
         if self._faden:
             self._faden.join(zeit)
 
+    def _kette_buchen(self, kette):
+        """Mehrere Läufe hintereinander (Hochladen, Entpacken: jeder Auftrag, der während eines Laufs eintrifft, bekommt einen Folgelauf) sind
+        für den Anwender ein Einlesen. Die Zeile oben rechts zeigte nur den letzten Lauf: „219 Dateien, 1 neu in unter 1 s“ nach 121 Dateien
+        in 20 s. Hier werden die Läufe einer Kette zusammengezählt; ein einzelner Lauf bleibt unverändert."""
+        st = self.status
+        if st.get("phase") != "fertig" or st.get("nur_cad"):
+            return
+        kette["laeufe"] += 1
+        for f in ("neu", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei"):
+            kette["summe"][f] = kette["summe"].get(f, 0) + (st.get(f) or 0)
+        kette["summe"]["einlesen_s"] = round(kette["summe"].get("einlesen_s", 0) + (st.get("einlesen_s") or 0), 1)
+        for name, sek in (st.get("phasen") or {}).items():
+            kette["phasen"][name] = round(kette["phasen"].get(name, 0) + sek, 1)
+        for fm, n in (st.get("je_format") or {}).items():
+            kette["je_format"][fm] = kette["je_format"].get(fm, 0) + n
+        if kette["laeufe"] > 1:
+            self._setze(**kette["summe"], phasen=dict(kette["phasen"]), je_format=dict(kette["je_format"]),
+                        dauer_s=round(time.monotonic() - kette["t0"], 1))
+
     def _lauf_sicher(self):
+        kette = {"t0": time.monotonic(), "laeufe": 0, "summe": {}, "phasen": {}, "je_format": {}}
         while True:
             try:
                 nur, self._nur_cad = self._nur_cad, False      # ein Folgelauf ist wieder ein ganzer
                 self.lauf(nur_cad=True) if nur else self.lauf()
+                self._kette_buchen(kette)
             except Exception as e:                   # der Server soll weiterlaufen
                 log.exception("Scan abgebrochen")
                 self._setze(laeuft=False, abbruch=str(e))
