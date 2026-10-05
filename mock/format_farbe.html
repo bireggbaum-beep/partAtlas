@@ -12,7 +12,7 @@
   --line: oklch(0.895 0.006 60);
   --ink: oklch(0.245 0.01 45); --ink-2: oklch(0.42 0.01 50); --ink-3: oklch(0.50 0.008 50);
   --accent: oklch(0.565 0.165 30);
-  --anteil: 9%;           /* Stärke der Tönung */
+  --anteil: 18%;          /* Stärke der Tönung (Regler oben) */
   --shadow: 0 1px 2px rgba(40, 28, 24, 0.06), 0 8px 24px rgba(40, 28, 24, 0.05);
   --bild: oklch(0.92 0.006 60);
 }
@@ -21,7 +21,7 @@
   --line: oklch(0.295 0.008 60);
   --ink: oklch(0.945 0.005 60); --ink-2: oklch(0.80 0.008 60); --ink-3: oklch(0.68 0.01 60);
   --accent: oklch(0.735 0.155 34);
-  --anteil: 12%;
+  --anteil: 22%;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
   --bild: oklch(0.26 0.006 60);
 }
@@ -33,16 +33,17 @@ h2 { font-size: 15px; margin: 34px 0 4px; }
 p.dim { color: var(--ink-2); margin: 0 0 13px; max-width: 70ch; }
 .leiste { display: flex; gap: 13px; align-items: center; flex-wrap: wrap; margin: 13px 0 0; }
 button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 13px; cursor: pointer; }
+.regler { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
 .legende { display: flex; gap: 8px; flex-wrap: wrap; }
 .legende span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12.5px; }
 .legende i { width: 10px; height: 10px; border-radius: 50%; background: var(--f); }
 
 /* Formatfarben: gleiche Helligkeit und Sättigung, nur der Farbton wechselt */
-[data-f="stl"]   { --f: oklch(0.62 0.12 255); }
-[data-f="3mf"]   { --f: oklch(0.62 0.12 160); }
-[data-f="step"]  { --f: oklch(0.62 0.12 75); }
-[data-f="fcstd"] { --f: oklch(0.62 0.12 315); }
-[data-f="obj"]   { --f: oklch(0.62 0.12 205); }
+[data-f="stl"]   { --f: oklch(0.62 0.14 255); }
+[data-f="3mf"]   { --f: oklch(0.62 0.14 160); }
+[data-f="step"]  { --f: oklch(0.62 0.14 75); }
+[data-f="fcstd"] { --f: oklch(0.62 0.14 315); }
+[data-f="obj"]   { --f: oklch(0.62 0.14 205); }
 
 .reihe { display: grid; grid-template-columns: repeat(auto-fill, 144px); gap: 13px; }
 .k { width: 144px; height: 233px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
@@ -71,6 +72,7 @@ button { font: inherit; color: var(--ink); background: var(--panel); border: 1px
      Es ist nur ein Bild; in der Anwendung ist nichts davon gebaut. Die Namen sind aus der FreeCAD-Library übernommen.</p>
   <div class="leiste">
     <button id="thema" type="button">Dunkel ansehen</button>
+    <label class="regler">Stärke der Tönung <input id="staerke" type="range" min="5" max="30" value="18"> <output id="wert">18 %</output></label>
     <div class="legende">
       <span data-f="stl"><i></i>STL</span><span data-f="3mf"><i></i>3MF</span><span data-f="step"><i></i>STEP</span>
       <span data-f="fcstd"><i></i>FCStd</span><span data-f="obj"><i></i>OBJ</span>
@@ -86,15 +88,15 @@ button { font: inherit; color: var(--ink); background: var(--panel); border: 1px
   <div class="reihe linie" id="r1"></div>
 
   <h2>B · Tönung</h2>
-  <p class="dim">Der Hintergrund der Kachel ist leicht in der Formatfarbe getönt (9 % hell, 12 % dunkel). Wirkt als Fläche, auch im Augenwinkel.</p>
+  <p class="dim">Der Hintergrund der Kachel ist in der Formatfarbe getönt (Regler oben; Vorgabe 18 % hell, 22 % dunkel). Wirkt als Fläche, auch im Augenwinkel.</p>
   <div class="reihe toenung" id="r2"></div>
 
   <h2>C · Beides, jeweils schwächer</h2>
   <p class="dim">Linie und Tönung zusammen, beide zurückgenommen.</p>
   <div class="reihe beides" id="r3"></div>
 
-  <p class="dim" style="margin-top:34px">Lesbarkeit: Der graue Zusatztext (Mass, Gewicht) hat auf den getönten Kacheln etwa 5,3 : 1 Kontrast (hell und dunkel, alle fünf Töne),
-     der Name deutlich mehr; Richtwert für Fliesstext sind 4,5 : 1. Auf der ungetönten Kachel sind es etwa 6 : 1 (siehe Regel in KONZEPT.md).
+  <p class="dim" style="margin-top:34px">Lesbarkeit: Der graue Zusatztext (Mass, Gewicht) hat bei der Vorgabe etwa 4,9 : 1 (hell, 18 %) bzw. 4,7 : 1 (dunkel, 22 %) Kontrast, schlechtester der fünf Töne;
+     bei 26 % fällt er unter 4,5 : 1. Der Name hat deutlich mehr; Richtwert für Fliesstext sind 4,5 : 1. Auf der ungetönten Kachel sind es etwa 6 : 1 (siehe Regel in KONZEPT.md).
      Farbe allein trägt die Information nicht: das Format steht weiter in der Endung und als Chip in der Filterleiste.</p>
 </main>
 <script>
@@ -108,12 +110,15 @@ for (let i = 0; i < 4; i++) {
   document.getElementById("r" + i).innerHTML = D.map(([n, e, f, m, g]) =>
     `<div class="k" data-f="${f}"><div class="bild"><div class="form ${g}"></div></div><div class="text"><b>${n}<em>${e}</em></b><small>${m}</small></div></div>`).join("");
 }
-const t = document.getElementById("thema");
+const t = document.getElementById("thema"), r = document.getElementById("staerke"), w = document.getElementById("wert");
+const setze = (v) => { r.value = v; w.textContent = v + " %"; document.documentElement.style.setProperty("--anteil", v + "%"); };
 t.onclick = () => {
   const dunkel = document.documentElement.dataset.thema !== "dunkel";
   document.documentElement.dataset.thema = dunkel ? "dunkel" : "";
   t.textContent = dunkel ? "Hell ansehen" : "Dunkel ansehen";
+  setze(dunkel ? 22 : 18);       // jedes Thema hat seine Vorgabe: auf dunklem Grund braucht die Tönung etwas mehr
 };
+r.oninput = () => setze(r.value);
 </script>
 </body>
 </html>
