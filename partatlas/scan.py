@@ -207,7 +207,7 @@ class Scanner:
         # Wie lange jede Phase dauerte (Suchen, Hashen, Analysieren, Vorschau): wer einen grossen Bestand einliest,
         # will wissen, wo die Zeit bleibt. Eine neue Phase schliesst die vorige.
         if "phase" in werte:
-            jetzt = time.time()
+            jetzt = time.monotonic()
             if werte["phase"] == "suchen":
                 self._phasen, self._phase_name = {}, None
             if self._phase_name and self._phase_name != werte["phase"]:
@@ -260,7 +260,7 @@ class Scanner:
                 self._nochmal = False
 
     def lauf(self, nur_cad=False):
-        t0 = time.time()
+        t0 = time.monotonic()
         self._stopp.clear()
         self._setze(fcstd_frage=0, cad_ohne_freecad=0)
         if nur_cad:
@@ -394,7 +394,7 @@ class Scanner:
             # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
             # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
             # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.
-            self._setze(entfernt=len(weg), phase="vorschau", fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.time() - t0, 1))
+            self._setze(entfernt=len(weg), phase="vorschau", fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.monotonic() - t0, 1))
 
             self._vorschauen()
             if self._stopp.is_set():
@@ -407,7 +407,7 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
 
     def _lauf_nur_cad(self, t0):
         """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""
@@ -424,10 +424,10 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.time() - t0, 1))
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
 
     def _abgebrochen(self, t0):
-        self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.time() - t0, 1))
+        self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.monotonic() - t0, 1))
 
     def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
         if not gruppe:

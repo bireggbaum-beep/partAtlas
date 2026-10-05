@@ -37,6 +37,8 @@ class Part:
         name = os.path.basename(pfad)
         if "haengt" in name:
             time.sleep(600)
+        if "langsam" in name:
+            time.sleep(1.5)
         if "kaputt" in name:
             raise ValueError("kaputt")
         return Form(name)

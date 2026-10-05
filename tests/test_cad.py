@@ -80,7 +80,7 @@ if __name__ == "__main__":
     quelle = os.path.join(tmp, "q")
     os.makedirs(quelle)
     namen = ["gut1.step", "haengt.step", "kaputt.step", "gut2.step"]
-    for n in namen:
+    for n in namen + ["langsam.step"]:
         open(os.path.join(quelle, n), "w").write("x")
     ziel = os.path.join(tmp, "ziel")
     os.makedirs(ziel)
@@ -100,6 +100,21 @@ if __name__ == "__main__":
     check("Umwandeln: ein Start für den Stapel, nach der hängenden Datei genau ein zweiter",
           open(logdatei).read().count("start") == 2)
     check("Umwandeln: der Arbeitsordner wird aufgeräumt", os.listdir(os.path.join(tmp, "arbeit")) == [])
+
+    # -- Schlafmodus: die Wanduhr springt, die Datei in Arbeit darf nicht als hängend gelten
+    uhr_echt, sprung = time.time, [0]
+    time.time = lambda: uhr_echt() + sprung[0]
+    spaeter = threading.Timer(0.5, lambda: sprung.__setitem__(0, 3600))      # eine Stunde Schlaf mitten in „langsam“
+    spaeter.start()
+    try:
+        schlaf = {k: (ok, info) for k, ok, info in cad.umwandeln(
+            ATTRAPPE, [(n, os.path.join(quelle, n), os.path.join(ziel, n + "3.stl")) for n in ("langsam.step", "gut1.step")],
+            threading.Event(), os.path.join(tmp, "arbeit"))}
+    finally:
+        spaeter.cancel()
+        time.time = uhr_echt
+    check("Schlafmodus: springt die Uhr eine Stunde vor, gilt die Datei in Arbeit nicht als hängend (Zeitgrenze zählt Laufzeit, nicht Uhrzeit)",
+          set(schlaf) == {"langsam.step", "gut1.step"} and all(ok for ok, _ in schlaf.values()))
 
     # -- Abbrechen: FreeCAD wird sofort beendet
     stopp = threading.Event()

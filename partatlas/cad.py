@@ -88,7 +88,7 @@ def _stapel(befehl, stueck, stopp, ordner):
             yield k, False, f"FreeCAD liess sich nicht starten: {e}"
         shutil.rmtree(arbeit, ignore_errors=True)
         return
-    fertig, laeuft_seit, gelesen, aktuell = set(), time.time(), 0, None
+    fertig, laeuft_seit, gelesen, aktuell = set(), time.monotonic(), 0, None
     try:
         while True:
             if stopp.is_set():
@@ -97,7 +97,7 @@ def _stapel(befehl, stueck, stopp, ordner):
                 zeilen = f.read().splitlines()
             neu = zeilen[gelesen:]
             if neu:
-                gelesen, laeuft_seit = len(zeilen), time.time()
+                gelesen, laeuft_seit = len(zeilen), time.monotonic()
             for z in neu:
                 try:
                     z = json.loads(z)
@@ -110,7 +110,7 @@ def _stapel(befehl, stueck, stopp, ordner):
                     fertig.add(i)
                     aktuell = None
                     yield stueck[i][0], bool(z.get("ok")), z.get("dreiecke") if z.get("ok") else z.get("fehler")
-                    laeuft_seit = time.time()     # die Zeit, die der Aufrufer mit dem Ergebnis verbrachte, zählt nicht
+                    laeuft_seit = time.monotonic()     # die Zeit, die der Aufrufer mit dem Ergebnis verbrachte, zählt nicht
             if len(fertig) == len(stueck):
                 try:
                     proc.wait(5)                  # FreeCADCmd beendet sich nach dem Skript; sonst nachhelfen
@@ -127,7 +127,7 @@ def _stapel(befehl, stueck, stopp, ordner):
                         yield k, False, "FreeCAD hat nicht gearbeitet: " + _ende(protokoll)
                 return
             grenze = ZEIT_JE_DATEI if aktuell is not None else START_ZEIT if gelesen == 0 else ZEIT_JE_DATEI
-            if time.time() - laeuft_seit > grenze:
+            if time.monotonic() - laeuft_seit > grenze:
                 _beenden(proc)
                 if aktuell is not None:
                     fertig.add(aktuell)

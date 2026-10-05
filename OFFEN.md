@@ -278,6 +278,11 @@ doppelt abgesichert, eine einzelne davon zu entfernen lässt keinen Test fallen.
 erst der erste Abruf — das erste Scrollen durch einen frischen Bestand wartete auf tausend Verkleinerungen. Geprüft in `test_scan` (75/75) mit Gegenprobe, `test_api`;
 **nicht gemessen**, wie lang die Phase bei grossen Beständen dauert, und nicht in `test_ui.py` (eine Textzeile in `app.js`). Vorgebaut werden auch Bilder, die keine Kachel zeigt
 (`extrahiert` neben `berechnet`).
+**Schlafmodus (0.41.4), Rückmeldung des Testers:** er schickte den Rechner nach ca. 2000 von 5877 FCStd schlafen; morgens ging der Lauf bei ca. 8000 weiter. Die Zeit in der Statuszeile
+(„7 h 45 min“ für FreeCAD) enthielt die Stunden Schlaf — die **echte Rechenzeit lag eher bei 1–1,5 h, also unter 1 s je Datei** (gemessen am Protokoll: Start 23:46, ca. 2000 bis ca. 1:00, Lücke bis 7:34).
+Meine frühere Rechnung „4,8 s je Datei“ war damit falsch. Ausserdem mass `cad.py` die Zeitgrenze mit `time.time()`: nach dem Aufwachen sprang die Uhr, die Datei in Arbeit galt als hängend, FreeCAD wurde beendet und die
+Datei als Fehler vermerkt (nie wiederholt). Jetzt `time.monotonic()` in `cad.py` und für die Dauern in `scan.py`. Geprüft in `test_cad` (13/13, springende Uhr mit Gegenprobe), `test_scan`.
+**Nicht geprüft:** ob `monotonic` auf Windows/Mac den Schlaf mitzählt (Linux: nein). Dann zeigt die Statuszeile dort weiter die Wanduhr-Dauer; die Zeitgrenze selbst ist unkritisch.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 **FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht
