@@ -2285,7 +2285,7 @@ function zuletztZeigen(iso) {
 setInterval(zuletztZeigen, 60000);
 
 let liveZeit = null, liveBetrifft = false;
-let LIVE_SCAN_MS = 5000;       // während eines Einlesens höchstens so oft die Liste neu holen
+let LIVE_SCAN_MS = 5000, letztesLiveLaden = 0;       // während eines Einlesens höchstens so oft die Liste neu holen
 
 // Hat das Einlesen etwas verändert, das in der Liste steht? Sonst ist das Neuladen am Ende überflüssig: ein Einlesen ohne Funde schreibt
 // nichts (gemessen: 0 Änderungsmeldungen), und die Liste ist schon aktuell. Bei 9 000 Modellen auf einem älteren Rechner sind das Sekunden.
@@ -2314,6 +2314,7 @@ function liveAenderung(m) {
   if (meins) liveBetrifft = true;
   const feuern = () => {
     liveZeit = null;
+    letztesLiveLaden = Date.now();
     neuLaden();
     if (liveBetrifft && zustand.gewaehlt) waehle(zustand.gewaehlt, true);
     liveBetrifft = false;
@@ -2321,7 +2322,8 @@ function liveAenderung(m) {
   if (zustand.scan?.laeuft) {
     // Beim Einlesen kommt fast jede Sekunde eine Änderung (FreeCAD, Vorschauen). Jedes Mal die ganze Liste holen und zeichnen hielte den
     // Rechner dauernd beschäftigt, auch den Server (er baut die Kacheln nach jeder Änderung neu). Stattdessen höchstens alle LIVE_SCAN_MS einmal.
-    if (liveZeit === null) liveZeit = setTimeout(feuern, LIVE_SCAN_MS);
+    // Die erste Änderung nach einer Ruhepause lädt sofort (ein kleiner Import zeigt seine Modelle gleich); danach höchstens alle LIVE_SCAN_MS.
+    if (liveZeit === null) liveZeit = setTimeout(feuern, Math.max(0, LIVE_SCAN_MS - (Date.now() - letztesLiveLaden)));
     return;
   }
   // Sonst: viele Änderungen hintereinander sammeln, dann einmal laden.

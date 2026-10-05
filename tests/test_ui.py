@@ -92,19 +92,23 @@ async def oberflaeche(port):
         rl = await pg.evaluate("""async () => {
             const orig = window.neuLaden, alt = zustand.scan; let n = 0;
             window.neuLaden = () => { n++; };
-            clearTimeout(liveZeit); liveZeit = null;       // ein Zeitgeber vom echten Einlesen davor ist noch offen
+            clearTimeout(liveZeit); liveZeit = null; letztesLiveLaden = 0;       // ein Zeitgeber vom echten Einlesen davor ist noch offen
             LIVE_SCAN_MS = 400; zustand.scan = { laeuft: true };
             for (let i = 0; i < 20; i++) { liveAenderung({ ref: "x" }); await new Promise((r) => setTimeout(r, 50)); }   // eine Änderung alle 50 ms, 1 s lang
             const waehrend = n;
+            n = 0; clearTimeout(liveZeit); liveZeit = null; letztesLiveLaden = 0; liveAenderung({ ref: "y" });
+            await new Promise((r) => setTimeout(r, 60));
+            const sofort = n;           // die erste Änderung nach einer Ruhepause lädt gleich, nicht erst nach LIVE_SCAN_MS
             await new Promise((r) => setTimeout(r, 600));
             const mit = zustand.modelle.length;
             const ohne = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 0, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
             const mitFunden = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 5, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
             window.neuLaden = orig; zustand.scan = alt; LIVE_SCAN_MS = 5000;
-            return [waehrend, ohne, mitFunden, mit];
+            return [waehrend, ohne, mitFunden, mit, sofort];
         }""")
         check("Beim Einlesen wird die Liste höchstens alle paar Sekunden neu geholt, nicht bei jeder Änderung (20 Änderungen in 1 s → 2 Neuladen bei 400 ms)",
-              1 <= rl[0] <= 3)
+              1 <= rl[0] <= 4)
+        check("Die erste Änderung nach einer Ruhepause lädt sofort (kleiner Import: die Modelle erscheinen gleich, nicht erst nach 5 s)", rl[4] == 1)
         check("Ein Einlesen ohne Funde lädt am Ende nichts neu, eines mit Funden einmal", rl[3] > 0 and rl[1] == 0 and rl[2] == 1)
         check("Bibliothek: ⟳ und ＋ sind ohne Darüberfahren sichtbar, daneben steht, wann zuletzt eingelesen wurde",
               await pg.evaluate("getComputedStyle(document.querySelector('.sk-akt.sk-immer')).opacity") == "1"
