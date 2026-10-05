@@ -306,6 +306,13 @@ steht weiter in der Endung und im Chip.
 **Zwei weitere Ideen zum Format, nur als Mock (`mock/format_vorschau.html`, `.png`):** D = Format als kleine Beschriftung unten links auf dem Vorschaubild (neutral, immer lesbar auch bei abgeschnittenem Namen „battery-AA.FCS…“,
 Aufwand 1); E = Objektfarbe in der Vorschau nach Format (Aufwand 2–3, Dagegen: die Objektfarbe sagt heute etwas — Filamentfarbe bei 3MF, blaue Platte; Farbtonverschiebung beim Anzeigen trifft auch Bilder aus der Datei;
 nur für die vom Programm gerechneten erwägen). Beide lassen sich mit der gebauten Linie verbinden. Nicht entschieden.
+**Reiter „Verwendet“ und Vor/Zurück (0.44.0), Wunsch des Testers (Rückverweise wie bei Capacities, Sprung wie in pDMS):** vierter Reiter im Inspektor zwischen Übersicht und Drucke: Baugruppen (mit Menge), Sammlungen, Tags, Drucke
+(wechselt zum Reiter „Drucke“) und Ordner des Modells; **jede Zeile springt dorthin** (`data-springe`, `springeZu()` in `app.js`; Baugruppen öffnen wie überall). Die Angaben kommen aus dem Modell (flatgraph-Nachbarschaft, kein neuer
+Endpunkt); die Zahl am Reiter = Baugruppen + Sammlungen. **Vor und Zurück:** zwei Knöpfe ‹ › neben dem Logo und Alt+←/→ bzw. Maustasten, über den Verlauf des Browsers (`history.pushState`): `navigiere()` hält vorher und nachher eine
+Momentaufnahme fest (Ordner, Sammlung, Ansicht, Filter, Suche, Baugruppe, gewähltes Modell); `popstate` stellt sie wieder her. Eingehängt sind die Sprünge über Seitenleiste (Ansicht, Ordner, Sammlung, Besen),
+Baugruppen (auch Unter-Baugruppen) und „Verwendet“. **Nicht** im Verlauf: Filter-Chips, Tags in der Leiste, Suche tippen, Gruppieren/Sortieren — sie ändern die Ansicht, ohne einen Schritt zu setzen.
+Geprüft in `test_ui` (91/91, Gegenprobe ohne Sprung fällt), im Browser angesehen (dunkel). Nicht geprüft: Firefox (Verlauf, Alt+←), hell, Windows/Mac; nach Neuladen steht „Vor“ aus, obwohl der Browser eins hätte.
+**Offen:** Tag-Chips in der Leiste und Filter in den Verlauf nehmen; Rückverweise auch für Sammlungen/Baugruppen („welche Modelle?“ ist die Ansicht selbst), `traverse` für mehrstufige Abfragen.
 **Speicher des Browsers (5.10.2026):** Firefox mit partAtlas 708 MB, leer 239 MB (Tester, 8 946 Modelle). Ursache nicht gemessen (Verdacht: ganze Modellliste im Browser, entpackte Bilder);
 `about:memory` wäre die Messung. Bewusst zurückgestellt.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.

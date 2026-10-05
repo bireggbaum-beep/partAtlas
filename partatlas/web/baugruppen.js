@@ -472,7 +472,7 @@ document.addEventListener("click", async (e) => {
   const vor = t.closest("[data-vorschlag]");
   if (vor) return ausVorschlag(vor.dataset.vorschlag);
   const b = t.closest("[data-baugruppe]");
-  if (b) { e.preventDefault(); return oeffneBaugruppe(b.dataset.baugruppe); }
+  if (b) { e.preventDefault(); return navigiere(() => oeffneBaugruppe(b.dataset.baugruppe)); }
   if (t.closest("#bg-zurueck")) { zustand.gewaehlt = null; return zeigeBgUebersicht(); }
   const aktRechts = t.closest("#inspektor [data-bg-aktion]");
   if (aktRechts) return bgAktion(aktRechts.dataset.bgAktion);
@@ -504,7 +504,7 @@ document.addEventListener("click", async (e) => {
     return waehle(mod.dataset.bgModell);
   }
   const unter = t.closest("[data-bg-unter]");
-  if (unter) return oeffneBaugruppe(unter.dataset.bgUnter);
+  if (unter) return navigiere(() => oeffneBaugruppe(unter.dataset.bgUnter));
   if (t.closest("#bg-name")) {
     return inlineBearbeiten(t.closest("#bg-name"), { wert: bgDaten.name, speichern: (name) => name.trim() && api(`/api/baugruppen/${bid()}`, { method: "PATCH", body: { name } }) });
   }

@@ -939,9 +939,10 @@ async function waehle(id, live = false) {
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
-  const reiter = papierkorb ? "datei" : ["uebersicht", "drucke", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
+  const reiter = papierkorb ? "datei" : ["uebersicht", "verwendet", "drucke", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
   const reiterKopf = papierkorb ? "" : `<div class="i-reiter" role="tablist">
       <button role="tab" data-reiter="uebersicht">Übersicht</button>
+      <button role="tab" data-reiter="verwendet">Verwendet${(m.baugruppen || []).length + m.sammlungen.length ? ` <span class="d-zahl">${(m.baugruppen || []).length + m.sammlungen.length}</span>` : ""}</button>
       <button role="tab" data-reiter="drucke">Drucke${m.drucke_n ? ` <span class="d-zahl">${m.drucke_n}</span>` : ""}</button>
       <button role="tab" data-reiter="datei">Datei</button></div>`;
   $("#inspektor").innerHTML = `
@@ -990,6 +991,7 @@ async function waehle(id, live = false) {
           <option value="__neu">Neue Sammlung …</option></select></div></div>`}
     </div>
 
+    ${papierkorb ? "" : `<div class="i-tafel" data-reiter="verwendet">${verwendetTafel(m)}</div>`}
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="drucke">${druckeTafel(m)}</div>`}
 
     <div class="i-tafel" data-reiter="datei">
@@ -1096,6 +1098,68 @@ async function druckAnlegen(modelle) {
   } catch (e) { toast(e.message); return; }
   localStorageSchreiben("reiter", "drucke");
   if (zustand.gewaehlt && modelle.includes(zustand.gewaehlt)) waehle(zustand.gewaehlt);
+}
+
+// „Wo kommt dieses Modell vor?“ — jede Zeile führt dorthin. Die Angaben stehen schon im Modell; flatgraph liefert sie als Nachbarschaft des Knotens.
+function verwendetTafel(m) {
+  const zeile = (attr, inhalt, rechts) => `<button class="v-zeile" ${attr}><span>${inhalt}</span>${rechts ? `<em>${rechts}</em>` : ""}</button>`;
+  const gruppe = (titel, zeilen) => (zeilen.length ? `<div class="i-titel">${titel}</div><div class="v-liste">${zeilen.join("")}</div>` : "");
+  const bg = (m.baugruppen || []).map((b) => zeile(`data-baugruppe="${esc(b.id)}"`, `🧩 ${esc(b.name)}`, `${b.menge}×`));
+  const sa = m.sammlungen.map((x) => zeile(`data-springe="sammlung" data-id="${esc(x.id)}"`, esc(x.name), "Sammlung"));
+  const tg = m.tags.map((t) => zeile(`data-springe="tag" data-id="${esc(t)}"`, `#${esc(t)}`));
+  const dr = m.drucke_n ? [zeile('data-gehe-reiter="drucke"', `🖨 ${m.drucke_n} ${m.drucke_n === 1 ? "Druck" : "Drucke"}`, "ansehen")] : [];
+  // Anzeige wie in der Seitenleiste: der Name der Wurzel statt ihrer Kennung („demo/Drohne“ statt „w_001/Drohne“)
+  const ortName = (o) => { const [wurzel, ...rest] = o.split("/").filter(Boolean); return [wurzelName(wurzel), ...rest].join("/"); };
+  const or = [...new Set(m.ordner || [])].map((o) => zeile(`data-springe="ordner" data-id="${esc(o)}"`, `📁 ${esc(ortName(o))}`));
+  const leer = !bg.length && !sa.length && !tg.length && !dr.length
+    ? `<p class="dim v-leer">Noch in keiner Baugruppe oder Sammlung, ohne Tags und ohne Druck.</p>` : "";
+  return leer + gruppe("BAUGRUPPEN", bg) + gruppe("SAMMLUNGEN", sa) + gruppe("TAGS", tg) + gruppe("DRUCKE", dr) + gruppe("ORDNER", or);
+}
+
+// Vor und zurück zwischen den Ansichten, die man angesprungen hat (Verlauf des Browsers: Alt+← / Alt+→ und die Maustasten gehen von selbst).
+// Eine Momentaufnahme hält fest, was man sah: Ordner, Sammlung, Filter, Baugruppe, gewähltes Modell.
+const nav = { nr: 0, hoechste: 0 };
+const momentaufnahme = () => ({ nr: nav.nr, ordner: zustand.ordner, sammlung: zustand.sammlung, ansicht: zustand.ansicht, format: zustand.format,
+  suche: zustand.suche, tags: [...zustand.tags], material: [...zustand.material], baugruppe: zustand.baugruppe || "", gewaehlt: zustand.gewaehlt });
+function navKnoepfe() {
+  if ($("#nav-zurueck")) $("#nav-zurueck").disabled = nav.nr <= 0;
+  if ($("#nav-vor")) $("#nav-vor").disabled = nav.nr >= nav.hoechste;
+}
+function navigiere(aendern) {
+  try { history.replaceState(momentaufnahme(), ""); } catch { /* ohne Verlauf bleibt es bei der Ansicht */ }
+  const r = aendern();
+  nav.nr += 1; nav.hoechste = nav.nr;
+  try { history.pushState(momentaufnahme(), ""); } catch { /* s. o. */ }
+  navKnoepfe();
+  return r;
+}
+async function ansichtWiederherstellen(st) {
+  const warBaugruppe = zustand.baugruppe;
+  nav.nr = st.nr ?? 0;
+  Object.assign(zustand, { ordner: st.ordner, sammlung: st.sammlung, ansicht: st.ansicht, format: st.format, suche: st.suche || "",
+    tags: new Set(st.tags), material: new Set(st.material) });
+  if ($("#suche")) $("#suche").value = zustand.suche;
+  navKnoepfe();
+  if (st.baugruppe) return oeffneBaugruppe(st.baugruppe);
+  if (warBaugruppe) {
+    zustand.baugruppe = "";
+    zeigeBaugruppeFlaeche(false);
+    document.querySelectorAll("[data-baugruppe]").forEach((b) => b.classList.remove("aktiv"));
+  }
+  zustand.gewaehlt = null;
+  neuLaden();
+  if (st.gewaehlt) waehle(st.gewaehlt);
+}
+window.addEventListener("popstate", (e) => { if (e.state) ansichtWiederherstellen(e.state); });
+function springeZu(art, id) {
+  const leeren = { tags: new Set(), material: new Set(), format: "" };
+  return navigiere(() => {
+    if (zustand.baugruppe) { zustand.baugruppe = ""; zeigeBaugruppeFlaeche(false); document.querySelectorAll("[data-baugruppe]").forEach((b) => b.classList.remove("aktiv")); }
+    if (art === "sammlung") Object.assign(zustand, { ...leeren, sammlung: id, ansicht: "alle", ordner: "" });
+    else if (art === "ordner") Object.assign(zustand, { ...leeren, ordner: id, ansicht: "alle", sammlung: "" });
+    else if (art === "tag") Object.assign(zustand, { ...leeren, tags: new Set([id]), ansicht: "alle", ordner: "", sammlung: "" });
+    neuLaden();
+  });
 }
 
 function reiterWaehlen(r) {
@@ -1754,13 +1818,17 @@ $("#gruppierung").value = zustand.gruppierung;
   if (k && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(k.dataset.id, e.shiftKey);
   if (k) return waehle(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
-  if (ansicht) { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
+  if (ansicht) return navigiere(() => { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); });
   const rail = t.closest("[data-rail]");
-  if (rail) { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); }
+  if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); });
   const ordner = t.closest("[data-ordner]");
-  if (ordner) { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); }
+  if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); });
   const sammlung = t.closest("[data-sammlung]");
-  if (sammlung) { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return neuLaden(); }
+  if (sammlung) return navigiere(() => { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return neuLaden(); });
+  const springe = t.closest("[data-springe]");
+  if (springe) return springeZu(springe.dataset.springe, springe.dataset.id);
+  const geheReiter = t.closest("[data-gehe-reiter]");
+  if (geheReiter) return reiterWaehlen(geheReiter.dataset.geheReiter);
   const wsWeg = t.closest("[data-ws-weg]");
   if (wsWeg) { await api(`/api/warteschlange/${wsWeg.dataset.wsWeg}`, { method: "DELETE" }); return; }
   const wsWaehle = t.closest("[data-ws-waehle]");
@@ -2238,6 +2306,10 @@ $("#scan-abbrechen").onclick = async () => {
 };
 api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
+try { nav.nr = history.state?.nr ?? 0; nav.hoechste = nav.nr; history.replaceState(momentaufnahme(), ""); } catch { /* s. o. */ }
+$("#nav-zurueck")?.addEventListener("click", () => history.back());
+$("#nav-vor")?.addEventListener("click", () => history.forward());
+navKnoepfe();
 
 // Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
 let abwurfZaehler = 0;

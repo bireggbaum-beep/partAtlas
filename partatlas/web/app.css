@@ -507,6 +507,7 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .i-reiter .d-zahl { font: 12.5px var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-left: 3px; }
 .i-tafel { display: none; }
 #inspektor[data-reiter="uebersicht"] .i-tafel[data-reiter="uebersicht"],
+#inspektor[data-reiter="verwendet"] .i-tafel[data-reiter="verwendet"],
 #inspektor[data-reiter="drucke"] .i-tafel[data-reiter="drucke"],
 #inspektor[data-reiter="datei"] .i-tafel[data-reiter="datei"] { display: block; }
 #inspektor[data-reiter="uebersicht"] .i-reiter [data-reiter="uebersicht"],
@@ -955,3 +956,19 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 .karte[data-f]::before { left: 0; right: 0; top: 0; height: 3px; }
 .zeile-k[data-f]::before, .zeile-l[data-f]::before { left: 0; top: 0; bottom: 0; width: 3px; }
 .chip[data-format]::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--f); margin-right: 6px; vertical-align: 0; }
+
+/* Reiter „Verwendet“: jede Zeile führt dorthin */
+.v-liste { display: flex; flex-direction: column; margin-bottom: var(--s4); }
+.v-zeile { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; text-align: left; width: 100%; padding: 7px var(--s4);
+           background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.v-zeile:hover { background: var(--panel); }
+.v-zeile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-zeile em { font-style: normal; color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.v-leer { padding: var(--s4); }
+/* Vor und zurück neben dem Logo */
+.nav { display: flex; gap: 2px; margin-left: 4px; }
+.nav button { width: 24px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink-2); font-size: 15px; line-height: 1; cursor: pointer; }
+.nav button:hover:not(:disabled) { color: var(--ink); border-color: var(--line-strong); }
+.nav button:disabled { opacity: 0.35; cursor: default; }
+.i-reiter button { white-space: nowrap; }
+.i-reiter .d-zahl { padding: 0 5px; margin-left: 2px; }

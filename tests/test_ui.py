@@ -188,6 +188,29 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(800)
         check("Kachel auf Sammlung gezogen: Modell ist in der Sammlung", [m["name"] for m in api(port, f"/api/modelle?sammlung={sid}")] == ["Arm"])
 
+        # -- Reiter „Verwendet“: jede Zeile führt dorthin; Vor und Zurück bringen wieder zurück
+        await pg.locator(".karte").first.click()
+        await pg.click('.i-reiter [data-reiter="verwendet"]')
+        check("Verwendet: der Reiter nennt die Sammlung, in der das Modell liegt, und den Ordner",
+              "Drohne V2" in await pg.inner_text('.i-tafel[data-reiter="verwendet"]') and await pg.locator('.v-zeile[data-springe="ordner"]').count() >= 1)
+        check("Verwendet: der Reiter trägt die Zahl der Baugruppen und Sammlungen", "1" in await pg.inner_text('.i-reiter [data-reiter="verwendet"]'))
+        check("Vor und Zurück: am Anfang nichts zu holen", await pg.locator("#nav-zurueck").is_disabled())
+        await pg.click('.v-zeile[data-springe="sammlung"]')
+        await pg.wait_for_timeout(700)
+        check("Verwendet: ein Klick auf die Sammlung springt hin (Seitenleiste zeigt sie als gewählt)",
+              await pg.locator(f'[data-sammlung="{sid}"].aktiv').count() == 1)
+        check("Vor und Zurück: nach dem Sprung gibt es ein Zurück", await pg.locator("#nav-zurueck").is_enabled())
+        await pg.click("#nav-zurueck")
+        await pg.wait_for_timeout(700)
+        check("Zurück: die Sammlung ist nicht mehr gewählt, Vor ist möglich",
+              await pg.locator(f'[data-sammlung="{sid}"].aktiv').count() == 0 and await pg.locator("#nav-vor").is_enabled())
+        await pg.click("#nav-vor")
+        await pg.wait_for_timeout(700)
+        check("Vor: wieder in der Sammlung", await pg.locator(f'[data-sammlung="{sid}"].aktiv').count() == 1)
+        await pg.click('[data-ansicht="alle"]')
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')
+        await pg.wait_for_timeout(500)
+
         for name in ["Haken", "Arm", "Vase"]:
             await suche(name)
             await pg.evaluate(ZIEHEN, [".karte", '[data-ansicht="warteschlange"]'])
@@ -294,9 +317,9 @@ async def oberflaeche(port):
         # -- Quelle als Link
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector(".i-reiter")
-        check("Inspektor: Vorschau, Name, Öffnen und Reiter oben fest; drei Reiter, die Übersicht zuerst",
+        check("Inspektor: Vorschau, Name, Öffnen und Reiter oben fest; vier Reiter (Übersicht, Verwendet, Drucke, Datei), die Übersicht zuerst",
               await pg.evaluate("getComputedStyle(document.querySelector('.i-fix')).position") == "sticky"
-              and await pg.locator(".i-reiter button").count() == 3
+              and await pg.locator(".i-reiter button").count() == 4
               and await pg.get_attribute("#inspektor", "data-reiter") == "uebersicht"
               and await pg.locator("#quelle-aendern").is_hidden())
         await pg.click('.i-reiter [data-reiter="datei"]')
