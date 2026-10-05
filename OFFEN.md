@@ -282,7 +282,7 @@ erst der erste Abruf — das erste Scrollen durch einen frischen Bestand wartete
 Die Statuszeile nannte „7 h 57 min“, davon „STEP (FreeCAD) 7 h 45 min“ — das war Wanduhr **mit** Schlaf. **Nachgemessen am 5.10.2026** an den Schreibzeiten von `netz/` (je Stunde):
 4.10. 23 Uhr 300, 5.10. 0 Uhr 4 920, 1–6 Uhr **0**, 7 Uhr 635 = 5 855 Netze + 22 Fehler (Protokoll) = 5 877 offene Dateien. Die echte Rechenzeit lag bei **gut 1 h 25 min,
 rund 1 Datei je Sekunde**, auf dieser Maschine mit einem FreeCAD-Prozess. (Erste Annahme „4,8 s je Datei“ war falsch; ein Zwischenstand „vielleicht hat er nachts gearbeitet“ ebenso.)
-Die angezeigten „2 000 am Abend, 8 000 am Morgen“ passen dazu nicht (Abend waren es schon etwa 5 000); der Zähler `bearbeitet` läuft über alle Phasen — nicht geprüft, was genau er zeigte.
+Die angezeigten „2 000 nach 45 min, 8 000 am Morgen“ passen dazu: 2 000 ≈ FreeCAD-Stand nach 45 min (300 bis Mitternacht, danach ca. 80 je Minute); 8 000 ≈ 8 294 neu = 2 417 Dateien ohne FreeCAD (Vorschauen in den ersten ca. 10 min) + 5 877 FreeCAD. Beim Schlafen war FreeCAD nicht fertig (635 Netze erst nach dem Aufwachen).
 Ausserdem mass `cad.py` die Zeitgrenze mit `time.time()`: springt die Uhr beim Aufwachen, galt die Datei in Arbeit als hängend. Jetzt `time.monotonic()` in `cad.py` und für die Dauern in `scan.py`.
 Geprüft in `test_cad` (13/13, springende Uhr mit Gegenprobe) und `test_scan`. **Nicht belegt:** dass der Fehler den Tester tatsächlich traf (im Protokoll steht um 7:30 keine Zeitgrenze-Zeile).
 Nicht geprüft: ob `monotonic` auf Windows/Mac den Schlaf mitzählt (Linux: nein); die Statuszeile zeigt dort weiter die Wanduhr-Dauer.
