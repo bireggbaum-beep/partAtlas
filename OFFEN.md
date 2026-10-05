@@ -298,6 +298,12 @@ weniger Arbeiter, Thumbs-Threads begrenzen, Dateien nach Grösse aufsteigend an 
 Geprüft in `test_scan` (78/78), `test_cad` (14/14), `test_api`, `test_ui` (81/81) mit Gegenproben (ohne Initializer, ohne Sortierung, ohne `cad_voraus`, ohne `nice`); die Restzeit-Rechnung mit `node` an Beispielen.
 **Nicht geprüft:** die neue Anzeige im Browser (kein Test in `test_ui.py`, keine Bildschirmprobe), Windows/Mac (Priorität, `monotonic`), und **ob die Oberfläche auf dem Rechner des Testers (i7 920) jetzt reagiert** —
 das ist die eigentliche Probe; Rückmeldung abwarten. Die Restzeit kann bei sehr ungleichen Dateien schwanken (kleine zuerst: anfangs eher zu optimistisch).
+**Formatfarben auf den Kacheln — nur Mock (5.10.2026), Wunsch des Testers:** Tönung der Kacheln je Format (STL, 3MF, STEP, FCStd, OBJ) für mehr Überblick. Nicht gebaut: erst `mock/format_farbe.html`
+(im Browser öffnen; hell/dunkel; Heute · A Linie · B Tönung · C beides schwächer) dem Tester zeigen. Kontrast des grauen Zusatztexts auf getönten Kacheln ca. 5,3 : 1 (gerechnet, alle fünf Töne, beide Themen).
+**Nicht** nach Baugruppe: ein Modell kann in mehreren stecken (wie beim Gruppieren bewusst weggelassen). Wird gebaut: Aufwand 1–2 (Variablen in `app.css`, `data-f` an Kachel, Liste, Karten).
+Mischung in `oklab`, nicht `oklch` (dort drehte sich der Farbton bei weissem Grund Richtung Rot).
+**Speicher des Browsers (5.10.2026):** Firefox mit partAtlas 708 MB, leer 239 MB (Tester, 8 946 Modelle). Ursache nicht gemessen (Verdacht: ganze Modellliste im Browser, entpackte Bilder);
+`about:memory` wäre die Messung. Bewusst zurückgestellt.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 **FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht

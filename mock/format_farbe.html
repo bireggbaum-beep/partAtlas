@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock: Formatfarben</title>
+<style>
+/* MOCK, nicht Teil der Anwendung: zeigt, wie Formatfarben auf Kacheln wirken könnten (Linie, Tönung, beides).
+   Farbwerte der Oberfläche wie in app.css. Datei einfach im Browser öffnen. */
+:root {
+  --bg: oklch(0.965 0.004 60); --panel: oklch(1 0 0);
+  --line: oklch(0.895 0.006 60);
+  --ink: oklch(0.245 0.01 45); --ink-2: oklch(0.42 0.01 50); --ink-3: oklch(0.50 0.008 50);
+  --accent: oklch(0.565 0.165 30);
+  --anteil: 9%;           /* Stärke der Tönung */
+  --shadow: 0 1px 2px rgba(40, 28, 24, 0.06), 0 8px 24px rgba(40, 28, 24, 0.05);
+  --bild: oklch(0.92 0.006 60);
+}
+:root[data-thema="dunkel"] {
+  --bg: oklch(0.165 0.005 60); --panel: oklch(0.205 0.006 60);
+  --line: oklch(0.295 0.008 60);
+  --ink: oklch(0.945 0.005 60); --ink-2: oklch(0.80 0.008 60); --ink-3: oklch(0.68 0.01 60);
+  --accent: oklch(0.735 0.155 34);
+  --anteil: 12%;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --bild: oklch(0.26 0.006 60);
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 21px 16px 55px; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+main { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 15px; margin: 34px 0 4px; }
+p.dim { color: var(--ink-2); margin: 0 0 13px; max-width: 70ch; }
+.leiste { display: flex; gap: 13px; align-items: center; flex-wrap: wrap; margin: 13px 0 0; }
+button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 13px; cursor: pointer; }
+.legende { display: flex; gap: 8px; flex-wrap: wrap; }
+.legende span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12.5px; }
+.legende i { width: 10px; height: 10px; border-radius: 50%; background: var(--f); }
+
+/* Formatfarben: gleiche Helligkeit und Sättigung, nur der Farbton wechselt */
+[data-f="stl"]   { --f: oklch(0.62 0.12 255); }
+[data-f="3mf"]   { --f: oklch(0.62 0.12 160); }
+[data-f="step"]  { --f: oklch(0.62 0.12 75); }
+[data-f="fcstd"] { --f: oklch(0.62 0.12 315); }
+[data-f="obj"]   { --f: oklch(0.62 0.12 205); }
+
+.reihe { display: grid; grid-template-columns: repeat(auto-fill, 144px); gap: 13px; }
+.k { width: 144px; height: 233px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+     display: flex; flex-direction: column; }
+.k .bild { height: 144px; margin: 8px 8px 0; border-radius: 6px; background: var(--bild); display: grid; place-items: center; }
+.k .form { width: 40px; height: 78px; border-radius: 8px; background: linear-gradient(90deg, #a2584a, #c97867 45%, #8c473b); }
+.k .form.platte { width: 86px; height: 40px; border-radius: 6px; }
+.k .form.rund { width: 70px; height: 70px; border-radius: 50%; }
+.k .text { padding: 8px 10px; }
+.k b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k b em { font-style: normal; font-weight: 400; color: var(--ink-3); }
+.k small { color: var(--ink-3); font-size: 12px; }
+
+/* Variante A: farbige Linie oben */
+.linie .k { border-top: 4px solid var(--f); }
+/* Variante B: Tönung des Hintergrunds */
+.toenung .k { background: color-mix(in oklab, var(--panel) calc(100% - var(--anteil)), var(--f) var(--anteil)); }
+/* Variante C: beides, jeweils zurückhaltender */
+.beides .k { border-top: 3px solid var(--f); background: color-mix(in oklab, var(--panel) calc(100% - var(--anteil) / 1.5), var(--f) calc(var(--anteil) / 1.5)); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Formatfarben auf den Kacheln — Mock</h1>
+  <p class="dim">Rückmeldung eines Testers: Tönungen je Format würden den Überblick verbessern. Hier drei Möglichkeiten neben dem heutigen Stand.
+     Es ist nur ein Bild; in der Anwendung ist nichts davon gebaut. Die Namen sind aus der FreeCAD-Library übernommen.</p>
+  <div class="leiste">
+    <button id="thema" type="button">Dunkel ansehen</button>
+    <div class="legende">
+      <span data-f="stl"><i></i>STL</span><span data-f="3mf"><i></i>3MF</span><span data-f="step"><i></i>STEP</span>
+      <span data-f="fcstd"><i></i>FCStd</span><span data-f="obj"><i></i>OBJ</span>
+    </div>
+  </div>
+
+  <h2>Heute</h2>
+  <p class="dim">Alle Kacheln gleich; das Format steht nur als Endung im Namen.</p>
+  <div class="reihe" id="r0"></div>
+
+  <h2>A · Farbige Linie</h2>
+  <p class="dim">Ein schmaler Streifen oben an der Kachel. Ruhig, das Bild bleibt unberührt.</p>
+  <div class="reihe linie" id="r1"></div>
+
+  <h2>B · Tönung</h2>
+  <p class="dim">Der Hintergrund der Kachel ist leicht in der Formatfarbe getönt (9 % hell, 12 % dunkel). Wirkt als Fläche, auch im Augenwinkel.</p>
+  <div class="reihe toenung" id="r2"></div>
+
+  <h2>C · Beides, jeweils schwächer</h2>
+  <p class="dim">Linie und Tönung zusammen, beide zurückgenommen.</p>
+  <div class="reihe beides" id="r3"></div>
+
+  <p class="dim" style="margin-top:34px">Lesbarkeit: Der graue Zusatztext (Mass, Gewicht) hat auf den getönten Kacheln etwa 5,3 : 1 Kontrast (hell und dunkel, alle fünf Töne),
+     der Name deutlich mehr; Richtwert für Fliesstext sind 4,5 : 1. Auf der ungetönten Kachel sind es etwa 6 : 1 (siehe Regel in KONZEPT.md).
+     Farbe allein trägt die Information nicht: das Format steht weiter in der Endung und als Chip in der Filterleiste.</p>
+</main>
+<script>
+const D = [
+  ["battery-AA", ".step", "step", "14 × 14 × 50 mm", "rund"], ["battery-AA", ".stl", "stl", "14 × 14 × 50 mm", ""],
+  ["battery-AA", ".FCStd", "fcstd", "14 × 14 × 50 mm", ""], ["battery-holder-4", ".3mf", "3mf", "49 × 56 × 13 mm", "platte"],
+  ["battery-holder-8", ".step", "step", "50 × 60 × 24 mm", "platte"], ["blower-50x50", ".FCStd", "fcstd", "52 × 51 × 15 mm", "rund"],
+  ["Haken", ".obj", "obj", "5 × 5 × 5 mm", "platte"],
+];
+for (let i = 0; i < 4; i++) {
+  document.getElementById("r" + i).innerHTML = D.map(([n, e, f, m, g]) =>
+    `<div class="k" data-f="${f}"><div class="bild"><div class="form ${g}"></div></div><div class="text"><b>${n}<em>${e}</em></b><small>${m}</small></div></div>`).join("");
+}
+const t = document.getElementById("thema");
+t.onclick = () => {
+  const dunkel = document.documentElement.dataset.thema !== "dunkel";
+  document.documentElement.dataset.thema = dunkel ? "dunkel" : "";
+  t.textContent = dunkel ? "Hell ansehen" : "Dunkel ansehen";
+};
+</script>
+</body>
+</html>
