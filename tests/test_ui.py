@@ -88,6 +88,24 @@ async def oberflaeche(port):
         while api(port, "/api/stand")["scan"].get("laeuft"):
             await asyncio.sleep(0.3)
         await pg.wait_for_timeout(500)
+        # -- Bedienbarkeit während des Einlesens: nicht bei jeder Änderung die ganze Liste neu holen
+        rl = await pg.evaluate("""async () => {
+            const orig = window.neuLaden, alt = zustand.scan; let n = 0;
+            window.neuLaden = () => { n++; };
+            clearTimeout(liveZeit); liveZeit = null;       // ein Zeitgeber vom echten Einlesen davor ist noch offen
+            LIVE_SCAN_MS = 400; zustand.scan = { laeuft: true };
+            for (let i = 0; i < 20; i++) { liveAenderung({ ref: "x" }); await new Promise((r) => setTimeout(r, 50)); }   // eine Änderung alle 50 ms, 1 s lang
+            const waehrend = n;
+            await new Promise((r) => setTimeout(r, 600));
+            const mit = zustand.modelle.length;
+            const ohne = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 0, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
+            const mitFunden = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 5, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
+            window.neuLaden = orig; zustand.scan = alt; LIVE_SCAN_MS = 5000;
+            return [waehrend, ohne, mitFunden, mit];
+        }""")
+        check("Beim Einlesen wird die Liste höchstens alle paar Sekunden neu geholt, nicht bei jeder Änderung (20 Änderungen in 1 s → 2 Neuladen bei 400 ms)",
+              1 <= rl[0] <= 3)
+        check("Ein Einlesen ohne Funde lädt am Ende nichts neu, eines mit Funden einmal", rl[3] > 0 and rl[1] == 0 and rl[2] == 1)
         check("Tab-Titel nennt die Fassung („partAtlas 0.x.y“): wer mehrere Tabs oder Fenster offen hat, sieht, welche Fassung läuft",
               await pg.title() == f"partAtlas {api(port, '/api/stand')['version']}")
         check("Bereinigen: kein Zählabzeichen am Besen, solange nichts zu tun ist",

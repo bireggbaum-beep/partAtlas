@@ -2264,36 +2264,56 @@ function hintergrundZeichnen(m) {
 
 // ---------------------------------------------------------------- Live (flatgraph bei_aenderung → SSE)
 
-let liveZeit, liveBetrifft = false;
+let liveZeit = null, liveBetrifft = false;
+let LIVE_SCAN_MS = 5000;       // während eines Einlesens höchstens so oft die Liste neu holen
+
+// Hat das Einlesen etwas verändert, das in der Liste steht? Sonst ist das Neuladen am Ende überflüssig: ein Einlesen ohne Funde schreibt
+// nichts (gemessen: 0 Änderungsmeldungen), und die Liste ist schon aktuell. Bei 9 000 Modellen auf einem älteren Rechner sind das Sekunden.
+const scanHatVeraendert = (m) => !!(m.neu || m.verschoben || m.entfernt || m.zurueckgeholt || m.aufgeraeumt || m.vorschauen_gesamt || m.cad_gesamt
+  || m.abgebrochen || !zustand.modelle.length);
+
+function liveScan(m) {
+  zustand.scan = m;
+  einlesenZeichnen(m);
+  hintergrundZeichnen(m);
+  if (!zustand.modelle.length) zeichneLeer();
+  $("#scan-abbrechen").hidden = !m.laeuft || !!m.abbricht;
+  // Was läuft, zeigt das Einlesen-Fenster bzw. die Anzeige beim Zahnrad; oben bleibt nur das Ergebnis des letzten Laufs.
+  if (m.laeuft) $("#scan-status").textContent = "";
+  // Während des Einlesen-Fensters wartet die Frage; es nennt sie in der Bilanz und stellt sie nach OK.
+  if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+  if (m.phase === "fertig" || m.abgebrochen) {
+    $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
+    if (scanHatVeraendert(m)) neuLaden();
+  }
+}
+
+function liveAenderung(m) {
+  const meins = zustand.gewaehlt && [m.ref, m.quelle, m.ziel].includes(`MODEL_ASSET/${zustand.gewaehlt}`);
+  if (meins) liveBetrifft = true;
+  const feuern = () => {
+    liveZeit = null;
+    neuLaden();
+    if (liveBetrifft && zustand.gewaehlt) waehle(zustand.gewaehlt, true);
+    liveBetrifft = false;
+  };
+  if (zustand.scan?.laeuft) {
+    // Beim Einlesen kommt fast jede Sekunde eine Änderung (FreeCAD, Vorschauen). Jedes Mal die ganze Liste holen und zeichnen hielte den
+    // Rechner dauernd beschäftigt, auch den Server (er baut die Kacheln nach jeder Änderung neu). Stattdessen höchstens alle LIVE_SCAN_MS einmal.
+    if (liveZeit === null) liveZeit = setTimeout(feuern, LIVE_SCAN_MS);
+    return;
+  }
+  // Sonst: viele Änderungen hintereinander sammeln, dann einmal laden.
+  clearTimeout(liveZeit);
+  liveZeit = setTimeout(feuern, 300);
+}
+
 function live() {
   const q = new EventSource("/api/live");
   q.onmessage = (e) => {
     const m = JSON.parse(e.data);
-    if (m.art === "scan") {
-      zustand.scan = m;
-      einlesenZeichnen(m);
-      hintergrundZeichnen(m);
-      if (!zustand.modelle.length) zeichneLeer();
-      $("#scan-abbrechen").hidden = !m.laeuft || !!m.abbricht;
-      // Was läuft, zeigt das Einlesen-Fenster bzw. die Anzeige beim Zahnrad; oben bleibt nur das Ergebnis des letzten Laufs.
-      if (m.laeuft) $("#scan-status").textContent = "";
-      // Während des Einlesen-Fensters wartet die Frage; es nennt sie in der Bilanz und stellt sie nach OK.
-      if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
-      if (m.phase === "fertig" || m.abgebrochen) {
-        $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
-        neuLaden();
-      }
-      return;
-    }
-    // Viele Änderungen hintereinander (Scan) sammeln, dann einmal laden.
-    const meins = zustand.gewaehlt && [m.ref, m.quelle, m.ziel].includes(`MODEL_ASSET/${zustand.gewaehlt}`);
-    if (meins) liveBetrifft = true;
-    clearTimeout(liveZeit);
-    liveZeit = setTimeout(() => {
-      neuLaden();
-      if (liveBetrifft && zustand.gewaehlt) waehle(zustand.gewaehlt, true);
-      liveBetrifft = false;
-    }, 300);
+    if (m.art === "scan") return liveScan(m);
+    liveAenderung(m);
   };
 }
 
