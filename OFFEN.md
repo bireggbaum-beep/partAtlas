@@ -588,6 +588,14 @@ Wunsch des Testers; gehört zur Linie „partAtlas wie ein Dateimanager bedienen
   die Rechnung läuft auf den Positionen, nicht im DOM).
 - **Reihenfolge:** zusammen mit e) (Spalten ein-/ausblenden, ziehen, „Baugruppe“) bauen, dann passt der Kopf.
 
+## Navigation in grossen Beständen (5.10.2026, nur Beobachtung, nichts zu bauen)
+
+Stand beim Tester mit 9 000 Modellen (FreeCAD-Library): Suche und Filter sind schnell, „100× besser als vorher“, er braucht nichts Weiteres. **Erwartung:** das Bedürfnis wächst nach Wochen — Suche
+trägt, wenn man den Namen kennt, nicht beim Stöbern oder bei „weiss nicht, wie es heisst“; Ordner helfen bei grossen Beständen auch nicht. Kandidaten, wenn es soweit ist (Einordnung, nicht geprüft):
+gemerkte Suchen als Sammlung (Aufwand 2–3), gleiches Teil in mehreren Formaten zu **einer** Kachel zusammenfassen (aus 9 000 gut 3 000; Aufwand 3–4, berührt „ein Modell = eine Datei“, vorher entscheiden),
+Tags, die etwas trennen (Auto-Tags für den Bestand entfernen, Suche im Tag-Feld, nach Häufigkeit; Aufwand 2), Einstiege „zuletzt angesehen/hinzugefügt“ (teilweise da), Filter mit Trefferzahl nach dem Einschränken.
+**Zeichen, dass es soweit ist:** dieselbe Suche wird mehrfach getippt; etwas wird nicht gefunden, das sicher drin ist. Nicht die Grösse des Bestands.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
