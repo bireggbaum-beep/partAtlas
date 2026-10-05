@@ -445,6 +445,9 @@ if __name__ == "__main__":
           st_s.status["phase"] == "fertig" and st_s.status["cad_ohne_freecad"] == 2 and len(st_k.ausstehende_cad()) == 2
           and d1["Halter"]["cad"] == "ausstehend" and not os.path.exists(st_b.netz_pfad(d1["Halter"]["hash"])))
 
+    check("Lauf meldet früh, was FreeCAD bekommt (Schritt-Anzeige: „Danach: FreeCAD für 2 Dateien“), und wie lange die Phase schon läuft (Restzeit-Schätzung)",
+          st_s.status.get("cad_voraus") == 2 and isinstance(st_s.status.get("phase_s"), float))
+
     st_s = Scanner(st_b, st_k, prozesse=2, cad_befehl=attrappe)
     st_s.lauf()
     d2 = {m["name"]: m for m in st_k.modelle()}
@@ -465,6 +468,38 @@ if __name__ == "__main__":
           os.path.exists(st_b.netz_pfad(d2["Halter"]["hash"])))
     _scan2.programme.programm_fuer = _vorher
     st_b.schliessen()
+
+    # -- FreeCAD bekommt die kleinen Dateien zuerst (frühe Bilder, ehrliche Restzeit, die grossen mit dem Hänger-Risiko am Ende)
+    gr_tmp = tempfile.mkdtemp()
+    gr_dir = os.path.join(gr_tmp, "cad")
+    os.makedirs(gr_dir)
+    for n, pad in (("a_gross.step", 5000), ("b_klein.step", 10), ("c_mittel.step", 1000)):
+        muster.step(os.path.join(gr_dir, n))
+        with open(os.path.join(gr_dir, n), "a") as f:
+            f.write("/*" + n + "*/" + "x" * pad + "\n")
+    gr_b = Bestand(os.path.join(gr_tmp, "bestand"))
+    gr_k = Katalog(gr_b)
+    gr_k.wurzel_hinzufuegen(gr_dir)
+    _scan2.programme.programm_fuer = lambda *a, **kw: None
+    reihenfolge = []
+    _umw = _scan2.cad.umwandeln
+    _scan2.cad.umwandeln = lambda befehl, aufgaben, stopp, ordner: (reihenfolge.extend(os.path.basename(q) for _, q, _ in aufgaben), iter(()))[1]
+    try:
+        Scanner(gr_b, gr_k, prozesse=2, cad_befehl=attrappe).lauf()
+    finally:
+        _scan2.cad.umwandeln = _umw
+        _scan2.programme.programm_fuer = _vorher
+    check("FreeCAD-Aufträge nach Grösse aufsteigend, nicht in Datenbankreihenfolge", reihenfolge == ["b_klein.step", "c_mittel.step", "a_gross.step"])
+    gr_b.schliessen()
+
+    # -- Arbeiter laufen mit niedriger Priorität (die Oberfläche bleibt bedienbar, solange eingelesen wird)
+    pr = _S(None, None, prozesse=1)
+    pr._pool = pr._neuer_pool()
+    try:
+        nice_werte = [e for _, e, _ in pr._verteilen([("a", ("a",))], muster.arbeit_nice)]
+    finally:
+        pr._pool.shutdown(wait=False, cancel_futures=True)
+    check("Arbeitsprozess startet mit niedriger Priorität (nice > 0)", nice_werte and nice_werte[0] > os.nice(0))
 
     # -- FCStd über FreeCAD nur nach Zusage des Anwenders (ein Dokument kann Programmcode mitbringen)
     fz_tmp = tempfile.mkdtemp()

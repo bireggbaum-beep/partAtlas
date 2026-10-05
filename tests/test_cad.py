@@ -100,6 +100,8 @@ if __name__ == "__main__":
     check("Umwandeln: ein Start für den Stapel, nach der hängenden Datei genau ein zweiter",
           open(logdatei).read().count("start") == 2)
     check("Umwandeln: der Arbeitsordner wird aufgeräumt", os.listdir(os.path.join(tmp, "arbeit")) == [])
+    check("Umwandeln: FreeCAD läuft mit niedriger Priorität (nice > 0), damit die Oberfläche bedienbar bleibt",
+          all(int(z.split("nice=")[1]) > 0 for z in open(logdatei).read().splitlines() if z.startswith("start")))
 
     # -- Schlafmodus: die Wanduhr springt, die Datei in Arbeit darf nicht als hängend gelten
     uhr_echt, sprung = time.time, [0]

@@ -10,7 +10,7 @@ from partatlas import cad_skript
 
 if os.environ.get("CAD_ATTRAPPE_LOG"):
     with open(os.environ["CAD_ATTRAPPE_LOG"], "a") as f:
-        f.write("start\n")
+        f.write(f"start nice={os.nice(0)}\n")
 
 
 class Netz:

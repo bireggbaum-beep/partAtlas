@@ -29,6 +29,7 @@ gesehenen Orte ist dann unvollständig.
 import logging
 import multiprocessing
 import os
+import sys
 import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, ProcessPoolExecutor, wait
@@ -45,6 +46,19 @@ ZEITGRENZE = 180      # Sekunden ohne ein einziges fertiges Ergebnis, bevor eine
 
 
 # ---------------------------------------------------------------- Arbeitsprozesse
+
+def _niedrig():
+    """Beim Start jedes Arbeiters: Hintergrundarbeit läuft mit niedriger Priorität. Sonst konkurrieren alle Arbeiter gleichberechtigt
+    mit dem Server um die Kerne, und auf einem älteren Rechner braucht ein Klick Sekunden bis Minuten, solange eingelesen wird.
+    Gibt ein Rechner Kerne frei, nehmen die Arbeiter sie trotzdem; nur wenn jemand klickt, gewinnt der Server."""
+    try:
+        if sys.platform.startswith("win"):
+            import ctypes
+            ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000)   # BELOW_NORMAL_PRIORITY_CLASS
+        else:
+            os.nice(10)
+    except Exception:
+        pass            # keine Berechtigung oder nicht unterstützt: dann eben mit normaler Priorität
 
 def _hash(pfad):
     try:
@@ -105,7 +119,8 @@ class Scanner:
         self.k = katalog
         self.zeitgrenze = zeitgrenze or ZEITGRENZE
         self.melden = melden or (lambda status: None)
-        self.prozesse = prozesse or max(1, (os.cpu_count() or 2) - 1)
+        # Höchstens die Hälfte der Threads (mindestens einer, nie alle bis auf einen): die Oberfläche braucht auch etwas.
+        self.prozesse = prozesse or max(1, min((os.cpu_count() or 2) - 1, ((os.cpu_count() or 2) + 1) // 2))
         self._sperre = threading.Lock()
         self._faden = None
         self._nochmal = False               # Folgelauf nach dem laufenden: False, "cad" (nur FreeCAD) oder True (ganz)
@@ -129,7 +144,7 @@ class Scanner:
     def _neuer_pool(self):
         # spawn statt fork: der Server hat Threads und eine offene Datenbank; ein geforkter Kindprozess erbte beides halb.
         # Unter Windows gibt es ohnehin nur spawn.
-        return ProcessPoolExecutor(self.prozesse, mp_context=multiprocessing.get_context("spawn"))
+        return ProcessPoolExecutor(self.prozesse, mp_context=multiprocessing.get_context("spawn"), initializer=_niedrig)
 
     def _pool_neu(self):
         """Nach einem harten Absturz eines Arbeiters (etwa vom Betriebssystem beendet, weil der Speicher ausging) ist der
@@ -215,6 +230,8 @@ class Scanner:
             if self._phase_name != werte["phase"]:
                 self._phase_name, self._phase_t = werte["phase"], jetzt
             werte["phasen"] = dict(self._phasen)
+        if self._phase_name:
+            werte["phase_s"] = round(time.monotonic() - self._phase_t, 1)     # für die Restzeit-Schätzung der Oberfläche
         self.status.update(werte)
         self.melden(dict(self.status))
 
@@ -394,7 +411,7 @@ class Scanner:
             # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
             # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
             # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.
-            self._setze(entfernt=len(weg), phase="vorschau", fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.monotonic() - t0, 1))
+            self._setze(entfernt=len(weg), phase="vorschau", cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.monotonic() - t0, 1))
 
             self._vorschauen()
             if self._stopp.is_set():
@@ -505,6 +522,9 @@ class Scanner:
             pfad = self.k.absoluter_pfad(ort) if ort else None
             if pfad and os.path.exists(pfad):
                 aufgaben.append((h, pfad, self.b.pfad("arbeit", "cad", f"{h}.stl")))
+        # Kleine zuerst: die ersten Bilder erscheinen früh, die Schätzung der Restzeit wird nicht von einer frühen Riesenbaugruppe verzerrt,
+        # und was hängen könnte (die grossen Dateien), kommt ans Ende.
+        aufgaben.sort(key=lambda a: os.path.getsize(a[1]))
         self._setze(phase="cad", cad_offen=len(aufgaben), cad_gesamt=len(aufgaben))
         rest = len(aufgaben)
         for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
@@ -526,6 +546,13 @@ class Scanner:
                     self.k.cad_ergebnis(h, felder, status, fehler)
             self._setze(cad_offen=rest, bearbeitet=self.status["bearbeitet"] + 1)
 
+    def _cad_anzahl(self):
+        """Wie viele Dateien FreeCAD voraussichtlich bekommt — schon vor den Vorschauen bekannt, damit man früh weiss, was kommt."""
+        offen = self.k.ausstehende_cad()
+        if self.b.einstellungen().get("fcstd_freecad") != "ja":
+            offen = [x for x in offen if x[1].get("format") != "fcstd"]
+        return len(offen)
+
     def _fcstd_offen(self):
         """Wie viele FCStd-Dateien auf die Zusage für FreeCAD warten; 0, wenn der Anwender schon geantwortet hat."""
         if self.b.einstellungen().get("fcstd_freecad") is not None:
@@ -546,7 +573,7 @@ class Scanner:
         if not bilder:
             return
         fertig = 0
-        with ThreadPoolExecutor(self.prozesse) as pool:
+        with ThreadPoolExecutor(min(2, self.prozesse)) as pool:      # wenige: die Threads teilen sich den Server-Prozess mit der Oberfläche
             for _ in pool.map(self._thumb_eins, bilder):
                 fertig += 1
                 if fertig % 25 == 0:

@@ -78,7 +78,11 @@ def _stapel(befehl, stueck, stopp, ordner):
                    "winkel": WINKEL_RAD, "ergebnis": ergebnis}, f)
     open(ergebnis, "w").close()
     optionen = {"stdin": subprocess.DEVNULL, "start_new_session": True} if not sys.platform.startswith("win") \
-        else {"stdin": subprocess.DEVNULL, "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        else {"stdin": subprocess.DEVNULL, "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | 0x00004000}    # + BELOW_NORMAL_PRIORITY_CLASS
+    # Niedrige Priorität, damit die Oberfläche bedienbar bleibt, solange FreeCAD rechnet (`nice` ersetzt sich selbst durch den Aufruf).
+    # Nur wenn das Programm da ist: sonst meldete `nice` den Fehler, und die Meldung „liess sich nicht starten“ ginge verloren.
+    if not sys.platform.startswith("win") and shutil.which("nice") and shutil.which(befehl[0]):
+        befehl = ["nice", "-n", "10", *befehl]
     try:
         with open(protokoll, "wb") as aus:
             proc = subprocess.Popen([*befehl, SKRIPT], env={**os.environ, "PARTATLAS_CAD_JOB": jobpfad},

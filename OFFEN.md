@@ -291,6 +291,13 @@ Nicht geprüft: ob `monotonic` auf Windows/Mac den Schlaf mitzählt (Linux: nein
 verschieben ihn). `ps -C python3` findet den Server auf Manjaro nicht zuverlässig: `ps -eo rss,cmd --sort=-rss | head -8`.
 **Offen aus dem Gespräch:** UI stockt beim Einlesen auf dieser Maschine bis zu einer Minute (Arbeiter laufen mit normaler Priorität, `Kerne − 1` Stück) — Vorschlag: niedrige Priorität,
 weniger Arbeiter, Thumbs-Threads begrenzen, Dateien nach Grösse aufsteigend an FreeCAD (Aufwand 2). Parallele FreeCAD-Prozesse sind bei ca. 1 Datei/s weniger dringend.
+**Einlesen verständlich und die Oberfläche bedienbar (0.42.0), Rückmeldung des Testers:** „man muss verstehen, was läuft und wie viel fertig ist (8 Stunden oder 15 min?), und die Oberfläche muss bedienbar bleiben“.
+(1) Anzeige beim Zahnrad: „Schritt 4 von 5“, Zähler, **Restzeit aus dem Tempo der laufenden Phase** (`restzeit()` in `app.js`, erst ab 10 Dateien und 20 s — vorher geraten), und schon in den frühen Phasen
+„Danach: FreeCAD für N Dateien — das dauert am längsten“ (`cad_voraus`, `phase_s` im Status). (2) Arbeiter und FreeCAD laufen mit **niedriger Priorität** (`os.nice(10)` bzw. `nice -n 10`, Windows
+`BELOW_NORMAL_PRIORITY_CLASS`), **höchstens die Hälfte der Threads** als Arbeiter (vorher Kerne − 1), Thumbs mit höchstens 2 Threads. (3) FreeCAD bekommt die **kleinen Dateien zuerst**.
+Geprüft in `test_scan` (78/78), `test_cad` (14/14), `test_api`, `test_ui` (81/81) mit Gegenproben (ohne Initializer, ohne Sortierung, ohne `cad_voraus`, ohne `nice`); die Restzeit-Rechnung mit `node` an Beispielen.
+**Nicht geprüft:** die neue Anzeige im Browser (kein Test in `test_ui.py`, keine Bildschirmprobe), Windows/Mac (Priorität, `monotonic`), und **ob die Oberfläche auf dem Rechner des Testers (i7 920) jetzt reagiert** —
+das ist die eigentliche Probe; Rückmeldung abwarten. Die Restzeit kann bei sehr ungleichen Dateien schwanken (kleine zuerst: anfangs eher zu optimistisch).
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 **FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht

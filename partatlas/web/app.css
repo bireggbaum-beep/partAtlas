@@ -849,6 +849,7 @@ dialog.einlesen { width: min(460px, calc(100vw - 32px)); }
                background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
 .hg-kopf { display: flex; justify-content: space-between; gap: 8px; }
 .hg-zahl { font-family: var(--mono); color: var(--ink-3); }
+.hg-zeile { margin-top: 4px; font-size: 12px; line-height: 1.4; }
 
 /* Liste vor dem Hochladen (wie SecureSafe): Häkchen, Pfad, Grösse */
 .dl-kopf { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 4px; font-size: 13px; }

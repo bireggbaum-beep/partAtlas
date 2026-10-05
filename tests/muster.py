@@ -142,6 +142,10 @@ def fcstd(pfad, thumbnail=True, document=True):
 
 
 # -- Arbeitsfunktionen für die Absturz-Prüfungen des Scans (müssen in einem importierbaren Modul liegen: die Arbeiter starten per spawn)
+def arbeit_nice(x):
+    return os.nice(0)                # die Priorität (nice-Wert) des Arbeiters, wie sie nach dem Start ist
+
+
 def arbeit_test(x):
     if x == "gift":
         os._exit(1)                  # wie vom Betriebssystem beendet (Speichermangel): kein Fehler, der Prozess ist einfach weg

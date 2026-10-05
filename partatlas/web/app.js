@@ -2156,6 +2156,18 @@ $("#einlesen").addEventListener("close", () => {
 });
 
 // Klein beim Zahnrad: was gerade im Hintergrund läuft, mit Balken. Weg, sobald nichts mehr läuft.
+const SCHRITTE = [["hashen", "Dateien prüfen"], ["analysieren", "Einlesen"], ["vorschau", "Vorschaubilder"], ["cad", "FreeCAD"], ["thumbs", "Kleine Bilder"]];
+
+// Restzeit aus dem bisherigen Tempo dieser Phase. Erst nach einer Weile und ein paar Dateien: vorher wäre es geraten.
+function restzeit(fertig, gesamt, sek) {
+  if (!(fertig >= 10 && sek >= 20 && gesamt > fertig)) return "";
+  const rest = (gesamt - fertig) * sek / fertig;
+  if (rest < 60) return "noch unter 1 min";
+  if (rest < 3600) return `noch etwa ${Math.round(rest / 60)} min`;
+  const h = Math.floor(rest / 3600), min = Math.round((rest % 3600) / 300) * 5;
+  return min >= 60 ? `noch etwa ${h + 1} h` : `noch etwa ${h} h${min ? ` ${min} min` : ""}`;
+}
+
 function hintergrundZeichnen(m) {
   const h = $("#hintergrund");
   if (!m.laeuft || $("#einlesen").open) { h.hidden = true; return; }
@@ -2169,9 +2181,17 @@ function hintergrundZeichnen(m) {
   else if (m.phase === "thumbs") { text = "Kleine Bilder vorbereiten"; [fertig, gesamt] = [m.thumbs_fertig, m.thumbs_gesamt]; }
   else text = "Läuft …";
   const anteil = gesamt ? fertig / gesamt : null;
+  // Wo im Ganzen: „Schritt 4 von 5“ (FreeCAD nur, wenn welche anstehen) und was danach noch kommt — damit man weiss, ob es Minuten oder Stunden sind.
+  const schritte = SCHRITTE.filter(([k]) => k !== "cad" || m.cad_voraus > 0 || m.cad_gesamt || m.phase === "cad");
+  const nr = schritte.findIndex(([k]) => k === m.phase) + 1;
+  const rest = m.abbricht ? "" : restzeit(fertig, gesamt, m.phase_s || 0);
+  const zeile2 = [nr ? `Schritt ${nr} von ${schritte.length}` : "", rest].filter(Boolean).join(" · ");
+  const danach = !m.abbricht && m.cad_voraus > 0 && ["hashen", "analysieren", "vorschau"].includes(m.phase)
+    ? `Danach: FreeCAD für ${anzahl(m.cad_voraus)} Dateien — das dauert am längsten. Du kannst solange weiterarbeiten.` : "";
   h.hidden = false;
   abgleichen(h, `<div class="hg-kopf"><span>${text}</span>${gesamt ? `<span class="hg-zahl">${anzahl(fertig)} / ${anzahl(gesamt)}</span>` : ""}</div>
-    <div class="balken klein ${anteil == null ? "unbestimmt" : ""}"><i style="width:${Math.round((anteil ?? 0.3) * 100)}%"></i></div>`);
+    <div class="balken klein ${anteil == null ? "unbestimmt" : ""}"><i style="width:${Math.round((anteil ?? 0.3) * 100)}%"></i></div>
+    ${zeile2 ? `<div class="hg-zeile dim">${zeile2}</div>` : ""}${danach ? `<div class="hg-zeile dim">${danach}</div>` : ""}`);
 }
 
 // ---------------------------------------------------------------- Live (flatgraph bei_aenderung → SSE)
