@@ -7,6 +7,7 @@ Ohne Passwort lauscht er nur auf 127.0.0.1 — lieber unbrauchbar als offen
 (wie pDMS). Zugriff aus dem Heimnetz kommt mit dem Passwort (offen).
 """
 import asyncio
+import json
 import logging
 import os
 import re
@@ -174,9 +175,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
                 sammlung: str = "", tags: str = "", material: str = "", leiste: bool = False):
         # tags und material als Komma-Liste: die Chips der Leiste, je mit ODER.
         liste = lambda s: [x for x in s.split(",") if x]
-        return K().modelle(suche=q or None, tag=tag or None, ordner=ordner or None,
-                           fmt=format or None, ansicht=ansicht, sammlung=sammlung or None,
-                           tags=liste(tags), materialien=liste(material), leiste=leiste)
+        erg = K().modelle(suche=q or None, tag=tag or None, ordner=ordner or None,
+                          fmt=format or None, ansicht=ansicht, sammlung=sammlung or None,
+                          tags=liste(tags), materialien=liste(material), leiste=leiste)
+        # Selbst in JSON wandeln: FastAPIs Umwandlung (`jsonable_encoder`) brauchte bei 9 000 Treffern 0,7 s von 1,3 s, `json.dumps` 0,1 s.
+        # Auf einem älteren Rechner sind das die Sekunden zwischen Klick und Liste (Messung vom 5.10.2026, siehe OFFEN.md).
+        return Response(json.dumps(erg, ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)),
+                        media_type="application/json")
 
     @app.get("/api/zaehler")
     def zaehler():

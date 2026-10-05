@@ -315,6 +315,13 @@ Geprüft in `test_ui` (91/91, Gegenprobe ohne Sprung fällt), im Browser angeseh
 **Offen:** Tag-Chips in der Leiste und Filter in den Verlauf nehmen; Rückverweise auch für Sammlungen/Baugruppen („welche Modelle?“ ist die Ansicht selbst), `traverse` für mehrstufige Abfragen.
 **Fassung im Tab-Titel (0.44.1), Wunsch des Testers:** „partAtlas 0.44.1“ statt „partAtlas“ (aus `/api/stand`, gesetzt in `app.js`), damit man bei mehreren Tabs sieht, welche Fassung läuft. Die Fassung kommt vom Server und wird
 beim Start gelesen: nach `git pull` ohne Neustart zeigt der Tab die alte. Geprüft in `test_ui` (92/92) mit Gegenprobe.
+**Antwortzeit der Liste (0.44.2), Rückmeldung des Testers („bei 1 000 und mehr Treffern bis 3 Sekunden“):** gemessen am **5.10.2026** auf einem künstlichen Bestand mit 9 040 Modellen (40 echte Modelle 226-fach geklont; Maschine: 4 vCPU Xeon 2,8 GHz, nicht
+die des Testers). Vorher: 0,15 ms je Treffer, dazu ein Sockel von ca. 0,25 s je Anfrage (alle Kacheln wurden bei jeder Anfrage neu gebaut, auch für 3 Treffer; `/api/zaehler` baute sie dreimal): alle 9 040: 1,3 s, STL 4 972: 0,9 s,
+„halter“ 2 034: 0,31 s, Ordner (280 Treffer): 0,35 s, `/api/zaehler`: 0,78 s. Zwei Ursachen: (1) **FastAPIs `jsonable_encoder` frass 0,7 s von 1,3 s** (`json.dumps` derselben Daten: 0,1 s) — `/api/modelle` wandelt jetzt selbst um;
+(2) **Kacheln zwischenspeichern** (`Katalog._kurz_alle`, verworfen bei jeder Änderung am Graphen über `Bestand.generation`; ausgeliefert werden flache Kopien). Nachher: alle 0,32 s, STL 0,13 s, „halter“ 0,06 s, Ordner 0,04 s, `/api/zaehler` 0,11 s.
+Der Zwischenspeicher kostet bei 9 040 Modellen ca. 11,5 MB (gemessen), bei 50 000 grob 60 MB (hochgerechnet). Während eines Einlesens ändert sich der Graph ständig, dann bleibt es beim Neuaufbau.
+Geprüft in `test_api` (63/63, neue Prüfung „Liste nach Änderung sofort aktuell“ mit Gegenprobe ohne `generation`), alle anderen Suiten und `test_ui` (92/92). **Nicht gemessen:** der Browser (JSON lesen, Liste zeichnen, Sortieren, Gruppieren) und die Maschine des Testers;
+**offen**, falls es dort weiter 1–3 s dauert: Liste in Seiten laden statt alle auf einmal, `_kurz` mit weniger Graph-Abfragen (heute 4 je Modell, je mit Sperre).
 **Speicher des Browsers (5.10.2026):** Firefox mit partAtlas 708 MB, leer 239 MB (Tester, 8 946 Modelle). Ursache nicht gemessen (Verdacht: ganze Modellliste im Browser, entpackte Bilder);
 `about:memory` wäre die Messung. Bewusst zurückgestellt.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.

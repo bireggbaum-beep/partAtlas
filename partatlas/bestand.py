@@ -65,6 +65,7 @@ class Bestand:
         self.wurzel = os.path.abspath(wurzel or os.environ.get("PARTATLAS_BESTAND") or standard_ort())
         for teil in ("vault/vorschau", "vault/bilder", "papierkorb", "arbeit"):
             os.makedirs(os.path.join(self.wurzel, teil), exist_ok=True)
+        self.generation = 0
         self._hoerer = []
         self._hoerer_sperre = threading.Lock()
         if bei_aenderung:
@@ -76,6 +77,7 @@ class Bestand:
     # Der Rückruf läuft unter der Sperre von flatgraph (VERTRAG §2.7): nur
     # weiterreichen, nichts Langsames.
     def _melden(self, meldung):
+        self.generation += 1            # jede Änderung am Graphen; wer Abgeleitetes zwischenspeichert, merkt daran, dass es veraltet ist
         with self._hoerer_sperre:
             hoerer = list(self._hoerer)
         for h in hoerer:

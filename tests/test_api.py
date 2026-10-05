@@ -101,6 +101,9 @@ if __name__ == "__main__":
 
         r = c.patch(f"/api/modelle/{zahnrad['id']}", json={"favorit": True, "gedruckt": True})
         check("Favorit und Gedruckt setzen", r.json()["favorit"] and r.json()["gedruckt"])
+        check("Die Liste ist nach jeder Änderung sofort aktuell: der Zwischenspeicher der Kacheln wird bei einer Änderung verworfen, auch für die Ansicht „Favoriten“",
+              next(x for x in c.get("/api/modelle").json() if x["id"] == zahnrad["id"])["favorit"] is True
+              and [x["id"] for x in c.get("/api/modelle", params={"ansicht": "favoriten"}).json()] == [zahnrad["id"]])
         check("Unbekanntes Feld wird abgelehnt", c.patch(f"/api/modelle/{zahnrad['id']}", json={"hash": "x"}).status_code == 400)
 
         # -- Ordner wählen: durchsuchen statt Pfad tippen
