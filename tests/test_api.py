@@ -280,5 +280,24 @@ if __name__ == "__main__":
         c.app.state.zustand["scanner"].warten(120)
         time.sleep(0.5)
         check("Neustart mit eingeschalteter Einstellung: es wird eingelesen", c.get("/api/stand").json()["scan"]["lauf"] >= 1)
+    # -- Neustart mit offenen Vorschaubildern: die Warteschlange wird fortgesetzt, auch ohne „Beim Start einlesen“ und ohne die Ordner zu durchsuchen
+    wq_pfad = os.path.join(tmp, "bestand_warteschlange")
+    with TestClient(erstelle_app(wq_pfad, prozesse=2)) as c:
+        c.post("/api/wurzeln", json={"pfad": sammlung})
+        c.app.state.zustand["scanner"].warten(120)
+        bq = c.app.state.zustand["bestand"]
+        h0 = c.get("/api/modelle").json()[0]["hash"]
+        bq.db.update_node("PART_GEOMETRY", h0, {"vorschau": "ausstehend"})       # wie nach einem Abbruch mitten im Rechnen
+        os.remove(bq.vorschau_pfad(h0, "berechnet"))
+    muster.stl_binaer(os.path.join(sammlung, "Nach_dem_Beenden.stl"), 77, 20, 30)
+    with TestClient(erstelle_app(wq_pfad, prozesse=2)) as c:
+        c.app.state.zustand["scanner"].warten(120)
+        time.sleep(0.5)
+        stand = c.get("/api/stand").json()
+        check("Neustart mit offenem Vorschaubild: es wird fortgesetzt (Hintergrundlauf), ohne „Beim Start einlesen“",
+              stand["scan"]["lauf"] >= 1 and stand["scan"]["nur_cad"] is True and os.path.exists(c.app.state.zustand["bestand"].vorschau_pfad(h0, "berechnet")))
+        check("Dabei werden die Ordner nicht durchsucht: die neue Datei kommt nicht dazu",
+              "Nach_dem_Beenden" not in {x["name"] for x in c.get("/api/modelle").json()})
+    os.remove(os.path.join(sammlung, "Nach_dem_Beenden.stl"))
     muster.ende()
 

@@ -58,6 +58,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         beim_start = bool(b.einstellungen().get("scan_beim_start", False)) if scan_beim_start is None else scan_beim_start
         if beim_start and k.wurzeln():
             s.starten()
+        elif k.wurzeln() and s.hat_offenes():
+            # Auch ohne „Beim Start einlesen“: was im Hintergrund noch aussteht (Vorschaubilder, FreeCAD), wird fortgesetzt — ohne die Ordner
+            # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
+            s.starten(nur_cad=True)
         yield
         s.warten(30)
         b.schliessen()

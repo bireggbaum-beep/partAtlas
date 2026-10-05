@@ -76,27 +76,12 @@ async def oberflaeche(port):
               "Modelldateien" in text and "STL" in text and await pg.locator('#dialog button[value="nein"]').count() == 1)
         await pg.click('#dialog button[value="ja"]')
         await pg.wait_for_selector("#einlesen[open] .balken")
-        # Ist das Lesen fertig und die Bilanz hat nichts Besonderes zu melden, schliesst sich das Fenster von selbst (Vorschauen laufen
-        # im Hintergrund weiter, das Fenster unten links zeigt sie); sonst bleibt die Bilanz bis zum OK.
-        await pg.wait_for_function("!document.querySelector('#einlesen').open || document.querySelector('#ein-ok')", timeout=60000)
+        await pg.wait_for_selector("#ein-ok", timeout=60000)
         text = await pg.inner_text("#einlesen")
-        offen = await pg.locator("#einlesen[open]").count() == 1
-        check("Einlesen im Fenster mit Balken; danach Bilanz (neu, je Format, Dauer) bis zum OK, oder das Fenster schliesst sich selbst, wenn nichts zu melden ist",
-              (offen and "neu eingelesen" in text and "STL" in text) or not offen)
-        if offen:
-            await pg.click("#ein-ok")
-        check("Das Fenster ist zu", await pg.locator("#einlesen[open]").count() == 0)
-        selbst = await pg.evaluate("""() => {
-            const r = [];
-            for (const m of [{ unlesbar: 0 }, { unlesbar: 1 }, { kopien: 2 }]) {
-                einlesen.lauf = 99; $("#einlesen").showModal();
-                einlesenZeichnen({ lauf: 99, laeuft: true, einlesen_s: 2, neu: 5, gefunden: 5, phase: "vorschau", je_format: { stl: 5 }, ...m });
-                r.push($("#einlesen").open); if ($("#einlesen").open) $("#einlesen").close();
-            }
-            einlesen.lauf = null; return r;
-        }""")
-        check("Läuft nur noch der Hintergrund: ohne Hinweise schliesst sich das Fenster (Fenster unten links übernimmt), mit unlesbaren Dateien oder Kopien bleibt es",
-              selbst == [False, True, True])
+        check("Einlesen im Fenster mit Balken; am Ende bleibt es mit der Bilanz stehen (neu, je Format, Dauer), bis man OK drückt",
+              "neu eingelesen" in text and "STL" in text and await pg.locator("#einlesen[open]").count() == 1)
+        await pg.click("#ein-ok")
+        check("OK schliesst das Fenster", await pg.locator("#einlesen[open]").count() == 0)
         await pg.wait_for_selector(".karte", timeout=60000)
         check("Ordner über den Dialog des Rechners gewählt: es wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
               await pg.locator("text=SAMMLUNGEN").is_visible())

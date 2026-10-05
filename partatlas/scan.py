@@ -43,6 +43,7 @@ from .bestand import DATEI, MODELL
 log = logging.getLogger("partatlas.scan")
 
 GRUPPE = 100
+SPEICHERN_ALLE_S = 2.0   # Ergebnisse der Vorschauen spätestens so oft festhalten, damit die Bilder nach und nach erscheinen, nicht erst nach 100 Stück
 ZEITGRENZE = 180      # Sekunden ohne ein einziges fertiges Ergebnis, bevor eine Datei als hängend gilt (wie bei FreeCAD, cad.py)
 
 
@@ -459,13 +460,32 @@ class Scanner:
             log.warning("Zeitpunkt des Einlesens nicht gespeichert: %s", e)
         self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1), zuletzt_eingelesen=jetzt)
 
+    def hat_offenes(self):
+        """Wartet im Hintergrund noch Arbeit — ein Vorschaubild, das fehlt, oder eine FreeCAD-Umwandlung, die jetzt möglich ist?
+        Die Warteschlange ist der Zustand „ausstehend“ an den Dateien im Bestand; sie übersteht einen Neustart. Dateien ohne bekannten Ort
+        zählen nicht (es gibt nichts zu rechnen) und halten sonst bei jedem Start einen leeren Lauf in Gang."""
+        if any(d.get("orte") for _, d in self.k.ausstehende_vorschauen()):
+            return True
+        if self._cad_anzahl() == 0:
+            return False
+        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
+        return bool(self.cad_befehl or cad.konsole_befehl(prog.get("pfad")))
+
     def _lauf_nur_cad(self, t0):
-        """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""
+        """Der Hintergrundlauf, ohne Suchen und Hashen: Vorschaubilder, kleine Bilder, FreeCAD — alles, was im Bestand als „ausstehend“ steht.
+        Heisst aus Gewohnheit `nur_cad` (so kam er zuerst, nach der Zusage für FCStd). Zähler von Suchen und Hashen bleiben vom letzten Lauf
+        stehen: es wurde nichts neu eingelesen. Setzt nach einem Abbruch oder Neustart genau dort fort, wo es aufhörte."""
         self._setze(lauf=self.status["lauf"] + 1, einlesen_s=None)
-        self._setze(laeuft=True, phase="cad", nur_cad=True, bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False,
-                    beginn=time.strftime("%H:%M:%S"))
+        self._setze(laeuft=True, phase="vorschau", nur_cad=True, bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False,
+                    vorschauen_gesamt=0, cad_gesamt=0, cad_voraus=self._cad_anzahl(), beginn=time.strftime("%H:%M:%S"))
         self._pool = self._neuer_pool()
         try:
+            self._vorschauen()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+            self._thumbs()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
             self._cad()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
@@ -510,7 +530,7 @@ class Scanner:
                           if f.get("farbe")), None)
             if pfad:
                 aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)))
-        rest, stapel = len(aufgaben), []
+        rest, stapel, zuletzt = len(aufgaben), [], time.monotonic()
         self._setze(vorschauen_gesamt=len(aufgaben), vorschauen_offen=rest)
         for h, erg, fehler in self._verteilen(aufgaben, _rendern):
             status, fehler = ("fehler", fehler) if fehler else erg
@@ -518,9 +538,9 @@ class Scanner:
                 log.warning("Vorschau %s: %s", h[:12], fehler)
             stapel.append((h, status))
             rest -= 1
-            if len(stapel) >= GRUPPE:
+            if len(stapel) >= GRUPPE or time.monotonic() - zuletzt >= SPEICHERN_ALLE_S:
                 self._vorschauen_speichern(stapel)
-                stapel = []
+                stapel, zuletzt = [], time.monotonic()
             if rest % 10 == 0:
                 self._setze(vorschauen_offen=rest)      # die Anzeige beim Zahnrad zählt mit, nicht nur alle hundert
         self._vorschauen_speichern(stapel)

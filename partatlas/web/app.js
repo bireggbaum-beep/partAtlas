@@ -381,7 +381,7 @@ function scanErgebnis(m) {
   const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
   // Nach einem Abbruch keine „Eingelesen“-Zeile: es ist nicht alles eingelesen.
   if (m.abgebrochen) return `Abgebrochen nach ${zeit}, ${(m.bearbeitet || 0).toLocaleString("de-DE")} Dateien`;
-  if (m.nur_cad) return `FreeCAD-Umwandlung: ${(m.bearbeitet || 0).toLocaleString("de-DE")} Dateien in ${zeit}`;
+  if (m.nur_cad) return `Im Hintergrund fertig: ${(m.bearbeitet || 0).toLocaleString("de-DE")} Dateien in ${zeit}`;
   // Phasen unter einer halben Sekunde sind Rauschen
   const phasen = Object.entries(m.phasen || {}).filter(([, s]) => s >= 0.5)
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
@@ -2166,16 +2166,6 @@ function einlesenZeichnen(m) {
   let anteil = null, zeile, unten = "";
   if (!meiner) zeile = "Wartet, bis das laufende Einlesen fertig ist …";
   else if (m.abgebrochen) { anteil = 1; zeile = `Abgebrochen nach ${sekunden(m.dauer_s)}.`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog.</p>`; }
-  else if (fertig && m.laeuft && !m.abbricht && !bilanzHatHinweise(m)) {
-    // Das Lesen ist fertig, Vorschauen und FreeCAD laufen noch: den Dialog schliessen, damit das Fenster unten links den Rest zeigt
-    // (wie bei pDMS die OCR). Ein modaler Dialog verdeckte es bis zum „OK“, und man sah nicht, dass im Hintergrund noch gerechnet wird.
-    // Das Ergebnis steht danach oben rechts in der Zeile und kurz als Meldung. Hat die Bilanz etwas zu sagen (unlesbare Dateien, Kopien,
-    // verschobene, nicht erreichbare Ordner, Rückfrage zu FCStd), bleibt der Dialog bis zum „OK“.
-    $("#einlesen").close();
-    einlesen.lauf = null;
-    toast(`${bilanzKopf(m).replace(/<[^>]+>/g, "")} — Vorschaubilder entstehen im Hintergrund.`);
-    return;
-  }
   else if (fertig) { anteil = 1; zeile = bilanzKopf(m); unten = bilanz(m); }
   else if (m.phase === "suchen") zeile = "Ordner durchsuchen …";
   else if (m.phase === "hashen") {
@@ -2194,9 +2184,6 @@ function einlesenZeichnen(m) {
   abgleichen($("#einlesen-inhalt"), `<h2>${esc(einlesen.titel)}</h2>${balken}<p class="ein-zeile">${zeile}</p>${unten}<div class="knoepfe">${knoepfe}</div>`);
   if (fertig && $("#ein-ok") && document.activeElement !== $("#ein-ok")) $("#ein-ok").focus();
 }
-
-const bilanzHatHinweise = (m) => !!(m.unlesbar || m.kopien || m.verschoben || m.zurueckgeholt || m.im_papierkorb || m.nicht_erreichbar?.length
-  || m.fcstd_frage || m.aufgeraeumt || (m.entfernt || 0) > 0);
 
 function bilanzKopf(m) {
   if (!m.neu) return `Fertig in ${sekunden(m.einlesen_s ?? m.dauer_s)}. <b>Nichts Neues</b> — alle ${anzahl(m.gefunden)} Dateien sind schon im Katalog.`;

@@ -505,6 +505,46 @@ if __name__ == "__main__":
           ke_s.status["dauer_s"] >= ke_s.status["einlesen_s"] and sum(ke_s.status["je_format"].values()) == 7)
     ke_b.schliessen()
 
+    # -- Hintergrundlauf: die Warteschlange der Vorschaubilder hängt nicht am Einlesen der Ordner
+    hg_tmp = tempfile.mkdtemp()
+    hg_dir = os.path.join(hg_tmp, "teile")
+    os.makedirs(hg_dir)
+    for i in range(6):
+        muster.stl_binaer(os.path.join(hg_dir, f"Teil_{i}.stl"), 10 + i, 20, 30)
+    hg_b = Bestand(os.path.join(hg_tmp, "bestand"))
+    hg_k = Katalog(hg_b)
+    hg_k.wurzel_hinzufuegen(hg_dir)
+    hg_s = Scanner(hg_b, hg_k, prozesse=2)
+    hg_s.lauf()
+    check("Nach dem Einlesen ist nichts offen", not hg_s.hat_offenes())
+    hg_modelle = hg_k.modelle()
+    for m_ in hg_modelle[:4]:                    # vier Bilder gehen „verloren“: Zustand wie nach einem Abbruch oder Neustart mitten im Rechnen
+        hg_b.db.update_node("PART_GEOMETRY", m_["hash"], {"vorschau": "ausstehend"})
+        os.remove(hg_b.vorschau_pfad(m_["hash"], "berechnet"))
+    muster.stl_binaer(os.path.join(hg_dir, "Neu_nach_dem_Einlesen.stl"), 50, 20, 30)
+    check("Ausstehende Vorschaubilder stehen in der Warteschlange (überstehen einen Neustart: sie stehen im Bestand)", hg_s.hat_offenes())
+    hg_s2 = Scanner(hg_b, hg_k, prozesse=2)       # wie nach einem Neustart: ein frischer Scanner
+    hg_s2.lauf(nur_cad=True)
+    check("Der Hintergrundlauf rechnet die offenen Bilder, ohne die Ordner zu durchsuchen: die neue Datei im Ordner kommt nicht dazu",
+          all(os.path.exists(hg_b.vorschau_pfad(m_["hash"], "berechnet")) for m_ in hg_modelle[:4]) and not hg_s2.hat_offenes()
+          and "Neu_nach_dem_Einlesen" not in {m_["name"] for m_ in hg_k.modelle()} and "suchen" not in hg_s2.status["phasen"])
+    # Bilder nach und nach: Ergebnisse nicht erst nach GRUPPE Stück festhalten, sondern alle SPEICHERN_ALLE_S Sekunden
+    for m_ in hg_modelle[:4]:
+        hg_b.db.update_node("PART_GEOMETRY", m_["hash"], {"vorschau": "ausstehend"})
+    gespeichert = []
+    hg_s3 = Scanner(hg_b, hg_k, prozesse=1)
+    _orig_sp = hg_s3._vorschauen_speichern
+    hg_s3._vorschauen_speichern = lambda st: (gespeichert.append(len(st)), _orig_sp(st))[1]
+    _g, _t = _scan.GRUPPE, _scan.SPEICHERN_ALLE_S
+    _scan.GRUPPE, _scan.SPEICHERN_ALLE_S = 1000, 0.0
+    try:
+        hg_s3.lauf(nur_cad=True)
+    finally:
+        _scan.GRUPPE, _scan.SPEICHERN_ALLE_S = _g, _t
+    check("Vorschaubilder werden nach und nach festgehalten, nicht in einem Schub am Ende (4 Bilder, grosse Gruppe, 0 s Abstand: mehrere Speicherungen)",
+          len(gespeichert) >= 2 and sum(gespeichert) == 4)
+    hg_b.schliessen()
+
     # -- FreeCAD bekommt die kleinen Dateien zuerst (frühe Bilder, ehrliche Restzeit, die grossen mit dem Hänger-Risiko am Ende)
     gr_tmp = tempfile.mkdtemp()
     gr_dir = os.path.join(gr_tmp, "cad")
