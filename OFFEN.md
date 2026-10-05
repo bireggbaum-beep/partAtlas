@@ -565,6 +565,17 @@ Vorgehen, wenn es soweit ist:
   die ausserhalb der App verändert wurden.
 - **Dagegen:** Sobald partAtlas Dateien wirklich anfasst, ist ein Fehler bei Pfaden kein Anzeigefehler mehr. Das braucht den Vorlauf oben.
 
+## Auswahl wie im Explorer (5.10.2026, entschieden, noch nicht gebaut)
+
+Wunsch des Testers; gehört zur Linie „partAtlas wie ein Dateimanager bedienen“ (siehe Explorer-Ersatz oben) und zur Überarbeitung des Tabellenkopfs (Punkt e unten). **Vorlage ist pDMS**
+(`bireggbaum-beep/homedms`), nicht neu erfinden: dort ansehen, wie es sich verhält, bevor etwas gebaut wird (in dieser Sitzung nicht eingesehen).
+- **Alles auswählen:** Kästchen im Kopf der Liste, dreistufig (leer · teilweise · alle), wählt **alles in der Ansicht** (nach Suche und Filter, nicht die ganze Bibliothek); Strg+A für Raster und Karten.
+  Die Statuszeile zeigt die Zahl schon („57 Modelle · 3 ausgewählt“). Massenaktionen mit grosser Auswahl: Rückfrage nennt die Zahl („8 946 Modelle“); „Aus dem Katalog entfernen“ bleibt über den Papierkorb umkehrbar.
+- **Auswahl mit der Maus:** heute geht nur Kästchen sowie Strg/Umschalt+Klick (`waehleAus()` in `app.js`). Fehlt: **Aufziehen eines Rahmens** (Gummiband) im Raster und in der Liste, Umschalt+Klick als Bereich
+  über die Anzeigereihenfolge, Strg+Klick als Einzelwahl, Pfeiltasten mit Umschalt. Aufwand geschätzt 3 (Rahmen über gezeichnete Kacheln — die Liste ist virtualisiert, ausserhalb des Sichtbereichs gibt es keine Elemente;
+  die Rechnung läuft auf den Positionen, nicht im DOM).
+- **Reihenfolge:** zusammen mit e) (Spalten ein-/ausblenden, ziehen, „Baugruppe“) bauen, dann passt der Kopf.
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
