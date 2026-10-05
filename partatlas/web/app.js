@@ -2264,6 +2264,26 @@ function hintergrundZeichnen(m) {
 
 // ---------------------------------------------------------------- Live (flatgraph bei_aenderung → SSE)
 
+// „Zuletzt eingelesen: vor 3 Std.“ neben „Bibliothek“. Der Zeitpunkt kommt vom Server (/api/stand und die Meldung am Ende eines Einlesens).
+function vorZeit(iso, jetzt = Date.now()) {
+  const s = Math.max(0, Math.round((jetzt - new Date(iso).getTime()) / 1000));
+  if (s < 60) return "gerade eben";
+  if (s < 3600) return `vor ${Math.floor(s / 60)} Min.`;
+  if (s < 86400) return `vor ${Math.floor(s / 3600)} Std.`;
+  const t = Math.floor(s / 86400);
+  return `vor ${t} ${t === 1 ? "Tag" : "Tagen"}`;
+}
+let zuletztEingelesen = null;
+function zuletztZeigen(iso) {
+  if (iso) zuletztEingelesen = iso;
+  const el = $("#zuletzt-eingelesen");
+  if (!el) return;
+  if (!zuletztEingelesen) { el.textContent = ""; el.title = ""; return; }
+  el.textContent = vorZeit(zuletztEingelesen);
+  el.title = `Zuletzt eingelesen: ${new Date(zuletztEingelesen).toLocaleString("de-DE")}`;
+}
+setInterval(zuletztZeigen, 60000);
+
 let liveZeit = null, liveBetrifft = false;
 let LIVE_SCAN_MS = 5000;       // während eines Einlesens höchstens so oft die Liste neu holen
 
@@ -2282,6 +2302,7 @@ function liveScan(m) {
   if (m.laeuft) $("#scan-status").textContent = "";
   // Während des Einlesen-Fensters wartet die Frage; es nennt sie in der Bilanz und stellt sie nach OK.
   if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+  if (m.zuletzt_eingelesen) zuletztZeigen(m.zuletzt_eingelesen);
   if (m.phase === "fertig" || m.abgebrochen) {
     $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
     if (scanHatVeraendert(m)) neuLaden();
@@ -2324,7 +2345,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
 live();
 try { nav.nr = history.state?.nr ?? 0; nav.hoechste = nav.nr; history.replaceState(momentaufnahme(), ""); } catch { /* s. o. */ }
 $("#nav-zurueck")?.addEventListener("click", () => history.back());

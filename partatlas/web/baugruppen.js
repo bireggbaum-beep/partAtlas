@@ -586,6 +586,10 @@ async function einstellungen() {
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
       <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>
+      <div class="i-titel">EINLESEN</div>
+      <label><input type="checkbox" id="ein-start" ${e.scan_beim_start ? "checked" : ""}> Beim Start einlesen</label>
+      <p class="dim">Aus (Vorgabe): partAtlas liest nur ein, wenn du es auslöst — mit ⟳ neben „Bibliothek“. Bei einer grossen Bibliothek auf einer langsamen
+        Platte bleibt der Start ruhig. Dateien, die du ausserhalb verschoben oder gelöscht hast, erscheinen dann erst nach dem nächsten Einlesen.</p>
       <div class="i-titel">FREECAD-DOKUMENTE (FCSTD)</div>
       <label>Über FreeCAD einlesen für Maße, Gewicht und 3D-Ansicht
         <select id="ein-fcstd"><option value="" ${!e.fcstd_freecad ? "selected" : ""}>Fragen</option>
@@ -628,7 +632,7 @@ async function einstellungen() {
   if (a !== "ja") return;
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
-                                                          rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked,
+                                                          rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked, scan_beim_start: $("#ein-start").checked,
                                                           fcstd_freecad: $("#ein-fcstd").value || null,
                                                           programm: progWahl.geaendert,
                                                           pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });

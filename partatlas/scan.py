@@ -27,6 +27,7 @@ bleiben „ausstehend“). Bei Abbruch wird nichts entfernt: die Liste der
 gesehenen Orte ist dann unvollständig.
 """
 import logging
+from datetime import datetime
 import multiprocessing
 import os
 import sys
@@ -428,7 +429,14 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
+        # Wann zuletzt vollständig eingelesen wurde: steht neben „Bibliothek“, damit man bei „nur auf Knopfdruck“ sieht, wie alt der Stand ist.
+        # Fehlt der Platz zum Schreiben, ist das keine Sache, die das Einlesen scheitern lässt.
+        jetzt = datetime.now().astimezone().isoformat(timespec="seconds")
+        try:
+            self.b.einstellungen_setzen(zuletzt_eingelesen=jetzt)
+        except OSError as e:
+            log.warning("Zeitpunkt des Einlesens nicht gespeichert: %s", e)
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1), zuletzt_eingelesen=jetzt)
 
     def _lauf_nur_cad(self, t0):
         """Nur Phase 6. Zähler von Suchen und Hashen bleiben vom letzten Lauf stehen: es wurde nichts neu eingelesen."""

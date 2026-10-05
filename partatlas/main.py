@@ -36,7 +36,7 @@ WEB = os.path.join(os.path.dirname(__file__), "web")
 log = logging.getLogger("partatlas")
 
 
-def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
+def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     verteiler = Verteiler()
     zustand = {}
 
@@ -53,7 +53,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), prozesse=prozesse)
         bg = Baugruppen(k)
         zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))      # EIGENE
-        if scan_beim_start and k.wurzeln():
+        # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
+        # wer es will, schaltet es ein oder liest mit ⟳ bei der Bibliothek ein. Ausdrücklich übergeben (Tests) geht vor.
+        beim_start = bool(b.einstellungen().get("scan_beim_start", False)) if scan_beim_start is None else scan_beim_start
+        if beim_start and k.wurzeln():
             s.starten()
         yield
         s.warten(30)
@@ -98,7 +101,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
     @app.get("/api/stand")
     def stand():
         return {"version": VERSION, "bestand": zustand["bestand"].wurzel,
-                "scan": zustand["scanner"].status}
+                "scan": zustand["scanner"].status, "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
 
     @app.get("/api/live")
     async def live():
@@ -510,7 +513,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
         for art in programme.ARTEN:
             p = programme.programm_fuer(art, e, gefunden)
             prog[art] = p and {**p, "automatisch": not (gewaehlt.get(art) and p["pfad"] == gewaehlt[art])}
-        return {"auto_tags": True, **e, "gilt": B().standard(), "materialien": K().materialien(),
+        return {"auto_tags": True, "scan_beim_start": False, **e, "gilt": B().standard(), "materialien": K().materialien(),
                 "pdf": {**PDF_STANDARD, **(e.get("pdf") or {})}, "programm": prog}
 
     @app.put("/api/einstellungen")
@@ -527,6 +530,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=True, prozesse=None):
             werte["standard_farbe"] = f
         if "auto_tags" in d:
             werte["auto_tags"] = bool(d["auto_tags"])
+        if "scan_beim_start" in d:
+            werte["scan_beim_start"] = bool(d["scan_beim_start"])
         if "fcstd_freecad" in d:     # None = fragen, "ja", "nein"
             if d["fcstd_freecad"] not in (None, "ja", "nein"):
                 raise KatalogFehler("FCStd über FreeCAD: ja, nein oder fragen.")

@@ -972,3 +972,10 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 .nav button:disabled { opacity: 0.35; cursor: default; }
 .i-reiter button { white-space: nowrap; }
 .i-reiter .d-zahl { padding: 0 5px; margin-left: 2px; }
+
+/* Bibliothek: ⟳ und ＋ immer sichtbar (nicht erst beim Darüberfahren — der Tester fand den Knopf nicht); daneben, wann zuletzt eingelesen wurde.
+   Die Zeit schrumpft zuerst und verschwindet, wenn die Seitenleiste schmal wird. */
+.sk-akt.sk-immer { opacity: 1; }
+.sk-zeit { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: clip; color: var(--ink-3);
+           font: 400 11.5px var(--sans, inherit); text-transform: none; letter-spacing: 0; margin-right: 4px; text-align: right; }
+.sk-titel { flex: none; }

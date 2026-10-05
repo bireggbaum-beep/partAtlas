@@ -106,6 +106,14 @@ async def oberflaeche(port):
         check("Beim Einlesen wird die Liste höchstens alle paar Sekunden neu geholt, nicht bei jeder Änderung (20 Änderungen in 1 s → 2 Neuladen bei 400 ms)",
               1 <= rl[0] <= 3)
         check("Ein Einlesen ohne Funde lädt am Ende nichts neu, eines mit Funden einmal", rl[3] > 0 and rl[1] == 0 and rl[2] == 1)
+        check("Bibliothek: ⟳ und ＋ sind ohne Darüberfahren sichtbar, daneben steht, wann zuletzt eingelesen wurde",
+              await pg.evaluate("getComputedStyle(document.querySelector('.sk-akt.sk-immer')).opacity") == "1"
+              and (await pg.inner_text("#zuletzt-eingelesen")).strip() in ("gerade eben", "vor 1 Min.", "vor 2 Min.")
+              and "Zuletzt eingelesen" in (await pg.get_attribute("#zuletzt-eingelesen", "title") or ""))
+        vz = await pg.evaluate("""() => { const j = Date.now(), iso = (s) => new Date(j - s * 1000).toISOString();
+            return [30, 90, 3 * 3600 + 60, 30 * 3600, 3 * 86400].map((s) => vorZeit(iso(s), j)); }""")
+        check("Zuletzt eingelesen in Worten: gerade eben · vor 1 Min. · vor 3 Std. · vor 1 Tag · vor 3 Tagen",
+              vz == ["gerade eben", "vor 1 Min.", "vor 3 Std.", "vor 1 Tag", "vor 3 Tagen"])
         check("Tab-Titel nennt die Fassung („partAtlas 0.x.y“): wer mehrere Tabs oder Fenster offen hat, sieht, welche Fassung läuft",
               await pg.title() == f"partAtlas {api(port, '/api/stand')['version']}")
         check("Bereinigen: kein Zählabzeichen am Besen, solange nichts zu tun ist",

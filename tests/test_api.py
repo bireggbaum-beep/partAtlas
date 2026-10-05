@@ -259,4 +259,26 @@ if __name__ == "__main__":
         r = c.get(f"/api/modelle/{welle['id']}/netz")
         check("3D-Ansicht für STEP liest das Netz aus dem Bestand", r.status_code == 200 and r.headers["x-dreiecke"] == "12")
         check("Das Vorschaubild wird ausgeliefert", c.get(f"/api/vorschau/{welle['hash']}.png").status_code == 200)
+    # -- Einlesen beim Start ist eine Einstellung, Vorgabe aus; der Zeitpunkt des letzten Einlesens bleibt über Neustarts
+    st_pfad = os.path.join(tmp, "bestand_start")
+    with TestClient(erstelle_app(st_pfad, prozesse=2)) as c:
+        check("Einlesen beim Start: Vorgabe aus", c.get("/api/einstellungen").json()["scan_beim_start"] is False)
+        check("Noch nie eingelesen: kein Zeitpunkt", c.get("/api/stand").json()["zuletzt_eingelesen"] is None)
+        c.post("/api/wurzeln", json={"pfad": sammlung})
+        c.app.state.zustand["scanner"].warten(120)
+        zeit1 = c.get("/api/stand").json()["zuletzt_eingelesen"]
+        check("Nach dem Einlesen steht der Zeitpunkt da (mit Zeitzone) und im Lauf-Status", zeit1 is not None and len(zeit1) >= 20
+              and c.get("/api/stand").json()["scan"]["zuletzt_eingelesen"] == zeit1)
+    with TestClient(erstelle_app(st_pfad, prozesse=2)) as c:
+        time.sleep(1.5)
+        stand = c.get("/api/stand").json()
+        check("Neustart mit Vorgabe: es wird NICHT eingelesen (kein Lauf), der Zeitpunkt vom letzten Mal bleibt",
+              stand["scan"]["lauf"] == 0 and stand["zuletzt_eingelesen"] == zeit1)
+        c.put("/api/einstellungen", json={"scan_beim_start": True})
+        check("Einstellung gespeichert", c.get("/api/einstellungen").json()["scan_beim_start"] is True)
+    with TestClient(erstelle_app(st_pfad, prozesse=2)) as c:
+        c.app.state.zustand["scanner"].warten(120)
+        time.sleep(0.5)
+        check("Neustart mit eingeschalteter Einstellung: es wird eingelesen", c.get("/api/stand").json()["scan"]["lauf"] >= 1)
     muster.ende()
+
