@@ -631,6 +631,20 @@ gemerkte Suchen als Sammlung (Aufwand 2–3), gleiches Teil in mehreren Formaten
 Tags, die etwas trennen (Auto-Tags für den Bestand entfernen, Suche im Tag-Feld, nach Häufigkeit; Aufwand 2), Einstiege „zuletzt angesehen/hinzugefügt“ (teilweise da), Filter mit Trefferzahl nach dem Einschränken.
 **Zeichen, dass es soweit ist:** dieselbe Suche wird mehrfach getippt; etwas wird nicht gefunden, das sicher drin ist. Nicht die Grösse des Bestands.
 
+## Eingangsliste statt „Einlesen anstossen“ (5.10.2026, entschieden, noch nicht gebaut)
+
+**Anlass:** Hochladen von 45 bis 121 Dateien im Codespace war „sehr langsam“, und die Zeile oben rechts zeigte „219 Dateien, 1 neu in unter 1 s“. Der Fix in 0.45/0.46 (nur die letzte hochgeladene Datei stösst das Einlesen an,
+Läufe einer Kette werden zusammengezählt) ist ein **Notbehelf, keine Lösung** — so festgehalten vom Anwender. Schwächen: (1) jeder Upload-Stapel kostet einen vollständigen Durchlauf durch **alle** Ordner (auf der langsamen Platte des Testers ca. 12 s,
+nur um Dateien zu finden, die man gerade selbst hineingelegt hat); (2) es hängt am Browser — bricht der Upload ab oder wird der Tab geschlossen, bleibt die Datei ungeprüft im Ordner, bis jemand ⟳ klickt; (3) es passt nicht zum Hintergrunddienst nach Art der OCR bei pDMS.
+
+**Lösung (Aufwand 3, eigener Schritt mit Test und Gegenprobe):** der Upload schreibt die Datei und trägt ihren Pfad in eine **Eingangsliste** ein — mehr nicht, keine Wartezeit, kein Anstossen. Ein Dienst im Hintergrund nimmt, was gerade in der Liste steht (mehrere Einträge zu einem Paket
+zusammengefasst), liest **nur diese Dateien** ein (Hash, Metadaten, in die Datenbank, ohne Ordner zu durchsuchen) und übergibt an die Warteschlange der Vorschaubilder, die schon ihren eigenen Hintergrundlauf hat (0.46.0, `hat_offenes`). Die Eingangsliste steht im Bestand (`arbeit/`,
+atomar geschrieben) und überlebt einen Neustart; die Platte bleibt die Wahrheit — was in der Liste fehlt, findet das nächste vollständige Einlesen trotzdem. Das vollständige Durchsuchen bleibt für ⟳ (Dateien, die von aussen hineinkamen) und „Beim Start einlesen“.
+
+**Zu beachten:** (a) ein Teillauf darf **nichts als „fehlt“ oder „entfernt“ markieren** — die Erkennung verschobener und gelöschter Dateien braucht den Überblick über alle Ordner und gehört nur zum vollständigen Lauf; (b) doppelte Dateien erkennt der Hash schon (`_anlegen`), das gilt im Teillauf genauso;
+(c) die Oberfläche folgt heute einem **Lauf** (Dialog, Nummer, `einlesen.lauf`); mit der Eingangsliste braucht sie eine ruhigere Anzeige, am besten das Fenster unten links, und der modale Dialog beim Hochladen muss neu gedacht werden (Entscheidung des Anwenders, siehe unten);
+(d) Tests: Upload bricht mitten im Stapel ab → die schon hochgeladenen werden trotzdem eingelesen; Neustart mit gefüllter Liste setzt fort; Teillauf markiert keine fehlenden Dateien; Gegenprobe je Eigenschaft. **Hängt zusammen mit:** der Frage, ob der Einlese-Dialog modal bleibt (er verdeckt das Fenster unten links bis „OK“).
+
 ## Offen, in dieser Reihenfolge
 
 1. **Warteschlange (a, b)** — entschieden, noch nicht gebaut:
