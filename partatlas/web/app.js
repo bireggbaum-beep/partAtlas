@@ -365,8 +365,9 @@ function zeichneLeer() {
       <button class="knopf akzent gross" id="wurzel-neu-3">📁 Wurzelordner wählen …</button></div>`;
   } else if (scan && scan.laeuft && zustand.ansicht === "alle" && !zustand.filterTeile) {
     leer.innerHTML = `<div class="willkommen"><h2>Scan läuft</h2>
-      <p>${scan.gefunden ? `${scan.gefunden.toLocaleString("de-DE")} Dateien gefunden · ` : ""}Phase: ${esc(scan.phase || "Start")}${scan.zu_analysieren ? ` ${scan.analysiert || 0}/${scan.zu_analysieren}` : ""}.
-        Modelle erscheinen gruppenweise (je 100); Vorschauen werden anschliessend gerendert.</p>
+      <p>${scan.eingang_lauf ? `Neue Dateien werden eingelesen: ${anzahl(scan.eingang_fertig)} von ${anzahl(scan.eingang_gesamt)}.`
+        : `${scan.gefunden ? `${scan.gefunden.toLocaleString("de-DE")} Dateien gefunden · ` : ""}Phase: ${esc(scan.phase || "Start")}${scan.zu_analysieren ? ` ${scan.analysiert || 0}/${scan.zu_analysieren}` : ""}.
+        Modelle erscheinen gruppenweise (je 100); Vorschauen werden anschliessend gerendert.`}</p>
       <div class="lauf"><i></i></div></div>`;
   } else {
     leer.textContent = zustand.ansicht === "papierkorb" ? "Der Papierkorb ist leer."
@@ -834,7 +835,8 @@ $("#dialog-inhalt").addEventListener("change", (e) => {
   if (e.target.id === "dl-alle" || e.target.dataset?.dl != null) dateiListeSumme(dateiListeSumme.liste);
 });
 
-// Dateien oder hineingezogene Ordner hochladen: Liste → Zielordner → Hochladen mit Fortschritt im Einlesen-Fenster → Einlesen.
+// Dateien oder hineingezogene Ordner hochladen: Liste → Zielordner → Hochladen mit Fortschritt. Eingelesen wird im Hintergrund: der Server merkt jede
+// Datei in der Eingangsliste vor, der Dienst liest sie ein — die Seite wartet auf nichts und muss nichts anstossen.
 async function hochladen(quelle) {
   const eintraege = Array.isArray(quelle) ? quelle : [...quelle].map((f) => ({ datei: f, pfad: f.name, unterordner: "" }));
   if (!eintraege.length) return;
@@ -846,7 +848,7 @@ async function hochladen(quelle) {
   const ziel = await ordnerWahl(`${anzahl(dateien.length)} ${dateien.length === 1 ? "Datei" : "Dateien"} hochladen — wohin?`,
     `${formatListe(je)}.${ordner ? " Die Unterordner bleiben, wie sie sind." : ""} Nichts wird überschrieben.`, zustand.ordner);
   if (!ziel) return;
-  let ok = 0, lauf = null;
+  let ok = 0;
   const fehler = [];
   einlesen.stopp = false;
   einlesen.lauf = null;
@@ -855,19 +857,15 @@ async function hochladen(quelle) {
     if (einlesen.stopp) break;
     hochladenZeichnen(i, dateien.length, x.pfad);
     try {
-      // Erst die letzte Datei stösst das Einlesen an: eines für alles, nicht eines je Datei (das bremste das Hochladen und zählte falsch).
-      const einlesenJetzt = i === dateien.length - 1 ? 1 : 0;
-      lauf = (await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(x.datei.name)}&unterordner=${encodeURIComponent(x.unterordner)}&einlesen=${einlesenJetzt}`,
-        { method: "POST", body: x.datei })
-        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); return (await r.json()).lauf; })) ?? lauf;
+      const r = await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(x.datei.name)}&unterordner=${encodeURIComponent(x.unterordner)}`,
+        { method: "POST", body: x.datei });
+      if (!r.ok) throw new Error((await r.json()).fehler);
       ok++;
     } catch (e) { fehler.push(`${x.pfad}: ${e.message}`); }
   }
+  $("#einlesen").close();
   if (fehler.length) toast(`${fehler.length} nicht hochgeladen: ${fehler[0]}`);
-  // Die letzte Datei startet das Einlesen. War sie selbst nicht hochladbar, aber andere schon, wird es hier nachgeholt.
-  if (!lauf && ok) { try { lauf = (await api("/api/scan", { method: "POST" })).lauf; } catch (e) { toast(e.message); } }
-  if (lauf) einlesenZeigen(lauf, `${anzahl(ok)} ${ok === 1 ? "Datei" : "Dateien"} einlesen`);
-  else $("#einlesen").close();
+  else if (ok) toast(`${anzahl(ok)} ${ok === 1 ? "Datei" : "Dateien"} hochgeladen — wird im Hintergrund eingelesen`);
 }
 
 function hochladenZeichnen(i, n, pfad) {
@@ -887,12 +885,12 @@ async function archiveEntpacken() {
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Entpacken</button></div>`);
   if (a !== "ja") return;
   const gewaehlt = [...document.querySelectorAll("[data-archiv]:checked")].map((x) => x.dataset.archiv);
-  let n = 0, lauf = null;
+  let n = 0;
   for (const id of gewaehlt) {
-    try { const r = await api("/api/archive/entpacken", { method: "POST", body: { id } }); n += r.entpackt; lauf = r.lauf; }
+    try { const r = await api("/api/archive/entpacken", { method: "POST", body: { id } }); n += r.entpackt; }
     catch (e) { toast(`${id}: ${e.message}`); }
   }
-  einlesenZeigen(lauf, `${anzahl(n)} entpackte Dateien einlesen`);
+  if (n) toast(`${anzahl(n)} ${n === 1 ? "Datei" : "Dateien"} entpackt — wird im Hintergrund eingelesen`);
 }
 
 // ---------------------------------------------------------------- Inspektor
@@ -2228,6 +2226,9 @@ $("#einlesen").addEventListener("close", () => {
 
 // Klein beim Zahnrad: was gerade im Hintergrund läuft, mit Balken. Weg, sobald nichts mehr läuft.
 const SCHRITTE = [["hashen", "Dateien prüfen"], ["analysieren", "Einlesen"], ["vorschau", "Vorschaubilder"], ["cad", "FreeCAD"], ["thumbs", "Kleine Bilder"]];
+// Der Dienst für abgelegte Dateien (Eingangsliste): Prüfen und Einlesen sind für den Anwender ein Schritt.
+const SCHRITTE_EINGANG = [["eingang", "Neue Dateien einlesen"], ["vorschau", "Vorschaubilder"], ["cad", "FreeCAD"], ["thumbs", "Kleine Bilder"]];
+const IN_EINGANG = ["eingang", "hashen", "analysieren"];
 
 // Restzeit aus dem bisherigen Tempo dieser Phase. Erst nach einer Weile und ein paar Dateien: vorher wäre es geraten.
 function restzeit(fertig, gesamt, sek) {
@@ -2244,6 +2245,7 @@ function hintergrundZeichnen(m) {
   if (!m.laeuft || $("#einlesen").open) { h.hidden = true; return; }
   let text, fertig = null, gesamt = null;
   if (m.abbricht) text = "Wird abgebrochen …";
+  else if (m.eingang_lauf && IN_EINGANG.includes(m.phase)) { text = "Neue Dateien einlesen"; [fertig, gesamt] = [m.eingang_fertig, m.eingang_gesamt]; }
   else if (m.phase === "suchen") text = "Einlesen: Ordner durchsuchen";
   else if (m.phase === "hashen") { text = "Einlesen: Dateien prüfen"; [fertig, gesamt] = [m.geprueft, m.zu_pruefen]; }
   else if (m.phase === "analysieren") { text = "Einlesen"; [fertig, gesamt] = [m.analysiert, m.zu_analysieren]; }
@@ -2253,8 +2255,8 @@ function hintergrundZeichnen(m) {
   else text = "Läuft …";
   const anteil = gesamt ? fertig / gesamt : null;
   // Wo im Ganzen: „Schritt 4 von 5“ (FreeCAD nur, wenn welche anstehen) und was danach noch kommt — damit man weiss, ob es Minuten oder Stunden sind.
-  const schritte = SCHRITTE.filter(([k]) => k !== "cad" || m.cad_voraus > 0 || m.cad_gesamt || m.phase === "cad");
-  const nr = schritte.findIndex(([k]) => k === m.phase) + 1;
+  const schritte = (m.eingang_lauf ? SCHRITTE_EINGANG : SCHRITTE).filter(([k]) => k !== "cad" || m.cad_voraus > 0 || m.cad_gesamt || m.phase === "cad");
+  const nr = schritte.findIndex(([k]) => k === (m.eingang_lauf && IN_EINGANG.includes(m.phase) ? "eingang" : m.phase)) + 1;
   const rest = m.abbricht ? "" : restzeit(fertig, gesamt, m.phase_s || 0);
   const zeile2 = [nr ? `Schritt ${nr} von ${schritte.length}` : "", rest].filter(Boolean).join(" · ");
   const danach = !m.abbricht && m.cad_voraus > 0 && ["hashen", "analysieren", "vorschau"].includes(m.phase)

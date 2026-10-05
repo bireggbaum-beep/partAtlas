@@ -28,6 +28,7 @@ ERLAUBT = {
     ("dateien.py", "schreibe_atomar", "os.replace"): "ersetzt ein Ziel — nur von den unten erlaubten Aufrufern, alle im Bestand",
     ("dateien.py", "schreibe_atomar", "os.unlink"): "eigene Arbeitsdatei (.…arbeit), eben angelegt",
     ("dateien.py", "verschiebe", "os.unlink"): "Quelle eines Verschiebens, erst nach sicherer Kopie (über Dateisystemgrenzen)",
+    ("eingang.py", "Eingang._schreiben", "schreibe_atomar"): "arbeit/eingang.json im Bestand: die Liste der abgelegten, noch nicht eingelesenen Dateien",
     ("eigene.py", "Eigene.datei_setzen", "dateien.schreibe_atomar"): "Kopie der Konstruktionsdatei einer Eigenen Komponente in vault/komponenten, "
         "nur wenn es sie dort noch nicht gibt",
     ("katalog.py", "Katalog._archivieren", "dateien.verschiebe"): "eigenes Bild oder Datei aus dem alten Papierkorb → vault_archive/, nie weg",

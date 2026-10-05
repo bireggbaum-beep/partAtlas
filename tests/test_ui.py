@@ -648,11 +648,20 @@ async def oberflaeche(port):
         await pg.click("#dl-weiter")
         await pg.wait_for_selector("#dialog[open] #ordner-ziel")
         await pg.click('#dialog button[value="ja"]')
-        await pg.wait_for_selector("#ein-ok", timeout=60000)
-        check("… nur das Angehakte liegt danach im Ordner und ist eingelesen",
+        await pg.wait_for_selector("#einlesen[open]", state="detached", timeout=60000)
+        await pg.wait_for_function("document.querySelector('#toast')?.textContent.includes('im Hintergrund eingelesen')", timeout=10000)
+        for _ in range(100):          # der Dienst im Hintergrund liest ein; die Seite hat nichts angestossen
+            if any(x["name"] == "Nimm" for x in api(port, "/api/modelle")):
+                break
+            await pg.wait_for_timeout(300)
+        check("… nur das Angehakte liegt danach im Ordner und ist eingelesen, ohne Einlese-Dialog (der Dienst im Hintergrund liest ein)",
               os.path.exists(os.path.join(SAMMLUNG, "Nimm.stl")) and not os.path.exists(os.path.join(SAMMLUNG, "Lass.stl"))
-              and "neu eingelesen" in await pg.inner_text("#einlesen"))
-        await pg.click("#ein-ok")
+              and any(x["name"] == "Nimm" for x in api(port, "/api/modelle")) and not await pg.locator("#einlesen[open]").count())
+        anzeige = await pg.evaluate("""() => { hintergrundZeichnen({ laeuft: true, eingang_lauf: true, phase: "analysieren", eingang_fertig: 3, eingang_gesamt: 12 });
+          return document.querySelector("#hintergrund").innerText; }""")
+        check("Der Dienst zeigt sich ruhig beim Zahnrad: „Neue Dateien einlesen“ mit Zähler und Schritt 1 von 3, kein Dialog",
+              "Neue Dateien einlesen" in anzeige and "3 / 12" in anzeige and "Schritt 1 von 3" in anzeige)
+        await pg.evaluate("hintergrundZeichnen({ laeuft: false })")
         baum = await pg.evaluate("""async () => {
           const datei = (name) => ({ name, isFile: true, isDirectory: false, file: (ok) => ok(new File(["x"], name)) });
           const ordner = (name, kinder) => ({ name, isFile: false, isDirectory: true,

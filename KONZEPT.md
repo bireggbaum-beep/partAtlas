@@ -540,8 +540,18 @@ neuer Unterordner, Quelle als http(s)-Link, eigenes Bild (als PNG neu
 geschrieben, im Vault), Hochladen per Dialog oder aus dem Dateimanager
 ins Fenster ziehen, Archive entpacken (zip, tar; Positivliste der
 Endungen, kein ../, keine Links; Original auf Wunsch in den Papierkorb).
-Ein Scan-Auftrag während eines Laufs startet danach einen Nachlauf —
-vorher gingen so hochgeladene Dateien verloren.
+Was der Anwender ablegt (Hochladen, Entpacken), trägt der Server in die
+**Eingangsliste** ein (`arbeit/eingang.json`, atomar geschrieben, übersteht
+Neustart) — mehr nicht; die Anfrage wartet auf nichts. Ein **Dienst im
+Hintergrund** (`Scanner`, ein Thread) nimmt, was in der Liste steht, liest
+nur diese Dateien ein (Hash, Metadaten, Datenbank, ohne die Ordner zu
+durchsuchen) und gibt an die Warteschlange der Vorschaubilder weiter, die
+im selben Dienst läuft. Vorrang: Eingang vor Vorschaubildern und FreeCAD
+(sie weichen stückweise); ein ganzes Einlesen (⟳, Ordner hinzufügen) vor
+beidem. Ein Teillauf markiert nichts als „fehlt“ — das braucht den
+Überblick über alle Ordner und gehört nur zum ganzen Einlesen, das auch
+findet, was nie in der Liste stand (die Platte bleibt die Wahrheit).
+Abbrechen lässt die Liste stehen; der Dienst ruht, bis etwas Neues kommt.
 
 Über den 3MF Katalog hinaus: Baugruppen mit Stückliste, Kaufteil-Katalog,
 Fortschritt, Einkaufsliste (§4.5).

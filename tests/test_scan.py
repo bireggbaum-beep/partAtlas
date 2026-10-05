@@ -311,7 +311,7 @@ if __name__ == "__main__":
 
     # -- Ein Arbeiter, der hart stirbt, reisst nicht den ganzen Lauf mit
     from partatlas.scan import Scanner as _S
-    pruef = _S(None, None, prozesse=2)
+    pruef = _S(b, k, prozesse=2)      # nur der Pool wird gebraucht; der Bestand ist schon geschlossen
     pruef._pool = pruef._neuer_pool()
     try:
         namen = [f"n{i}" for i in range(7)] + ["gift"] + [f"m{i}" for i in range(6)] + ["kaputt"]
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     # -- Eine Datei, die hängt, hält den Lauf nicht auf
     pid_datei = os.path.join(tempfile.mkdtemp(), "pids")
     os.environ["MUSTER_PID_DATEI"] = pid_datei         # die Arbeiter erben es beim Start
-    hz = _S(None, None, prozesse=2, zeitgrenze=3)
+    hz = _S(b, k, prozesse=2, zeitgrenze=3)
     hz._pool = hz._neuer_pool()
     try:
         namen = [f"n{i}" for i in range(5)] + ["haengt"] + [f"m{i}" for i in range(3)]
@@ -569,7 +569,7 @@ if __name__ == "__main__":
     gr_b.schliessen()
 
     # -- Arbeiter laufen mit niedriger Priorität (die Oberfläche bleibt bedienbar, solange eingelesen wird)
-    pr = _S(None, None, prozesse=1)
+    pr = _S(b, k, prozesse=1)
     pr._pool = pr._neuer_pool()
     try:
         nice_werte = [e for _, e, _ in pr._verteilen([("a", ("a",))], muster.arbeit_nice)]

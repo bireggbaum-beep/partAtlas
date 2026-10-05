@@ -58,11 +58,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         beim_start = bool(b.einstellungen().get("scan_beim_start", False)) if scan_beim_start is None else scan_beim_start
         if beim_start and k.wurzeln():
             s.starten()
+        elif k.wurzeln() and len(s.eingang):
+            # Was beim letzten Mal hineingelegt, aber nicht mehr eingelesen wurde (Neustart, Absturz): der Dienst nimmt es auf, ohne die Ordner zu
+            # durchsuchen; die Vorschaubilder, die noch ausstehen, folgen danach.
+            s.anstossen()
         elif k.wurzeln() and s.hat_offenes():
             # Auch ohne „Beim Start einlesen“: was im Hintergrund noch aussteht (Vorschaubilder, FreeCAD), wird fortgesetzt — ohne die Ordner
             # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
             s.starten(nur_cad=True)
         yield
+        s.abbrechen()      # sonst nähme der Dienst nach dem laufenden Durchgang den nächsten; der Eingang bleibt für den nächsten Start stehen
         s.warten(30)
         b.schliessen()
 
@@ -105,7 +110,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     @app.get("/api/stand")
     def stand():
         return {"version": VERSION, "bestand": zustand["bestand"].wurzel,
-                "scan": zustand["scanner"].status, "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
+                "scan": zustand["scanner"].status, "eingang": len(zustand["scanner"].eingang), "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
 
     @app.get("/api/live")
     async def live():
@@ -407,11 +412,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/hochladen")
-    async def hochladen(request: Request, ordner: str, name: str, unterordner: str = "", einlesen: int = 1):
+    async def hochladen(request: Request, ordner: str, name: str, unterordner: str = ""):
         neu = K().hochladen(ordner, name, await request.body(), unterordner)
-        # Viele Dateien nacheinander: erst die letzte stösst das Einlesen an (`einlesen=0` bei den anderen). Sonst läuft schon während des
-        # Hochladens ein Einlesen, konkurriert um die Kerne, und es folgen mehrere Läufe statt einem.
-        return {"dateien": len(neu), "lauf": scan_starten() if einlesen else None}
+        # Die Datei liegt auf der Platte; der Eingang merkt sie vor, der Dienst im Hintergrund liest sie ein. Die Anfrage wartet auf nichts,
+        # und bricht der Browser mitten im Stapel ab, sind die schon hochgeladenen trotzdem vorgemerkt.
+        zustand["scanner"].eintragen(neu)
+        return {"dateien": len(neu)}
 
     @app.get("/api/archive")
     def archive():
@@ -421,7 +427,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     async def archiv_entpacken(request: Request):
         d = await request.json()
         ergebnis = K().archiv_entpacken(d.get("id", ""))
-        return {**ergebnis, "lauf": scan_starten()}
+        zustand["scanner"].eintragen(ergebnis.pop("pfade"))
+        return ergebnis
 
     # ---------------------------------------------------------------- Bilder des Anwenders
 

@@ -845,7 +845,7 @@ class Katalog:
             ziel, neu, weg = archiv.entpacken(pfad)
         except archiv.ArchivFehler as e:
             raise KatalogFehler(str(e)) from e
-        return {"ordner": os.path.relpath(ziel, wpfad), "entpackt": len(neu), "uebersprungen": weg}
+        return {"ordner": os.path.relpath(ziel, wpfad), "entpackt": len(neu), "uebersprungen": weg, "pfade": neu}
 
     # ------------------------------------------------------------ Mehrere auf einmal
 
