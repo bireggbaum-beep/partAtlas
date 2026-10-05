@@ -278,11 +278,19 @@ doppelt abgesichert, eine einzelne davon zu entfernen lässt keinen Test fallen.
 erst der erste Abruf — das erste Scrollen durch einen frischen Bestand wartete auf tausend Verkleinerungen. Geprüft in `test_scan` (75/75) mit Gegenprobe, `test_api`;
 **nicht gemessen**, wie lang die Phase bei grossen Beständen dauert, und nicht in `test_ui.py` (eine Textzeile in `app.js`). Vorgebaut werden auch Bilder, die keine Kachel zeigt
 (`extrahiert` neben `berechnet`).
-**Schlafmodus (0.41.4), Rückmeldung des Testers:** er schickte den Rechner nach ca. 2000 von 5877 FCStd schlafen; morgens ging der Lauf bei ca. 8000 weiter. Die Zeit in der Statuszeile
-(„7 h 45 min“ für FreeCAD) enthielt die Stunden Schlaf — die **echte Rechenzeit lag eher bei 1–1,5 h, also unter 1 s je Datei** (gemessen am Protokoll: Start 23:46, ca. 2000 bis ca. 1:00, Lücke bis 7:34).
-Meine frühere Rechnung „4,8 s je Datei“ war damit falsch. Ausserdem mass `cad.py` die Zeitgrenze mit `time.time()`: nach dem Aufwachen sprang die Uhr, die Datei in Arbeit galt als hängend, FreeCAD wurde beendet und die
-Datei als Fehler vermerkt (nie wiederholt). Jetzt `time.monotonic()` in `cad.py` und für die Dauern in `scan.py`. Geprüft in `test_cad` (13/13, springende Uhr mit Gegenprobe), `test_scan`.
-**Nicht geprüft:** ob `monotonic` auf Windows/Mac den Schlaf mitzählt (Linux: nein). Dann zeigt die Statuszeile dort weiter die Wanduhr-Dauer; die Zeitgrenze selbst ist unkritisch.
+**Schlafmodus (0.41.4), Rückmeldung des Testers (i7 920, vermutlich 8 GB):** er schickte den Rechner nach dem Einlesen der FreeCAD-Library (8 946 Dateien: FCStd 3 268, STEP 2 894) schlafen.
+Die Statuszeile nannte „7 h 57 min“, davon „STEP (FreeCAD) 7 h 45 min“ — das war Wanduhr **mit** Schlaf. **Nachgemessen am 5.10.2026** an den Schreibzeiten von `netz/` (je Stunde):
+4.10. 23 Uhr 300, 5.10. 0 Uhr 4 920, 1–6 Uhr **0**, 7 Uhr 635 = 5 855 Netze + 22 Fehler (Protokoll) = 5 877 offene Dateien. Die echte Rechenzeit lag bei **gut 1 h 25 min,
+rund 1 Datei je Sekunde**, auf dieser Maschine mit einem FreeCAD-Prozess. (Erste Annahme „4,8 s je Datei“ war falsch; ein Zwischenstand „vielleicht hat er nachts gearbeitet“ ebenso.)
+Die angezeigten „2 000 am Abend, 8 000 am Morgen“ passen dazu nicht (Abend waren es schon etwa 5 000); der Zähler `bearbeitet` läuft über alle Phasen — nicht geprüft, was genau er zeigte.
+Ausserdem mass `cad.py` die Zeitgrenze mit `time.time()`: springt die Uhr beim Aufwachen, galt die Datei in Arbeit als hängend. Jetzt `time.monotonic()` in `cad.py` und für die Dauern in `scan.py`.
+Geprüft in `test_cad` (13/13, springende Uhr mit Gegenprobe) und `test_scan`. **Nicht belegt:** dass der Fehler den Tester tatsächlich traf (im Protokoll steht um 7:30 keine Zeitgrenze-Zeile).
+Nicht geprüft: ob `monotonic` auf Windows/Mac den Schlaf mitzählt (Linux: nein); die Statuszeile zeigt dort weiter die Wanduhr-Dauer.
+**Lehre für künftige Messungen:** Dauern aus der Statuszeile nie als Rechenzeit lesen, wenn der Rechner schlafen konnte; die Schreibzeiten in `netz/`, `thumbs/` oder `vault/vorschau/`
+(`ls -l --time-style=+%d.%H <Ordner> | awk '{print $6}' | sort | uniq -c`) sind die belastbare Quelle. Der Bestand liegt unter `~/.local/share/partatlas/` (`XDG_DATA_HOME` / `PARTATLAS_BESTAND`
+verschieben ihn). `ps -C python3` findet den Server auf Manjaro nicht zuverlässig: `ps -eo rss,cmd --sort=-rss | head -8`.
+**Offen aus dem Gespräch:** UI stockt beim Einlesen auf dieser Maschine bis zu einer Minute (Arbeiter laufen mit normaler Priorität, `Kerne − 1` Stück) — Vorschlag: niedrige Priorität,
+weniger Arbeiter, Thumbs-Threads begrenzen, Dateien nach Grösse aufsteigend an FreeCAD (Aufwand 2). Parallele FreeCAD-Prozesse sind bei ca. 1 Datei/s weniger dringend.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
 
 **FCStd (0.27.0):** FreeCAD-Dokumente werden katalogisiert (Zip mit `Document.xml`; Titel = `Label`, Urheber = `CreatedBy` des Dokuments, nicht
