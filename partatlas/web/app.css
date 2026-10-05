@@ -943,3 +943,15 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 .eig-datei { display: flex; align-items: center; gap: var(--s3); min-width: 0; font-size: 12.5px; }
 .eig-datei .dim { min-width: 0; }
 .eig-datei a { color: var(--accent); overflow-wrap: anywhere; }
+
+/* Formatfarben (Mock: mock/format_farbe.html, Wunsch des Testers: die Linie). Gleiche Helligkeit und Sättigung, nur der Farbton wechselt.
+   Die Linie ist ein Streifen oben an der Kachel bzw. links an Karte und Zeile; das Format steht weiter in der Endung und im Chip. */
+[data-f="stl"], .chip[data-format="stl"]     { --f: oklch(0.62 0.14 255); }
+[data-f="3mf"], .chip[data-format="3mf"]     { --f: oklch(0.62 0.14 160); }
+[data-f="step"], .chip[data-format="step"]   { --f: oklch(0.62 0.14 75); }
+[data-f="fcstd"], .chip[data-format="fcstd"] { --f: oklch(0.62 0.14 315); }
+[data-f="obj"], .chip[data-format="obj"]     { --f: oklch(0.62 0.14 205); }
+.karte[data-f]::before, .zeile-k[data-f]::before, .zeile-l[data-f]::before { content: ""; position: absolute; z-index: 2; background: var(--f); pointer-events: none; }
+.karte[data-f]::before { left: 0; right: 0; top: 0; height: 3px; }
+.zeile-k[data-f]::before, .zeile-l[data-f]::before { left: 0; top: 0; bottom: 0; width: 3px; }
+.chip[data-format]::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--f); margin-right: 6px; vertical-align: 0; }

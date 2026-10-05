@@ -90,6 +90,16 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(500)
         check("Bereinigen: kein Zählabzeichen am Besen, solange nichts zu tun ist",
               await pg.locator("#abz-bereinigen").is_hidden())
+        linien = await pg.evaluate("""() => [...document.querySelectorAll('.karte[data-f]')].map(k =>
+            [k.dataset.f, getComputedStyle(k, '::before').backgroundColor, getComputedStyle(k, '::before').height])""")
+        check("Formatfarbe: jede Kachel trägt oben eine 3 px hohe Linie in der Farbe ihres Formats",
+              len(linien) > 0 and all(c not in ("", "rgba(0, 0, 0, 0)") and h == "3px" for _, c, h in linien))
+        tabelle = await pg.evaluate("""() => ['stl', '3mf', 'step', 'fcstd', 'obj'].map(f => { const e = document.createElement('div');
+            e.dataset.f = f; document.body.appendChild(e); const v = getComputedStyle(e).getPropertyValue('--f').trim(); e.remove(); return v; })""")
+        check("Formatfarbe: fünf Formate, fünf verschiedene Farben", len(set(tabelle)) == 5 and "" not in tabelle)
+        chip_punkte = await pg.evaluate("""() => [...document.querySelectorAll('.chip[data-format]')].map(c => getComputedStyle(c, '::before').backgroundColor)""")
+        check("Formatfarbe: die Format-Chips der Filterleiste zeigen dieselbe Farbe als Punkt (Legende)",
+              len(chip_punkte) >= 1 and all(c not in ("", "rgba(0, 0, 0, 0)") for c in chip_punkte))
         await pg.click('[data-sk="tags"]')
         check("Abschnitt per Überschrift aufklappen (Tags standardmässig zu)", await pg.locator("#tag-liste").is_visible())
         await pg.click('[data-sk="tags"]')
