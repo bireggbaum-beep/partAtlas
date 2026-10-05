@@ -303,6 +303,9 @@ Listenzeile (`data-f` am Element, `::before` in `app.css`); STL blau, 3MF grün,
 Farbpunkt als Legende. Keine Tönung (Variante B): sie wurde nicht gewählt; der Mock bleibt, falls es wiederkommt. **Nicht** nach Baugruppe: ein Modell kann in mehreren stecken. Ggesehen im Browser in Raster, Karten und Liste
 (dunkel), geprüft in `test_ui` (84/84, Gegenprobe mit gleichen Farben und Höhe 0 fällt), nicht geprüft: hell, Windows/Mac. Die Linie überdeckt oben 3 px der Vorschau. Nicht berücksichtigt: Farbenblindheit — das Format
 steht weiter in der Endung und im Chip.
+**Zwei weitere Ideen zum Format, nur als Mock (`mock/format_vorschau.html`, `.png`):** D = Format als kleine Beschriftung unten links auf dem Vorschaubild (neutral, immer lesbar auch bei abgeschnittenem Namen „battery-AA.FCS…“,
+Aufwand 1); E = Objektfarbe in der Vorschau nach Format (Aufwand 2–3, Dagegen: die Objektfarbe sagt heute etwas — Filamentfarbe bei 3MF, blaue Platte; Farbtonverschiebung beim Anzeigen trifft auch Bilder aus der Datei;
+nur für die vom Programm gerechneten erwägen). Beide lassen sich mit der gebauten Linie verbinden. Nicht entschieden.
 **Speicher des Browsers (5.10.2026):** Firefox mit partAtlas 708 MB, leer 239 MB (Tester, 8 946 Modelle). Ursache nicht gemessen (Verdacht: ganze Modellliste im Browser, entpackte Bilder);
 `about:memory` wäre die Messung. Bewusst zurückgestellt.
 **Noch offen (klein):** einmal parsen statt dreimal (Hash, Analyse, Render) — erst nach den Zahlen vom 4,1-GB-Lauf des Testers.
