@@ -233,6 +233,31 @@ Was davon nicht abgedeckt ist: Sammlungen, Baugruppen, Drucke und Tags lassen si
 Graph und in den Sicherungen noch da), aber nicht in der Oberfläche zurückholen; das Zurückholen einer Sicherung geht nur über die
 Kommandozeile.
 
+### 3.4 Ordner aufnehmen und einlesen — Zielbild (5.10.2026, vom Anwender entschieden, noch nicht gebaut)
+
+Die heutige Fassung ist ein **Hybrid**: Wurzelordner, die an Ort und Stelle bleiben, daneben Hochladen mit Zielordner, das Kopien in die
+Wurzelordner legt. Das gehört nicht zusammen und wird aufgelöst.
+
+- **Die Bibliothek besteht aus gleichrangigen Wurzelordnern** — etwa „FreeCAD-Dateien“ und „3D-Drucker-Dateien“. Keiner ist Unterordner eines
+  anderen; partAtlas hat keine eigene Ordnerstruktur und keinen „Zielordner“. Es überwacht die Ordner, die der Anwender ihm nennt, und die
+  Dateien bleiben, wo sie liegen.
+- **Einen Ordner aufnehmen ist ein Vorgang mit zwei Bedienungen:** Importieren › Ordner hinzufügen, oder den Ordner ins Fenster ziehen.
+  Ergebnis in beiden Fällen: ein weiterer, gleichrangiger Wurzelordner. Dateien in einen schon aufgenommenen Ordner zu ziehen gibt es im
+  Zielbild nicht; **Hochladen, Zielordner und Kopieren entfallen.**
+  *Offen:* der Browser gibt beim Ziehen keinen Pfad heraus, nur Name und Dateien. Zwei Wege: der Server sucht auf dem Rechner einen
+  Ordner gleichen Namens mit passenden Dateien, bei keinem eindeutigen Treffer öffnet sich der Ordnerdialog (Name vorbelegt).
+- **Einlesen** ist der Aufbau der Datenbank und das Auslesen dessen, was in der Datei steht (Fingerabdruck, Masse, Slicer-Daten, eingebettetes
+  Bild) — wie bei pDMS das Einlesen eines Dokuments. Es zeigt seinen Fortschritt; danach stehen die Modelle im Katalog.
+- **Danach startet ein Worker im Hintergrund** (wie die OCR bei pDMS): Vorschaubilder, FreeCAD-Umwandlung, kleine Bilder. Er gehört **nicht**
+  zum Einlesen, beeinträchtigt die Bedienung nicht, hat eine eigene kleine Anzeige, und seine Warteschlange (der Zustand „ausstehend“ am
+  Bestand) übersteht den Neustart. Look and feel wie pDMS.
+- **Später der Ordnerbrowser** als Ersatz für den Explorer: er zeigt die Plattenstruktur der aufgenommenen Wurzelordner — nicht des ganzen
+  Rechners. Dann ist auch wieder möglich, Dateien in einen Ordner zu ziehen oder ein ZIP dort abzulegen; es ist dann Explorer-Funktion
+  innerhalb des Überwachten, kein Hochladen in eine zweite Struktur. Bis dahin bleibt es weg.
+- **Nicht für den Codespace optimiert.** Lokal betrieben ist der Normalfall.
+- *Offen:* einzelne Dateien ohne Ordner · „Archive entpacken“ · ob die Fassung 0.47.0 (Eingangsliste und Teillauf, hängen am Hochladen)
+  bleibt oder zurückgenommen wird · die Trennung Einlesen / Worker, die heute noch **eine** Kette im selben Thread ist.
+
 ## 4. Druckhistorie, Referenz, Nochmal
 
 Der Kern von partAtlas. Aus eigener Erfahrung: acht Versuche, und keiner
@@ -540,7 +565,8 @@ neuer Unterordner, Quelle als http(s)-Link, eigenes Bild (als PNG neu
 geschrieben, im Vault), Hochladen per Dialog oder aus dem Dateimanager
 ins Fenster ziehen, Archive entpacken (zip, tar; Positivliste der
 Endungen, kein ../, keine Links; Original auf Wunsch in den Papierkorb).
-Was der Anwender ablegt (Hochladen, Entpacken), trägt der Server in die
+*(Stand 0.47.0 auf dem Branch; das Zielbild in §3.4 ersetzt das Hochladen,
+dann entfällt dieser Absatz.)* Was der Anwender ablegt (Hochladen, Entpacken), trägt der Server in die
 **Eingangsliste** ein (`arbeit/eingang.json`, atomar geschrieben, übersteht
 Neustart) — mehr nicht; die Anfrage wartet auf nichts. Ein **Dienst im
 Hintergrund** (`Scanner`, ein Thread) nimmt, was in der Liste steht, liest

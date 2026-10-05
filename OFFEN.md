@@ -631,7 +631,11 @@ gemerkte Suchen als Sammlung (Aufwand 2–3), gleiches Teil in mehreren Formaten
 Tags, die etwas trennen (Auto-Tags für den Bestand entfernen, Suche im Tag-Feld, nach Häufigkeit; Aufwand 2), Einstiege „zuletzt angesehen/hinzugefügt“ (teilweise da), Filter mit Trefferzahl nach dem Einschränken.
 **Zeichen, dass es soweit ist:** dieselbe Suche wird mehrfach getippt; etwas wird nicht gefunden, das sicher drin ist. Nicht die Grösse des Bestands.
 
-## Eingangsliste und Dienst im Hintergrund (0.47.0, 5.10.2026, gebaut)
+## Eingangsliste und Dienst im Hintergrund (0.47.0, 5.10.2026, gebaut — **überholt**, Zielbild in KONZEPT §3.4)
+
+**Nachtrag, selber Tag:** der Anwender hat das Konzept geklärt (KONZEPT §3.4): Wurzelordner sind gleichrangig, Ziehen eines Ordners = „Ordner hinzufügen“,
+Hochladen und Zielordner entfallen (Hybrid-Konzept stört), Einlesen und Worker (Vorschauen, FreeCAD, kleine Bilder) sind getrennt, Look wie pDMS (Einlesen = Datenbankaufbau, danach Worker wie die OCR).
+Die Fassung unten hängt am Hochladen; ob sie bleibt oder zurückgenommen wird, ist **nicht entschieden**. Bis dahin wird nichts gebaut.
 
 **Anlass:** Hochladen von 45 bis 121 Dateien im Codespace war „sehr langsam“, und die Zeile oben rechts zeigte „219 Dateien, 1 neu in unter 1 s“. Der Notbehelf davor (0.45/0.46: nur die letzte hochgeladene Datei stösst das Einlesen an, Läufe einer Kette
 werden zusammengezählt) hing am Browser, kostete je Stapel einen Durchlauf durch alle Ordner und passte nicht zum Hintergrunddienst nach Art der OCR bei pDMS. **Ersetzt:** `einlesen=`-Parameter und `lauf` in der Antwort von `/api/hochladen` und `/api/archive/entpacken` sind weg.
