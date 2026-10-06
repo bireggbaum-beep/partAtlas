@@ -4,6 +4,28 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Als Nächstes: Durchsicht von allem, was Sonnet gebaut hat (festgehalten 6.10.2026, Auftrag des Anwenders)
+
+Der Anwender hält die letzten Fassungen für nicht durchdacht („Anbau an Anbau“, Fehler, ein Protokoll ohne Inhalt). Vor allem Weiteren: **alles
+durchsehen, was mit `Co-Authored-By: Claude Sonnet 5.5` committet ist** — auf `main` etwa ab 0.44.4 bis 0.46.3 (Liste beim Einlesen, Einlesen beim Start,
+Hintergrundlauf, der Commit „UNFERTIG“, Thumbs, `start.sh`, Beenden mit `abbrechen()`, Protokoll), dazu die 0.47.0 auf dem Branch `ccr-97d3e8b3-0n86yu`.
+**Nichts bauen**, bis der Anwender die Befunde entschieden hat.
+
+Prüfen:
+1. **Richtig?** Den Code auf Fehler lesen: Wettläufe zwischen Threads, Abbruch, Neustart, volle Platte.
+2. **Passt es zum Konzept?** Gegen KONZEPT §3.4 (Wurzelordner gleichrangig, Ziehen = Ordner hinzufügen, kein Hochladen; Einlesen getrennt vom
+   Worker für Vorschauen/FreeCAD, wie pDMS mit OCR). Was ist Notbehelf, was Anbau, was muss weg (etwa `einlesen=0` beim Hochladen, `_kette_buchen`).
+3. **Halten die Tests?** Jede neue Prüfung muss nachweislich fallen, wenn man die Eigenschaft entfernt; sonst raus.
+4. **Hänger des Testers (6.10.2026, 0.46.1):** Ordner mit neuem Unterordner (`Anschlag 45°.FCStd`, `Anschlag 45°-Cut001.stl`), „Neu einlesen“,
+   „hängt, nach 10 min tot, abgeschossen“; nach dem Neustart waren die Dateien im Katalog. Sein Protokoll: `14:37:26 CAD: FreeCAD-Aufruf …, 1 Dateien offen`,
+   dann nichts bis zum Neustart 14:45:11, keine Warnung (eine Zeitüberschreitung von FreeCAD hätte nach spätestens ca. 5 min eine geschrieben), und beim
+   Neustart stand die Datei nicht mehr offen — FreeCAD war also fertig, danach blieb etwas stehen (Server oder Browser, er nutzt vermutlich Firefox).
+   **Nicht nachgestellt** (Chromium, Mustermodelle, mit und ohne FreeCAD-Attrappe: läuft in 1,4 s durch). Den Ablauf nach `_cad` gezielt lesen.
+   Für den Tester bis dahin: „FCStd über FreeCAD“ auf „Nein, nie“.
+
+Ergebnis: eine Liste der Befunde nach Schwere, je mit Vorschlag und Aufwand. Danach den Umbau nach §3.4 planen und vom Anwender freigeben lassen,
+dann ein Schritt pro Chat.
+
 ## Zuerst wissen
 
 - **Server und Tests laufen nur mit `flatgraph`.** In Cloud-Sitzungen ist
@@ -636,7 +658,7 @@ gemerkte Suchen als Sammlung (Aufwand 2–3), gleiches Teil in mehreren Formaten
 Tags, die etwas trennen (Auto-Tags für den Bestand entfernen, Suche im Tag-Feld, nach Häufigkeit; Aufwand 2), Einstiege „zuletzt angesehen/hinzugefügt“ (teilweise da), Filter mit Trefferzahl nach dem Einschränken.
 **Zeichen, dass es soweit ist:** dieselbe Suche wird mehrfach getippt; etwas wird nicht gefunden, das sicher drin ist. Nicht die Grösse des Bestands.
 
-## Eingangsliste statt „Einlesen anstossen“ (5.10.2026, entschieden, noch nicht gebaut)
+## Eingangsliste statt „Einlesen anstossen“ (5.10.2026 — **überholt** durch KONZEPT §3.4: Hochladen entfällt; gebaut nur als 0.47.0 auf dem Branch, nicht übernehmen)
 
 **Anlass:** Hochladen von 45 bis 121 Dateien im Codespace war „sehr langsam“, und die Zeile oben rechts zeigte „219 Dateien, 1 neu in unter 1 s“. Der Fix in 0.45/0.46 (nur die letzte hochgeladene Datei stösst das Einlesen an,
 Läufe einer Kette werden zusammengezählt) ist ein **Notbehelf, keine Lösung** — so festgehalten vom Anwender. Schwächen: (1) jeder Upload-Stapel kostet einen vollständigen Durchlauf durch **alle** Ordner (auf der langsamen Platte des Testers ca. 12 s,
