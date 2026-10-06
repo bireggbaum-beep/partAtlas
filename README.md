@@ -15,15 +15,17 @@ git clone https://github.com/bireggbaum-beep/partAtlas && cd partAtlas
 Danach genügt `./start.sh`. Zum **Aktualisieren** (neue Fassung holen):
 
 ```bash
-# 1. laufendes partAtlas beenden: im Terminal, in dem es läuft, Strg+C
-#    (oder von woanders: pkill -f "python -m partatlas")
 cd partAtlas
 git pull
 ./start.sh             # kein --demo nötig; die eigene Sammlung bleibt erhalten
 ```
 
+Läuft noch die alte Fassung, sagt `start.sh` es („partAtlas 0.45.1 läuft noch, auf der Platte liegt 0.46.0“) und fragt, ob es sie beenden
+und neu starten soll. Ohne Rückfrage: `./start.sh --neu`. Der Server ist ein Python-Prozess (`python -m partatlas`) und heisst deshalb in der
+Systemüberwachung „python“, nicht „partAtlas“. Von Hand beenden: Strg+C im Terminal, in dem es läuft, oder `pkill -f "python -m partatlas"`.
+
 Im Browser einmal **Strg+Umschalt+R** (neu laden ohne Zwischenspeicher). Oben links steht neben dem Logo die
-Fassung. Ein noch laufender alter Server wird von `start.sh` nur wieder geöffnet, nicht neu gestartet. Slicer und CAD (PrusaSlicer, Orca, Cura, FreeCAD …)
+Fassung. Slicer und CAD (PrusaSlicer, Orca, Cura, FreeCAD …)
 findet partAtlas im PATH, bei Flatpak und als AppImage in `~/Applications`
 oder `~/AppImages`; „Öffnen in …“ startet sie auf dem eigenen Rechner.
 
