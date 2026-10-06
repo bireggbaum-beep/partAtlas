@@ -77,7 +77,7 @@ if __name__ == "__main__":
     klein_pfad = b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")
     check("Die Vorschauen von partAtlas sind schon klein (320 px, wenige KB): sie werden ohne Umweg ausgeliefert, es entsteht keine zweite Fassung",
           b.thumb(klein_pfad) == klein_pfad and (not os.path.isdir(thumb_dir) or not os.listdir(thumb_dir))
-          and st.get("thumbs_gesamt") == 3 and st.get("thumbs_fertig") == 3)
+          and st.get("thumbs_gesamt") == 0 and st.get("thumbs_fertig") == 0)
     from PIL import Image as _Img
     gross_pfad = b.pfad("vault", "bilder", "gross_test.png")
     os.makedirs(os.path.dirname(gross_pfad), exist_ok=True)
@@ -87,6 +87,23 @@ if __name__ == "__main__":
           thumb_gross.endswith(".webp") and os.path.dirname(thumb_gross) == thumb_dir and b.thumb(gross_pfad) == thumb_gross
           and len(os.listdir(thumb_dir)) == 1)
     os.remove(gross_pfad)
+    # Die Thumbs-Phase fasst kleine PNGs nicht an (kostete bei 9 000 Bildern 3 s je Lauf), baut aber grosse vor
+    for _n in os.listdir(thumb_dir):             # Reste des Tests davor
+        os.remove(os.path.join(thumb_dir, _n))
+    os.makedirs(b.pfad("vault", "bilder"), exist_ok=True)
+    gross2 = b.pfad("vault", "bilder", "gross_vorbauen.png")
+    _Img.effect_noise((900, 900), 40).convert("RGB").save(gross2, "PNG")
+    tp = Scanner(b, k, prozesse=2)
+    tp._pool = tp._neuer_pool()
+    try:
+        tp._thumbs()
+    finally:
+        tp._pool.shutdown(wait=False, cancel_futures=True)
+    check("Die Thumbs-Phase baut nur vor, was sich verkleinern lässt: ein grosses Bild ja, die kleinen Vorschauen nicht (gesamt 1, fertig 1)",
+          tp.status.get("thumbs_gesamt") == 1 and tp.status.get("thumbs_fertig") == 1 and len(os.listdir(thumb_dir)) == 1)
+    os.remove(gross2)
+    for _n in os.listdir(thumb_dir):
+        os.remove(os.path.join(thumb_dir, _n))
     check("Bilanz für den Einlesen-Dialog: Laufnummer, geprüft x von y, je Format, Bilder aus der Datei, Dauer des Einlesens",
           st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and st["analysiert"] == st["zu_analysieren"] == 5
           and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and st["aus_datei"] == 1

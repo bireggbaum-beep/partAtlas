@@ -38,7 +38,7 @@ from concurrent.futures import TimeoutError as FutZeit      # vor 3.11 nicht das
 from concurrent.futures.process import BrokenProcessPool
 
 from . import cad, dateien, formate, programme, vorschau
-from .bestand import DATEI, MODELL
+from .bestand import DATEI, KLEIN_BYTES, MODELL
 
 log = logging.getLogger("partatlas.scan")
 
@@ -620,8 +620,18 @@ class Scanner:
         bilder = []
         for teil in ("vorschau", "bilder"):
             ordner = self.b.pfad("vault", teil)
-            if os.path.isdir(ordner):
-                bilder += [os.path.join(ordner, n) for n in sorted(os.listdir(ordner)) if n.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))]
+            if not os.path.isdir(ordner):
+                continue
+            for e in sorted(os.scandir(ordner), key=lambda e: e.name):
+                n = e.name.lower()
+                if not n.endswith((".png", ".jpg", ".jpeg", ".webp")):
+                    continue
+                # Kleine PNGs (die Vorschauen von partAtlas selbst: 320 px, ca. 11 KB) braucht es nicht zu verkleinern; `Bestand.thumb` liefert
+                # sie direkt aus. Sie hier zu öffnen kostete bei 9 000 Bildern bei JEDEM Lauf ca. 3 s, auch ohne etwas Neues (gemessen am 6.10.2026,
+                # Rückmeldung des Testers: „beim Aktualisieren unveränderter Ordner immer 3 Sekunden“); nur die Grösse abzufragen kostet 0,03 s.
+                if n.endswith(".png") and e.stat().st_size <= KLEIN_BYTES:
+                    continue
+                bilder.append(e.path)
         self._setze(phase="thumbs", thumbs_gesamt=len(bilder), thumbs_fertig=0)
         if not bilder:
             return
