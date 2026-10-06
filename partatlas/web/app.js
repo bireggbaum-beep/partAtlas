@@ -11,6 +11,19 @@ const PHASE = Number(new URLSearchParams(location.search).get("phase")) || 1;   
 document.documentElement.dataset.phase = PHASE;
 const ab2 = (k) => PHASE >= 2 || !["ws", "warteschlange"].includes(k);
 
+// Fehler in der Oberfläche kommen ins Protokoll des Servers (partatlas.log): im Browser sieht sie sonst nur, wer die Konsole offen hat.
+// Höchstens ein paar je Seite, damit eine Fehlerschleife nichts füllt; schlägt das Melden selbst fehl, wird es still verworfen.
+const clientFehler = { n: 0 };
+function fehlerMelden(meldung, ort) {
+  if (clientFehler.n++ >= 20) return;
+  try {
+    fetch("/api/clientfehler", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+      body: JSON.stringify({ meldung: String(meldung), ort: String(ort || "") }) }).catch(() => {});
+  } catch { /* nichts zu tun */ }
+}
+window.addEventListener("error", (e) => fehlerMelden(e.message, `${e.filename || ""}:${e.lineno || ""}:${e.colno || ""}`));
+window.addEventListener("unhandledrejection", (e) => fehlerMelden(e.reason?.stack || e.reason, "Promise"));
+
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 

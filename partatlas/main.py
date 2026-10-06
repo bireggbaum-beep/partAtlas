@@ -10,9 +10,11 @@ import asyncio
 import json
 import logging
 import os
+import platform
 import re
 import subprocess
 import sys
+import time
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -34,6 +36,23 @@ from .version import VERSION
 
 WEB = os.path.join(os.path.dirname(__file__), "web")
 log = logging.getLogger("partatlas")
+LANGSAM_S = 3.0          # eine Anfrage, die so lange dauert, steht im Protokoll: so sieht man, was den Server aufhielt
+CLIENTFEHLER_MAX = 50    # Fehler aus dem Browser je Serverlauf, damit eine Fehlerschleife das Protokoll nicht füllt
+
+
+def _startinfo(b, k, s):
+    """Eine Zeile je Umstand, der später für die Fehlersuche gebraucht wird; schlägt etwas davon fehl, startet partAtlas trotzdem."""
+    try:
+        log.info("Umgebung: Python %s, %s, Prozessorkerne %s, Arbeiter für das Einlesen %s", platform.python_version(), platform.platform(),
+                 os.cpu_count(), s.prozesse)
+        einst = b.einstellungen()
+        wurzeln = k.wurzeln()
+        log.info("Katalog: %d Modelle, %d Dateien, %d Wurzelordner: %s", len(b.db.list_nodes("MODEL_ASSET", readonly=True)),
+                 len(b.db.list_nodes("PART_GEOMETRY", readonly=True)), len(wurzeln), ", ".join(w["pfad"] for w in wurzeln.values()) or "—")
+        log.info("Einstellungen: Beim Start einlesen=%s, FCStd über FreeCAD=%s", einst.get("scan_beim_start", False), einst.get("fcstd_freecad"))
+        log.info("Ausstehend im Bestand: %d Vorschaubilder, %d Umwandlungen über FreeCAD", len(k.ausstehende_vorschauen()), len(k.ausstehende_cad()))
+    except Exception:
+        log.exception("Angaben zum Start liessen sich nicht ermitteln")
 
 
 def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
@@ -53,22 +72,29 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), prozesse=prozesse)
         bg = Baugruppen(k)
         zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))      # EIGENE
+        s.schleifenprobe = verteiler.antwortzeit
+        _startinfo(b, k, s)
         # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
         # wer es will, schaltet es ein oder liest mit ⟳ bei der Bibliothek ein. Ausdrücklich übergeben (Tests) geht vor.
         beim_start = bool(b.einstellungen().get("scan_beim_start", False)) if scan_beim_start is None else scan_beim_start
         if beim_start and k.wurzeln():
+            log.info("Beim Start: ganzes Einlesen (Einstellung „Beim Start einlesen“)")
             s.starten()
         elif k.wurzeln() and s.hat_offenes():
+            log.info("Beim Start: Hintergrundlauf für das, was noch aussteht (ohne die Ordner zu durchsuchen)")
             # Auch ohne „Beim Start einlesen“: was im Hintergrund noch aussteht (Vorschaubilder, FreeCAD), wird fortgesetzt — ohne die Ordner
             # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
             s.starten(nur_cad=True)
+        log.info("partAtlas ist gestartet und nimmt Anfragen an")
         yield
+        log.info("partAtlas wird beendet (Einlesen läuft: %s, Phase „%s“)", s.status.get("laeuft"), s.status.get("phase"))
         # Beenden bricht ein laufendes Einlesen ab (was fertig ist, steht in der Datenbank), statt bis zu 30 s darauf zu warten: sonst
         # reagiert partAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
         # beim harten Beenden als eigener Prozess zurück.
         s.abbrechen()
         s.warten(30)
         b.schliessen()
+        log.info("partAtlas beendet")
 
     app = FastAPI(title="partAtlas", version=VERSION, lifespan=leben)
     app.state.zustand = zustand
@@ -85,12 +111,49 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # -- Wache: schreibende Anfragen nur von der eigenen Oberfläche. Ein
     # fremder Tab im selben Browser könnte sonst Dateien umbenennen oder
     # löschen (pDMS: zugang.wache).
+    gesehene_browser, clientfehler = set(), [0]
+
+    @app.middleware("http")
+    async def protokoll(request: Request, call_next):
+        """Was im Protokoll stehen soll, damit sich nachvollziehen lässt, was passiert ist, ohne dass jemand ein Terminal ansieht: jeder neue
+        Browser (Name und Fassung), jede Anfrage, die etwas ändert (Weg, Status, Dauer — ohne Inhalt), und jede, die langsam ist."""
+        t0 = time.monotonic()
+        ua = request.headers.get("user-agent", "")
+        if ua and ua not in gesehene_browser:
+            gesehene_browser.add(ua)
+            log.info("Seite geöffnet von: %s", ua)
+        try:
+            antwort = await call_next(request)
+        except Exception as e:
+            # Den ganzen Stapel schreibt uvicorn selbst ins Protokoll; hier steht, welche Anfrage es war.
+            log.error("Anfrage %s %s ist mit einem Fehler abgebrochen: %s: %s", request.method, request.url.path, type(e).__name__, e)
+            raise
+        dauer = time.monotonic() - t0
+        if dauer >= LANGSAM_S:
+            log.warning("Langsame Anfrage: %s %s dauerte %.1f s (Status %s)", request.method, request.url.path, dauer, antwort.status_code)
+        elif request.method not in ("GET", "HEAD", "OPTIONS"):
+            log.info("Anfrage %s %s → %s (%.2f s)", request.method, request.url.path, antwort.status_code, dauer)
+        return antwort
+
+    @app.post("/api/clientfehler")
+    async def clientfehler_melden(request: Request):
+        """Ein Fehler in der Oberfläche (JavaScript) kommt ins Protokoll: im Browser sieht ihn sonst nur, wer die Konsole offen hat."""
+        if clientfehler[0] < CLIENTFEHLER_MAX:
+            clientfehler[0] += 1
+            try:
+                d = await request.json()
+            except ValueError:
+                d = {}
+            log.warning("Fehler im Browser: %s (%s)", str(d.get("meldung", ""))[:500], str(d.get("ort", ""))[:200])
+        return {"ok": True}
+
     @app.middleware("http")
     async def wache(request: Request, call_next):
         if request.method not in ("GET", "HEAD", "OPTIONS"):
             seite = request.headers.get("sec-fetch-site")
             herkunft = request.headers.get("origin")
             if seite and seite not in ("same-origin", "none"):
+                log.warning("Anfrage abgewiesen (fremde Herkunft %s): %s %s", seite, request.method, request.url.path)
                 return JSONResponse({"fehler": "Fremde Herkunft"}, status_code=403)
             if herkunft and urlsplit(herkunft).netloc != request.headers.get("host"):
                 return JSONResponse({"fehler": "Fremde Herkunft"}, status_code=403)

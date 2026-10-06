@@ -8,6 +8,7 @@ nur in Warteschlangen gelegt, nie gewartet.
 import asyncio
 import json
 import threading
+import time
 
 
 class Verteiler:
@@ -18,6 +19,18 @@ class Verteiler:
 
     def binden(self, schleife):
         self._schleife = schleife
+
+    def antwortzeit(self, frist=5.0):
+        """Wie lange die Ereignisschleife des Servers braucht, um eine Kleinigkeit zu erledigen (ms), oder None, wenn sie in `frist` Sekunden
+        nicht antwortet — dann steckt der Server fest (etwas blockiert die Schleife). Für das Protokoll."""
+        if self._schleife is None:
+            return None
+        t0 = time.monotonic()
+        try:
+            asyncio.run_coroutine_threadsafe(asyncio.sleep(0), self._schleife).result(frist)
+        except Exception:
+            return None
+        return round((time.monotonic() - t0) * 1000)
 
     def senden(self, art, daten):
         if self._schleife is None:

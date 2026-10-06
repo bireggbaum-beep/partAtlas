@@ -1,5 +1,6 @@
 """Scan und Katalog: was der Anwender mit seinen Ordnern tut, muss der
 Katalog richtig nachvollziehen — ohne Duplikate, ohne Verlust."""
+import logging
 import os
 import time
 import shutil
@@ -10,6 +11,19 @@ from muster import check
 from partatlas.bestand import Bestand
 from partatlas.katalog import Katalog, KatalogFehler
 from partatlas.scan import Scanner
+
+
+class Sammler(logging.Handler):
+    """Fängt das Protokoll von partAtlas auf: was dort steht, ist alles, was der Tester einem schicken kann."""
+    def __init__(self):
+        super().__init__(logging.INFO)
+        self.zeilen = []
+
+    def emit(self, r):
+        self.zeilen.append(r.getMessage())
+
+    def hat(self, *teile):
+        return any(all(t in z for t in teile) for z in self.zeilen)
 
 
 def neu_oeffnen():
@@ -26,6 +40,9 @@ def scannen():
 
 
 if __name__ == "__main__":
+    protokoll = Sammler()
+    logging.getLogger("partatlas").addHandler(protokoll)
+    logging.getLogger("partatlas").setLevel(logging.INFO)
     tmp = tempfile.mkdtemp()
     sammlung = os.path.join(tmp, "3D-Druck")
     downloads = os.path.join(tmp, "Downloads")
@@ -701,5 +718,29 @@ if __name__ == "__main__":
     check("Ganz und „nur FreeCAD“ gewünscht: ein ganzer Folgelauf, der die Umwandlung einschliesst — nicht zwei",
           laeufe() == ["ganz", "ganz"])
     fl_b.schliessen()
+
+    # -- Protokoll: Phasen, Läufe, Herzschlag, FreeCAD je Datei — damit ein „hängt“ ohne Terminal nachvollziehbar ist
+    check("Protokoll: ein ganzer Lauf nennt Beginn, Phasenwechsel mit Zahlen und die Bilanz",
+          protokoll.hat("Lauf 1 beginnt: ganzes Einlesen") and protokoll.hat("Phase „hashen“", "zu prüfen") and protokoll.hat("Lauf 1 fertig", "neu"))
+    check("Protokoll: die Vorschaubilder nennen Anzahl und Dauer", protokoll.hat("Vorschaubilder:", "zu berechnen") and protokoll.hat("Vorschaubilder:", "fertig in"))
+    check("Protokoll: FreeCAD nennt den Start und jede Datei, an der es arbeitet (bleibt es hängen, steht dort, an welcher)",
+          protokoll.hat("FreeCAD gestartet", "Stapel") and protokoll.hat("FreeCAD beginnt mit Datei"))
+    check("Protokoll: Zeitgrenze und ausgefallene Arbeiter stehen drin", protokoll.hat("Zeitgrenze") and protokoll.hat("Arbeitsprozess ist ausgefallen"))
+    hs_tmp = tempfile.mkdtemp()
+    hs_b = Bestand(os.path.join(hs_tmp, "bestand"))
+    hs_s = Scanner(hs_b, Katalog(hs_b), prozesse=1)
+    hs_s.herzschlag_s = 0.2
+    hs_s.schleifenprobe = lambda: 7
+    hs_s.lauf = lambda nur_cad=False: time.sleep(1.0)
+    hs_s._lauf_sicher()
+    check("Protokoll: solange der Dienst arbeitet, schreibt er einen Herzschlag mit Stand und Antwortzeit der Serverschleife",
+          sum("Herzschlag" in z and "antwortet in 7 ms" in z for z in protokoll.zeilen) >= 2)
+    zahl_vorher = len(protokoll.zeilen)
+    hs_s.schleifenprobe = lambda: None
+    hs_s._lauf_sicher()
+    stapel = [z for z in protokoll.zeilen[zahl_vorher:] if "Serverschleife antwortet nicht" in z]
+    check("Protokoll: antwortet die Serverschleife nicht, steht der Stapel aller Threads dabei (woran es festhängt)",
+          stapel and "scan.py" in stapel[0] and "_lauf_sicher" in stapel[0])
+    hs_b.schliessen()
 
     muster.ende()

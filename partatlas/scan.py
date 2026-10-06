@@ -26,6 +26,7 @@ weiter (bekannte Dateien über Ort, Grösse und Zeit, ausstehende Vorschauen
 bleiben „ausstehend“). Bei Abbruch wird nichts entfernt: die Liste der
 gesehenen Orte ist dann unvollständig.
 """
+import faulthandler
 import logging
 from datetime import datetime
 import multiprocessing
@@ -44,6 +45,7 @@ log = logging.getLogger("partatlas.scan")
 
 GRUPPE = 100
 SPEICHERN_ALLE_S = 2.0   # Ergebnisse der Vorschauen spätestens so oft festhalten, damit die Bilder nach und nach erscheinen, nicht erst nach 100 Stück
+HERZSCHLAG_S = 30     # solange der Dienst arbeitet, schreibt er so oft eine Zeile ins Protokoll: bricht sie ab, steckt der ganze Prozess fest
 ZEITGRENZE = 180      # Sekunden ohne ein einziges fertiges Ergebnis, bevor eine Datei als hängend gilt (wie bei FreeCAD, cad.py)
 
 
@@ -131,6 +133,8 @@ class Scanner:
         self._pool = None
         self._stopp = threading.Event()
         self._nur_cad = False
+        self.herzschlag_s = HERZSCHLAG_S
+        self.schleifenprobe = None          # Aufruf, der die Antwortzeit der Serverschleife in ms liefert (None: antwortet nicht); setzt main.py
 
     def abbrechen(self):
         """Bittet den laufenden Lauf, aufzuhören. Wahr, wenn einer lief. Ein wartender Folgelauf entfällt: wer abbricht,
@@ -201,6 +205,9 @@ class Scanner:
                     erledigt.add(k)
                     yield k, erg, None
             if zerbrochen:
+                log.warning("Ein Arbeitsprozess ist ausgefallen oder hing (Zeitgrenze %s s): Pool wird erneuert, %d Aufträge offen, %s",
+                            self.zeitgrenze, len([k for k, _ in stueck if k not in erledigt]),
+                            "sie werden einzeln wiederholt" if welle is not None else "weiter in Wellen")
                 self._pool_neu()
                 if welle is None:
                     welle = self.prozesse
@@ -223,6 +230,7 @@ class Scanner:
     def _setze(self, **werte):
         # Wie lange jede Phase dauerte (Suchen, Hashen, Analysieren, Vorschau): wer einen grossen Bestand einliest,
         # will wissen, wo die Zeit bleibt. Eine neue Phase schliesst die vorige.
+        phase_vorher = self._phase_name
         if "phase" in werte:
             jetzt = time.monotonic()
             if werte["phase"] == "suchen":
@@ -235,6 +243,11 @@ class Scanner:
         if self._phase_name:
             werte["phase_s"] = round(time.monotonic() - self._phase_t, 1)     # für die Restzeit-Schätzung der Oberfläche
         self.status.update(werte)
+        if "phase" in werte and werte["phase"] != phase_vorher:
+            st = self.status
+            log.info("Lauf %s: Phase „%s“ nach „%s“ — gefunden %s, zu prüfen %s, zu analysieren %s, neu %s, Vorschauen offen %s, FreeCAD %s",
+                     st.get("lauf"), werte["phase"], phase_vorher, st.get("gefunden"), st.get("zu_pruefen"), st.get("zu_analysieren"),
+                     st.get("neu"), st.get("vorschauen_gesamt"), st.get("cad_gesamt"))
         self.melden(dict(self.status))
 
     def starten(self, nur_cad=False):
@@ -285,19 +298,50 @@ class Scanner:
 
     def _lauf_sicher(self):
         kette = {"t0": time.monotonic(), "laeufe": 0, "summe": {}, "phasen": {}, "je_format": {}}
-        while True:
-            try:
-                nur, self._nur_cad = self._nur_cad, False      # ein Folgelauf ist wieder ein ganzer
-                self.lauf(nur_cad=True) if nur else self.lauf()
-                self._kette_buchen(kette)
-            except Exception as e:                   # der Server soll weiterlaufen
-                log.exception("Scan abgebrochen")
-                self._setze(laeuft=False, abbruch=str(e))
-            with self._sperre:
-                if not self._nochmal:
-                    return
-                self._nur_cad = self._nochmal == "cad"
-                self._nochmal = False
+        ende = threading.Event()
+        threading.Thread(target=self._herzschlag, args=(ende,), name="herzschlag", daemon=True).start()
+        try:
+            while True:
+                try:
+                    nur, self._nur_cad = self._nur_cad, False      # ein Folgelauf ist wieder ein ganzer
+                    self.lauf(nur_cad=True) if nur else self.lauf()
+                    self._kette_buchen(kette)
+                except Exception as e:                   # der Server soll weiterlaufen
+                    log.exception("Scan abgebrochen")
+                    self._setze(laeuft=False, abbruch=str(e))
+                with self._sperre:
+                    if not self._nochmal:
+                        return
+                    self._nur_cad = self._nochmal == "cad"
+                    self._nochmal = False
+        finally:
+            ende.set()
+
+    def _herzschlag(self, ende):
+        """Solange der Dienst arbeitet: alle `herzschlag_s` Sekunden eine Zeile mit Stand und Antwort der Serverschleife. Wer ein „hängt“
+        meldet, ohne ein Terminal zu haben, schickt das Protokoll — hier steht, ob und wo der Dienst stand und ob der Server noch antwortete.
+        Antwortet die Schleife nicht, kommt der Stapel aller Threads dazu: er zeigt, woran es festhängt."""
+        while not ende.wait(self.herzschlag_s):
+            st = self.status
+            antwort = self.schleifenprobe() if self.schleifenprobe else "nicht geprüft"
+            log.info("Herzschlag: Lauf %s, Phase „%s“ seit %s s — geprüft %s/%s, analysiert %s/%s, Vorschauen offen %s, FreeCAD offen %s, kleine Bilder %s/%s — "
+                     "Serverschleife antwortet in %s ms", st.get("lauf"), st.get("phase"), round(time.monotonic() - self._phase_t) if self._phase_name else "?",
+                     st.get("geprueft"), st.get("zu_pruefen"), st.get("analysiert"), st.get("zu_analysieren"), st.get("vorschauen_offen"),
+                     st.get("cad_offen"), st.get("thumbs_fertig"), st.get("thumbs_gesamt"), antwort)
+            if antwort is None:
+                log.warning("Die Serverschleife antwortet nicht binnen 5 s. Stapel aller Threads:\n%s", self._thread_stapel())
+
+    def _thread_stapel(self):
+        pfad = self.b.pfad("arbeit", "stapel.txt")
+        try:
+            with open(pfad, "w+", encoding="utf-8") as f:
+                faulthandler.dump_traceback(file=f, all_threads=True)
+                f.seek(0)
+                text = f.read()
+            self.b.entfernen(pfad)
+            return text
+        except Exception as e:
+            return f"(nicht lesbar: {e})"
 
     def lauf(self, nur_cad=False):
         t0 = time.monotonic()
@@ -309,6 +353,7 @@ class Scanner:
         # `einlesen_s`, `vorschauen_gesamt`, `cad_gesamt`: was der Dialog und die Anzeige am Zahnrad zeigen (Fortschritt, Bilanz).
         self._setze(lauf=self.status["lauf"] + 1, geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0,
                     cad_gesamt=0, zu_pruefen=0, zu_analysieren=0, analysiert=0, kopien=0, aufgeraeumt=0)
+        log.info("Lauf %d beginnt: ganzes Einlesen aller Wurzelordner", self.status["lauf"])
         self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
                     unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
                     beginn=time.strftime("%H:%M:%S"))
@@ -459,6 +504,10 @@ class Scanner:
         except OSError as e:
             log.warning("Zeitpunkt des Einlesens nicht gespeichert: %s", e)
         self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1), zuletzt_eingelesen=jetzt)
+        st = self.status
+        log.info("Lauf %s fertig in %s s: %s Dateien gefunden, %s neu, %s verschoben, %s entfernt, %s unlesbar, %s Kopien, %s Vorschaubilder gerechnet, %s über FreeCAD",
+                 st.get("lauf"), st.get("dauer_s"), st.get("gefunden"), st.get("neu"), st.get("verschoben"), st.get("entfernt"), st.get("unlesbar"),
+                 st.get("kopien"), st.get("vorschauen_gesamt"), st.get("cad_gesamt"))
 
     def hat_offenes(self):
         """Wartet im Hintergrund noch Arbeit — ein Vorschaubild, das fehlt, oder eine FreeCAD-Umwandlung, die jetzt möglich ist?
@@ -476,6 +525,7 @@ class Scanner:
         Heisst aus Gewohnheit `nur_cad` (so kam er zuerst, nach der Zusage für FCStd). Zähler von Suchen und Hashen bleiben vom letzten Lauf
         stehen: es wurde nichts neu eingelesen. Setzt nach einem Abbruch oder Neustart genau dort fort, wo es aufhörte."""
         self._setze(lauf=self.status["lauf"] + 1, einlesen_s=None)
+        log.info("Lauf %d beginnt: Hintergrundlauf (Vorschaubilder, kleine Bilder, FreeCAD), ohne die Ordner zu durchsuchen", self.status["lauf"])
         self._setze(laeuft=True, phase="vorschau", nur_cad=True, bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False,
                     vorschauen_gesamt=0, cad_gesamt=0, cad_voraus=self._cad_anzahl(), beginn=time.strftime("%H:%M:%S"))
         self._pool = self._neuer_pool()
@@ -495,8 +545,12 @@ class Scanner:
         finally:
             self._pool.shutdown(wait=False, cancel_futures=True)
         self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
+        log.info("Lauf %s (Hintergrund) fertig in %s s: %s Vorschaubilder gerechnet, %s über FreeCAD", self.status.get("lauf"),
+                 self.status.get("dauer_s"), self.status.get("vorschauen_gesamt"), self.status.get("cad_gesamt"))
 
     def _abgebrochen(self, t0):
+        log.info("Lauf %s abgebrochen nach %.1f s (Phase „%s“); was fertig ist, steht in der Datenbank", self.status.get("lauf"), time.monotonic() - t0,
+                 self.status.get("phase"))
         self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.monotonic() - t0, 1))
 
     def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
@@ -532,6 +586,9 @@ class Scanner:
                 aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)))
         rest, stapel, zuletzt = len(aufgaben), [], time.monotonic()
         self._setze(vorschauen_gesamt=len(aufgaben), vorschauen_offen=rest)
+        if aufgaben:
+            log.info("Vorschaubilder: %d zu berechnen (%d Arbeiter)", len(aufgaben), self.prozesse)
+        gesamt_v, t_v = len(aufgaben), time.monotonic()
         for h, erg, fehler in self._verteilen(aufgaben, _rendern):
             status, fehler = ("fehler", fehler) if fehler else erg
             if fehler:
@@ -543,8 +600,12 @@ class Scanner:
                 stapel, zuletzt = [], time.monotonic()
             if rest % 10 == 0:
                 self._setze(vorschauen_offen=rest)      # die Anzeige beim Zahnrad zählt mit, nicht nur alle hundert
+            if (gesamt_v - rest) % 100 == 0:
+                log.info("Vorschaubilder: %d von %d fertig (%.0f s)", gesamt_v - rest, gesamt_v, time.monotonic() - t_v)
         self._vorschauen_speichern(stapel)
         self._setze(vorschauen_offen=0)
+        if gesamt_v:
+            log.info("Vorschaubilder: %d fertig in %.0f s", gesamt_v - rest, time.monotonic() - t_v)
 
     def _cad(self):
         """STEP-Dateien ohne Netz über FreeCAD umwandeln. Das Netz liegt abgeleitet in `netz/<hash>.stl` (nicht gesichert,
@@ -580,10 +641,15 @@ class Scanner:
         aufgaben.sort(key=lambda a: os.path.getsize(a[1]))
         self._setze(phase="cad", cad_offen=len(aufgaben), cad_gesamt=len(aufgaben))
         rest = len(aufgaben)
+        namen = {h: os.path.basename(p) for h, p, _ in aufgaben}
+        log.info("CAD: %d Dateien über FreeCAD, die kleinste zuerst", len(aufgaben))
         for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
             rest -= 1
             if not ok:
-                log.warning("CAD %s: %s", h[:12], info)
+                log.warning("CAD %s (%s): %s", namen.get(h), h[:12], info)
+            else:
+                log.info("CAD: %s umgewandelt (%s Dreiecke), noch %d offen", namen.get(h), info, rest)
+            if not ok:
                 with self.b.db.transaction():
                     self.k.cad_fehler(h, str(info))
             else:
@@ -635,6 +701,7 @@ class Scanner:
         self._setze(phase="thumbs", thumbs_gesamt=len(bilder), thumbs_fertig=0)
         if not bilder:
             return
+        t_t = time.monotonic()
         fertig = 0
         with ThreadPoolExecutor(min(2, self.prozesse)) as pool:      # wenige: die Threads teilen sich den Server-Prozess mit der Oberfläche
             for _ in pool.map(self._thumb_eins, bilder):
@@ -644,6 +711,7 @@ class Scanner:
                 if self._stopp.is_set():
                     break
         self._setze(thumbs_fertig=fertig)
+        log.info("Kleine Bilder: %d von %d geprüft in %.1f s", fertig, len(bilder), time.monotonic() - t_t)
 
     def _thumb_eins(self, pfad):
         if self._stopp.is_set():

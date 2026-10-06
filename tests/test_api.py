@@ -1,4 +1,5 @@
 """Die Schnittstelle, wie die Oberfläche sie benutzt — und die Wache davor."""
+import logging
 import os
 import stat
 import tempfile
@@ -9,7 +10,22 @@ from muster import check
 from fastapi.testclient import TestClient
 from partatlas.main import erstelle_app
 
+class Sammler(logging.Handler):
+    def __init__(self):
+        super().__init__(logging.INFO)
+        self.zeilen = []
+
+    def emit(self, r):
+        self.zeilen.append(r.getMessage())
+
+    def hat(self, *teile):
+        return any(all(t in z for t in teile) for z in self.zeilen)
+
+
 if __name__ == "__main__":
+    log_sammler = Sammler()
+    logging.getLogger("partatlas").addHandler(log_sammler)
+    logging.getLogger("partatlas").setLevel(logging.INFO)
     tmp = tempfile.mkdtemp()
     sammlung = os.path.join(tmp, "3D-Druck")
     os.makedirs(os.path.join(sammlung, "Technik"))
@@ -317,5 +333,26 @@ if __name__ == "__main__":
         be_t0 = time.monotonic()
     be_dauer = time.monotonic() - be_t0
     check("Beenden während eines Laufs (etwa FreeCAD hängt): der Server ist in unter 10 s weg, nicht erst nach 30 s", be_dauer < 10)
+    # -- Protokoll für den Tester ohne Terminal
+    from partatlas import main as hauptmodul
+    check("Protokoll beim Start: Umgebung, Katalog mit Zahlen, Einstellungen, was im Bestand aussteht",
+          log_sammler.hat("Umgebung: Python") and log_sammler.hat("Katalog:", "Modelle", "Wurzelordner") and log_sammler.hat("Einstellungen: Beim Start einlesen")
+          and log_sammler.hat("Ausstehend im Bestand"))
+    check("Protokoll: Beginn und Ende des Servers stehen drin", log_sammler.hat("nimmt Anfragen an") and log_sammler.hat("partAtlas beendet"))
+    with TestClient(erstelle_app(os.path.join(tmp, "bestand_protokoll"), prozesse=2)) as c:
+        c.post("/api/clientfehler", json={"meldung": "x is not a function", "ort": "app.js:12:3"})
+        check("Ein Fehler in der Oberfläche (JavaScript) kommt ins Protokoll, mit Ort",
+              log_sammler.hat("Fehler im Browser: x is not a function", "app.js:12:3"))
+        check("Jede Anfrage, die etwas ändert, steht im Protokoll — mit Weg, Status und Dauer, ohne Inhalt",
+              log_sammler.hat("Anfrage POST /api/clientfehler", "200"))
+        check("Der Browser (Name und Fassung) steht einmal im Protokoll", log_sammler.hat("Seite geöffnet von:"))
+        hauptmodul.LANGSAM_S = 0.0
+        c.get("/api/stand")
+        hauptmodul.LANGSAM_S = 3.0
+        check("Eine langsame Anfrage steht als Warnung im Protokoll (was hielt den Server auf)", log_sammler.hat("Langsame Anfrage: GET /api/stand"))
+        for _ in range(hauptmodul.CLIENTFEHLER_MAX + 5):
+            c.post("/api/clientfehler", json={"meldung": "Schleife"})
+        check("Fehler aus dem Browser sind begrenzt: eine Fehlerschleife füllt das Protokoll nicht",
+              sum("Fehler im Browser: Schleife" in z for z in log_sammler.zeilen) < hauptmodul.CLIENTFEHLER_MAX)
     muster.ende()
 

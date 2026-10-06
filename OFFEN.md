@@ -678,6 +678,15 @@ sichtbar, nicht bearbeitbar — bewusst, Testbestand.
 
 ## Idee, noch nicht gebaut
 
+- **Ausführliches Protokoll für den Tester ohne Terminal (0.46.3, 6.10.2026, gebaut):** Anlass: „10 min gewartet, partAtlas war tot“ — ohne Hinweis, wo es stand. `partatlas.log` im Bestand (4 MB × 3,
+  im Einstellungs-Reiter „Einlesen“ per Knopf im Dateimanager zu zeigen) enthält jetzt: Umgebung (Python, System, Kerne), Katalog mit Zahlen, Einstellungen, was im Bestand aussteht und was beim
+  Start geschieht; jeden Lauf mit Beginn, **jedem Phasenwechsel samt Zahlen** und Bilanz; Vorschaubilder mit Anzahl, Fortschritt je 100 und Dauer; **FreeCAD je Datei** („beginnt mit Datei 3 von 25: Name“),
+  Zeitgrenze und Prozessnummer; ausgefallene Arbeiter; kleine Bilder mit Dauer; **alle 30 s einen Herzschlag** solange der Dienst arbeitet (Stand und Antwortzeit der Serverschleife) —
+  **antwortet die Schleife nicht binnen 5 s, steht der Stapel aller Threads dabei** (woran es festhängt); jede ändernde Anfrage (Weg, Status, Dauer, ohne Inhalt), jede Anfrage über 3 s, jeder neue Browser
+  (Name und Fassung, wichtig: Firefox oder Chromium), Fehler der Oberfläche (JavaScript, höchstens 50 je Serverlauf), unbehandelte Fehler in Threads, und Fehler von uvicorn (bisher gingen die
+  nicht in die Datei). Geprüft: `test_scan` 92, `test_api` 79, sieben Gegenproben fallen; im echten Server angesehen. **Nicht geprüft:** Firefox; wie gross die Datei bei einem 9 000-Modelle-Lauf wird.
+  Wenn der Prozess ganz einfriert (GIL, Speicher), schreibt auch der Herzschlag nichts mehr — das Ausbleiben der Zeilen ist dann selbst der Hinweis.
+
 - **Beenden bricht ein laufendes Einlesen ab (0.46.2, 6.10.2026, gebaut):** Rückmeldung des Testers („hängt im Neu-Einlesen-Menü, nach Abschiessen und Neustart hängt es wieder“) nachgestellt
   (Unterordner mit FCStd und STL, Namen mit °, im Chromium): das Einlesen selbst lief auf 0.46.0 sauber durch (1,4 s), **das Hängen selbst nicht reproduziert**. Gefunden: arbeitet FreeCAD
   an einer Datei oder hängt es, wartete das Beenden bis zu 30 s auf den Lauf (Strg+C schien nichts zu tun), ein hartes Beenden liess FreeCAD als Prozess zurück, und der Neustart setzte die

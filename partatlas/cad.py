@@ -93,6 +93,7 @@ def _stapel(befehl, stueck, stopp, ordner):
         shutil.rmtree(arbeit, ignore_errors=True)
         return
     fertig, laeuft_seit, gelesen, aktuell = set(), time.monotonic(), 0, None
+    log.info("FreeCAD gestartet (Prozess %s) für einen Stapel von %d Dateien", proc.pid, len(stueck))
     try:
         while True:
             if stopp.is_set():
@@ -110,6 +111,8 @@ def _stapel(befehl, stueck, stopp, ordner):
                 i = z["i"]
                 if z.get("start"):
                     aktuell = i
+                    # Bleibt FreeCAD hängen, steht hier die Datei, an der es hing.
+                    log.info("FreeCAD beginnt mit Datei %d von %d: %s", i + 1, len(stueck), os.path.basename(stueck[i][1]))
                 elif z.get("ok") or z.get("fehler"):
                     fertig.add(i)
                     aktuell = None
@@ -133,6 +136,7 @@ def _stapel(befehl, stueck, stopp, ordner):
             grenze = ZEIT_JE_DATEI if aktuell is not None else START_ZEIT if gelesen == 0 else ZEIT_JE_DATEI
             if time.monotonic() - laeuft_seit > grenze:
                 _beenden(proc)
+                log.warning("FreeCAD: Zeitgrenze überschritten (%s), Prozess %s beendet", os.path.basename(stueck[aktuell][1]) if aktuell is not None else "vor der ersten Datei", proc.pid)
                 if aktuell is not None:
                     fertig.add(aktuell)
                     yield stueck[aktuell][0], False, f"Zeitgrenze von {int(ZEIT_JE_DATEI)} s überschritten"
