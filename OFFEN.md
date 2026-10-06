@@ -680,6 +680,12 @@ sichtbar, nicht bearbeitbar — bewusst, Testbestand.
 
 ## Idee, noch nicht gebaut
 
+- **Liste beim Einlesen: nur die geänderte Kachel aktualisieren statt alle 5 s alles neu holen (6.10.2026, Aufwand 3 geschätzt, nicht gebaut):** heute lädt die Seite
+  während eines Einlesens höchstens alle 5 s die ganze Liste neu (`LIVE_SCAN_MS`, 0.44.4/0.45.1), damit man bei einem langen Lauf schon Modelle und Bilder sieht;
+  jedes Neuladen kostet bei 9 000 Modellen Sekunden. Die 5 s sind ein bewährter Kompromiss, **nicht gemessen** als Bestwert. Die Live-Meldung nennt schon, welches Modell
+  sich geändert hat (`ref`): die Seite könnte nur diese Kachel holen und ersetzen — dann gäbe es keinen Takt, das Ergebnis erschiene sofort, und der Server baute die Kacheln
+  nicht dauernd neu. Anwender hat entschieden: festhalten, nicht jetzt bauen.
+
 - **3D-Ansicht ohne Datei (Backlog, 02.10.2026 zurückgestellt — erst die Kerndinge härten):** beim Einlesen ein vereinfachtes
   Anzeige-Netz im Bestand ablegen; muss vorab geschehen, solange die Datei da ist (für den Bestand ein einmaliger Lauf im Hintergrund,
   0,1–0,4 s je Modell). Gemessen an Stanford-Testmodellen, je Modell: 30 000 Dreiecke 0,23–0,27 MB (~1,4 GB bei 5 700 Modellen —
