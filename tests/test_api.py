@@ -299,5 +299,23 @@ if __name__ == "__main__":
         check("Dabei werden die Ordner nicht durchsucht: die neue Datei kommt nicht dazu",
               "Nach_dem_Beenden" not in {x["name"] for x in c.get("/api/modelle").json()})
     os.remove(os.path.join(sammlung, "Nach_dem_Beenden.stl"))
+    # -- Beenden während des Einlesens: der Server wartet nicht 30 s darauf (FreeCAD, das an einer Datei hängt, hielt ihn so scheinbar fest)
+    be_pfad = os.path.join(tmp, "bestand_beenden")
+    with TestClient(erstelle_app(be_pfad, prozesse=2)) as c:
+        sc = c.app.state.zustand["scanner"]
+
+        def haengender_lauf(nur_cad=False):
+            sc._stopp.clear()
+            sc._setze(laeuft=True, phase="cad")
+            while not sc._stopp.wait(0.05):
+                pass
+            sc._setze(laeuft=False, abgebrochen=True, phase="abgebrochen")
+        sc.lauf = haengender_lauf
+        sc.starten()
+        while not sc.status.get("laeuft"):
+            time.sleep(0.02)
+        be_t0 = time.monotonic()
+    be_dauer = time.monotonic() - be_t0
+    check("Beenden während eines Laufs (etwa FreeCAD hängt): der Server ist in unter 10 s weg, nicht erst nach 30 s", be_dauer < 10)
     muster.ende()
 

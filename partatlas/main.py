@@ -63,6 +63,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
             # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
             s.starten(nur_cad=True)
         yield
+        # Beenden bricht ein laufendes Einlesen ab (was fertig ist, steht in der Datenbank), statt bis zu 30 s darauf zu warten: sonst
+        # reagiert partAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
+        # beim harten Beenden als eigener Prozess zurück.
+        s.abbrechen()
         s.warten(30)
         b.schliessen()
 

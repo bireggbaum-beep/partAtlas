@@ -678,6 +678,13 @@ sichtbar, nicht bearbeitbar — bewusst, Testbestand.
 
 ## Idee, noch nicht gebaut
 
+- **Beenden bricht ein laufendes Einlesen ab (0.46.2, 6.10.2026, gebaut):** Rückmeldung des Testers („hängt im Neu-Einlesen-Menü, nach Abschiessen und Neustart hängt es wieder“) nachgestellt
+  (Unterordner mit FCStd und STL, Namen mit °, im Chromium): das Einlesen selbst lief auf 0.46.0 sauber durch (1,4 s), **das Hängen selbst nicht reproduziert**. Gefunden: arbeitet FreeCAD
+  an einer Datei oder hängt es, wartete das Beenden bis zu 30 s auf den Lauf (Strg+C schien nichts zu tun), ein hartes Beenden liess FreeCAD als Prozess zurück, und der Neustart setzte die
+  Umwandlung derselben Datei fort. Jetzt ruft das Beenden `abbrechen()` (Test in `test_api`, Gegenprobe fällt). Zweite wahrscheinliche Ursache für „auch nach dem Neustart“: `start.sh`
+  öffnete bei noch laufendem alten Prozess nur wieder den Browser — jetzt nennt es die laufende Fassung und startet nach Rückfrage neu (`--neu` ohne Rückfrage). **Offen:** Fassung,
+  `partatlas.log` und `pgrep -af "partatlas|freecad"` des Testers; ob sein FreeCAD (Paket, Flatpak, AppImage) an der echten FCStd hängt.
+
 - **3D-Ansicht ohne Datei (Backlog, 02.10.2026 zurückgestellt — erst die Kerndinge härten):** beim Einlesen ein vereinfachtes
   Anzeige-Netz im Bestand ablegen; muss vorab geschehen, solange die Datei da ist (für den Bestand ein einmaliger Lauf im Hintergrund,
   0,1–0,4 s je Modell). Gemessen an Stanford-Testmodellen, je Modell: 30 000 Dreiecke 0,23–0,27 MB (~1,4 GB bei 5 700 Modellen —
