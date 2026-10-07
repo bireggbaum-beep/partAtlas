@@ -4,6 +4,18 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Als Nächstes: Zielbild „sofort da, Auslesen im Hintergrund“ (Anwender, 7.10.2026) — vor allem anderen
+
+Test des Anwenders mit ≈ 8600 Dateien unter Windows: die Fassung 0.49 erfüllt sein Zielbild nicht. Gebaut war nur „Vorschaubilder und
+FreeCAD getrennt im Hintergrund“; das Einlesen liest weiterhin jede Datei ganz aus, bevor ihr Eintrag erscheint, und die Oberfläche lädt
+bei jeder Änderung die ganze Liste (8600 Einträge) neu. Zielbild steht jetzt in KONZEPT §3.4 („Sofort da, Auslesen im Hintergrund“).
+Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
+- a) Einträge und Ordnerstruktur sofort aus dem Ordner (Name, Ort, Format, Grösse), Auslesen füllt nach. Aufwand 3–4.
+- b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
+- c) Reihenfolge der Warteschlange: zuerst STL/OBJ/3MF/FCStd mit Bild, danach STEP und FCStd über FreeCAD. Aufwand 1–2.
+- d) Anzeige unten links stimmt (heute „Schritt 1 von 2“, dann „1 von 3“, Texte falsch). Aufwand 1–2.
+Abnahme: mit einer grossen Sammlung (Werkzeug `werkzeuge/demo_sammlung.py` mit ≈ 8000 Dateien), nicht nur mit den Suiten.
+
 ## Als Nächstes: Umbau der Pipeline, Schritt 4 (Durchsicht 7.10.2026, Ziel 0.50)
 
 Stand 0.49.0 auf Branch `claude/adoring-planck-q5kckw` (Schritte 1–3 erledigt, test_ui gekürzt). Schritt 4 erledigt; als Nächstes einmal alle Suiten samt test_ui, dann Härtetest §3.4

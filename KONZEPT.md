@@ -244,11 +244,15 @@ Wurzelordner legt. Das gehört nicht zusammen und wird aufgelöst.
 - **Einen Ordner aufnehmen geht nur über ＋ Importieren › Ordner hinzufügen** (entschieden 7.10.2026). Ergebnis: ein weiterer,
   gleichrangiger Wurzelordner. Ziehen ins Fenster nimmt weder Ordner noch Dateien auf — es geschieht nichts (nur Bilder auf Vorschau
   oder Druck bleiben). **Hochladen, Zielordner und Kopieren entfallen.**
-- **Einlesen** ist der Aufbau der Datenbank und das Auslesen dessen, was in der Datei steht (Fingerabdruck, Masse, Slicer-Daten, eingebettetes
-  Bild) — wie bei pDMS das Einlesen eines Dokuments. Es zeigt seinen Fortschritt; danach stehen die Modelle im Katalog.
-- **Danach startet ein Worker im Hintergrund** (wie die OCR bei pDMS): Vorschaubilder, FreeCAD-Umwandlung, kleine Bilder. Er gehört **nicht**
-  zum Einlesen, beeinträchtigt die Bedienung nicht, hat eine eigene kleine Anzeige, und seine Warteschlange (der Zustand „ausstehend“ am
-  Bestand) übersteht den Neustart. Look and feel wie pDMS.
+- **Sofort da, Auslesen im Hintergrund** (vom Anwender festgelegt 7.10.2026, ersetzt die frühere Fassung „Einlesen, danach Worker“):
+  Nach dem Hinzufügen stehen **sofort** alle Einträge in Liste, Raster und Karten und die ganze Ordnerstruktur — aus dem, was der Ordner
+  ohne Öffnen der Dateien hergibt (Name, Ort, Format, Grösse, Datum). Alles, was aus den Dateien ausgelesen wird (Fingerabdruck, Masse,
+  Slicer-Daten, eingebettetes Bild, Vorschaubild, FreeCAD), kommt **nach und nach** im Hintergrund dazu, in der Reihenfolge der
+  Warteschlange, nicht nach dem, was gerade zu sehen ist: **zuerst die schnellen** (STL, OBJ, 3MF, FCStd mit eingebettetem Bild),
+  **danach die langsamen** (STEP, FCStd über FreeCAD). Die Bedienung bleibt dabei jederzeit uneingeschränkt: Klicken, Filtern, Ansicht
+  wechseln reagieren sofort; die Oberfläche lädt die Liste einmal und bekommt danach nur die geänderten Einträge nachgereicht. Eine kleine
+  Anzeige zeigt, was im Hintergrund läuft, und stimmt. Die Warteschlange (Zustand „ausstehend“ am Bestand) übersteht den Neustart.
+  Abnahme mit einer echten Sammlung in der Grössenordnung des Anwenders (≈ 8600 Dateien), nicht nur mit den Test-Sammlungen.
 - **Später der Ordnerbrowser** als Ersatz für den Explorer: er zeigt die Plattenstruktur der aufgenommenen Wurzelordner — nicht des ganzen
   Rechners. Dann ist auch wieder möglich, Dateien in einen Ordner zu ziehen oder ein ZIP dort abzulegen; es ist dann Explorer-Funktion
   innerhalb des Überwachten, kein Hochladen in eine zweite Struktur. Bis dahin bleibt es weg.
