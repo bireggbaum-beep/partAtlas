@@ -6,7 +6,7 @@ aktualisieren.
 
 ## Als Nächstes: Umbau der Pipeline, Schritt 4 (Durchsicht 7.10.2026, Ziel 0.50)
 
-Stand 0.49.0 auf Branch `claude/adoring-planck-q5kckw` (Schritte 1–3 erledigt, test_ui gekürzt). Schritt 4 Paket A erledigt, als Nächstes Paket B
+Stand 0.49.0 auf Branch `claude/adoring-planck-q5kckw` (Schritte 1–3 erledigt, test_ui gekürzt). Schritt 4 erledigt; als Nächstes einmal alle Suiten samt test_ui, dann Härtetest §3.4
 (Hochladen als Bedienung raus, Ordner ins Fenster ziehen = Ordner hinzufügen), in kleinen Paketen (CLAUDE.md). Danach einmal alle
 Suiten samt test_ui, dann 0.50.
 
@@ -89,7 +89,9 @@ denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeig
    (JS, HTML, CSS). `/api/hochladen` und `Katalog.hochladen` bleiben. Modelldateien ins Fenster gezogen → Hinweis auf „Ordner hinzufügen“;
    Bilder auf Vorschau/Druck wie bisher. test_ui: Hochladen-Prüfungen (2) raus, „Nimm.stl“ fürs Aufräumen wird direkt angelegt.
    Handbuch nachgezogen. test_ui nicht gelaufen (läuft einmal vor 0.50).
-   **Paket B offen:** Ordner ins Fenster ziehen = hinzufügen (Pfad: KONZEPT §3.4 *Offen*).
+   **Ziehen ins Fenster aus (7.10.2026, Anwender):** Modelle und Ordner von aussen ins Fenster gezogen bewirken nichts mehr (keine Fläche,
+   kein Hinweis; der Browser öffnet die Datei auch nicht). Aufnehmen nur über ＋ Importieren › Ordner hinzufügen; KONZEPT §3.4 angepasst.
+   Bilder auf Vorschau/Druck ziehen bleibt. Damit ist Schritt 4 fertig.
 5. *Offen:* automatische Überwachung in 0.50 oder danach. Aufwand 2.
 Abnahmefall und Härtetest: KONZEPT §3.4.
 

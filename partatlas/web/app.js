@@ -2314,44 +2314,35 @@ $("#nav-zurueck")?.addEventListener("click", () => history.back());
 $("#nav-vor")?.addEventListener("click", () => history.forward());
 navKnoepfe();
 
-// Aus dem Dateimanager ins Fenster gezogen: Bilder auf Vorschau oder Druck; Modelldateien werden nicht hochgeladen (KONZEPT §3.4).
-let abwurfZaehler = 0;
+// Aus dem Dateimanager ins Fenster gezogen: nur Bilder auf Vorschau oder Druck. Modelle und Ordner kommen allein über
+// Importieren › Ordner hinzufügen (KONZEPT §3.4) — anderswo abgelegt geschieht nichts, auch kein Öffnen der Datei im Browser.
 // Ein Bild aus der eigenen Leiste hat Dateityp „Files“, kommt aber nicht von
 // aussen — sonst entstünde vom Original eine Kopie als eigenes Bild.
 let vonGalerie = false;
 document.addEventListener("dragstart", (e) => { vonGalerie = !!e.target.closest?.("#i-galerie"); }, true);
 document.addEventListener("dragend", () => { vonGalerie = false; }, true);
 const vonAussen = (e) => !gezogen && !vonGalerie && [...(e.dataTransfer?.types || [])].includes("Files");
-window.addEventListener("dragenter", (e) => { if (vonAussen(e)) { abwurfZaehler++; $("#abwurf").hidden = false; } });
 // Bilder auf einen Druck (Foto dazu) oder auf den leeren Teil des Reiters „Drucke“ (neuer Druck mit Foto).
 const druckZiel = (e) => (!galerie.m || galerie.m.papierkorb ? null : e.target.closest?.(".druck, .i-tafel[data-reiter='drucke']"));
+const aufGalerie = (e) => !!(e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb);
 const abwurfAufraeumen = () => document.querySelectorAll(".abwurf-ziel, .druck-ziel").forEach((x) => x.classList.remove("abwurf-ziel", "druck-ziel"));
-window.addEventListener("dragleave", (e) => {
-  if (vonAussen(e) && --abwurfZaehler <= 0) { abwurfZaehler = 0; $("#abwurf").hidden = true; abwurfAufraeumen(); }
-});
+window.addEventListener("dragleave", (e) => { if (vonAussen(e)) abwurfAufraeumen(); });
 window.addEventListener("dragover", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
-  const aufGalerie = !!(e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb);
-  const dz = aufGalerie ? null : druckZiel(e);
+  const gal = aufGalerie(e), dz = gal ? null : druckZiel(e);
   abwurfAufraeumen();
-  if (aufGalerie) $("#i-galerie")?.classList.add("abwurf-ziel");
+  if (gal) $("#i-galerie")?.classList.add("abwurf-ziel");
   if (dz) dz.classList.add("druck-ziel");
-  $("#abwurf").hidden = aufGalerie || !!dz;
+  e.dataTransfer.dropEffect = gal || dz ? "copy" : "none";
 });
 window.addEventListener("drop", (e) => {
   if (!vonAussen(e)) return;
   e.preventDefault();
-  abwurfZaehler = 0;
-  $("#abwurf").hidden = true;
   const dz = druckZiel(e);
   abwurfAufraeumen();
-  // Auf die Galerie gezogen: Bilder zum Modell, keine neuen Modelldateien.
-  if (e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb) return bilderHochladen(e.dataTransfer.files);
+  if (aufGalerie(e)) return bilderHochladen(e.dataTransfer.files);
   if (dz) return druckBilderAblegen(dz.closest(".druck")?.dataset.druck || null, e.dataTransfer.files);
-  const dateien = [...e.dataTransfer.files];
-  if (dateien.length && dateien.every((f) => f.type.startsWith("image/"))) return toast("Bilder gehören auf die Vorschau oder auf einen Druck.");
-  toast("Modelle bleiben, wo sie liegen: nimm den Ordner über Importieren › Ordner hinzufügen auf.");
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
 

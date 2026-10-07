@@ -216,8 +216,6 @@ body:has(#stapel:not([hidden])) .toast { bottom: 150px; }
 .zeile-l input { accent-color: var(--accent); }
 
 /* Hochladen per Ablegen */
-.abwurf { position: fixed; inset: 12px; border: 3px dashed var(--accent); border-radius: 14px; background: rgba(0, 0, 0, 0.45);
-          display: grid; place-items: center; font-size: 20px; color: #fff; z-index: 40; pointer-events: none; }
 dialog select { width: 100%; padding: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; margin: 4px 0; }
 dialog label { display: flex; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; }
 .quelle a { color: var(--accent); }

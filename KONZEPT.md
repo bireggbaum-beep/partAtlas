@@ -241,11 +241,9 @@ Wurzelordner legt. Das gehört nicht zusammen und wird aufgelöst.
 - **Die Bibliothek besteht aus gleichrangigen Wurzelordnern** — etwa „FreeCAD-Dateien“ und „3D-Drucker-Dateien“. Keiner ist Unterordner eines
   anderen; partAtlas hat keine eigene Ordnerstruktur und keinen „Zielordner“. Es überwacht die Ordner, die der Anwender ihm nennt, und die
   Dateien bleiben, wo sie liegen.
-- **Einen Ordner aufnehmen ist ein Vorgang mit zwei Bedienungen:** Importieren › Ordner hinzufügen, oder den Ordner ins Fenster ziehen.
-  Ergebnis in beiden Fällen: ein weiterer, gleichrangiger Wurzelordner. Dateien in einen schon aufgenommenen Ordner zu ziehen gibt es im
-  Zielbild nicht; **Hochladen, Zielordner und Kopieren entfallen.**
-  *Offen:* der Browser gibt beim Ziehen keinen Pfad heraus, nur Name und Dateien. Zwei Wege: der Server sucht auf dem Rechner einen
-  Ordner gleichen Namens mit passenden Dateien, bei keinem eindeutigen Treffer öffnet sich der Ordnerdialog (Name vorbelegt).
+- **Einen Ordner aufnehmen geht nur über ＋ Importieren › Ordner hinzufügen** (entschieden 7.10.2026). Ergebnis: ein weiterer,
+  gleichrangiger Wurzelordner. Ziehen ins Fenster nimmt weder Ordner noch Dateien auf — es geschieht nichts (nur Bilder auf Vorschau
+  oder Druck bleiben). **Hochladen, Zielordner und Kopieren entfallen.**
 - **Einlesen** ist der Aufbau der Datenbank und das Auslesen dessen, was in der Datei steht (Fingerabdruck, Masse, Slicer-Daten, eingebettetes
   Bild) — wie bei pDMS das Einlesen eines Dokuments. Es zeigt seinen Fortschritt; danach stehen die Modelle im Katalog.
 - **Danach startet ein Worker im Hintergrund** (wie die OCR bei pDMS): Vorschaubilder, FreeCAD-Umwandlung, kleine Bilder. Er gehört **nicht**
