@@ -47,6 +47,12 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   nimmt die Sperre nur noch, wenn etwas nachzubauen ist (vorher auch bei unverändertem Zwischenspeicher). Nachgestellt (2936 Modelle,
   Linux): Löschen 2,9 s, eine Anfrage alle 0,3 s wartet höchstens 0,15 s (vorher bis 14 s). Kein eigener Test (Zeitverhalten, wäre
   wackelig); test_scan 106/106, test_api 86/86. Die Sicherung vorher: 0,04 s bei 2936 (Linux).
+  **Danach noch (Protokoll 8.10.2026):** Tags und Zähler warteten weiter 14–18 s. Ursache: sie lesen in vielen Einzelschritten (Tags je
+  Tag, Papierkorb je Modell), und jeder wartete auf eine Lücke zwischen zwei Schreibgruppen. Behoben: `am_stueck` (main.py) — Abfragen
+  der Seitenleiste und Listen nehmen die Sperre einmal (zaehler, tags, ordner, sammlungen, warteschlange, wurzeln, wurzeln/entfernt,
+  modelle, modelle/{mid}, modelle/aenderungen, baugruppen, baugruppen/vorschlaege). Nicht: Bilder ausliefern (Plattenarbeit). Dabei
+  gefunden: Sperr-Reihenfolge beim Kachel-Nachbau musste fest werden (erst flatgraph, dann `_kurz_bau`), sonst Verklemmung. Nachgestellt:
+  2936 löschen und wiederherstellen mit 6 pausenlos fragenden Abfragen: 14 s, 336 Abfragen, längste 0,65 s, kein Hänger.
   **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe
