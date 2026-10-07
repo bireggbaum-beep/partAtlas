@@ -2179,7 +2179,7 @@ function hintergrundZeichnen() {
   if (m.abbricht) text = "Wird abgebrochen …";
   else if (m.phase === "suchen") text = "Ordner durchsuchen";
   else if (m.phase === "hashen") { text = "Datenbank aufbauen"; [fertig, gesamt] = [m.geprueft, m.zu_pruefen]; }
-  else if (m.phase === "analysieren") { text = "Daten auslesen"; [fertig, gesamt] = [m.analysiert, m.zu_analysieren]; }
+  else if (m.phase === "auslesen") { text = "Daten auslesen"; [fertig, gesamt] = [m.ausgelesen, m.zu_auslesen]; }
   else if (m.phase === "vorschau") { text = "Vorschaubilder erzeugen"; [fertig, gesamt] = [(m.vorschauen_gesamt || 0) - (m.vorschauen_offen || 0), m.vorschauen_gesamt]; }
   else if (m.phase === "thumbs") { text = "Kleine Bilder erzeugen"; [fertig, gesamt] = [m.thumbs_fertig, m.thumbs_gesamt]; }
   else if (m.phase === "cad") { text = "FreeCAD-Dateien umwandeln"; [fertig, gesamt] = [(m.cad_gesamt || 0) - (m.cad_offen || 0), m.cad_gesamt]; }

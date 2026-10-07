@@ -296,7 +296,8 @@ class Katalog:
         """STEP-Dateien, die noch ein Netz von FreeCAD brauchen. Auch ältere Einträge ohne das Feld `cad`: sie wurden vor
         dieser Fassung aufgenommen. `fehler` ist der Lesefehler der Datei selbst, nicht der der Umwandlung."""
         return [(h, d) for h, d in self._dateien().items()
-                if d.get("format") in ("step", "fcstd") and d.get("cad") in (None, "ausstehend") and d.get("orte") and not d.get("fehler")]
+                if d.get("format") in ("step", "fcstd") and d.get("cad") in (None, "ausstehend") and d.get("orte") and not d.get("fehler")
+                and not d.get("auslesen")]
 
     def cad_ergebnis(self, h, felder, vorschau, fehler=None):
         """Netz und Vorschau aus FreeCAD sind da. Der Aufrufer hält die Transaktion."""
@@ -323,6 +324,28 @@ class Katalog:
 
     def _netz_weg(self, h):
         self.b.entfernen(self.b.netz_pfad(h))
+
+    def auszulesen(self):
+        """Dateien, deren Inhalt noch nicht ausgelesen ist (Einlesen legt sie sofort an, KONZEPT §3.4) — die erste Arbeit des Workers.
+        Die schnellen Formate zuerst, STEP zuletzt; innerhalb eines Formats die kleinen zuerst, damit früh viele Kacheln fertig werden."""
+        reihe = {"stl": 0, "obj": 0, "3mf": 0, "fcstd": 1, "step": 2}
+        offen = [(h, d) for h, d in self._dateien().items() if d.get("auslesen") == "ausstehend" and d.get("orte")]
+        return sorted(offen, key=lambda x: (reihe.get(x[1].get("format"), 1), (x[1]["orte"][0].get("groesse") or 0)))
+
+    def ausgelesen(self, h, felder, vorschau, fehler=None):
+        """Was der Worker aus der Datei gelesen hat, nachtragen: Werte, Vorschau-Status, Materialien, Tags aus den Werten (mehrteilig,
+        miniatur …). Der Aufrufer hält die Transaktion."""
+        d = self.db.get_node(ref(DATEI, h), readonly=True)
+        if d is None:
+            return
+        self.db.update_node(DATEI, h, {**felder, "auslesen": None, "vorschau": vorschau, "fehler": fehler,
+                                       "vorschau_extrahiert": self.b.vorschau_rel(h, "extrahiert") if vorschau == "eingebettet" else None})
+        self._datei_materialien(h, felder)
+        mid = self.modell_von(h)
+        m = self.db.get_node(ref(MODELL, mid), readonly=True) if mid else None
+        if m is not None and self.b.einstellungen().get("auto_tags", True):
+            for t in tags.vorschlaege(m.get("name") or "", felder):
+                self._tag_verbinden(mid, t)
 
     def ausstehende_vorschauen(self):
         return [(h, d) for h, d in self._dateien().items() if d.get("vorschau") == "ausstehend"]

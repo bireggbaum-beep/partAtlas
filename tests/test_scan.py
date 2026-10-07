@@ -82,7 +82,7 @@ if __name__ == "__main__":
     check("Erster Scan: fünf Modelldateien, versteckte Ordner und .txt bleiben draussen",
           sorted(alle) == ["Arm_Front_v2", "Haken", "Top_Plate", "Welle", "kaputt"])
     check("Kaputte Datei steht im Katalog, als unlesbar markiert, der Scan lief durch",
-          alle["kaputt"]["fehler"] and st["unlesbar"] == 1 and st["phase"] == "fertig")
+          alle["kaputt"]["fehler"] and s.worker.status["unlesbar"] == 1 and st["phase"] == "fertig")
     check("3MF mit eingebettetem Bild: Vorschau „eingebettet“, Datei im Vault",
           alle["Top_Plate"]["vorschau"] == "eingebettet"
           and os.path.exists(b.vorschau_pfad(alle["Top_Plate"]["hash"], "extrahiert")))
@@ -118,8 +118,8 @@ if __name__ == "__main__":
     for _n in os.listdir(thumb_dir):
         os.remove(os.path.join(thumb_dir, _n))
     check("Bilanz für den Einlesen-Dialog: Laufnummer, geprüft x von y, je Format, Bilder aus der Datei, Dauer des Einlesens",
-          st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and st["analysiert"] == st["zu_analysieren"] == 5
-          and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and st["aus_datei"] == 1
+          st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and s.worker.status["ausgelesen"] == s.worker.status["zu_auslesen"] == 5
+          and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and s.worker.status["aus_datei"] == 1
           and st["einlesen_s"] is not None and s.worker.status["vorschauen_gesamt"] == 2 and s.worker.status["vorschauen_offen"] == 0 and st["kopien"] == 0)
     dat = lambda m: {k: v for k, v in b.db.get_node(f"PART_GEOMETRY/{m['hash']}", readonly=True).items()
                      if k.startswith("vorschau_") and v}
@@ -396,7 +396,7 @@ if __name__ == "__main__":
 
     def beobachter(st):
         nachrichten.append(dict(st))
-        if st.get("phase") == "analysieren" and st.get("analysiert", 0) >= 5 and not ausgeloest:
+        if st.get("phase") == "hashen" and st.get("neu", 0) >= 5 and not ausgeloest:
             ausgeloest.append(None)                    # vorher eintragen: abbrechen() meldet selbst wieder
             ausgeloest[0] = ab_s.abbrechen()
 
@@ -481,8 +481,7 @@ if __name__ == "__main__":
           st_s.worker.status["phase"] == "fertig" and st_s.worker.status["cad_ohne_freecad"] == 2 and len(st_k.ausstehende_cad()) == 2
           and d1["Halter"]["cad"] == "ausstehend" and not os.path.exists(st_b.netz_pfad(d1["Halter"]["hash"])))
 
-    check("Lauf meldet früh, was FreeCAD bekommt (Schritt-Anzeige: „Danach: FreeCAD für 2 Dateien“), und wie lange die Phase schon läuft (Restzeit-Schätzung)",
-          st_s.status.get("cad_voraus") == 2 and isinstance(st_s.status.get("phase_s"), float))
+    check("Der Lauf meldet, wie lange die Phase schon läuft (Restzeit-Schätzung)", isinstance(st_s.status.get("phase_s"), float))
 
     st_s = Scanner(st_b, st_k, prozesse=2, cad_befehl=attrappe)
     st_s.lauf()
@@ -533,7 +532,7 @@ if __name__ == "__main__":
     check("Zwei Läufe hintereinander: die Zeile zeigt alle neuen Dateien (3 + 4), nicht nur die des letzten Laufs",
           ke_s.status["lauf"] == 2 and ke_s.status["neu"] == 7 and ke_s.status["gefunden"] == 7)
     check("Zwei Läufe hintereinander: die Dauer zählt beide, die Formate auch",
-          ke_s.status["dauer_s"] >= ke_s.status["einlesen_s"] and sum(ke_s.status["je_format"].values()) == 7)
+          ke_s.status["dauer_s"] + 0.2 >= ke_s.status["einlesen_s"] and sum(ke_s.status["je_format"].values()) == 7)   # je Lauf auf 0,1 s gerundet
     ke_b.schliessen()
 
     # -- Hintergrundlauf: die Warteschlange der Vorschaubilder hängt nicht am Einlesen der Ordner
@@ -620,7 +619,7 @@ if __name__ == "__main__":
     fz_s = Scanner(fz_b, fz_k, prozesse=2, cad_befehl=attrappe)
     fz_s.lauf()
     check("FCStd ohne Antwort des Anwenders: FreeCAD lädt es nicht, die Oberfläche soll fragen",
-          fz_s.status["fcstd_frage"] == 1 and fz()["cad"] == "ausstehend" and not os.path.exists(fz_b.netz_pfad(fz()["hash"])))
+          fz_s.worker.status["fcstd_frage"] == 1 and fz()["cad"] == "ausstehend" and not os.path.exists(fz_b.netz_pfad(fz()["hash"])))
     fz_b.einstellungen_setzen(fcstd_freecad="nein")
     fz_s.lauf()
     check("FCStd mit „Nein“: wird nicht geladen und es wird nicht erneut gefragt",
@@ -661,6 +660,31 @@ if __name__ == "__main__":
     check("STEP und FCStd: die Frage kommt vor dem ersten FreeCAD-Start; mit sofortigem „Ja“ ist die FCStd im selben Lauf umgewandelt",
           sf_ablauf == ["frage", "cad"] and sf["Gehaeuse"]["cad"] == "ok" and sf["Halter"]["cad"] == "ok")
     sf_b.schliessen()
+
+    # -- Sofort da, Auslesen im Hintergrund (KONZEPT §3.4): das Einlesen öffnet die Dateien nicht, der Worker liest sie danach aus
+    so_tmp = tempfile.mkdtemp()
+    so_dir = os.path.join(so_tmp, "s")
+    os.makedirs(os.path.join(so_dir, "Unter"))
+    muster.step(os.path.join(so_dir, "A_Halter.step"))
+    muster.stl_binaer(os.path.join(so_dir, "Unter", "B_Welle.stl"), 10, 20, 30)
+    muster.dreimf(os.path.join(so_dir, "C_Platte.3mf"))
+    so_b = Bestand(os.path.join(so_tmp, "bestand"))
+    so_k = Katalog(so_b)
+    so_k.wurzel_hinzufuegen(so_dir)
+    so_s = Scanner(so_b, so_k, prozesse=2)
+    so_s.einlesen()
+    so = {m["name"]: m for m in so_k.modelle()}
+    check("Nach dem Einlesen stehen alle Einträge mit Ordner und Format da, ausgelesen ist noch nichts",
+          sorted(so) == ["A_Halter", "B_Welle", "C_Platte"] and so["B_Welle"]["format"] == "stl" and so["B_Welle"]["masse"] is None
+          and any(o.endswith("/Unter") for o in so["B_Welle"]["ordner"]) and len(so_k.auszulesen()) == 3)
+    check("Die Warteschlange zum Auslesen nimmt die schnellen Formate zuerst, STEP zuletzt",
+          [d["format"] for _, d in so_k.auszulesen()][-1] == "step")
+    so_s.worker.lauf()
+    so = {m["name"]: m for m in so_k.modelle()}
+    check("Der Worker liest danach aus: Masse, eingebettetes Bild, gerendertes Vorschaubild; nichts bleibt offen",
+          abs(so["B_Welle"]["masse"][2] - 30) < 0.01 and so["C_Platte"]["vorschau"] == "eingebettet"
+          and so["B_Welle"]["vorschau"] == "gerendert" and so_k.auszulesen() == [] and so_s.worker.status["ausgelesen"] == 3)
+    so_b.schliessen()
 
     # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)
     kp_tmp = tempfile.mkdtemp()

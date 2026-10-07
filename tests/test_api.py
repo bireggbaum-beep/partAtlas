@@ -68,8 +68,9 @@ if __name__ == "__main__":
         check("… dieser Lauf ist es, und er sah alle Dateien der Übersicht",
               z["scanner"].status["lauf"] == r.json()["lauf"] and z["scanner"].status["neu"] == u["modelle"])
         ph = z["scanner"].status.get("phasen", {})
-        check("Scan hält die Dauer je Phase fest (Hashen, Analysieren …), zusammen höchstens die Gesamtdauer",
-              {"hashen", "analysieren"} <= set(ph) and sum(ph.values()) <= z["scanner"].status["dauer_s"] + 0.3)
+        pw = z["scanner"].worker.status.get("phasen", {})
+        check("Einlesen und Worker halten die Dauer je Phase fest (Hashen; Auslesen …), zusammen höchstens die Gesamtdauer",
+              "hashen" in ph and "auslesen" in pw and sum(ph.values()) <= z["scanner"].status["dauer_s"] + 0.3)
         check("Abbrechen ohne laufendes Einlesen: Antwort „nein“, kein Fehler",
               c.post("/api/scan/abbrechen").json() == {"abgebrochen": False})
         check("Wurzel falsch: verständliche Meldung statt Absturz",

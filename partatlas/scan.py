@@ -11,13 +11,14 @@ Ablauf:
      5 700 Dateien billig.
   2. Neue oder geänderte Dateien hashen. Ist der Hash bekannt, bekommt
      die Datei nur einen Ort dazu (verschoben, umbenannt, kopiert).
-  3. Unbekannte Hashes analysieren und in Gruppen je eine Transaktion
-     anlegen — einzeln kostet jede Änderung ihren fsync (VERTRAG §5).
+  3. Unbekannte Hashes sofort anlegen, ohne die Datei zu öffnen (Name, Ort, Format, Grösse), in Gruppen je eine Transaktion —
+     einzeln kostet jede Änderung ihren fsync (VERTRAG §5). Liste und Ordnerbaum stehen damit, solange noch gehasht wird.
   4. Orte, die nicht mehr da sind, entfernen. Ein Modell ohne Ort „fehlt“
      und bleibt, mit Tags und Historie.
 Danach ist das Einlesen fertig und stösst den Worker an (KONZEPT §3.4), der in einem eigenen Thread mit eigenen Arbeitsprozessen läuft:
-  5. Fehlende Vorschauen rendern, nach und nach.
-  6. STEP- und FCStd-Dateien über FreeCAD (ohne Fenster) in ein Netz umwandeln; daraus kommen Vorschau, Maße und die 3D-Ansicht.
+  5. Den Inhalt auslesen (Masse, Slicer-Daten, eingebettetes Bild), schnelle Formate zuerst, STEP zuletzt.
+  6. Fehlende Vorschauen rendern, nach und nach.
+  7. STEP- und FCStd-Dateien über FreeCAD (ohne Fenster) in ein Netz umwandeln; daraus kommen Vorschau, Maße und die 3D-Ansicht.
      Ohne FreeCAD bleiben sie „ausstehend“ und kommen bei der nächsten Runde dran.
 Ein neues Einlesen wartet nie auf den Worker; beide laufen nebeneinander.
 
@@ -395,12 +396,19 @@ class Worker(_Bahn):
         t0 = time.monotonic()
         self._stopp.clear()
         self._phasen, self._phase_name = {}, None
-        log.info("Hintergrund %d beginnt: Vorschaubilder, kleine Bilder, FreeCAD", self.status["lauf"] + 1)
-        self._setze(lauf=self.status["lauf"] + 1, laeuft=True, phase="vorschau", fcstd_frage=0, cad_ohne_freecad=0, bearbeitet=0, abbruch=None,
-                    abbricht=False, abgebrochen=False, vorschauen_gesamt=0, vorschauen_offen=0, cad_gesamt=0, cad_offen=0, thumbs_gesamt=0,
-                    thumbs_fertig=0, cad_voraus=self._cad_anzahl(), beginn=time.strftime("%H:%M:%S"))
+        log.info("Hintergrund %d beginnt: auslesen, Vorschaubilder, kleine Bilder, FreeCAD", self.status["lauf"] + 1)
+        self._setze(lauf=self.status["lauf"] + 1, laeuft=True, phase="auslesen", fcstd_frage=0, cad_ohne_freecad=0, bearbeitet=0, abbruch=None,
+                    abbricht=False, abgebrochen=False, zu_auslesen=0, ausgelesen=0, aus_datei=0, unlesbar=0, vorschauen_gesamt=0,
+                    vorschauen_offen=0, cad_gesamt=0, cad_offen=0, thumbs_gesamt=0, thumbs_fertig=0, cad_voraus=self._cad_anzahl(),
+                    beginn=time.strftime("%H:%M:%S"))
         self._pool = self._neuer_pool()
         try:
+            self._auslesen()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+            # Erst jetzt ist bekannt, welche FCStd FreeCAD bräuchte: die Oberfläche fragt, während die Vorschaubilder laufen — wer gleich
+            # antwortet, bekommt sie in derselben Runde.
+            self._setze(phase="vorschau", cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen())
             self._vorschauen()
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
@@ -424,12 +432,48 @@ class Worker(_Bahn):
         """Wartet im Hintergrund noch Arbeit — ein Vorschaubild, das fehlt, oder eine FreeCAD-Umwandlung, die jetzt möglich ist?
         Die Warteschlange ist der Zustand „ausstehend“ an den Dateien im Bestand; sie übersteht einen Neustart. Dateien ohne bekannten Ort
         zählen nicht (es gibt nichts zu rechnen) und halten sonst bei jedem Start einen leeren Lauf in Gang."""
-        if any(d.get("orte") for _, d in self.k.ausstehende_vorschauen()):
+        if self.k.auszulesen() or any(d.get("orte") for _, d in self.k.ausstehende_vorschauen()):
             return True
         if self._cad_anzahl() == 0:
             return False
         prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
         return bool(self.cad_befehl or cad.konsole_befehl(prog.get("pfad")))
+
+    def _auslesen(self):
+        """Den Inhalt der Dateien lesen, die das Einlesen nur angelegt hat: Masse, Slicer-Daten, eingebettetes Bild. Ergebnisse spätestens
+        alle SPEICHERN_ALLE_S festhalten — die Kacheln füllen sich nach und nach, nicht erst nach hundert Stück."""
+        offen = self.k.auszulesen()
+        aufgaben = []
+        for h, d in offen:
+            pfad = next((self.k.absoluter_pfad(o) for o in d["orte"] if self.k.absoluter_pfad(o)), None)
+            if pfad:
+                aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "extrahiert"))))
+        self._setze(zu_auslesen=len(aufgaben), ausgelesen=0)
+        if not aufgaben:
+            return
+        log.info("Auslesen: %d Dateien (%d Arbeiter), schnelle Formate zuerst", len(aufgaben), self.prozesse)
+        pfade = dict((h, a[0]) for h, a in aufgaben)
+        stapel, zuletzt, t_a = [], time.monotonic(), time.monotonic()
+        for h, erg, fehler in self._verteilen(aufgaben, _analyse):
+            if fehler:      # die Datei liess sich nicht lesen oder riss ihren Arbeiter mit: sie bleibt als „unlesbar“ stehen
+                log.warning("Auslesen %s: %s", pfade[h], fehler)
+                erg = ({"format": formate.format_von(pfade[h])}, "keine", fehler)
+            stapel.append((h, *erg))
+            if len(stapel) >= GRUPPE or time.monotonic() - zuletzt >= SPEICHERN_ALLE_S:
+                self._auslesen_speichern(stapel)
+                stapel, zuletzt = [], time.monotonic()
+        self._auslesen_speichern(stapel)       # auch beim Abbruch: was gelesen ist, geht nicht verloren
+        log.info("Auslesen: %d fertig in %.0f s", self.status["ausgelesen"], time.monotonic() - t_a)
+
+    def _auslesen_speichern(self, stapel):
+        if not stapel:
+            return
+        with self.b.db.transaction():
+            for h, felder, status, fehler in stapel:
+                self.k.ausgelesen(h, felder, status, fehler)
+        self._setze(ausgelesen=self.status["ausgelesen"] + len(stapel), bearbeitet=self.status["bearbeitet"] + len(stapel),
+                    aus_datei=self.status["aus_datei"] + sum(1 for g in stapel if g[2] == "eingebettet"),
+                    unlesbar=self.status["unlesbar"] + sum(1 for g in stapel if g[3]))
 
     def _vorschauen(self):
         offen = self.k.ausstehende_vorschauen()
@@ -687,6 +731,10 @@ class Scanner(_Bahn):
             vorgaenger = {}                           # neuer hash -> hash, der vorher an diesem Ort lag
             ortwechsel = []                           # (hash, schluessel, st, alter_hash)
             zurueck = []                              # (hash, schluessel, st): Dateien, deren Modell im Papierkorb liegt
+            # Jede neue Datei bekommt sofort ihren Eintrag (Name, Ort, Format, Grösse), gruppenweise, während noch gehasht wird: Liste und
+            # Ordnerbaum füllen sich, solange das Einlesen läuft. Ausgelesen wird der Inhalt danach im Worker (KONZEPT §3.4).
+            offen, angelegt, kopie_orte = [], set(), []
+            self._setze(kopien=0)
             for i, (pfad, h, fehler) in enumerate(pool.map(_hash, list(nach_pfad), chunksize=8), 1):
                 if self._stopp.is_set():      # map holt die übrigen Aufträge beim Verlassen der Schleife zurück
                     break
@@ -697,6 +745,14 @@ class Scanner(_Bahn):
                     continue
                 s, st = nach_pfad[pfad]
                 alt = index.get(s)
+                if h in neu_je_hash:
+                    # Inhaltsgleiche Kopie einer Datei dieses Laufs: ein Modell mit mehreren Orten. Die Bilanz nennt sie, sonst fehlen
+                    # scheinbar Dateien.
+                    neu_je_hash[h].append((s, pfad, st))
+                    if h in angelegt:
+                        kopie_orte.append((h, s, st))
+                    self.status["kopien"] += 1
+                    continue
                 status = self.k.datei_status(h)
                 if status == "lebt":
                     ortwechsel.append((h, s, st, alt[0] if alt and alt[0] != h else None))
@@ -706,10 +762,18 @@ class Scanner(_Bahn):
                     # beide noch da, der Anwender hat nur den Katalogeintrag entfernt).
                     zurueck.append((h, s, st))
                 else:
-                    neu_je_hash.setdefault(h, []).append((s, pfad, st))
+                    neu_je_hash[h] = [(s, pfad, st)]
+                    offen.append(h)
                     if alt and alt[0] != h:
                         ortwechsel.append((None, s, st, alt[0]))
                         vorgaenger[h] = alt[0]
+                if len(offen) >= GRUPPE:
+                    self._anlegen(offen, neu_je_hash, vorgaenger, kopie_orte)
+                    angelegt.update(offen)
+                    offen, kopie_orte = [], []
+            # Auch beim Abbruch: was schon angelegt werden kann, geht nicht verloren (der Worker liest es später aus).
+            self._anlegen(offen, neu_je_hash, vorgaenger, kopie_orte)
+            angelegt.update(offen)
 
             with self.b.db.transaction():
                 for h, s, st, alter_hash in ortwechsel:
@@ -723,26 +787,8 @@ class Scanner(_Bahn):
                 else:
                     self.status["im_papierkorb"] += 1
             verschoben = sum(1 for o in ortwechsel if o[0])
-            self._setze(verschoben=verschoben, bearbeitet=verschoben)
-            if self._stopp.is_set():          # gehasht ist nur ein Teil: nichts Neues anlegen, nichts entfernen
-                return self._abgebrochen(t0)
-            # Inhaltsgleiche Kopien werden ein Modell mit mehreren Orten: die Bilanz nennt sie, sonst fehlen scheinbar Dateien.
-            self._setze(phase="analysieren", zu_analysieren=len(neu_je_hash), analysiert=0,
-                        kopien=sum(len(f) - 1 for f in neu_je_hash.values()))
-
-            aufgaben = [(h, (faelle[0][1], self.b.vorschau_pfad(h, "extrahiert"))) for h, faelle in neu_je_hash.items()]
-            gruppe = []
-            for h, erg, fehler in self._verteilen(aufgaben, _analyse):
-                if fehler:      # die Datei liess sich nicht lesen oder riss ihren Arbeiter mit: sie bleibt als „unlesbar“ stehen
-                    pfad = neu_je_hash[h][0][1]
-                    log.warning("Analyse %s: %s", pfad, fehler)
-                    erg = ({"format": formate.format_von(pfad)}, "keine", fehler)
-                gruppe.append((h, *erg))
-                if len(gruppe) >= GRUPPE:
-                    self._anlegen(gruppe, neu_je_hash, vorgaenger)
-                    gruppe = []
-            self._anlegen(gruppe, neu_je_hash, vorgaenger)    # auch beim Abbruch: was schon analysiert ist, geht nicht verloren
-            if self._stopp.is_set():
+            self._setze(verschoben=verschoben, bearbeitet=self.status["bearbeitet"] + verschoben)
+            if self._stopp.is_set():          # gehasht ist nur ein Teil: nichts entfernen
                 return self._abgebrochen(t0)
 
             # Orte, die dieser Lauf nicht mehr gesehen hat.
@@ -804,28 +850,32 @@ class Scanner(_Bahn):
         neue. Danach gelesen könnte der neue Lauf schon mitgezählt sein."""
         return self.status.get("lauf", 0) + 1
 
-    def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
-        if not gruppe:
+    def _anlegen(self, hashes, neu_je_hash, vorgaenger, kopie_orte=()):
+        """Neue Dateien sofort eintragen, ohne sie zu öffnen: Format aus der Endung, Name aus dem Dateinamen, „auslesen: ausstehend“ für
+        den Worker. Dazu weitere Orte von Kopien schon angelegter Dateien. Eine Transaktion je Gruppe (jede kostet ihren fsync)."""
+        if not hashes and not kopie_orte:
             return
         geaendert = 0
+        je_format = dict(self.status["je_format"])
         with self.b.db.transaction():
-            for h, felder, vorschau_status, fehler in gruppe:
+            for h in hashes:
                 orte = [{"wurzel": s[0], "pfad": s[1], "groesse": st.st_size, "mtime": st.st_mtime}
                         for s, _, st in neu_je_hash[h]]
+                fmt = formate.format_von(neu_je_hash[h][0][1])
+                je_format[fmt or "?"] = je_format.get(fmt or "?", 0) + 1
                 # Dieselbe Datei neu gespeichert (etwa aus FreeCAD): das Modell bleibt mit Tags, Baugruppen und Drucken, nur der Inhalt ist
                 # neu. Für den Anwender ist das „geändert“ — „1 neues Modell“ wäre falsch.
                 alt_mid = self.k.modell_von(vorgaenger[h]) if h in vorgaenger else None
-                mid = self.k.neue_datei(h, felder, orte, vorschau_status, fehler, vorgaenger.get(h))
+                if h in vorgaenger:
+                    # Der alte Inhalt muss seinen Ort hier schon verloren haben: sonst gilt er als noch vorhanden, und die neue Fassung
+                    # würde ein zweites Modell statt dem Nachfolger. (Das spätere Entfernen in `ortwechsel` ist dann wirkungslos.)
+                    self.k.ort_entfernen(vorgaenger[h], *neu_je_hash[h][0][0])
+                mid = self.k.neue_datei(h, {"format": fmt, "auslesen": "ausstehend"}, orte, None, None, vorgaenger.get(h))
                 geaendert += bool(alt_mid and mid == alt_mid)
-        je_format = dict(self.status["je_format"])
-        for _, felder, _, _ in gruppe:
-            f = felder.get("format") or "?"
-            je_format[f] = je_format.get(f, 0) + 1
-        self._setze(neu=self.status["neu"] + len(gruppe) - geaendert, geaendert=self.status.get("geaendert", 0) + geaendert, je_format=je_format,
-                    aus_datei=self.status["aus_datei"] + sum(1 for g in gruppe if g[2] == "eingebettet"),
-                    unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
-                    analysiert=self.status["analysiert"] + len(gruppe),
-                    bearbeitet=self.status["bearbeitet"] + len(gruppe))
+            for h, s, st in kopie_orte:
+                self.k.ort_setzen(h, s[0], s[1], st.st_size, st.st_mtime)
+        self._setze(neu=self.status["neu"] + len(hashes) - geaendert, geaendert=self.status.get("geaendert", 0) + geaendert, je_format=je_format,
+                    bearbeitet=self.status["bearbeitet"] + len(hashes))
 
     def _ablaufen(self, wurzel):
         """(absolut, relativ mit /, stat) je Modelldatei; versteckte Ordner

@@ -11,6 +11,18 @@ FreeCAD getrennt im Hintergrund“; das Einlesen liest weiterhin jede Datei ganz
 bei jeder Änderung die ganze Liste (8600 Einträge) neu. Zielbild steht jetzt in KONZEPT §3.4 („Sofort da, Auslesen im Hintergrund“).
 Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
 - a) Einträge und Ordnerstruktur sofort aus dem Ordner (Name, Ort, Format, Grösse), Auslesen füllt nach. Aufwand 3–4.
+  **Gebaut (7.10.2026):** Einlesen = suchen + Fingerabdruck + sofort anlegen (Format aus der Endung, Name aus dem Dateinamen,
+  `auslesen: ausstehend`), gruppenweise schon während des Hashens. Der Fingerabdruck bleibt im Einlesen: er ist die Kennung der Datei.
+  Worker: neue erste Phase „auslesen“ (`Katalog.auszulesen`/`ausgelesen`, Masse, Slicer-Daten, eingebettetes Bild, Tags aus den Werten),
+  schnelle Formate zuerst, STEP zuletzt (damit ist Teil c erledigt), Ergebnisse spätestens alle 2 s. Die FCStd-Frage kommt jetzt nach dem
+  Auslesen (vorher am Ende des Einlesens). „Unlesbar“, „Bilder aus der Datei“ zählt jetzt der Worker. Beim Umbau gefunden und behoben:
+  neu gespeicherte Datei am selben Ort bekam ein zweites Modell (alter Ort muss vor dem Anlegen weg).
+  Tests: test_scan 103/103 (+3, Gegenproben fallen; 6 Prüfungen auf den neuen Ablauf umgestellt), test_api 85/85, test_cad 14/14.
+  **Gemessen** (3000 Dateien, Browser): Liste wächst während des Einlesens (200 nach 4 s, 2500 nach 14 s), Masse aller nach 15 s,
+  danach Vorschaubilder laufend, Klick 0,1 s.
+  **Noch schlecht: Filter-Klick während Einlesen/Auslesen 1,4–4 s.** Ursache: `_kurz_alle` baut bei jeder Änderung alle Kacheln neu (der
+  Zwischenspeicher gilt nur, solange nichts geschrieben wird). Nächster Schritt: Zwischenspeicher nur für geänderte Modelle erneuern
+  (über die Änderungsmeldungen von flatgraph). Aufwand 2.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe
   Sekunde nur diese Modelle (`POST /api/modelle/aenderungen`, gefiltert wie die Liste; ersetzt `/api/modelle/kacheln`); fertige Kacheln
@@ -23,7 +35,7 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   das Einlesen viel länger — dort ist das der Hauptärger. Behebt Teil a (Einträge sofort, Auslesen im Hintergrund).
   Beobachtet beim Anwender: Vorschaubilder erschienen nicht nach und nach, sondern nur einmal am Ende, „nach 1000 Stück“ oder beim Wechsel
   auf Raster. Ursache: `kachelVon`/`teilLaden` tauschen nur Kacheln, die in der geladenen Liste stehen; die stand bei 100 (Fehler f4b9ae4).
-- c) Reihenfolge der Warteschlange: zuerst STL/OBJ/3MF/FCStd mit Bild, danach STEP und FCStd über FreeCAD. Aufwand 1–2.
+- c) Reihenfolge der Warteschlange: zuerst STL/OBJ/3MF/FCStd mit Bild, danach STEP und FCStd über FreeCAD. **Erledigt mit a.**
 - d) Anzeige unten links: **Schritte entfernt (7.10.2026)** — ein Balken, darüber was gerade passiert („Ordner durchsuchen“,
   „Datenbank aufbauen“, „Daten auslesen“, „Vorschaubilder erzeugen“, „Kleine Bilder erzeugen“, „FreeCAD-Dateien umwandeln“), Zähler,
   Restzeit; die Zeile „Danach: FreeCAD …“ ist weg. Offen: dass die Zahlen bei grossen Sammlungen stimmen (mit a/b prüfen).
