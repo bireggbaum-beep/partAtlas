@@ -744,8 +744,11 @@ async function materialFrage(titel) {
 async function stapel(aktion, wert, modelle = [...zustand.auswahl]) {
   try {
     const r = await api("/api/stapel", { method: "POST", body: { aktion, modelle, wert } });
-    if (r.fehler.length) toast(`${modelle.length - r.fehler.length} erledigt, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
-    else toast(`${modelle.length} erledigt.`);
+    const was = { loeschen: "entfernt", wiederherstellen: "wiederhergestellt" }[aktion] || "erledigt";
+    const n = modelle.length - r.fehler.length;
+    const wer = aktion in { loeschen: 1, wiederherstellen: 1 } ? ` ${n === 1 ? "Modell" : "Modelle"}` : "";
+    if (r.fehler.length) toast(`${anzahl(n)}${wer} ${was}, ${anzahl(r.fehler.length)} nicht: ${r.fehler[0].fehler}`);
+    else toast(`${anzahl(n)}${wer} ${was}.`);
   } catch (e) { toast(e.message); }
 }
 
@@ -2172,9 +2175,16 @@ function restzeit(fertig, gesamt, sek) {
 function hintergrundZeichnen() {
   const h = $("#hintergrund");
   // Das Einlesen geht vor (kurz, der Anwender wartet darauf); läuft es nicht, die Hintergrundarbeit.
-  const art = zustand.scan?.laeuft ? "scan" : zustand.worker?.laeuft ? "worker" : null;
+  const art = zustand.aktion?.laeuft ? "aktion" : zustand.scan?.laeuft ? "scan" : zustand.worker?.laeuft ? "worker" : null;
   const m = art ? zustand[art] : {};
   if (!art) { h.hidden = true; return; }
+  if (art === "aktion") {                       // eine Massenaktion geht vor: der Anwender hat sie eben ausgelöst und wartet darauf
+    const rest = restzeit(m.fertig, m.gesamt, (Date.now() - (m.beginn || Date.now())) / 1000);
+    h.hidden = false;
+    return abgleichen(h, `<div class="hg-kopf"><span>${esc(m.was)}</span><span class="hg-zahl">${anzahl(m.fertig || 0)} / ${anzahl(m.gesamt || 0)}</span></div>
+      <div class="balken klein"><i style="width:${Math.round(((m.fertig || 0) / (m.gesamt || 1)) * 100)}%"></i></div>
+      ${rest ? `<div class="hg-zeile dim">${rest}</div>` : ""}`);
+  }
   let text, fertig = null, gesamt = null;
   if (m.abbricht) text = "Wird abgebrochen …";
   else if (m.phase === "suchen") text = "Ordner durchsuchen";
@@ -2356,6 +2366,11 @@ function live() {
     const m = JSON.parse(e.data);
     if (m.art === "scan") return liveScan(m);
     if (m.art === "worker") return liveWorker(m);
+    if (m.art === "aktion") {                    // Löschen/Wiederherstellen vieler Modelle: Fortschritt unten links
+      if (m.laeuft && !zustand.aktion?.laeuft) m.beginn = Date.now(); else m.beginn = zustand.aktion?.beginn;
+      zustand.aktion = m;
+      return hintergrundZeichnen();
+    }
     if (m.art === "neu_laden") {                 // zu viele Meldungen verpasst: alles neu — nach einer Liste, die noch unterwegs ist
       nach.refs.clear();
       if (ladeModelle.unterwegs) { ladeModelle.danach = neuLaden; return; }

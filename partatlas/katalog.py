@@ -951,7 +951,7 @@ class Katalog:
 
     # ------------------------------------------------------------ Mehrere auf einmal
 
-    def stapel(self, aktion, modelle, wert=None):
+    def stapel(self, aktion, modelle, wert=None, melden=None):
         """Eine Aktion für viele Modelle; reine Graph-Änderungen in einer
         Transaktion, Dateiaktionen einzeln (jede für sich rückgängig)."""
         fehler = []
@@ -976,11 +976,11 @@ class Katalog:
                     self._hinzufuegen(wert, modelle)
         elif aktion == "loeschen":
             wert = wert if isinstance(wert, dict) else {}
-            fehler = self.loeschen_mit(modelle, wert.get("tags") or (), wert.get("sammlungen") or ())
+            fehler = self.loeschen_mit(modelle, wert.get("tags") or (), wert.get("sammlungen") or (), melden=melden)
         elif aktion == "wiederherstellen":
             # In Gruppen je eine Transaktion wie beim Löschen; vorher je Modell eine Anfrage samt fsync. Sicher gebündelt: ein Modell, das
             # scheitert, hat noch nichts geschrieben (wiederherstellen legt zuerst Dateien zurück und nimmt sie bei einem Fehler selbst zurück).
-            fehler = self._gruppenweise(modelle, self.wiederherstellen)
+            fehler = self._gruppenweise(modelle, self.wiederherstellen, melden)
         elif aktion == "verschieben":
             for mid in modelle:
                 try:
@@ -991,12 +991,15 @@ class Katalog:
             raise KatalogFehler(f"Unbekannte Aktion {aktion!r}.")
         return {"fehler": fehler}
 
-    def _gruppenweise(self, modelle, aufruf):
+    def _gruppenweise(self, modelle, aufruf, melden=None):
         """`aufruf(mid)` für viele Modelle, je LOESCHEN_GRUPPE eine Transaktion. Einzeln kostete jedes Modell seinen fsync: „alle 8 600
         löschen“ dauerte unter Windows Minuten, und jede andere Anfrage wartete dazwischen (Protokoll des Anwenders: /api/modelle 51 s).
         Nach jeder Gruppe kurz loslassen: die Sperre von flatgraph ist nicht fair — wer sie eben freigab, bekommt sie meist gleich wieder,
-        und Zähler und Tags warteten trotz Gruppen 14 s. Ein Modell, das scheitert, wird gemeldet; die anderen gehen weiter."""
+        und Zähler und Tags warteten trotz Gruppen 14 s. Ein Modell, das scheitert, wird gemeldet; die anderen gehen weiter.
+        `melden(fertig, gesamt)` am Anfang und nach jeder Gruppe — für die Anzeige unten links."""
         fehler = []
+        if melden:
+            melden(0, len(modelle))
         for i in range(0, len(modelle), LOESCHEN_GRUPPE):
             if i:
                 time.sleep(0.02)
@@ -1006,6 +1009,8 @@ class Katalog:
                         aufruf(mid)
                     except (KatalogFehler, OSError) as e:
                         fehler.append({"id": mid, "fehler": str(e)})
+            if melden:
+                melden(min(i + LOESCHEN_GRUPPE, len(modelle)), len(modelle))
         return fehler
 
     @staticmethod
@@ -1375,14 +1380,14 @@ class Katalog:
             raise KatalogFehler(f"Hängt noch an anderen Modellen: {', '.join(falsch)}")
         return set(tags), set(sammlungen)
 
-    def loeschen_mit(self, modelle, tags=(), sammlungen=()):
+    def loeschen_mit(self, modelle, tags=(), sammlungen=(), melden=None):
         """Modelle löschen und danach, was nur an ihnen hing. Geprüft wird
         vorher; gelöscht wird erst, wenn alles passt."""
         tags, sammlungen = self._mitloeschen_pruefen(modelle, tags, sammlungen)
         if len(modelle) > 1 or tags or sammlungen:
             self._sichern_vor("entfernen")      # ein einzelnes Modell holt der Papierkorb zurück; mehrere und Mitgelöschtes die Sicherung
         # Nur Graph-Änderungen, die Dateien bleiben (siehe loeschen).
-        fehler = self._gruppenweise(modelle, self.loeschen)
+        fehler = self._gruppenweise(modelle, self.loeschen, melden)
         if tags or sammlungen:
             with self.db.transaction():
                 for t in tags:

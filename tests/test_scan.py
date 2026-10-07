@@ -702,11 +702,13 @@ if __name__ == "__main__":
     _sichern, so_k._sichern_vor = so_k._sichern_vor, lambda was: None     # gesichert ist schon: gezählt wird nur das Löschen
     schreibvorgaenge, _flush = [], so_k.db._flush_pending_writes
     so_k.db._flush_pending_writes = lambda *a, **kw: (schreibvorgaenge.append(1), _flush(*a, **kw))[1]
-    so_fehler = so_k.loeschen_mit(so_ids)
+    so_fortschritt = []
+    so_fehler = so_k.loeschen_mit(so_ids, melden=lambda f, g: so_fortschritt.append((f, g)))
     so_k._sichern_vor = _sichern
     so_k.db._flush_pending_writes = _flush
     check("Drei Modelle löschen: alle weg, in einem Schreibvorgang statt dreien",
           so_fehler == [] and so_k.modelle() == [] and len(schreibvorgaenge) == 1)
+    check("… und meldet den Fortschritt für die Anzeige: Beginn 0 von 3, Ende 3 von 3", so_fortschritt == [(0, 3), (3, 3)])
     del schreibvorgaenge[:]
     so_k.db._flush_pending_writes = lambda *a, **kw: (schreibvorgaenge.append(1), _flush(*a, **kw))[1]
     so_zurueck = so_k.stapel("wiederherstellen", so_ids)

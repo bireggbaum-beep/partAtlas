@@ -53,6 +53,15 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   modelle, modelle/{mid}, modelle/aenderungen, baugruppen, baugruppen/vorschlaege). Nicht: Bilder ausliefern (Plattenarbeit). Dabei
   gefunden: Sperr-Reihenfolge beim Kachel-Nachbau musste fest werden (erst flatgraph, dann `_kurz_bau`), sonst Verklemmung. Nachgestellt:
   2936 löschen und wiederherstellen mit 6 pausenlos fragenden Abfragen: 14 s, 336 Abfragen, längste 0,65 s, kein Hänger.
+  **Danach (Protokoll 8.10.2026):** nur noch die Massenaktion selbst langsam (8600: 30 s), keine wartenden Abfragen mehr.
+  **Anzeige gebaut:** Löschen und Wiederherstellen vieler Modelle melden ihren Fortschritt (`_gruppenweise(melden)`, Live-Meldung
+  „aktion“), unten links „Wiederherstellen | 1.400 / 2.936“ mit Balken, geht der Einlese-Anzeige vor; am Ende „2.936 Modelle
+  wiederhergestellt.“ Im Browser gesehen (2936). test_scan 107/107 (+1, Gegenprobe fällt).
+  **Offen, Anwender fragt:** Gruppengrösse 200 ist geschätzt, nicht gemessen — grössere Gruppen schreiben seltener (schneller), halten
+  die Sperre aber länger (Abfragen warten länger). Messen und wählen (Variante b).
+  **Ordner entfernen 4,3 s (8600, Windows):** gemessen 2936 unter Linux 0,74 s ohne Sicherung (Sicherung 0,06 s): jede Datei bekommt neue
+  Orte, also wird die ganze Sammlung der Dateien einmal neu geschrieben (JSON 0,35 s, fsync von 126 Dateien). Wächst mit der Grösse; unter
+  Windows mit 3× so vielen Dateien und teurerem fsync passen 4 s. Während dieser Zeit warten Abfragen. Nicht behoben.
   **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe

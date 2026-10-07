@@ -611,7 +611,17 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
 
     @app.post("/api/stapel")
     def stapel(d: dict = Depends(json_koerper)):
-        return K().stapel(d.get("aktion", ""), d.get("modelle", []), d.get("wert"))
+        # Löschen und Wiederherstellen vieler Modelle dauern bei 8 600 Modellen unter Windows eine halbe Minute: die Anzeige unten links
+        # zeigt, wie weit sie sind (Live-Meldung „aktion“), statt dass man es nur an der wachsenden Zahl ahnt.
+        aktion = d.get("aktion", "")
+        was = {"loeschen": "Modelle entfernen", "wiederherstellen": "Wiederherstellen"}.get(aktion)
+        melden = (lambda fertig, gesamt: verteiler.senden("aktion", {"was": was, "fertig": fertig, "gesamt": gesamt,
+                                                                       "laeuft": fertig < gesamt})) if was else None
+        try:
+            return K().stapel(aktion, d.get("modelle", []), d.get("wert"), melden=melden)
+        finally:
+            if melden:
+                verteiler.senden("aktion", {"was": was, "laeuft": False})
 
     @app.post("/api/stapel/loeschvorschau")
     def stapel_loeschvorschau(koerper: dict = Depends(json_koerper)):
