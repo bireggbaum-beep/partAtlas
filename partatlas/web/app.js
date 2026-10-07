@@ -221,7 +221,14 @@ async function ladeModelle() {
   // Nur die Antwort auf die neueste Anfrage zählt. Bei 9 000 Modellen dauert eine Liste Sekunden; kam eine ältere nach einer neueren an,
   // zeigte sie einen anderen Stand (etwa die Kacheln eines anderen Ordners) als den, den die Oberfläche zu zeigen glaubte.
   const nr = ladeModelle.nr = (ladeModelle.nr || 0) + 1;
-  const { modelle: liste, leiste } = await api("/api/modelle?" + p);
+  ladeModelle.unterwegs = (ladeModelle.unterwegs || 0) + 1;
+  let antwort;
+  try { antwort = await api("/api/modelle?" + p); }
+  finally {
+    // Ein Nachladen aus einer Live-Meldung, das gewartet hat, kommt erst nach dem Zeichnen dieser Antwort dran (sonst verwürfe es sie).
+    if (!--ladeModelle.unterwegs && ladeModelle.danach) { setTimeout(ladeModelle.danach, 0); ladeModelle.danach = null; }
+  }
+  const { modelle: liste, leiste } = antwort;
   if (nr !== ladeModelle.nr) return;
   zeichneLeiste(leiste);
   const s = (zustand.sammlung || zustand.ansicht === "warteschlange") ? "eigene" : zustand.sortierung;
@@ -2266,6 +2273,9 @@ function liveAenderung(m) {
   if (meins) liveBetrifft = true;
   const feuern = () => {
     liveZeit = null;
+    // Ist noch eine Liste unterwegs, wartet das Nachladen auf sie. Sonst überholte bei grossen Katalogen (Liste dauert länger als
+    // LIVE_SCAN_MS) jedes Nachladen das vorige: alle Antworten verworfen, die Liste blieb stehen, und Klicks auf Filter gingen mit unter.
+    if (ladeModelle.unterwegs) { ladeModelle.danach = feuern; return; }
     letztesLiveLaden = Date.now();
     neuLaden();
     if (liveBetrifft && zustand.gewaehlt) waehle(zustand.gewaehlt, true);

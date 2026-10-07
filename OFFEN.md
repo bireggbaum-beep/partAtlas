@@ -92,6 +92,13 @@ denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeig
    **Ziehen ins Fenster aus (7.10.2026, Anwender):** Modelle und Ordner von aussen ins Fenster gezogen bewirken nichts mehr (keine Fläche,
    kein Hinweis; der Browser öffnet die Datei auch nicht). Aufnehmen nur über ＋ Importieren › Ordner hinzufügen; KONZEPT §3.4 angepasst.
    Bilder auf Vorschau/Druck ziehen bleibt. Damit ist Schritt 4 fertig.
+   **Fehler aus dem Test des Anwenders (Windows, 8600 Dateien, 7.10.2026):** Liste blieb bei 100 Einträgen, Filter und Klicks ohne
+   Reaktion. Ursache: das Nachladen aus Live-Meldungen (alle LIVE_SCAN_MS) startete, auch wenn die vorige Liste noch unterwegs war; dauerte
+   eine Liste länger als 5 s, wurde jede Antwort verworfen (auch die auf Filter-Klicks), und auf dem Server stapelten sich Listen.
+   Behoben: das Nachladen wartet auf die laufende Liste (`ladeModelle.unterwegs`/`.danach`). Nachgestellt im Browser mit künstlich
+   langsamer Liste (1,5 s, Meldungen alle 0,2 s, 6 s): vorher 0 Antworten gezeichnet, jetzt 3. Prüfung dazu gehört noch in test_ui.
+   **Noch offen aus demselben Test:** Anzeige unten links („Schritt 1 von 2“, dann „1 von 3“) und die Texte dazu stimmen nicht.
+   Protokoll schreibt „nimmt Anfragen an“, bevor der Port offen ist (bei belegtem Port falsch).
 5. *Offen:* automatische Überwachung in 0.50 oder danach. Aufwand 2.
 Abnahmefall und Härtetest: KONZEPT §3.4.
 
