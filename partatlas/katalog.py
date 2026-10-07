@@ -493,7 +493,9 @@ class Katalog:
         with self._kurz_sperre:
             if self._kurz_zwischen is not None and not self._kurz_offen:
                 return self._kurz_zwischen          # nichts geändert: ohne die Sperre von flatgraph (die hält gerade vielleicht ein Schreiber)
-        with self._kurz_bau, self.db.transaction():
+        # Reihenfolge immer: zuerst die Sperre von flatgraph, dann `_kurz_bau` — Abfragen unter `am_stueck` (main.py) halten die erste
+        # schon; umgekehrt genommen warteten zwei Anfragen für immer aufeinander.
+        with self.db.transaction(), self._kurz_bau:
             return self._kurz_nachbauen()
 
     def _kurz_nachbauen(self):

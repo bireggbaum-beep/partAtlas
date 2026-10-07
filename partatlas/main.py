@@ -7,6 +7,7 @@ Ohne Passwort lauscht er nur auf 127.0.0.1 — lieber unbrauchbar als offen
 (wie pDMS). Zugriff aus dem Heimnetz kommt mit dem Passwort (offen).
 """
 import asyncio
+import functools
 import json
 import logging
 import os
@@ -123,6 +124,17 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     def K():
         return zustand["katalog"]
 
+    def am_stueck(f):
+        """Eine Abfrage, die die Datenbank in vielen Einzelschritten liest (Tags je Tag, Papierkorb je Modell …), nimmt die Sperre von
+        flatgraph EINMAL (Transaktion ohne Schreiben, VERTRAG §3.1). Sonst wartet jeder Einzelschritt auf eine Lücke zwischen zwei
+        Schreibgruppen eines Massenlöschens oder Einlesens: Tags und Zähler warteten 14–18 s (Protokoll des Anwenders, 8.10.2026).
+        Nur für Abfragen ohne Plattenarbeit — wer Bilder ausliefert, hielte sonst das Schreiben auf."""
+        @functools.wraps(f)
+        def innen(*args, **kwargs):
+            with K().db.transaction():
+                return f(*args, **kwargs)
+        return innen
+
     def B():
         return zustand["baugruppen"]
 
@@ -211,6 +223,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return lauf
 
     @app.get("/api/wurzeln")
+    @am_stueck
     def wurzeln():
         return [{"id": k, **v} for k, v in K().wurzeln().items()]
 
@@ -242,6 +255,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig, "je_format": je_format}
 
     @app.get("/api/wurzeln/entfernt")
+    @am_stueck
     def wurzeln_entfernt():
         return K().entfernte_wurzeln()
 
@@ -267,6 +281,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # ---------------------------------------------------------------- Modelle
 
     @app.get("/api/modelle")
+    @am_stueck
     def modelle(q: str = "", tag: str = "", ordner: str = "", format: str = "", ansicht: str = "alle",
                 sammlung: str = "", tags: str = "", material: str = "", leiste: bool = False):
         # tags und material als Komma-Liste: die Chips der Leiste, je mit ODER.
@@ -280,6 +295,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
                         media_type="application/json")
 
     @app.post("/api/modelle/aenderungen")
+    @am_stueck
     def aenderungen(koerper: dict = Depends(json_koerper)):
         """Während des Einlesens: statt der ganzen Liste nur die Modelle hinter diesen Verweisen (aus den Live-Meldungen), gefiltert wie
         /api/modelle (`filter`: dieselben Felder). „weg“: gehört nicht (mehr) in diese Ansicht. POST, weil es tausende Verweise sein können."""
@@ -292,6 +308,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
                         media_type="application/json")
 
     @app.get("/api/zaehler")
+    @am_stueck
     def zaehler():
         k = K()
         alle = k.modelle()
@@ -308,6 +325,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         }
 
     @app.get("/api/modelle/{mid}")
+    @am_stueck
     def modell(mid: str):
         k = K()
         daten = k.modell(mid)
@@ -423,6 +441,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # ---------------------------------------------------------------- Sammlungen
 
     @app.get("/api/sammlungen")
+    @am_stueck
     def sammlungen():
         return K().sammlungen()
 
@@ -458,6 +477,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # ---------------------------------------------------------------- Warteschlange
 
     @app.get("/api/warteschlange")
+    @am_stueck
     def warteschlange():
         return K().warteschlange()
 
@@ -657,10 +677,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # ---------------------------------------------------------------- Baugruppen
 
     @app.get("/api/baugruppen")
+    @am_stueck
     def baugruppen():
         return B().liste()
 
     @app.get("/api/baugruppen/vorschlaege")
+    @am_stueck
     def baugruppen_vorschlaege():
         return B().vorschlaege()
 
@@ -786,10 +808,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # EIGENE: Ende
 
     @app.get("/api/tags")
+    @am_stueck
     def tags():
         return K().tags()
 
     @app.get("/api/ordner")
+    @am_stueck
     def ordner():
         return K().ordnerbaum()
 
