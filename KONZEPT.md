@@ -251,7 +251,9 @@ Wurzelordner legt. Das gehört nicht zusammen und wird aufgelöst.
   Warteschlange, nicht nach dem, was gerade zu sehen ist: **zuerst die schnellen** (STL, OBJ, 3MF, FCStd mit eingebettetem Bild),
   **danach die langsamen** (STEP, FCStd über FreeCAD). Die Bedienung bleibt dabei jederzeit uneingeschränkt: Klicken, Filtern, Ansicht
   wechseln reagieren sofort; die Oberfläche lädt die Liste einmal und bekommt danach nur die geänderten Einträge nachgereicht. Eine kleine
-  Anzeige zeigt, was im Hintergrund läuft, und stimmt. Die Warteschlange (Zustand „ausstehend“ am Bestand) übersteht den Neustart.
+  Anzeige zeigt, was im Hintergrund läuft, und stimmt. **Jedes fertige Vorschaubild und jeder ausgelesene Wert erscheint sofort in seiner
+  Kachel bzw. Zeile**, eins nach dem anderen — in jeder Ansicht (Liste, Raster, Karten), ohne Springen, Flackern oder Neuaufbau, und ohne
+  dass man die Ansicht wechseln muss, damit etwas erscheint. Die Warteschlange (Zustand „ausstehend“ am Bestand) übersteht den Neustart.
   Abnahme mit einer echten Sammlung in der Grössenordnung des Anwenders (≈ 8600 Dateien), nicht nur mit den Test-Sammlungen.
 - **Später der Ordnerbrowser** als Ersatz für den Explorer: er zeigt die Plattenstruktur der aufgenommenen Wurzelordner — nicht des ganzen
   Rechners. Dann ist auch wieder möglich, Dateien in einen Ordner zu ziehen oder ein ZIP dort abzulegen; es ist dann Explorer-Funktion

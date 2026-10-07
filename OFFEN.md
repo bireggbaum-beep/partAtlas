@@ -12,6 +12,8 @@ bei jeder Änderung die ganze Liste (8600 Einträge) neu. Zielbild steht jetzt i
 Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
 - a) Einträge und Ordnerstruktur sofort aus dem Ordner (Name, Ort, Format, Grösse), Auslesen füllt nach. Aufwand 3–4.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
+  Beobachtet beim Anwender: Vorschaubilder erschienen nicht nach und nach, sondern nur einmal am Ende, „nach 1000 Stück“ oder beim Wechsel
+  auf Raster. Ursache: `kachelVon`/`teilLaden` tauschen nur Kacheln, die in der geladenen Liste stehen; die stand bei 100 (Fehler f4b9ae4).
 - c) Reihenfolge der Warteschlange: zuerst STL/OBJ/3MF/FCStd mit Bild, danach STEP und FCStd über FreeCAD. Aufwand 1–2.
 - d) Anzeige unten links: **Schritte entfernt (7.10.2026)** — ein Balken, darüber was gerade passiert („Ordner durchsuchen“,
   „Datenbank aufbauen“, „Daten auslesen“, „Vorschaubilder erzeugen“, „Kleine Bilder erzeugen“, „FreeCAD-Dateien umwandeln“), Zähler,
