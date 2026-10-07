@@ -311,7 +311,7 @@ if __name__ == "__main__":
         time.sleep(0.5)
         stand = c.get("/api/stand").json()
         check("Neustart mit offenem Vorschaubild: es wird fortgesetzt (Hintergrundlauf), ohne „Beim Start einlesen“",
-              stand["scan"]["lauf"] >= 1 and stand["scan"]["nur_cad"] is True and os.path.exists(c.app.state.zustand["bestand"].vorschau_pfad(h0, "berechnet")))
+              stand["worker"]["lauf"] >= 1 and stand["scan"]["lauf"] == 0 and os.path.exists(c.app.state.zustand["bestand"].vorschau_pfad(h0, "berechnet")))
         check("Dabei werden die Ordner nicht durchsucht: die neue Datei kommt nicht dazu",
               "Nach_dem_Beenden" not in {x["name"] for x in c.get("/api/modelle").json()})
     os.remove(os.path.join(sammlung, "Nach_dem_Beenden.stl"))

@@ -1,5 +1,6 @@
 """Musterdateien für die Suiten: erzeugt, nicht eingecheckt — so ist klar,
 was drinsteht und was die Prüfung erwarten darf."""
+import faulthandler
 import io
 import os
 import time
@@ -15,6 +16,16 @@ import warnings
 warnings.filterwarnings("ignore", message=".*httpx.*")
 
 PRUEFUNGEN = [0, 0]
+
+
+def zeitgrenze(sekunden):
+    """Eine Suite, die so lange läuft, hängt: sie bricht ab und zeigt den Stapel aller Threads — also die Zeile, an der sie stand.
+    Ohne das wartete ein endloser Test (etwa eine Schleife, die auf etwas wartet, das nie kommt) bis zu einer äusseren Zeitgrenze, und
+    man erfuhr nach Minuten nur „Terminated“, nicht wo. MUSTER_ZEITGRENZE setzt sie für alle Suiten (Sekunden)."""
+    faulthandler.dump_traceback_later(int(os.environ.get("MUSTER_ZEITGRENZE") or sekunden), exit=True)
+
+
+zeitgrenze(300)       # jede Suite ausser test_ui braucht deutlich unter einer Minute; test_ui setzt sich eine eigene
 
 
 def check(name, bedingung):

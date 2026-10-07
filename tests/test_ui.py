@@ -17,6 +17,7 @@ import time
 import urllib.request
 
 import muster
+muster.zeitgrenze(900)       # startet Chromium und einen Server: mehrere Minuten
 from muster import check
 
 WURZEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
