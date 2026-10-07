@@ -707,6 +707,17 @@ if __name__ == "__main__":
     so_k.db._flush_pending_writes = _flush
     check("Drei Modelle löschen: alle weg, in einem Schreibvorgang statt dreien",
           so_fehler == [] and so_k.modelle() == [] and len(schreibvorgaenge) == 1)
+    del schreibvorgaenge[:]
+    so_k.db._flush_pending_writes = lambda *a, **kw: (schreibvorgaenge.append(1), _flush(*a, **kw))[1]
+    so_zurueck = so_k.stapel("wiederherstellen", so_ids)
+    zurueck_n = len(schreibvorgaenge)
+    del schreibvorgaenge[:]
+    so_k.stapel("behalten", so_ids)
+    so_k.db._flush_pending_writes = _flush
+    from partatlas import aufraeumen as _af
+    check("… und mit einer Stapel-Aktion wieder da, ebenfalls in einem Schreibvorgang; „Behalten“ für alle auch",
+          so_zurueck["fehler"] == [] and sorted(m["id"] for m in so_k.modelle()) == sorted(so_ids) and zurueck_n == 1
+          and len(schreibvorgaenge) == 1 and len(_af.behaltene(so_k)) == 3)
     so_b.schliessen()
 
     # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)

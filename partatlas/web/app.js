@@ -766,7 +766,7 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl], anker = null
     }
     case "loeschen": return loeschenViele(modelle);
     case "wiederherstellen":
-      for (const id of modelle) await api(`/api/modelle/${id}/wiederherstellen`, { method: "POST" }).catch((e) => toast(e.message));
+      await stapel("wiederherstellen", null, modelle);     // eine Anfrage für alle, nicht eine je Modell
       zustand.auswahl.clear();
       return;
   }
@@ -2664,9 +2664,7 @@ async function kontextAktion(k, knopf) {
     case "entwurf1": return aendern(id, { entwurf: !m.entwurf });
     case "umbenennen": return umbenennen(id);
     case "loeschen": return modelle.length > 1 ? loeschenViele(modelle) : loeschen(id);
-    case "wiederherstellen":
-      for (const x of modelle) await api(`/api/modelle/${x}/wiederherstellen`, { method: "POST" }).catch((err) => toast(err.message));
-      return;
+    case "wiederherstellen": return stapel("wiederherstellen", null, modelle);
     case "endgueltig": return endgueltigEntfernen(id);
     case "druck": return druckAnlegen(modelle);
     default: return stapelAktion(k, modelle);

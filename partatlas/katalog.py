@@ -950,7 +950,7 @@ class Katalog:
         """Eine Aktion für viele Modelle; reine Graph-Änderungen in einer
         Transaktion, Dateiaktionen einzeln (jede für sich rückgängig)."""
         fehler = []
-        if aktion in ("favorit", "gedruckt", "entwurf", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange"):
+        if aktion in ("favorit", "gedruckt", "entwurf", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange", "behalten"):
             with self.db.transaction():
                 for mid in modelle:
                     if aktion in ("favorit", "gedruckt", "entwurf"):
@@ -963,12 +963,25 @@ class Katalog:
                         self.in_warteschlange(mid)
                     elif aktion == "aus_warteschlange":
                         self.aus_warteschlange(mid)
+                    elif aktion == "behalten":
+                        from . import aufraeumen
+                        aufraeumen.behalten(self, mid, True)
                 if aktion == "sammlung":
                     self._sammlung_pruefen(wert)
                     self._hinzufuegen(wert, modelle)
         elif aktion == "loeschen":
             wert = wert if isinstance(wert, dict) else {}
             fehler = self.loeschen_mit(modelle, wert.get("tags") or (), wert.get("sammlungen") or ())
+        elif aktion == "wiederherstellen":
+            # In Gruppen je eine Transaktion wie beim Löschen; vorher je Modell eine Anfrage samt fsync. Sicher gebündelt: ein Modell, das
+            # scheitert, hat noch nichts geschrieben (wiederherstellen legt zuerst Dateien zurück und nimmt sie bei einem Fehler selbst zurück).
+            for i in range(0, len(modelle), LOESCHEN_GRUPPE):
+                with self.db.transaction():
+                    for mid in modelle[i:i + LOESCHEN_GRUPPE]:
+                        try:
+                            self.wiederherstellen(mid)
+                        except (KatalogFehler, OSError) as e:
+                            fehler.append({"id": mid, "fehler": str(e)})
         elif aktion == "verschieben":
             for mid in modelle:
                 try:

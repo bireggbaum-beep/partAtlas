@@ -136,7 +136,7 @@ document.addEventListener("click", async (e) => {
     if ("afKeine" in d) { aufr.wahl.clear(); return zeichneAufraeumen(); }
     if ("afAlleBehalten" in d) {
       const ids = [...new Set(afGewaehlt().map((x) => x.e.id))];
-      for (const id of ids) await api(`/api/modelle/${id}/behalten`, { method: "POST", body: { an: true } });
+      await api("/api/stapel", { method: "POST", body: { aktion: "behalten", modelle: ids } });     // eine Anfrage, eine Transaktion
       aufr.wahl.clear();
       toast(`${ids.length} als Ausnahme behalten.`);
       return ladeAufraeumen();

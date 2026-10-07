@@ -34,8 +34,14 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   wartet auf eine laufende Liste. test_api 86/86 (+1, Gegenprobe fällt), test_baugruppen 48/48.
   **Alle löschen (8600) hing ebenso** (Protokoll: /api/modelle 51 s, /api/zaehler 35 s): `loeschen_mit` schrieb je Modell eine eigene
   Transaktion samt fsync. Jetzt je 200 eine (`LOESCHEN_GRUPPE`), dazwischen kommen andere Anfragen dran. test_scan 105/105 (+1, Gegenprobe
-  fällt), test_api 86/86. Nicht angesehen: andere Massenaktionen (Wiederherstellen vieler, Papierkorb leeren, Ordner entfernen) auf
-  dasselbe Muster prüfen; die Sicherung vor dem Löschen kostet bei grossem Bestand ebenfalls (nicht gemessen).
+  fällt), test_api 86/86.
+  **Andere Massenaktionen durchgesehen (7.10.2026):** Schleifen über Modelle mit je eigenem Schreibvorgang (Server) oder je eigener
+  Anfrage (Oberfläche). Betroffen und behoben: **viele wiederherstellen** (je Modell eine Anfrage → Stapel-Aktion `wiederherstellen`,
+  je 200 eine Transaktion) und **Aufräumen › Alle behalten** (→ Stapel-Aktion `behalten`, eine Transaktion). In Ordnung: Ordner entfernen
+  (eine Transaktion), Stapel Favorit/Tag/Material/Sammlung/Warteschlange (eine Transaktion), endgültig entfernen (nur einzeln, bewusst),
+  Verschieben (Dateiaktionen einzeln, gewollt). test_scan 106/106 (+1, Gegenprobe fällt), test_api 86/86, test_aufraeumen 13/13.
+  Offen: die Sicherung vor Massenaktionen bei grossem Bestand (nicht gemessen); Ordner entfernen hält bei 8600 Dateien die Sperre für
+  eine grosse Transaktion (unter Windows nicht gemessen).
   **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe
