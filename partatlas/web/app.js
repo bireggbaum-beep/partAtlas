@@ -118,7 +118,7 @@ const masse = (m) => m ? m.map((v) => zahl(v)).join(" × ") + " mm" : "";
 const endung = { "3mf": ".3mf", stl: ".stl", obj: ".obj", step: ".step", fcstd: ".FCStd" };
 // CAD-Formate ohne Netz: keine Masse, keine 3D-Ansicht; ein Bild nur, wenn die Datei eins mitbringt.
 const nurCad = (m) => (m.format === "step" || m.format === "fcstd") && m.cad !== "ok";
-const nurCadText = (m) => m.format === "step" && m.cad !== "fehler" && zustand.scan?.laeuft ? "Vorschau folgt (FreeCAD) …" : `${m.format === "fcstd" ? "FCStd" : "STEP"} · nur CAD`;
+const nurCadText = (m) => m.format === "step" && m.cad !== "fehler" && zustand.worker?.laeuft ? "Vorschau folgt (FreeCAD) …" : `${m.format === "fcstd" ? "FCStd" : "STEP"} · nur CAD`;
 const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()) < 7 * 864e5;
 
 // ---------------------------------------------------------------- Laden
@@ -2244,12 +2244,13 @@ $("#einlesen").addEventListener("click", (e) => {
 // Während das Fenster offen ist, wartet eine FCStd-Frage; danach kommt sie.
 $("#einlesen").addEventListener("close", () => {
   const m = zustand.scan || {};
-  hintergrundZeichnen(m);
+  hintergrundZeichnen();
   if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
 });
 
 // Klein beim Zahnrad: was gerade im Hintergrund läuft, mit Balken. Weg, sobald nichts mehr läuft.
-const SCHRITTE = [["hashen", "Dateien prüfen"], ["analysieren", "Einlesen"], ["vorschau", "Vorschaubilder"], ["cad", "FreeCAD"], ["thumbs", "Kleine Bilder"]];
+const SCHRITTE = { scan: [["hashen", "Dateien prüfen"], ["analysieren", "Einlesen"]],
+                   worker: [["vorschau", "Vorschaubilder"], ["thumbs", "Kleine Bilder"], ["cad", "FreeCAD"]] };
 
 // Restzeit aus dem bisherigen Tempo dieser Phase. Erst nach einer Weile und ein paar Dateien: vorher wäre es geraten.
 function restzeit(fertig, gesamt, sek) {
@@ -2261,9 +2262,12 @@ function restzeit(fertig, gesamt, sek) {
   return min >= 60 ? `noch etwa ${h + 1} h` : `noch etwa ${h} h${min ? ` ${min} min` : ""}`;
 }
 
-function hintergrundZeichnen(m) {
+function hintergrundZeichnen() {
   const h = $("#hintergrund");
-  if (!m.laeuft || $("#einlesen").open) { h.hidden = true; return; }
+  // Das Einlesen geht vor (kurz, der Anwender wartet darauf); läuft es nicht, die Hintergrundarbeit.
+  const art = zustand.scan?.laeuft ? "scan" : zustand.worker?.laeuft ? "worker" : null;
+  const m = art ? zustand[art] : {};
+  if (!art || $("#einlesen").open) { h.hidden = true; return; }
   let text, fertig = null, gesamt = null;
   if (m.abbricht) text = "Wird abgebrochen …";
   else if (m.phase === "suchen") text = "Einlesen: Ordner durchsuchen";
@@ -2275,11 +2279,11 @@ function hintergrundZeichnen(m) {
   else text = "Läuft …";
   const anteil = gesamt ? fertig / gesamt : null;
   // Wo im Ganzen: „Schritt 4 von 5“ (FreeCAD nur, wenn welche anstehen) und was danach noch kommt — damit man weiss, ob es Minuten oder Stunden sind.
-  const schritte = SCHRITTE.filter(([k]) => k !== "cad" || m.cad_voraus > 0 || m.cad_gesamt || m.phase === "cad");
+  const schritte = SCHRITTE[art].filter(([k]) => k !== "cad" || m.cad_voraus > 0 || m.cad_gesamt || m.phase === "cad");
   const nr = schritte.findIndex(([k]) => k === m.phase) + 1;
   const rest = m.abbricht ? "" : restzeit(fertig, gesamt, m.phase_s || 0);
   const zeile2 = [nr ? `Schritt ${nr} von ${schritte.length}` : "", rest].filter(Boolean).join(" · ");
-  const danach = !m.abbricht && m.cad_voraus > 0 && ["hashen", "analysieren", "vorschau"].includes(m.phase)
+  const danach = !m.abbricht && m.cad_voraus > 0 && ["vorschau", "thumbs"].includes(m.phase) && !m.cad_gesamt
     ? `Danach: FreeCAD für ${anzahl(m.cad_voraus)} Dateien — das dauert am längsten. Du kannst solange weiterarbeiten.` : "";
   h.hidden = false;
   abgleichen(h, `<div class="hg-kopf"><span>${text}</span>${gesamt ? `<span class="hg-zahl">${anzahl(fertig)} / ${anzahl(gesamt)}</span>` : ""}</div>
@@ -2316,20 +2320,35 @@ let LIVE_SCAN_MS = 5000, letztesLiveLaden = 0;       // während eines Einlesens
 
 // Hat das Einlesen etwas verändert, das in der Liste steht? Sonst ist das Neuladen am Ende überflüssig: ein Einlesen ohne Funde schreibt
 // nichts (gemessen: 0 Änderungsmeldungen), und die Liste ist schon aktuell. Bei 9 000 Modellen auf einem älteren Rechner sind das Sekunden.
-const scanHatVeraendert = (m) => !!(m.neu || m.geaendert || m.verschoben || m.entfernt || m.zurueckgeholt || m.aufgeraeumt || m.vorschauen_gesamt || m.cad_gesamt
+const scanHatVeraendert = (m) => !!(m.neu || m.geaendert || m.verschoben || m.entfernt || m.zurueckgeholt || m.aufgeraeumt
   || m.abgebrochen || !zustand.modelle.length);
+// Läuft gerade etwas — Einlesen oder Hintergrundarbeit? Dann kommen viele Änderungen kurz hintereinander.
+const etwasLaeuft = () => !!(zustand.scan?.laeuft || zustand.worker?.laeuft);
+function abbrechenZeigen() {
+  const s = zustand.scan || {}, w = zustand.worker || {};
+  $("#scan-abbrechen").hidden = !((s.laeuft && !s.abbricht) || (w.laeuft && !w.abbricht));
+}
 
 function liveScan(m) {
   const vorher = zustand.scan || {};
   zustand.scan = m;
   if (m.zuletzt_eingelesen) zuletztEingelesen = m.zuletzt_eingelesen;
   einlesenZeichnen(m);
-  hintergrundZeichnen(m);
+  hintergrundZeichnen();
   if (!zustand.modelle.length) zeichneLeer();
-  $("#scan-abbrechen").hidden = !m.laeuft || !!m.abbricht;
+  abbrechenZeigen();
   if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
-  // Ende des ganzen Laufs (nach Vorschaubildern und FreeCAD): einmal alles neu, was sich dabei nur Kachel für Kachel geändert hat.
-  if (vorher.laeuft && !m.laeuft && scanHatVeraendert(m)) neuLaden();
+}
+
+// Der Worker (Vorschaubilder, kleine Bilder, FreeCAD) meldet sich getrennt vom Einlesen und läuft neben ihm.
+function liveWorker(m) {
+  const vorher = zustand.worker || {};
+  zustand.worker = m;
+  hintergrundZeichnen();
+  abbrechenZeigen();
+  if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+  // Am Ende der Runde einmal alles neu, was sich dabei nur Kachel für Kachel geändert hat (etwa die Sortierung nach Grösse).
+  if (vorher.laeuft && !m.laeuft && (m.vorschauen_gesamt || m.cad_gesamt)) neuLaden();
 }
 
 // Während des Einlesens ändern Vorschaubilder und FreeCAD einzelne Modelle, oft jede Sekunde. Dafür nicht die ganze Liste holen (bei 9 000
@@ -2360,7 +2379,7 @@ async function teilLaden() {
 }
 
 function liveAenderung(m) {
-  if (zustand.scan?.laeuft) {
+  if (etwasLaeuft()) {
     const id = kachelVon(m);
     if (id === null) return;                     // ein Modell, das hier gerade nicht zu sehen ist: nichts zu tun
     if (id) {
@@ -2378,7 +2397,7 @@ function liveAenderung(m) {
     if (liveBetrifft && zustand.gewaehlt) waehle(zustand.gewaehlt, true);
     liveBetrifft = false;
   };
-  if (zustand.scan?.laeuft) {
+  if (etwasLaeuft()) {
     // Beim Einlesen kommt fast jede Sekunde eine Änderung (FreeCAD, Vorschauen). Jedes Mal die ganze Liste holen und zeichnen hielte den
     // Rechner dauernd beschäftigt, auch den Server (er baut die Kacheln nach jeder Änderung neu). Stattdessen höchstens alle LIVE_SCAN_MS einmal.
     // Die erste Änderung nach einer Ruhepause lädt sofort (ein kleiner Import zeigt seine Modelle gleich); danach höchstens alle LIVE_SCAN_MS.
@@ -2402,6 +2421,7 @@ function live() {
   q.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.art === "scan") return liveScan(m);
+    if (m.art === "worker") return liveWorker(m);
     liveAenderung(m);
   };
 }
@@ -2413,7 +2433,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan) einlesenZeichnen(zustand.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; if (s.worker) zustand.worker = { ...s.worker, ...(zustand.worker || {}) }; hintergrundZeichnen(); abbrechenZeigen(); if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } if (s.scan) einlesenZeichnen(zustand.scan); }).catch(() => {});
 live();
 try { nav.nr = history.state?.nr ?? 0; nav.hoechste = nav.nr; history.replaceState(momentaufnahme(), ""); } catch { /* s. o. */ }
 $("#nav-zurueck")?.addEventListener("click", () => history.back());

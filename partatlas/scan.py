@@ -15,9 +15,11 @@ Ablauf:
      anlegen — einzeln kostet jede Änderung ihren fsync (VERTRAG §5).
   4. Orte, die nicht mehr da sind, entfernen. Ein Modell ohne Ort „fehlt“
      und bleibt, mit Tags und Historie.
+Danach ist das Einlesen fertig und stösst den Worker an (KONZEPT §3.4), der in einem eigenen Thread mit eigenen Arbeitsprozessen läuft:
   5. Fehlende Vorschauen rendern, nach und nach.
-  6. STEP-Dateien über FreeCAD (ohne Fenster) in ein Netz umwandeln; daraus kommen Vorschau, Maße und die 3D-Ansicht.
-     Ohne FreeCAD bleiben sie „ausstehend“ und kommen beim nächsten Lauf dran.
+  6. STEP- und FCStd-Dateien über FreeCAD (ohne Fenster) in ein Netz umwandeln; daraus kommen Vorschau, Maße und die 3D-Ansicht.
+     Ohne FreeCAD bleiben sie „ausstehend“ und kommen bei der nächsten Runde dran.
+Ein neues Einlesen wartet nie auf den Worker; beide laufen nebeneinander.
 
 Abbrechen (`abbrechen()`): ein Ereignis, das jede Phase je Ergebnis prüft,
 nie innerhalb einer Transaktion. Was fertig ist, steht schon in der
@@ -114,12 +116,16 @@ def _cad_bild(stl, vorschau_ziel):
     return felder, "gerendert", None
 
 
-# ---------------------------------------------------------------- Scanner
+# ---------------------------------------------------------------- Einlesen und Hintergrundarbeit
 
-class Scanner:
-    def __init__(self, bestand, katalog, melden=None, prozesse=None, cad_befehl=None, zeitgrenze=None):
+class _Bahn:
+    """Was Einlesen und Hintergrundarbeit gemeinsam haben: ein eigener Thread mit Folgelauf, ein eigener Pool von Arbeitsprozessen,
+    ein eigenes Abbrechen und ein eigener Stand für die Oberfläche. Getrennt, damit das Einlesen nie hinter Vorschaubildern und FreeCAD
+    wartet (KONZEPT §3.4); was im Hintergrund noch aussteht, steht als „ausstehend“ im Bestand und übersteht Abbruch und Neustart."""
+    NAME = "Lauf"
+
+    def __init__(self, bestand, katalog, melden=None, prozesse=None, zeitgrenze=None):
         self.b = bestand
-        self.cad_befehl = cad_befehl        # Aufruf von FreeCAD ohne Fenster; None: aus den installierten Programmen ermitteln
         self.k = katalog
         self.zeitgrenze = zeitgrenze or ZEITGRENZE
         self.melden = melden or (lambda status: None)
@@ -127,14 +133,11 @@ class Scanner:
         self.prozesse = prozesse or max(1, min((os.cpu_count() or 2) - 1, ((os.cpu_count() or 2) + 1) // 2))
         self._sperre = threading.Lock()
         self._faden = None
-        self._nochmal = False               # Folgelauf nach dem laufenden: False, "cad" (nur FreeCAD) oder True (ganz)
+        self._nochmal = False               # ein Folgelauf ist gewünscht
         self.status = {"laeuft": False, "lauf": 0}
         self._phasen, self._phase_name, self._phase_t = {}, None, 0.0
         self._pool = None
         self._stopp = threading.Event()
-        self._nur_cad = False
-        self.herzschlag_s = HERZSCHLAG_S
-        self.schleifenprobe = None          # Aufruf, der die Antwortzeit der Serverschleife in ms liefert (None: antwortet nicht); setzt main.py
 
     def abbrechen(self):
         """Bittet den laufenden Lauf, aufzuhören. Wahr, wenn einer lief. Ein wartender Folgelauf entfällt: wer abbricht,
@@ -273,33 +276,22 @@ class Scanner:
         self.status.update(werte)
         if "phase" in werte and werte["phase"] != phase_vorher:
             st = self.status
-            log.info("Lauf %s: Phase „%s“ nach „%s“ — gefunden %s, zu prüfen %s, zu analysieren %s, neu %s, Vorschauen offen %s, FreeCAD %s",
-                     st.get("lauf"), werte["phase"], phase_vorher, st.get("gefunden"), st.get("zu_pruefen"), st.get("zu_analysieren"),
+            log.info("%s %s: Phase „%s“ nach „%s“ — gefunden %s, zu prüfen %s, zu analysieren %s, neu %s, Vorschauen offen %s, FreeCAD %s",
+                     self.NAME, st.get("lauf"), werte["phase"], phase_vorher, st.get("gefunden"), st.get("zu_pruefen"), st.get("zu_analysieren"),
                      st.get("neu"), st.get("vorschauen_gesamt"), st.get("cad_gesamt"))
         self.melden(dict(self.status))
 
-    def starten(self, nur_cad=False):
-        """Im Hintergrund. Kommt ein Auftrag während eines Laufs (Hochladen,
-        Entpacken), läuft danach ein zweiter — der erste hat die neuen
-        Dateien womöglich schon hinter sich gelassen.
-
-        Mit `nur_cad`: nur die Umwandlung über FreeCAD, ohne Suchen und Hashen — etwa nachdem der Anwender FCStd erlaubt hat."""
+    def starten(self):
+        """Im Hintergrund. Kommt ein Auftrag während eines Laufs, läuft danach genau ein weiterer — der erste hat Neues womöglich schon
+        hinter sich gelassen. Wahr, wenn jetzt ein Lauf begann."""
         with self._sperre:
             if self._faden and self._faden.is_alive():
-                # Den Wunsch merken, nicht nur „nochmal“: vorher wurde aus „nur FreeCAD“ (nach der FCStd-Zusage) ein ganzer
-                # Lauf, der alles neu einlas. Ein ganzer Folgelauf schliesst die Umwandlung ein.
-                self._nochmal = True if not nur_cad or self._nochmal is True else "cad"
+                self._nochmal = True
                 return False
             self._nochmal = False
-            self._nur_cad = nur_cad
-            self._faden = threading.Thread(target=self._lauf_sicher, name="scan", daemon=True)
+            self._faden = threading.Thread(target=self._lauf_sicher, name=self.NAME.lower(), daemon=True)
             self._faden.start()
             return True
-
-    def naechster_lauf(self):
-        """Die Nummer des Laufs, der die Änderung von eben sieht — VOR `starten` lesen: läuft einer, ist es sein Folgelauf, sonst der
-        neue. Danach gelesen könnte der neue Lauf schon mitgezählt sein."""
-        return self.status.get("lauf", 0) + 1
 
     def warten(self, zeit=None):
         """Wahr, wenn kein Lauf mehr läuft."""
@@ -308,47 +300,31 @@ class Scanner:
             faden.join(zeit)
         return not (faden and faden.is_alive())
 
-    def _kette_buchen(self, kette):
-        """Mehrere Läufe hintereinander (Hochladen, Entpacken: jeder Auftrag, der während eines Laufs eintrifft, bekommt einen Folgelauf) sind
-        für den Anwender ein Einlesen. Die Zeile oben rechts zeigte nur den letzten Lauf: „219 Dateien, 1 neu in unter 1 s“ nach 121 Dateien
-        in 20 s. Hier werden die Läufe einer Kette zusammengezählt; ein einzelner Lauf bleibt unverändert."""
-        st = self.status
-        if st.get("phase") != "fertig" or st.get("nur_cad"):
-            return
-        kette["laeufe"] += 1
-        for f in ("neu", "geaendert", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei"):
-            kette["summe"][f] = kette["summe"].get(f, 0) + (st.get(f) or 0)
-        kette["summe"]["einlesen_s"] = round(kette["summe"].get("einlesen_s", 0) + (st.get("einlesen_s") or 0), 1)
-        for name, sek in (st.get("phasen") or {}).items():
-            kette["phasen"][name] = round(kette["phasen"].get(name, 0) + sek, 1)
-        for fm, n in (st.get("je_format") or {}).items():
-            kette["je_format"][fm] = kette["je_format"].get(fm, 0) + n
-        if kette["laeufe"] > 1:
-            self._setze(**kette["summe"], phasen=dict(kette["phasen"]), je_format=dict(kette["je_format"]),
-                        dauer_s=round(time.monotonic() - kette["t0"], 1))
+    def _einmal(self):
+        raise NotImplementedError
+
+    def _danach(self):
+        """Nach jedem Lauf, auch einem gescheiterten."""
 
     def _lauf_sicher(self):
-        kette = {"t0": time.monotonic(), "laeufe": 0, "summe": {}, "phasen": {}, "je_format": {}}
         ende = threading.Event()
         threading.Thread(target=self._herzschlag, args=(ende,), name="herzschlag", daemon=True).start()
         try:
             while True:
                 try:
-                    nur, self._nur_cad = self._nur_cad, False      # ein Folgelauf ist wieder ein ganzer
-                    self.lauf(nur_cad=True) if nur else self.lauf()
-                    self._kette_buchen(kette)
+                    self._einmal()
                 except Exception as e:                   # der Server soll weiterlaufen
-                    log.exception("Scan abgebrochen")
+                    log.exception("%s abgebrochen", self.NAME)
                     # Ein Endzustand, den die Oberfläche kennt: sonst stand sie bei „läuft nicht mehr, ist aber nicht fertig“ und wartete
-                    # für immer (Fenster ohne OK, „Abbrechen“ ohne Wirkung). Was bis dahin eingelesen war, steht in der Datenbank.
+                    # für immer. Was bis dahin fertig war, steht in der Datenbank.
                     self._setze(laeuft=False, abbricht=False, phase="fehler", abbruch=str(e) or type(e).__name__)
+                self._danach()
                 with self._sperre:
                     if not self._nochmal:
                         # Unter der Sperre als beendet melden: `starten` prüft hier, ob ein Lauf lebt. Vorher galt der Faden bis zu seinem
                         # tatsächlichen Ende als lebend; ein Wunsch in dieser Lücke setzte `_nochmal` und ging verloren.
                         self._faden = None
                         return
-                    self._nur_cad = self._nochmal == "cad"
                     self._nochmal = False
         finally:
             ende.set()
@@ -360,8 +336,8 @@ class Scanner:
         while not ende.wait(self.herzschlag_s):
             st = self.status
             antwort = self.schleifenprobe() if self.schleifenprobe else "nicht geprüft"
-            log.info("Herzschlag: Lauf %s, Phase „%s“ seit %s s — geprüft %s/%s, analysiert %s/%s, Vorschauen offen %s, FreeCAD offen %s, kleine Bilder %s/%s — "
-                     "Serverschleife antwortet in %s ms", st.get("lauf"), st.get("phase"), round(time.monotonic() - self._phase_t) if self._phase_name else "?",
+            log.info("Herzschlag (%s): Lauf %s, Phase „%s“ seit %s s — geprüft %s/%s, analysiert %s/%s, Vorschauen offen %s, FreeCAD offen %s, kleine Bilder %s/%s — "
+                     "Serverschleife antwortet in %s ms", self.NAME, st.get("lauf"), st.get("phase"), round(time.monotonic() - self._phase_t) if self._phase_name else "?",
                      st.get("geprueft"), st.get("zu_pruefen"), st.get("analysiert"), st.get("zu_analysieren"), st.get("vorschauen_offen"),
                      st.get("cad_offen"), st.get("thumbs_fertig"), st.get("thumbs_gesamt"), antwort)
             if antwort is None:
@@ -379,11 +355,286 @@ class Scanner:
         except Exception as e:
             return f"(nicht lesbar: {e})"
 
-    def lauf(self, nur_cad=False):
+    def _abgebrochen(self, t0):
+        log.info("%s %s abgebrochen nach %.1f s (Phase „%s“); was fertig ist, steht in der Datenbank", self.NAME, self.status.get("lauf"), time.monotonic() - t0,
+                 self.status.get("phase"))
+        self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.monotonic() - t0, 1))
+
+    def _cad_anzahl(self):
+        """Wie viele Dateien FreeCAD voraussichtlich bekommt — schon vor den Vorschauen bekannt, damit man früh weiss, was kommt."""
+        offen = self.k.ausstehende_cad()
+        if self.b.einstellungen().get("fcstd_freecad") != "ja":
+            offen = [x for x in offen if x[1].get("format") != "fcstd"]
+        return len(offen)
+
+    def _fcstd_offen(self):
+        """Wie viele FCStd-Dateien auf die Zusage für FreeCAD warten; 0, wenn der Anwender schon geantwortet hat."""
+        if self.b.einstellungen().get("fcstd_freecad") is not None:
+            return 0
+        return sum(1 for _, d in self.k.ausstehende_cad() if d.get("format") == "fcstd")
+
+
+class Worker(_Bahn):
+    """Die Hintergrundarbeit (KONZEPT §3.4): Vorschaubilder, kleine Bilder, FreeCAD — alles, was im Bestand als „ausstehend“ steht.
+    Läuft neben dem Einlesen, nie davor: ein ⟳ wartet nicht auf FreeCAD. Setzt nach einem Abbruch oder Neustart dort fort, wo es aufhörte."""
+    NAME = "Hintergrund"
+
+    def __init__(self, scanner, melden=None):
+        super().__init__(scanner.b, scanner.k, melden=melden, prozesse=scanner.prozesse, zeitgrenze=scanner.zeitgrenze)
+        self._scanner = scanner
+
+    # Einstellungen, die der Aufrufer am Scanner setzt (Tests, main.py), gelten auch hier.
+    cad_befehl = property(lambda self: self._scanner.cad_befehl)
+    herzschlag_s = property(lambda self: self._scanner.herzschlag_s)
+    schleifenprobe = property(lambda self: self._scanner.schleifenprobe)
+
+    def _einmal(self):
+        self.lauf()
+
+    def lauf(self):
         t0 = time.monotonic()
         self._stopp.clear()
+        self._phasen, self._phase_name = {}, None
+        log.info("Hintergrund %d beginnt: Vorschaubilder, kleine Bilder, FreeCAD", self.status["lauf"] + 1)
+        self._setze(lauf=self.status["lauf"] + 1, laeuft=True, phase="vorschau", fcstd_frage=0, cad_ohne_freecad=0, bearbeitet=0, abbruch=None,
+                    abbricht=False, abgebrochen=False, vorschauen_gesamt=0, vorschauen_offen=0, cad_gesamt=0, cad_offen=0, thumbs_gesamt=0,
+                    thumbs_fertig=0, cad_voraus=self._cad_anzahl(), beginn=time.strftime("%H:%M:%S"))
+        self._pool = self._neuer_pool()
+        try:
+            self._vorschauen()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+            # Die kleinen Bilder vor FreeCAD: das braucht bei einer grossen Library Stunden, und bis dahin sollen die Kacheln schon stehen.
+            self._thumbs()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+            self._cad()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+            self._thumbs()
+            if self._stopp.is_set():
+                return self._abgebrochen(t0)
+        finally:
+            self._pool_beenden(self._pool, hart=self._stopp.is_set())
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
+        log.info("Hintergrund %s fertig in %s s: %s Vorschaubilder gerechnet, %s über FreeCAD", self.status.get("lauf"),
+                 self.status.get("dauer_s"), self.status.get("vorschauen_gesamt"), self.status.get("cad_gesamt"))
+
+    def hat_offenes(self):
+        """Wartet im Hintergrund noch Arbeit — ein Vorschaubild, das fehlt, oder eine FreeCAD-Umwandlung, die jetzt möglich ist?
+        Die Warteschlange ist der Zustand „ausstehend“ an den Dateien im Bestand; sie übersteht einen Neustart. Dateien ohne bekannten Ort
+        zählen nicht (es gibt nichts zu rechnen) und halten sonst bei jedem Start einen leeren Lauf in Gang."""
+        if any(d.get("orte") for _, d in self.k.ausstehende_vorschauen()):
+            return True
+        if self._cad_anzahl() == 0:
+            return False
+        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
+        return bool(self.cad_befehl or cad.konsole_befehl(prog.get("pfad")))
+
+    def _vorschauen(self):
+        offen = self.k.ausstehende_vorschauen()
+        self._setze(vorschauen_offen=len(offen))
+        aufgaben = []
+        for h, d in offen:
+            ort = next(iter(d.get("orte", [])), None)
+            pfad = self.k.absoluter_pfad(ort) if ort else None
+            # In der Farbe des ersten Filaments, wenn der Slicer eine kennt —
+            # so sieht die Kachel aus wie der Druck.
+            farbe = next((f.get("farbe") for p in d.get("platten") or [] for f in p.get("filamente", [])
+                          if f.get("farbe")), None)
+            if pfad:
+                aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)))
+        rest, stapel, zuletzt = len(aufgaben), [], time.monotonic()
+        self._setze(vorschauen_gesamt=len(aufgaben), vorschauen_offen=rest)
+        if aufgaben:
+            log.info("Vorschaubilder: %d zu berechnen (%d Arbeiter)", len(aufgaben), self.prozesse)
+        gesamt_v, t_v = len(aufgaben), time.monotonic()
+        for h, erg, fehler in self._verteilen(aufgaben, _rendern):
+            status, fehler = ("fehler", fehler) if fehler else erg
+            if fehler:
+                log.warning("Vorschau %s: %s", h[:12], fehler)
+            stapel.append((h, status))
+            rest -= 1
+            if len(stapel) >= GRUPPE or time.monotonic() - zuletzt >= SPEICHERN_ALLE_S:
+                self._vorschauen_speichern(stapel)
+                stapel, zuletzt = [], time.monotonic()
+            if rest % 10 == 0:
+                self._setze(vorschauen_offen=rest)      # die Anzeige beim Zahnrad zählt mit, nicht nur alle hundert
+            if (gesamt_v - rest) % 100 == 0:
+                log.info("Vorschaubilder: %d von %d fertig (%.0f s)", gesamt_v - rest, gesamt_v, time.monotonic() - t_v)
+        self._vorschauen_speichern(stapel)
+        self._setze(vorschauen_offen=0)
+        if gesamt_v:
+            log.info("Vorschaubilder: %d fertig in %.0f s", gesamt_v - rest, time.monotonic() - t_v)
+
+    def _cad(self):
+        """STEP-Dateien ohne Netz über FreeCAD umwandeln. Das Netz liegt abgeleitet in `netz/<hash>.stl` (nicht gesichert,
+        jederzeit neu berechenbar). Ein Fehler oder eine Zeitüberschreitung betrifft nur seine Datei und wird nicht bei
+        jedem Lauf wiederholt: sonst hielte dieselbe Datei jeden Scan um die Zeitgrenze auf."""
+        offen = self.k.ausstehende_cad()
+        if not offen:
+            return
+        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
+        befehl = self.cad_befehl or cad.konsole_befehl(prog.get("pfad"))
+        if not befehl:
+            # Ins Protokoll und in den Status: sonst weiss niemand, ob FreeCAD fehlt oder nur nicht als solches erkannt wurde.
+            log.warning("CAD: kein FreeCAD-Aufruf gefunden, %d Dateien warten (erkanntes CAD-Programm: %s)", len(offen),
+                        prog.get("pfad") or "keines")
+            self._setze(cad_ohne_freecad=len(offen), cad_programm=prog.get("pfad") or "")
+            return
+        log.info("CAD: FreeCAD-Aufruf %s, %d Dateien offen", befehl, len(offen))
+        # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut partAtlas nur nach
+        # ausdrücklicher Zusage des Anwenders. Solange er nicht geantwortet hat, fragt die Oberfläche (`fcstd_frage`).
+        if self.b.einstellungen().get("fcstd_freecad") != "ja":
+            offen = [x for x in offen if x[1].get("format") != "fcstd"]
+            self._setze(fcstd_frage=self._fcstd_offen())
+            if not offen:
+                return
+        aufgaben = []
+        for h, d in offen:
+            ort = next((o for o in d.get("orte", []) if self.k.absoluter_pfad(o)), None)
+            pfad = self.k.absoluter_pfad(ort) if ort else None
+            if pfad and os.path.exists(pfad):
+                aufgaben.append((h, pfad, self.b.pfad("arbeit", "cad", f"{h}.stl")))
+        # Kleine zuerst: die ersten Bilder erscheinen früh, die Schätzung der Restzeit wird nicht von einer frühen Riesenbaugruppe verzerrt,
+        # und was hängen könnte (die grossen Dateien), kommt ans Ende.
+        aufgaben.sort(key=lambda a: os.path.getsize(a[1]))
+        self._setze(phase="cad", cad_offen=len(aufgaben), cad_gesamt=len(aufgaben))
+        rest = len(aufgaben)
+        namen = {h: os.path.basename(p) for h, p, _ in aufgaben}
+        log.info("CAD: %d Dateien über FreeCAD, die kleinste zuerst", len(aufgaben))
+        for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
+            rest -= 1
+            if not ok:
+                log.warning("CAD %s (%s): %s", namen.get(h), h[:12], info)
+            else:
+                log.info("CAD: %s umgewandelt (%s Dreiecke), noch %d offen", namen.get(h), info, rest)
+            if not ok:
+                with self.b.db.transaction():
+                    self.k.cad_fehler(h, str(info))
+            else:
+                ziel = self.b.netz_pfad(h)
+                os.makedirs(os.path.dirname(ziel), exist_ok=True)
+                os.replace(self.b.pfad("arbeit", "cad", f"{h}.stl"), ziel)
+                felder, status, fehler = {}, "fehler", "Vorschau nicht berechnet"
+                for _, erg, ausnahme in self._verteilen([(h, (ziel, self.b.vorschau_pfad(h, "berechnet")))], _cad_bild):
+                    felder, status, fehler = ({}, "fehler", ausnahme) if ausnahme else erg
+                if self._stopp.is_set():
+                    break                  # abgebrochen: die Datei bleibt ausstehend, das Netz liegt schon da
+                with self.b.db.transaction():
+                    self.k.cad_ergebnis(h, felder, status, fehler)
+            self._setze(cad_offen=rest, bearbeitet=self.status["bearbeitet"] + 1)
+
+    def _thumbs(self):
+        """Die kleinen Fassungen aller Bilder im Vault vorbauen (?t=1: Kacheln, Zeilen, Karten). Sonst erzeugt sie der erste Abruf,
+        und das erste Scrollen durch einen frischen Bestand wartet auf tausend Verkleinerungen. Vorhandene werden übersprungen
+        (`Bestand.thumb` ist wiederholbar); ein Bild, das sich nicht verkleinern lässt, schadet nicht — es bleibt beim Original.
+        Threads statt Prozessen: Pillow gibt beim Lesen und Verkleinern die Sperre frei, und es gibt nichts zu übergeben."""
+        bilder = []
+        for teil in ("vorschau", "bilder"):
+            ordner = self.b.pfad("vault", teil)
+            if not os.path.isdir(ordner):
+                continue
+            for e in sorted(os.scandir(ordner), key=lambda e: e.name):
+                n = e.name.lower()
+                if not n.endswith((".png", ".jpg", ".jpeg", ".webp")):
+                    continue
+                # Kleine PNGs (die Vorschauen von partAtlas selbst: 320 px, ca. 11 KB) braucht es nicht zu verkleinern; `Bestand.thumb` liefert
+                # sie direkt aus. Sie hier zu öffnen kostete bei 9 000 Bildern bei JEDEM Lauf ca. 3 s, auch ohne etwas Neues (gemessen am 6.10.2026,
+                # Rückmeldung des Testers: „beim Aktualisieren unveränderter Ordner immer 3 Sekunden“); nur die Grösse abzufragen kostet 0,03 s.
+                if n.endswith(".png") and e.stat().st_size <= KLEIN_BYTES:
+                    continue
+                bilder.append(e.path)
+        self._setze(phase="thumbs", thumbs_gesamt=len(bilder), thumbs_fertig=0)
+        if not bilder:
+            return
+        t_t = time.monotonic()
+        fertig = 0
+        with ThreadPoolExecutor(min(2, self.prozesse)) as pool:      # wenige: die Threads teilen sich den Server-Prozess mit der Oberfläche
+            for _ in pool.map(self._thumb_eins, bilder):
+                fertig += 1
+                if fertig % 25 == 0:
+                    self._setze(thumbs_fertig=fertig)
+                if self._stopp.is_set():
+                    break
+        self._setze(thumbs_fertig=fertig)
+        log.info("Kleine Bilder: %d von %d geprüft in %.1f s", fertig, len(bilder), time.monotonic() - t_t)
+
+    def _thumb_eins(self, pfad):
+        if self._stopp.is_set():
+            return
+        try:
+            self.b.thumb(pfad)
+        except Exception as e:            # ein kaputtes Bild hält den Lauf nicht auf
+            log.warning("Thumbnail %s: %s", os.path.basename(pfad), e)
+
+    def _vorschauen_speichern(self, stapel):
+        """Gruppenweise in einer Transaktion: jede einzelne Änderung kostet ihren fsync (VERTRAG §5), bei tausenden Vorschauen
+        war das ein grosser Teil der Zeit."""
+        if not stapel:
+            return
+        with self.b.db.transaction():
+            for h, status in stapel:
+                self.k.vorschau_setzen(h, status)
+        self._setze(bearbeitet=self.status["bearbeitet"] + len(stapel))
+
+
+class Scanner(_Bahn):
+    """Das Einlesen (KONZEPT §3.4): Ordner durchsuchen, neue und geänderte Dateien erkennen und auslesen, die Datenbank nachführen.
+    Danach stösst es den Worker an und ist fertig — es wartet nicht auf ihn."""
+    NAME = "Lauf"
+
+    def __init__(self, bestand, katalog, melden=None, prozesse=None, cad_befehl=None, zeitgrenze=None, melden_worker=None):
+        super().__init__(bestand, katalog, melden=melden, prozesse=prozesse, zeitgrenze=zeitgrenze)
+        self.cad_befehl = cad_befehl        # Aufruf von FreeCAD ohne Fenster; None: aus den installierten Programmen ermitteln
+        self.herzschlag_s = HERZSCHLAG_S
+        self.schleifenprobe = None          # Aufruf, der die Antwortzeit der Serverschleife in ms liefert (None: antwortet nicht); setzt main.py
+        self._kette = None
+        self.worker = Worker(self, melden_worker or melden)
+
+    def starten(self, nur_cad=False):
+        """Mit `nur_cad`: nur die Hintergrundarbeit (Vorschaubilder, FreeCAD), etwa nach der Zusage für FCStd — sie startet sofort, auch
+        während eines Einlesens. Sonst ein Einlesen; der Worker folgt von selbst."""
         if nur_cad:
-            return self._lauf_nur_cad(t0)
+            return self.worker.starten()
+        return super().starten()
+
+    def abbrechen(self):
+        """Bittet Einlesen und Hintergrundarbeit, aufzuhören. Wahr, wenn etwas lief."""
+        a = super().abbrechen()
+        w = self.worker.abbrechen()
+        return a or w
+
+    def warten(self, zeit=None):
+        """Wartet auf das Einlesen und danach auf die Hintergrundarbeit, die es angestossen hat. Wahr, wenn beide fertig sind."""
+        ein = super().warten(zeit)
+        return self.worker.warten(zeit) and ein
+
+    def hat_offenes(self):
+        return self.worker.hat_offenes()
+
+    def _lauf_sicher(self):
+        self._kette = {"t0": time.monotonic(), "laeufe": 0, "summe": {}, "phasen": {}, "je_format": {}}
+        super()._lauf_sicher()
+
+    def _einmal(self):
+        self.einlesen()
+        self._kette_buchen(self._kette)
+
+    def _danach(self):
+        self.worker.starten()               # anstossen, nicht warten
+
+    def lauf(self, nur_cad=False):
+        """Ein ganzer Durchgang ohne Thread (Werkzeuge, Tests): einlesen, dann die Hintergrundarbeit. Mit `nur_cad` nur diese."""
+        if not nur_cad:
+            self.einlesen()
+            if self._stopp.is_set() or self.status.get("phase") != "fertig":
+                return
+        self.worker.lauf()
+
+    def einlesen(self):
+        t0 = time.monotonic()
+        self._stopp.clear()
         # `lauf` zählt die Läufe: die Oberfläche weiss so, welches Ende sie schon gemeldet hat. Der Beginn ist EINE Meldung: neue Nummer,
         # „läuft“ und zurückgesetzte Zähler zusammen. Vorher kam zuerst nur die neue Nummer — mit dem Ergebnis des vorigen Laufs („fertig,
         # 4 neu“) —, und die Oberfläche meldete dieses alte Ergebnis als Ende des neuen Laufs.
@@ -512,84 +763,46 @@ class Scanner:
                 self.k.loeschen(mid)
             if aufgeraeumt:
                 self._setze(aufgeraeumt=len(aufgeraeumt))
-            # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
-            # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
-            # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.
-            # Das Einlesen ist hier fertig; was folgt (Vorschaubilder, FreeCAD), ist Hintergrundarbeit. „Zuletzt eingelesen“ gilt ab jetzt —
-            # vorher stand es erst nach FreeCAD, bei einer grossen Bibliothek Stunden später. Fehlt der Platz zum Schreiben, ist das kein Grund,
-            # das Einlesen scheitern zu lassen.
+            # Das Einlesen ist fertig. `fcstd_frage`: die Oberfläche fragt jetzt, bevor der Worker FreeCAD startet — wer gleich antwortet,
+            # bekommt die FCStd in derselben Hintergrundrunde. „Zuletzt eingelesen“ gilt ab jetzt, nicht erst nach FreeCAD (bei einer grossen
+            # Bibliothek Stunden später). Fehlt der Platz zum Schreiben, ist das kein Grund, das Einlesen scheitern zu lassen.
             jetzt = datetime.now().astimezone().isoformat(timespec="seconds")
             try:
                 self.b.einstellungen_setzen(zuletzt_eingelesen=jetzt)
             except OSError as e:
                 log.warning("Zeitpunkt des Einlesens nicht gespeichert: %s", e)
-            self._setze(entfernt=len(weg), phase="vorschau", cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.monotonic() - t0, 1),
-                        zuletzt_eingelesen=jetzt)
-
-            self._vorschauen()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-            # Die kleinen Bilder vor FreeCAD: das braucht bei einer grossen Library Stunden, und bis dahin sollen die Kacheln schon stehen.
-            self._thumbs()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-            self._cad()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-            self._thumbs()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
+            self._setze(entfernt=len(weg), cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), zuletzt_eingelesen=jetzt)
         finally:
             self._pool_beenden(self._pool, hart=self._stopp.is_set())
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
+        self._setze(laeuft=False, abbricht=False, phase="fertig", einlesen_s=round(time.monotonic() - t0, 1), dauer_s=round(time.monotonic() - t0, 1))
         st = self.status
-        log.info("Lauf %s fertig in %s s: %s Dateien gefunden, %s neu, %s geändert, %s verschoben, %s entfernt, %s unlesbar, %s Kopien, %s Vorschaubilder gerechnet, %s über FreeCAD",
+        log.info("Lauf %s fertig in %s s: %s Dateien gefunden, %s neu, %s geändert, %s verschoben, %s entfernt, %s unlesbar, %s Kopien",
                  st.get("lauf"), st.get("dauer_s"), st.get("gefunden"), st.get("neu"), st.get("geaendert"), st.get("verschoben"), st.get("entfernt"), st.get("unlesbar"),
-                 st.get("kopien"), st.get("vorschauen_gesamt"), st.get("cad_gesamt"))
+                 st.get("kopien"))
 
-    def hat_offenes(self):
-        """Wartet im Hintergrund noch Arbeit — ein Vorschaubild, das fehlt, oder eine FreeCAD-Umwandlung, die jetzt möglich ist?
-        Die Warteschlange ist der Zustand „ausstehend“ an den Dateien im Bestand; sie übersteht einen Neustart. Dateien ohne bekannten Ort
-        zählen nicht (es gibt nichts zu rechnen) und halten sonst bei jedem Start einen leeren Lauf in Gang."""
-        if any(d.get("orte") for _, d in self.k.ausstehende_vorschauen()):
-            return True
-        if self._cad_anzahl() == 0:
-            return False
-        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
-        return bool(self.cad_befehl or cad.konsole_befehl(prog.get("pfad")))
+    def _kette_buchen(self, kette):
+        """Mehrere Läufe hintereinander (Hochladen, Entpacken: jeder Auftrag, der während eines Laufs eintrifft, bekommt einen Folgelauf) sind
+        für den Anwender ein Einlesen. Die Zeile oben rechts zeigte nur den letzten Lauf: „219 Dateien, 1 neu in unter 1 s“ nach 121 Dateien
+        in 20 s. Hier werden die Läufe einer Kette zusammengezählt; ein einzelner Lauf bleibt unverändert."""
+        st = self.status
+        if st.get("phase") != "fertig" or st.get("nur_cad"):
+            return
+        kette["laeufe"] += 1
+        for f in ("neu", "geaendert", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei"):
+            kette["summe"][f] = kette["summe"].get(f, 0) + (st.get(f) or 0)
+        kette["summe"]["einlesen_s"] = round(kette["summe"].get("einlesen_s", 0) + (st.get("einlesen_s") or 0), 1)
+        for name, sek in (st.get("phasen") or {}).items():
+            kette["phasen"][name] = round(kette["phasen"].get(name, 0) + sek, 1)
+        for fm, n in (st.get("je_format") or {}).items():
+            kette["je_format"][fm] = kette["je_format"].get(fm, 0) + n
+        if kette["laeufe"] > 1:
+            self._setze(**kette["summe"], phasen=dict(kette["phasen"]), je_format=dict(kette["je_format"]),
+                        dauer_s=round(time.monotonic() - kette["t0"], 1))
 
-    def _lauf_nur_cad(self, t0):
-        """Der Hintergrundlauf, ohne Suchen und Hashen: Vorschaubilder, kleine Bilder, FreeCAD — alles, was im Bestand als „ausstehend“ steht.
-        Heisst aus Gewohnheit `nur_cad` (so kam er zuerst, nach der Zusage für FCStd). Zähler von Suchen und Hashen bleiben vom letzten Lauf
-        stehen: es wurde nichts neu eingelesen. Setzt nach einem Abbruch oder Neustart genau dort fort, wo es aufhörte."""
-        log.info("Lauf %d beginnt: Hintergrundlauf (Vorschaubilder, kleine Bilder, FreeCAD), ohne die Ordner zu durchsuchen", self.status["lauf"] + 1)
-        self._setze(lauf=self.status["lauf"] + 1, laeuft=True, phase="vorschau", nur_cad=True, fcstd_frage=0, cad_ohne_freecad=0, einlesen_s=None,
-                    bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False, vorschauen_gesamt=0, cad_gesamt=0, cad_voraus=self._cad_anzahl(),
-                    beginn=time.strftime("%H:%M:%S"))
-        self._pool = self._neuer_pool()
-        try:
-            self._vorschauen()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-            self._thumbs()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-            self._cad()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-            self._thumbs()
-            if self._stopp.is_set():
-                return self._abgebrochen(t0)
-        finally:
-            self._pool_beenden(self._pool, hart=self._stopp.is_set())
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
-        log.info("Lauf %s (Hintergrund) fertig in %s s: %s Vorschaubilder gerechnet, %s über FreeCAD", self.status.get("lauf"),
-                 self.status.get("dauer_s"), self.status.get("vorschauen_gesamt"), self.status.get("cad_gesamt"))
-
-    def _abgebrochen(self, t0):
-        log.info("Lauf %s abgebrochen nach %.1f s (Phase „%s“); was fertig ist, steht in der Datenbank", self.status.get("lauf"), time.monotonic() - t0,
-                 self.status.get("phase"))
-        self._setze(laeuft=False, abbricht=False, abgebrochen=True, phase="abgebrochen", dauer_s=round(time.monotonic() - t0, 1))
+    def naechster_lauf(self):
+        """Die Nummer des Laufs, der die Änderung von eben sieht — VOR `starten` lesen: läuft einer, ist es sein Folgelauf, sonst der
+        neue. Danach gelesen könnte der neue Lauf schon mitgezählt sein."""
+        return self.status.get("lauf", 0) + 1
 
     def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
         if not gruppe:
@@ -613,166 +826,6 @@ class Scanner:
                     unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
                     analysiert=self.status["analysiert"] + len(gruppe),
                     bearbeitet=self.status["bearbeitet"] + len(gruppe))
-
-    def _vorschauen(self):
-        offen = self.k.ausstehende_vorschauen()
-        self._setze(vorschauen_offen=len(offen))
-        aufgaben = []
-        for h, d in offen:
-            ort = next(iter(d.get("orte", [])), None)
-            pfad = self.k.absoluter_pfad(ort) if ort else None
-            # In der Farbe des ersten Filaments, wenn der Slicer eine kennt —
-            # so sieht die Kachel aus wie der Druck.
-            farbe = next((f.get("farbe") for p in d.get("platten") or [] for f in p.get("filamente", [])
-                          if f.get("farbe")), None)
-            if pfad:
-                aufgaben.append((h, (pfad, self.b.vorschau_pfad(h, "berechnet"), farbe)))
-        rest, stapel, zuletzt = len(aufgaben), [], time.monotonic()
-        self._setze(vorschauen_gesamt=len(aufgaben), vorschauen_offen=rest)
-        if aufgaben:
-            log.info("Vorschaubilder: %d zu berechnen (%d Arbeiter)", len(aufgaben), self.prozesse)
-        gesamt_v, t_v = len(aufgaben), time.monotonic()
-        for h, erg, fehler in self._verteilen(aufgaben, _rendern):
-            status, fehler = ("fehler", fehler) if fehler else erg
-            if fehler:
-                log.warning("Vorschau %s: %s", h[:12], fehler)
-            stapel.append((h, status))
-            rest -= 1
-            if len(stapel) >= GRUPPE or time.monotonic() - zuletzt >= SPEICHERN_ALLE_S:
-                self._vorschauen_speichern(stapel)
-                stapel, zuletzt = [], time.monotonic()
-            if rest % 10 == 0:
-                self._setze(vorschauen_offen=rest)      # die Anzeige beim Zahnrad zählt mit, nicht nur alle hundert
-            if (gesamt_v - rest) % 100 == 0:
-                log.info("Vorschaubilder: %d von %d fertig (%.0f s)", gesamt_v - rest, gesamt_v, time.monotonic() - t_v)
-        self._vorschauen_speichern(stapel)
-        self._setze(vorschauen_offen=0)
-        if gesamt_v:
-            log.info("Vorschaubilder: %d fertig in %.0f s", gesamt_v - rest, time.monotonic() - t_v)
-
-    def _cad(self):
-        """STEP-Dateien ohne Netz über FreeCAD umwandeln. Das Netz liegt abgeleitet in `netz/<hash>.stl` (nicht gesichert,
-        jederzeit neu berechenbar). Ein Fehler oder eine Zeitüberschreitung betrifft nur seine Datei und wird nicht bei
-        jedem Lauf wiederholt: sonst hielte dieselbe Datei jeden Scan um die Zeitgrenze auf."""
-        offen = self.k.ausstehende_cad()
-        if not offen:
-            return
-        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
-        befehl = self.cad_befehl or cad.konsole_befehl(prog.get("pfad"))
-        if not befehl:
-            # Ins Protokoll und in den Status: sonst weiss niemand, ob FreeCAD fehlt oder nur nicht als solches erkannt wurde.
-            log.warning("CAD: kein FreeCAD-Aufruf gefunden, %d Dateien warten (erkanntes CAD-Programm: %s)", len(offen),
-                        prog.get("pfad") or "keines")
-            self._setze(cad_ohne_freecad=len(offen), cad_programm=prog.get("pfad") or "")
-            return
-        log.info("CAD: FreeCAD-Aufruf %s, %d Dateien offen", befehl, len(offen))
-        # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut partAtlas nur nach
-        # ausdrücklicher Zusage des Anwenders. Solange er nicht geantwortet hat, fragt die Oberfläche (`fcstd_frage`).
-        if self.b.einstellungen().get("fcstd_freecad") != "ja":
-            offen = [x for x in offen if x[1].get("format") != "fcstd"]
-            self._setze(fcstd_frage=self._fcstd_offen())
-            if not offen:
-                return
-        aufgaben = []
-        for h, d in offen:
-            ort = next((o for o in d.get("orte", []) if self.k.absoluter_pfad(o)), None)
-            pfad = self.k.absoluter_pfad(ort) if ort else None
-            if pfad and os.path.exists(pfad):
-                aufgaben.append((h, pfad, self.b.pfad("arbeit", "cad", f"{h}.stl")))
-        # Kleine zuerst: die ersten Bilder erscheinen früh, die Schätzung der Restzeit wird nicht von einer frühen Riesenbaugruppe verzerrt,
-        # und was hängen könnte (die grossen Dateien), kommt ans Ende.
-        aufgaben.sort(key=lambda a: os.path.getsize(a[1]))
-        self._setze(phase="cad", cad_offen=len(aufgaben), cad_gesamt=len(aufgaben))
-        rest = len(aufgaben)
-        namen = {h: os.path.basename(p) for h, p, _ in aufgaben}
-        log.info("CAD: %d Dateien über FreeCAD, die kleinste zuerst", len(aufgaben))
-        for h, ok, info in cad.umwandeln(befehl, aufgaben, self._stopp, self.b.pfad("arbeit", "cad")):
-            rest -= 1
-            if not ok:
-                log.warning("CAD %s (%s): %s", namen.get(h), h[:12], info)
-            else:
-                log.info("CAD: %s umgewandelt (%s Dreiecke), noch %d offen", namen.get(h), info, rest)
-            if not ok:
-                with self.b.db.transaction():
-                    self.k.cad_fehler(h, str(info))
-            else:
-                ziel = self.b.netz_pfad(h)
-                os.makedirs(os.path.dirname(ziel), exist_ok=True)
-                os.replace(self.b.pfad("arbeit", "cad", f"{h}.stl"), ziel)
-                felder, status, fehler = {}, "fehler", "Vorschau nicht berechnet"
-                for _, erg, ausnahme in self._verteilen([(h, (ziel, self.b.vorschau_pfad(h, "berechnet")))], _cad_bild):
-                    felder, status, fehler = ({}, "fehler", ausnahme) if ausnahme else erg
-                if self._stopp.is_set():
-                    break                  # abgebrochen: die Datei bleibt ausstehend, das Netz liegt schon da
-                with self.b.db.transaction():
-                    self.k.cad_ergebnis(h, felder, status, fehler)
-            self._setze(cad_offen=rest, bearbeitet=self.status["bearbeitet"] + 1)
-
-    def _cad_anzahl(self):
-        """Wie viele Dateien FreeCAD voraussichtlich bekommt — schon vor den Vorschauen bekannt, damit man früh weiss, was kommt."""
-        offen = self.k.ausstehende_cad()
-        if self.b.einstellungen().get("fcstd_freecad") != "ja":
-            offen = [x for x in offen if x[1].get("format") != "fcstd"]
-        return len(offen)
-
-    def _fcstd_offen(self):
-        """Wie viele FCStd-Dateien auf die Zusage für FreeCAD warten; 0, wenn der Anwender schon geantwortet hat."""
-        if self.b.einstellungen().get("fcstd_freecad") is not None:
-            return 0
-        return sum(1 for _, d in self.k.ausstehende_cad() if d.get("format") == "fcstd")
-
-    def _thumbs(self):
-        """Die kleinen Fassungen aller Bilder im Vault vorbauen (?t=1: Kacheln, Zeilen, Karten). Sonst erzeugt sie der erste Abruf,
-        und das erste Scrollen durch einen frischen Bestand wartet auf tausend Verkleinerungen. Vorhandene werden übersprungen
-        (`Bestand.thumb` ist wiederholbar); ein Bild, das sich nicht verkleinern lässt, schadet nicht — es bleibt beim Original.
-        Threads statt Prozessen: Pillow gibt beim Lesen und Verkleinern die Sperre frei, und es gibt nichts zu übergeben."""
-        bilder = []
-        for teil in ("vorschau", "bilder"):
-            ordner = self.b.pfad("vault", teil)
-            if not os.path.isdir(ordner):
-                continue
-            for e in sorted(os.scandir(ordner), key=lambda e: e.name):
-                n = e.name.lower()
-                if not n.endswith((".png", ".jpg", ".jpeg", ".webp")):
-                    continue
-                # Kleine PNGs (die Vorschauen von partAtlas selbst: 320 px, ca. 11 KB) braucht es nicht zu verkleinern; `Bestand.thumb` liefert
-                # sie direkt aus. Sie hier zu öffnen kostete bei 9 000 Bildern bei JEDEM Lauf ca. 3 s, auch ohne etwas Neues (gemessen am 6.10.2026,
-                # Rückmeldung des Testers: „beim Aktualisieren unveränderter Ordner immer 3 Sekunden“); nur die Grösse abzufragen kostet 0,03 s.
-                if n.endswith(".png") and e.stat().st_size <= KLEIN_BYTES:
-                    continue
-                bilder.append(e.path)
-        self._setze(phase="thumbs", thumbs_gesamt=len(bilder), thumbs_fertig=0)
-        if not bilder:
-            return
-        t_t = time.monotonic()
-        fertig = 0
-        with ThreadPoolExecutor(min(2, self.prozesse)) as pool:      # wenige: die Threads teilen sich den Server-Prozess mit der Oberfläche
-            for _ in pool.map(self._thumb_eins, bilder):
-                fertig += 1
-                if fertig % 25 == 0:
-                    self._setze(thumbs_fertig=fertig)
-                if self._stopp.is_set():
-                    break
-        self._setze(thumbs_fertig=fertig)
-        log.info("Kleine Bilder: %d von %d geprüft in %.1f s", fertig, len(bilder), time.monotonic() - t_t)
-
-    def _thumb_eins(self, pfad):
-        if self._stopp.is_set():
-            return
-        try:
-            self.b.thumb(pfad)
-        except Exception as e:            # ein kaputtes Bild hält den Lauf nicht auf
-            log.warning("Thumbnail %s: %s", os.path.basename(pfad), e)
-
-    def _vorschauen_speichern(self, stapel):
-        """Gruppenweise in einer Transaktion: jede einzelne Änderung kostet ihren fsync (VERTRAG §5), bei tausenden Vorschauen
-        war das ein grosser Teil der Zeit."""
-        if not stapel:
-            return
-        with self.b.db.transaction():
-            for h, status in stapel:
-                self.k.vorschau_setzen(h, status)
-        self._setze(bearbeitet=self.status["bearbeitet"] + len(stapel))
 
     def _ablaufen(self, wurzel):
         """(absolut, relativ mit /, stat) je Modelldatei; versteckte Ordner

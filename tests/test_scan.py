@@ -94,7 +94,7 @@ if __name__ == "__main__":
     klein_pfad = b.vorschau_pfad(alle["Arm_Front_v2"]["hash"], "berechnet")
     check("Die Vorschauen von partAtlas sind schon klein (320 px, wenige KB): sie werden ohne Umweg ausgeliefert, es entsteht keine zweite Fassung",
           b.thumb(klein_pfad) == klein_pfad and (not os.path.isdir(thumb_dir) or not os.listdir(thumb_dir))
-          and st.get("thumbs_gesamt") == 0 and st.get("thumbs_fertig") == 0)
+          and s.worker.status.get("thumbs_gesamt") == 0 and s.worker.status.get("thumbs_fertig") == 0)
     from PIL import Image as _Img
     gross_pfad = b.pfad("vault", "bilder", "gross_test.png")
     os.makedirs(os.path.dirname(gross_pfad), exist_ok=True)
@@ -110,12 +110,8 @@ if __name__ == "__main__":
     os.makedirs(b.pfad("vault", "bilder"), exist_ok=True)
     gross2 = b.pfad("vault", "bilder", "gross_vorbauen.png")
     _Img.effect_noise((900, 900), 40).convert("RGB").save(gross2, "PNG")
-    tp = Scanner(b, k, prozesse=2)
-    tp._pool = tp._neuer_pool()
-    try:
-        tp._thumbs()
-    finally:
-        tp._pool.shutdown(wait=False, cancel_futures=True)
+    tp = Scanner(b, k, prozesse=2).worker
+    tp._thumbs()
     check("Die Thumbs-Phase baut nur vor, was sich verkleinern lässt: ein grosses Bild ja, die kleinen Vorschauen nicht (gesamt 1, fertig 1)",
           tp.status.get("thumbs_gesamt") == 1 and tp.status.get("thumbs_fertig") == 1 and len(os.listdir(thumb_dir)) == 1)
     os.remove(gross2)
@@ -124,7 +120,7 @@ if __name__ == "__main__":
     check("Bilanz für den Einlesen-Dialog: Laufnummer, geprüft x von y, je Format, Bilder aus der Datei, Dauer des Einlesens",
           st["lauf"] == 1 and st["geprueft"] == st["zu_pruefen"] == 5 and st["analysiert"] == st["zu_analysieren"] == 5
           and st["je_format"] == {"stl": 1, "3mf": 2, "obj": 1, "step": 1} and st["aus_datei"] == 1
-          and st["einlesen_s"] is not None and st["vorschauen_gesamt"] == 2 and st["vorschauen_offen"] == 0 and st["kopien"] == 0)
+          and st["einlesen_s"] is not None and s.worker.status["vorschauen_gesamt"] == 2 and s.worker.status["vorschauen_offen"] == 0 and st["kopien"] == 0)
     dat = lambda m: {k: v for k, v in b.db.get_node(f"PART_GEOMETRY/{m['hash']}", readonly=True).items()
                      if k.startswith("vorschau_") and v}
     check("Vorschau gehört zur Datei, die Art steht im Namen: aus der Datei vs. berechnet, STEP ohne",
@@ -482,7 +478,7 @@ if __name__ == "__main__":
     st_s.lauf()
     d1 = {m["name"]: m for m in st_k.modelle()}
     check("STEP ohne FreeCAD: aufgenommen, bleibt ausstehend, der Lauf sagt es, nichts bricht",
-          st_s.status["phase"] == "fertig" and st_s.status["cad_ohne_freecad"] == 2 and len(st_k.ausstehende_cad()) == 2
+          st_s.worker.status["phase"] == "fertig" and st_s.worker.status["cad_ohne_freecad"] == 2 and len(st_k.ausstehende_cad()) == 2
           and d1["Halter"]["cad"] == "ausstehend" and not os.path.exists(st_b.netz_pfad(d1["Halter"]["hash"])))
 
     check("Lauf meldet früh, was FreeCAD bekommt (Schritt-Anzeige: „Danach: FreeCAD für 2 Dateien“), und wie lange die Phase schon läuft (Restzeit-Schätzung)",
@@ -490,7 +486,7 @@ if __name__ == "__main__":
 
     st_s = Scanner(st_b, st_k, prozesse=2, cad_befehl=attrappe)
     st_s.lauf()
-    phasen = list(st_s.status["phasen"])          # Reihenfolge der Phasen in diesem Lauf (FreeCAD hat zu tun)
+    phasen = list(st_s.worker.status["phasen"])   # Reihenfolge der Phasen der Hintergrundarbeit (FreeCAD hat zu tun)
     d2 = {m["name"]: m for m in st_k.modelle()}
     check("STEP mit FreeCAD, beim nächsten Lauf: Maße und berechnete Vorschau stehen da, das Netz liegt im Bestand",
           d2["Halter"]["cad"] == "ok" and d2["Halter"]["vorschau"] == "gerendert" and d2["Halter"]["masse"] is not None
@@ -533,6 +529,7 @@ if __name__ == "__main__":
 
     ke_s = Scanner(ke_b, ke_k, melden=ke_melden, prozesse=2)
     ke_s._lauf_sicher()
+    ke_s.warten(60)
     check("Zwei Läufe hintereinander: die Zeile zeigt alle neuen Dateien (3 + 4), nicht nur die des letzten Laufs",
           ke_s.status["lauf"] == 2 and ke_s.status["neu"] == 7 and ke_s.status["gefunden"] == 7)
     check("Zwei Läufe hintereinander: die Dauer zählt beide, die Formate auch",
@@ -561,14 +558,14 @@ if __name__ == "__main__":
     hg_s2.lauf(nur_cad=True)
     check("Der Hintergrundlauf rechnet die offenen Bilder, ohne die Ordner zu durchsuchen: die neue Datei im Ordner kommt nicht dazu",
           all(os.path.exists(hg_b.vorschau_pfad(m_["hash"], "berechnet")) for m_ in hg_modelle[:4]) and not hg_s2.hat_offenes()
-          and "Neu_nach_dem_Einlesen" not in {m_["name"] for m_ in hg_k.modelle()} and "suchen" not in hg_s2.status["phasen"])
+          and "Neu_nach_dem_Einlesen" not in {m_["name"] for m_ in hg_k.modelle()} and "suchen" not in hg_s2.status.get("phasen", {}))
     # Bilder nach und nach: Ergebnisse nicht erst nach GRUPPE Stück festhalten, sondern alle SPEICHERN_ALLE_S Sekunden
     for m_ in hg_modelle[:4]:
         hg_b.db.update_node("PART_GEOMETRY", m_["hash"], {"vorschau": "ausstehend"})
     gespeichert = []
     hg_s3 = Scanner(hg_b, hg_k, prozesse=1)
-    _orig_sp = hg_s3._vorschauen_speichern
-    hg_s3._vorschauen_speichern = lambda st: (gespeichert.append(len(st)), _orig_sp(st))[1]
+    _orig_sp = hg_s3.worker._vorschauen_speichern
+    hg_s3.worker._vorschauen_speichern = lambda st: (gespeichert.append(len(st)), _orig_sp(st))[1]
     _g, _t = _scan.GRUPPE, _scan.SPEICHERN_ALLE_S
     _scan.GRUPPE, _scan.SPEICHERN_ALLE_S = 1000, 0.0
     try:
@@ -632,7 +629,7 @@ if __name__ == "__main__":
     muster.stl_binaer(os.path.join(fz_dir, "Neu.stl"), 16, 12, 13)
     fz_s.lauf(nur_cad=True)
     check("Nach der Zusage läuft nur die FreeCAD-Umwandlung: eine neue Datei im Ordner wird dabei nicht eingelesen",
-          fz_s.status["nur_cad"] is True and fz_s.status["phase"] == "fertig" and "Neu" not in {m["name"] for m in fz_k.modelle()})
+          fz_s.worker.status["phase"] == "fertig" and "Neu" not in {m["name"] for m in fz_k.modelle()})
     fz_s.lauf()
     d = fz_k.db.get_node(f"PART_GEOMETRY/{fz()['hash']}", readonly=True)
     check("FCStd mit „Ja“: Netz, Maße und berechnetes Vorschaubild; das schärfere Bild steht vor dem Thumbnail aus der Datei",
@@ -680,7 +677,7 @@ if __name__ == "__main__":
           and kp_s.status["kopien"] == 2)
     kp_b.schliessen()
 
-    # -- Folgelauf: „nur FreeCAD“ während eines Laufs bleibt „nur FreeCAD“ (nach der FCStd-Zusage las er sonst alles neu ein)
+    # -- Einlesen und Hintergrundarbeit laufen getrennt (KONZEPT §3.4): die FreeCAD-Zusage wartet nicht auf das Einlesen, ein weiteres ⟳ nicht auf FreeCAD
     import threading as _th
     fl_tmp = tempfile.mkdtemp()
     os.makedirs(os.path.join(fl_tmp, "s"))
@@ -688,35 +685,29 @@ if __name__ == "__main__":
     fl_b = Bestand(os.path.join(fl_tmp, "bestand"))
     fl_k = Katalog(fl_b)
     fl_k.wurzel_hinzufuegen(os.path.join(fl_tmp, "s"))
-    frei, meldungen = _th.Event(), []
+    frei, einlesen_n = _th.Event(), []
 
     def fl_melden(st):
-        meldungen.append(dict(st))
         if st.get("phase") == "suchen":
-            frei.wait(10)                     # der erste Lauf wartet, bis die Aufträge gestellt sind
+            einlesen_n.append(1)
+            frei.wait(10)                     # das Einlesen wartet, bis die Aufträge gestellt sind
 
-    def laeufe():
-        # je Lauf: ganz („suchen“) oder nur FreeCAD; gezählt an der Fertig-Meldung
-        return ["cad" if x.get("nur_cad") else "ganz" for v, x in zip([{"phase": "fertig"}] + meldungen, meldungen)
-                if x.get("phase") == "fertig" and v.get("phase") != "fertig"]
-
-    fl_s = Scanner(fl_b, fl_k, melden=fl_melden, prozesse=2)
+    fl_s = Scanner(fl_b, fl_k, melden=fl_melden, melden_worker=lambda st: None, prozesse=2)
     fl_s.starten()
     gestartet = fl_s.starten(nur_cad=True)
+    w_lief = fl_s.worker.warten(30)            # der Worker ist fertig, obwohl das Einlesen noch steht
     frei.set()
     fl_s.warten(60)
-    check("„Nur FreeCAD“ während eines Laufs: danach folgt nur die Umwandlung, kein zweites ganzes Einlesen",
-          gestartet is False and laeufe() == ["ganz", "cad"])
-    meldungen.clear()
+    check("FreeCAD-Zusage während eines Einlesens: der Worker startet sofort daneben und wartet nicht; es folgt kein zweites Einlesen",
+          gestartet is True and w_lief and len(einlesen_n) == 1)
+    einlesen_n.clear()
     frei.clear()
     fl_s.starten()
-    fl_s.starten(nur_cad=True)
     fl_s.starten()
-    fl_s.starten(nur_cad=True)
+    fl_s.starten()
     frei.set()
     fl_s.warten(60)
-    check("Ganz und „nur FreeCAD“ gewünscht: ein ganzer Folgelauf, der die Umwandlung einschliesst — nicht zwei",
-          laeufe() == ["ganz", "ganz"])
+    check("Mehrere ⟳ während eines Einlesens: genau ein Folgelauf, nicht drei", len(einlesen_n) == 2)
     fl_b.schliessen()
 
     # -- Rückmeldung am Knopf ⟳ (KONZEPT §3.4): was der Anwender nach dem Speichern in FreeCAD sieht
@@ -746,7 +737,7 @@ if __name__ == "__main__":
           erste.get("laeuft") is True and erste.get("neu") == 0 and erste.get("phase") == "suchen")
     beim_ende = next(m for m in rm_meldungen if m.get("einlesen_s") is not None)
     check("„Zuletzt eingelesen“ steht, sobald das Einlesen fertig ist — nicht erst nach Vorschaubildern und FreeCAD",
-          beim_ende.get("phase") == "vorschau" and beim_ende.get("zuletzt_eingelesen") and beim_ende.get("laeuft") is True)
+          beim_ende.get("phase") == "fertig" and beim_ende.get("zuletzt_eingelesen"))
     rm_b.schliessen()
 
     # -- Endzustände: jeder Lauf endet in fertig, abgebrochen oder Fehler (nie „läuft nicht, ist aber nicht fertig“)
@@ -783,7 +774,7 @@ if __name__ == "__main__":
     fl2_b = Bestand(os.path.join(fl2_tmp, "b"))
     fl2_s = Scanner(fl2_b, Katalog(fl2_b), prozesse=1)
     fl2_laeufe = []
-    fl2_s.lauf = lambda nur_cad=False: fl2_laeufe.append(1)
+    fl2_s.einlesen = lambda: fl2_laeufe.append(1)
     _echt = _scan.threading
     _scan.threading = _types.SimpleNamespace(Event=_LangsamesEnde, Thread=_th.Thread, Lock=_th.Lock)
     try:
@@ -826,7 +817,7 @@ if __name__ == "__main__":
     time.sleep(1)
     ab3_pid = int(open(ab3_pids).read().split()[0])
     check("Abbrechen, während ein Arbeiter hängt: der Lauf endet binnen Sekunden als „abgebrochen“, nicht erst nach der Zeitgrenze (120 s)",
-          ab3_ende and ab3_dauer < 5 and ab3_s.status.get("phase") == "abgebrochen")
+          ab3_ende and ab3_dauer < 5 and ab3_s.worker.status.get("phase") == "abgebrochen")
     check("Abbrechen: der hängende Arbeiter wird beendet, er läuft nicht weiter (und hält das Beenden von partAtlas nicht auf)", not _lebt(ab3_pid))
     ab3_b.schliessen()
 
@@ -842,7 +833,7 @@ if __name__ == "__main__":
     hs_s = Scanner(hs_b, Katalog(hs_b), prozesse=1)
     hs_s.herzschlag_s = 0.2
     hs_s.schleifenprobe = lambda: 7
-    hs_s.lauf = lambda nur_cad=False: time.sleep(1.0)
+    hs_s.einlesen = lambda: time.sleep(1.0)
     hs_s._lauf_sicher()
     check("Protokoll: solange der Dienst arbeitet, schreibt er einen Herzschlag mit Stand und Antwortzeit der Serverschleife",
           sum("Herzschlag" in z and "antwortet in 7 ms" in z for z in protokoll.zeilen) >= 2)

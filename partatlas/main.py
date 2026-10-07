@@ -86,7 +86,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         except OSError as e:
             log.error("Keine Sicherung beim Start möglich: %s", e)
         k = Katalog(b)
-        s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), prozesse=prozesse)
+        s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
         zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))      # EIGENE
         s.schleifenprobe = verteiler.antwortzeit
@@ -195,11 +195,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"version": VERSION, "bestand": zustand["bestand"].wurzel,
                 # Eine Kopie: der Scan-Thread trägt währenddessen Schlüssel ein, und das Umwandeln in JSON liefe sonst in „dictionary changed
                 # size during iteration“. dict() kopiert in einem Zug.
-                "scan": dict(zustand["scanner"].status), "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
+                "scan": dict(zustand["scanner"].status), "worker": dict(zustand["scanner"].worker.status), "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
 
     @app.get("/api/live")
     async def live():
-        return StreamingResponse(verteiler.strom(lambda: [("scan", dict(zustand["scanner"].status))]), media_type="text/event-stream",
+        return StreamingResponse(verteiler.strom(lambda: [("scan", dict(zustand["scanner"].status)), ("worker", dict(zustand["scanner"].worker.status))]), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache"})
 
     # ---------------------------------------------------------------- Wurzeln und Scan

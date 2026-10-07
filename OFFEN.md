@@ -69,6 +69,12 @@ denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeig
      während des Einlesens lädt eine geänderte Kachel nur sich selbst (`/api/modelle/kacheln`).
    - Tests: test_scan +3, test_api +2, test_ui +4 (Fenster-Prüfungen ersetzt), je mit Gegenprobe.
 3. Worker getrennt vom Einlesen, Warteschlange je Datei im Bestand; Einlesen eines Teilbaums. Aufwand 3–4.
+   **Zwischenstand (7.10.2026), nicht auf `main` übernehmen:** `scan.py` ist in `_Bahn`, `Worker` (Vorschaubilder, kleine Bilder, FreeCAD,
+   eigener Thread und Pool, Stand `worker`) und `Scanner` (`einlesen()`, stösst den Worker an, wartet nicht) geteilt; `main.py` und `app.js`
+   melden bzw. zeigen beide Stände. **Ungetestet; `test_scan` ist noch nicht angepasst** (rund 15 Prüfungen erwarten die alte Kette:
+   Felder wie `vorschauen_gesamt`, `cad_ohne_freecad`, `phasen` stehen jetzt in `s.worker.status`; Tests, die `s.lauf` ersetzen, müssen
+   `s.einlesen` ersetzen; der Folgelauf-Test mit „nur FreeCAD“ wird zu „Worker startet sofort daneben“). Danach `test_scan`, `test_api`,
+   einmal `test_ui`, Gegenproben. Einlesen eines Teilbaums noch nicht gebaut.
 4. Hochladen als Bedienung raus (sicheres Ablegen bleibt im Code für den späteren Explorer), Ordner ziehen = hinzufügen. Aufwand 2–3.
 5. *Offen:* automatische Überwachung in 0.50 oder danach. Aufwand 2.
 Abnahmefall und Härtetest: KONZEPT §3.4.
