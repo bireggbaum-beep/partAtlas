@@ -13,6 +13,7 @@ import hashlib
 import io
 import os
 import re
+import threading
 import time
 
 from . import archiv, dateien, formate, sicherung, tags
@@ -37,7 +38,13 @@ class Katalog:
     def __init__(self, bestand):
         self.b = bestand
         self.db = bestand.db
-        self._kurz_zwischen = None       # (Fassung des Graphen, {id: Kachel}) — siehe _kurz_alle
+        # Zwischenspeicher der Kacheln — siehe _kurz_alle. `_kurz_offen`: Verweise aus den Änderungsmeldungen, deren Kacheln veraltet sind.
+        self._kurz_zwischen = None
+        self._kurz_offen = set()
+        self._kurz_alles_neu = 0             # zählt „alles neu“: ein Bau, der davor begann, wird nicht gespeichert
+        self._kurz_sperre = threading.Lock()
+        self._kurz_bau = threading.Lock()    # immer nur ein Nachbau: zwei gleichzeitig verlören die Änderungen des einen
+        bestand.hoeren(self._kurz_veraltet)
         self.suche = Suchindex(self)
         self._material_nachziehen()
         self._vault_nachziehen()
@@ -458,17 +465,58 @@ class Katalog:
         drin = {x["id"] for x in treffer}
         return {"modelle": treffer, "weg": sorted(mids - drin)}
 
+    def _kurz_veraltet(self, meldung):
+        """Merkt sich, welche Kacheln eine Änderung betrifft. Läuft unter der Sperre von flatgraph (VERTRAG §2.7): nur merken, nichts lesen."""
+        sammlung = (meldung.get("ref") or "").split("/", 1)[0]
+        with self._kurz_sperre:
+            if meldung.get("ereignis") in ("create_edge", "delete_edge"):
+                # Tags, Material, die Datei eines Modells: Kanten zwischen ihnen. Beide Enden, falls sie Modell oder Datei sind.
+                for r in (meldung.get("quelle"), meldung.get("ziel")):
+                    if r and r.split("/", 1)[0] in (MODELL, DATEI):
+                        self._kurz_offen.add(r)
+            elif sammlung in (MODELL, DATEI):
+                self._kurz_offen.add(meldung["ref"])
+            elif sammlung in (TAG, MATERIAL) and meldung.get("ereignis") != "create_node":
+                self._kurz_alles_neu += 1
+                self._kurz_zwischen = None          # ein Tag oder Material geändert: kann viele Kacheln betreffen, selten — alles neu
+
     def _kurz_alle(self):
-        """Die Kacheln aller Modelle, zwischengespeichert, solange sich der Graph nicht ändert (`Bestand.generation`).
-        Vorher baute jede Anfrage — Suche, Filter, Zähler — alle Kacheln neu: ca. 0,25 s bei 9 000 Modellen auf einer 2,8-GHz-Maschine,
-        auf dem Rechner des Testers entsprechend mehr, auch wenn nur 3 Treffer herauskamen (Messung vom 5.10.2026).
-        Während eines Einlesens ändert sich der Graph ständig, dann bleibt es beim Neuaufbau."""
-        gen = self.b.generation
-        if self._kurz_zwischen is not None and self._kurz_zwischen[0] == gen:
-            return self._kurz_zwischen[1]
-        erg = {k: self._kurz(k, v) for k, v in self.db.list_nodes(MODELL, readonly=True).items()}
-        if self.b.generation == gen:           # nur festhalten, wenn währenddessen nichts geschrieben wurde
-            self._kurz_zwischen = (gen, erg)
+        """Die Kacheln aller Modelle, zwischengespeichert. Neu gebaut werden nur die, deren Modell, Datei, Tags oder Material sich seit
+        dem letzten Mal geändert haben (`_kurz_veraltet`). Vorher galt der Zwischenspeicher nur, solange nichts geschrieben wurde: während
+        des Einlesens baute damit jeder Klick alle Kacheln neu — bei 3000 Modellen 1,4–4 s je Filter-Klick (Messung 7.10.2026), bei 9 000
+        auf einem älteren Rechner entsprechend mehr."""
+        # Unter EINER Sperre von flatgraph (eine Transaktion ohne Schreiben, VERTRAG §3.1): sonst wartet jeder der fünf Lesezugriffe
+        # je Kachel einzeln auf die laufende Schreib-Transaktion des Einlesens — gemessen 1,3 ms statt 0,03 ms je Kachel.
+        with self._kurz_bau, self.db.transaction():
+            return self._kurz_nachbauen()
+
+    def _kurz_nachbauen(self):
+        with self._kurz_sperre:
+            zwischen, offen, stand = self._kurz_zwischen, self._kurz_offen, self._kurz_alles_neu
+            self._kurz_offen = set()
+        if zwischen is None:
+            erg = {k: self._kurz(k, v) for k, v in self.db.list_nodes(MODELL, readonly=True).items()}
+        elif not offen:
+            return zwischen
+        else:
+            mids = set()
+            for r in offen:
+                sammlung, _, schluessel = r.partition("/")
+                if sammlung == MODELL:
+                    mids.add(schluessel)
+                elif (mid := self.modell_von(schluessel)):
+                    mids.add(mid)
+            erg = dict(zwischen)        # neu, nicht ändern: eine andere Anfrage liest den alten gerade
+            for mid in mids:
+                m = self.db.get_node(ref(MODELL, mid), readonly=True)
+                if m is None:
+                    erg.pop(mid, None)
+                else:
+                    erg[mid] = self._kurz(mid, m)
+        with self._kurz_sperre:
+            # Kam inzwischen „alles neu“ (Tag geändert), gilt das; Änderungen während des Bauens stehen schon im neuen `_kurz_offen`.
+            if self._kurz_alles_neu == stand:
+                self._kurz_zwischen = erg
         return erg
 
     def _modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None, alle=None):

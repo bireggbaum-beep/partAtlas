@@ -684,6 +684,18 @@ if __name__ == "__main__":
     check("Der Worker liest danach aus: Masse, eingebettetes Bild, gerendertes Vorschaubild; nichts bleibt offen",
           abs(so["B_Welle"]["masse"][2] - 30) < 0.01 and so["C_Platte"]["vorschau"] == "eingebettet"
           and so["B_Welle"]["vorschau"] == "gerendert" and so_k.auszulesen() == [] and so_s.worker.status["ausgelesen"] == 3)
+    # Zwischenspeicher der Kacheln: eine Änderung baut nur die betroffenen neu (vorher bei jeder Änderung alle — Sekunden je Klick
+    # während des Einlesens), und sie stimmen danach.
+    so_k.modelle()
+    gebaut, _kurz = [], so_k._kurz
+    so_k._kurz = lambda mid, m, papierkorb=False: (gebaut.append(mid), _kurz(mid, m, papierkorb))[1]
+    so_k.tag_setzen(so["B_Welle"]["id"], "zwischen")
+    so_k.modell_aendern(so["A_Halter"]["id"], {"favorit": True})
+    so2 = {m["name"]: m for m in so_k.modelle()}
+    check("Kacheln nach Tag und Favorit: genau diese beiden stimmen und nur sie wurden neu gebaut",
+          "zwischen" in so2["B_Welle"]["tags"] and so2["A_Halter"]["favorit"] and not so2["C_Platte"]["favorit"]
+          and sorted(gebaut) == sorted([so["B_Welle"]["id"], so["A_Halter"]["id"]]))
+    so_k._kurz = _kurz
     so_b.schliessen()
 
     # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)

@@ -20,9 +20,13 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   Tests: test_scan 103/103 (+3, Gegenproben fallen; 6 Prüfungen auf den neuen Ablauf umgestellt), test_api 85/85, test_cad 14/14.
   **Gemessen** (3000 Dateien, Browser): Liste wächst während des Einlesens (200 nach 4 s, 2500 nach 14 s), Masse aller nach 15 s,
   danach Vorschaubilder laufend, Klick 0,1 s.
-  **Noch schlecht: Filter-Klick während Einlesen/Auslesen 1,4–4 s.** Ursache: `_kurz_alle` baut bei jeder Änderung alle Kacheln neu (der
-  Zwischenspeicher gilt nur, solange nichts geschrieben wird). Nächster Schritt: Zwischenspeicher nur für geänderte Modelle erneuern
-  (über die Änderungsmeldungen von flatgraph). Aufwand 2.
+  **Filter-Klick während Einlesen/Auslesen war 1,4–4 s — behoben (7.10.2026):** zwei Ursachen. (1) `_kurz_alle` baute bei jeder
+  Änderung alle Kacheln neu; jetzt nur die geänderten (`_kurz_veraltet` merkt sich Modell, Datei und Kanten-Enden aus den Meldungen von
+  flatgraph; Tag/Material geändert → alles neu; ein Nachbau zur Zeit). (2) Grösser: jede Kachel las fünfmal einzeln und wartete jedes
+  Mal auf die Schreib-Transaktion des Einlesens (1,3 ms statt 0,03 ms je Kachel) — jetzt baut sie unter EINER Sperre (Transaktion ohne
+  Schreiben, flatgraph VERTRAG §3.1). Gemessen 3000 Dateien: Klick 0,05–0,28 s in allen Phasen; eine Einzelabfrage wartet noch bis
+  0,3 s auf eine laufende Schreib-Transaktion. test_scan 104/104 (+1, beide Gegenproben fallen), test_api 85/85.
+  **Nächstes:** Test des Anwenders mit 8600 Dateien unter Windows; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe
   Sekunde nur diese Modelle (`POST /api/modelle/aenderungen`, gefiltert wie die Liste; ersetzt `/api/modelle/kacheln`); fertige Kacheln
