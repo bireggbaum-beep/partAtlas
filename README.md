@@ -21,7 +21,8 @@ git pull
 ```
 
 Läuft noch die alte Fassung, sagt `start.sh` es („partAtlas 0.45.1 läuft noch, auf der Platte liegt 0.46.0“) und fragt, ob es sie beenden
-und neu starten soll. Ohne Rückfrage: `./start.sh --neu`. Der Server ist ein Python-Prozess (`python -m partatlas`) und heisst deshalb in der
+und neu starten soll. Ohne Rückfrage: `./start.sh --neu`. Antwortet eine laufende Fassung nicht mehr, sagt `start.sh` auch das und
+beendet sie nach Rückfrage, notfalls erzwungen. Der Server ist ein Python-Prozess (`python -m partatlas`) und heisst deshalb in der
 Systemüberwachung „python“, nicht „partAtlas“. Von Hand beenden: Strg+C im Terminal, in dem es läuft, oder `pkill -f "python -m partatlas"`.
 
 Im Browser einmal **Strg+Umschalt+R** (neu laden ohne Zwischenspeicher). Oben links steht neben dem Logo die

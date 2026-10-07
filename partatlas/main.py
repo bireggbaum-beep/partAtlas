@@ -18,7 +18,7 @@ import time
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -37,7 +37,24 @@ from .version import VERSION
 WEB = os.path.join(os.path.dirname(__file__), "web")
 log = logging.getLogger("partatlas")
 LANGSAM_S = 3.0          # eine Anfrage, die so lange dauert, steht im Protokoll: so sieht man, was den Server aufhielt
+BEENDEN_S = 10           # so lange wartet das Beenden auf ein abgebrochenes Einlesen
 CLIENTFEHLER_MAX = 50    # Fehler aus dem Browser je Serverlauf, damit eine Fehlerschleife das Protokoll nicht füllt
+
+
+async def json_koerper(request: Request):
+    """Den Körper liest die Ereignisschleife; die Route selbst ist ein gewöhnliches `def` und läuft im Thread-Pool. Eine `async`-Route,
+    die danach synchron arbeitet (Datenbank, Platte, FreeCAD, Dateidialog), hält die ganze Schleife an: alle Tabs, die Live-Meldungen,
+    das Beenden. Ein leerer Körper ist ein leeres Objekt."""
+    roh = await request.body()
+    try:
+        return json.loads(roh) if roh else {}
+    except ValueError:
+        raise HTTPException(400, "Kein gültiges JSON")
+
+
+async def roh_koerper(request: Request):
+    """Wie `json_koerper`, für Dateien und Bilder."""
+    return await request.body()
 
 
 def _startinfo(b, k, s):
@@ -92,12 +109,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         # reagiert partAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
         # beim harten Beenden als eigener Prozess zurück.
         s.abbrechen()
-        s.warten(30)
+        if not s.warten(BEENDEN_S):
+            # Datenverlust droht nicht: was das Einlesen danach noch schreiben will, scheitert an der geschlossenen Datenbank, und jede
+            # Transaktion steht ganz oder gar nicht auf der Platte. Es steht nur da, damit man sieht, wenn das Abbrechen nicht greift.
+            log.warning("Das Einlesen hat nicht binnen %s s aufgehört (Phase „%s“); partAtlas wird trotzdem beendet", BEENDEN_S, s.status.get("phase"))
         b.schliessen()
         log.info("partAtlas beendet")
 
     app = FastAPI(title="partAtlas", version=VERSION, lifespan=leben)
     app.state.zustand = zustand
+    app.state.verteiler = verteiler
 
     def K():
         return zustand["katalog"]
@@ -172,7 +193,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     @app.get("/api/stand")
     def stand():
         return {"version": VERSION, "bestand": zustand["bestand"].wurzel,
-                "scan": zustand["scanner"].status, "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
+                # Eine Kopie: der Scan-Thread trägt währenddessen Schlüssel ein, und das Umwandeln in JSON liefe sonst in „dictionary changed
+                # size during iteration“. dict() kopiert in einem Zug.
+                "scan": dict(zustand["scanner"].status), "zuletzt_eingelesen": zustand["bestand"].einstellungen().get("zuletzt_eingelesen")}
 
     @app.get("/api/live")
     async def live():
@@ -192,8 +215,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return [{"id": k, **v} for k, v in K().wurzeln().items()]
 
     @app.post("/api/wurzeln")
-    async def wurzel_neu(request: Request):
-        daten = await request.json()
+    def wurzel_neu(daten: dict = Depends(json_koerper)):
         wid = K().wurzel_hinzufuegen(daten.get("pfad", ""))
         return {"id": wid, "lauf": scan_starten()}
 
@@ -211,9 +233,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
 
     @app.post("/api/wurzeln/uebersicht")
-    async def wurzel_uebersicht(request: Request):
+    def wurzel_uebersicht(koerper: dict = Depends(json_koerper)):
         """Was ein Ordner mitbringt, bevor er eingelesen wird: Modelldateien je Format (wie in pDMS vor dem Hinzufügen)."""
-        pfad = os.path.abspath(os.path.expanduser((await request.json()).get("pfad", "")))
+        pfad = os.path.abspath(os.path.expanduser(koerper.get("pfad", "")))
         if not os.path.isdir(pfad):
             raise KatalogFehler(f"Kein Ordner: {pfad}")
         modelle, vollstaendig, je_format = durchsuchen.zaehlen_je_format(pfad)
@@ -281,8 +303,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return daten
 
     @app.patch("/api/modelle/{mid}")
-    async def modell_aendern(mid: str, request: Request):
-        daten = await request.json()
+    def modell_aendern(mid: str, daten: dict = Depends(json_koerper)):
         k = K()
         if "name" in daten:
             k.umbenennen(mid, daten.pop("name"))
@@ -290,8 +311,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return k.modell(mid)
 
     @app.post("/api/modelle/{mid}/tags")
-    async def tag_neu(mid: str, request: Request):
-        daten = await request.json()
+    def tag_neu(mid: str, daten: dict = Depends(json_koerper)):
         return {"tag": K().tag_setzen(mid, daten.get("tag", ""))}
 
     @app.get("/api/materialien")
@@ -299,8 +319,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().materialien()
 
     @app.post("/api/modelle/{mid}/material")
-    async def material_neu(mid: str, request: Request):
-        daten = await request.json()
+    def material_neu(mid: str, daten: dict = Depends(json_koerper)):
         k = K()
         with k.db.transaction():
             return {"material": k.material_vorsehen(mid, daten.get("material", ""))}
@@ -320,10 +339,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().loeschvorschau(mid)
 
     @app.post("/api/modelle/{mid}/loeschen")
-    async def loeschen(mid: str, request: Request):
+    def loeschen(mid: str, d: dict = Depends(json_koerper)):
         # Ohne Körper: nur das Modell. Mit {"tags": [...], "sammlungen": [...]}:
         # was nur an ihm hing, auf Wunsch mit.
-        d = await request.json() if await request.body() else {}
         fehler = K().loeschen_mit([mid], d.get("tags") or (), d.get("sammlungen") or ())
         if fehler:
             raise KatalogFehler(fehler[0]["fehler"])
@@ -335,14 +353,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/modelle/{mid}/ohne_datei")
-    async def ohne_datei(mid: str, request: Request):
-        d = await request.json() if await request.body() else {}
+    def ohne_datei(mid: str, d: dict = Depends(json_koerper)):
         K().ohne_datei(mid, d.get("an", True))
         return {"ok": True}
 
     @app.post("/api/fehlende/suchen")
-    async def fehlende_suchen(request: Request):
-        r = K().fehlende_suchen((await request.json()).get("pfad", ""))
+    def fehlende_suchen(koerper: dict = Depends(json_koerper)):
+        r = K().fehlende_suchen(koerper.get("pfad", ""))
         # Liegt der Ordner schon im Katalog, verbindet der Scan die Treffer am Inhalt.
         if r["treffer"] and r["wurzel"]:
             zustand["scanner"].starten()
@@ -353,10 +370,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().endgueltig_vorschau(mid)
 
     @app.post("/api/modelle/{mid}/endgueltig")
-    async def endgueltig(mid: str, request: Request):
+    def endgueltig(mid: str, d: dict = Depends(json_koerper)):
         # Die Tippbestätigung prüft auch der Server: ein Aufruf ohne sie
         # (ein Skript, ein verirrter Klick) entfernt nichts.
-        d = await request.json() if await request.body() else {}
         if str(d.get("bestaetigung", "")).strip().lower() != "entfernen":
             raise KatalogFehler("Zum endgültigen Entfernen „entfernen“ eintippen.")
         K().endgueltig_entfernen(mid)
@@ -399,13 +415,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().sammlungen()
 
     @app.post("/api/sammlungen")
-    async def sammlung_neu(request: Request):
-        d = await request.json()
+    def sammlung_neu(d: dict = Depends(json_koerper)):
         return {"id": K().sammlung_anlegen(d.get("name", ""), d.get("modelle", []))}
 
     @app.patch("/api/sammlungen/{sid}")
-    async def sammlung_umbenennen(sid: str, request: Request):
-        K().sammlung_umbenennen(sid, (await request.json()).get("name", ""))
+    def sammlung_umbenennen(sid: str, koerper: dict = Depends(json_koerper)):
+        K().sammlung_umbenennen(sid, koerper.get("name", ""))
         return {"ok": True}
 
     @app.delete("/api/sammlungen/{sid}")
@@ -414,8 +429,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/sammlungen/{sid}/modelle")
-    async def sammlung_dazu(sid: str, request: Request):
-        K().zur_sammlung(sid, (await request.json()).get("modelle", []))
+    def sammlung_dazu(sid: str, koerper: dict = Depends(json_koerper)):
+        K().zur_sammlung(sid, koerper.get("modelle", []))
         return {"ok": True}
 
     @app.delete("/api/sammlungen/{sid}/modelle/{mid}")
@@ -424,8 +439,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.put("/api/sammlungen/{sid}/reihenfolge")
-    async def sammlung_ordnen(sid: str, request: Request):
-        K().sammlung_ordnen(sid, (await request.json()).get("modelle", []))
+    def sammlung_ordnen(sid: str, koerper: dict = Depends(json_koerper)):
+        K().sammlung_ordnen(sid, koerper.get("modelle", []))
         return {"ok": True}
 
     # ---------------------------------------------------------------- Warteschlange
@@ -435,8 +450,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().warteschlange()
 
     @app.post("/api/warteschlange")
-    async def warteschlange_dazu(request: Request):
-        for mid in (await request.json()).get("modelle", []):
+    def warteschlange_dazu(koerper: dict = Depends(json_koerper)):
+        for mid in koerper.get("modelle", []):
             K().in_warteschlange(mid)
         return {"ok": True}
 
@@ -446,8 +461,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.put("/api/warteschlange")
-    async def warteschlange_ordnen(request: Request):
-        K().warteschlange_ordnen((await request.json()).get("modelle", []))
+    def warteschlange_ordnen(koerper: dict = Depends(json_koerper)):
+        K().warteschlange_ordnen(koerper.get("modelle", []))
         return {"ok": True}
 
     # ---------------------------------------------------------------- Ordner, Verschieben, Hochladen
@@ -464,18 +479,17 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().verzeichnisse()
 
     @app.post("/api/verzeichnisse")
-    async def verzeichnis_neu(request: Request):
-        d = await request.json()
+    def verzeichnis_neu(d: dict = Depends(json_koerper)):
         return {"id": K().ordner_anlegen(d.get("eltern", ""), d.get("name", ""))}
 
     @app.post("/api/modelle/{mid}/verschieben")
-    async def verschieben(mid: str, request: Request):
-        K().verschieben(mid, (await request.json()).get("ordner", ""))
+    def verschieben(mid: str, koerper: dict = Depends(json_koerper)):
+        K().verschieben(mid, koerper.get("ordner", ""))
         return {"ok": True}
 
     @app.post("/api/hochladen")
-    async def hochladen(request: Request, ordner: str, name: str, unterordner: str = "", einlesen: int = 1):
-        neu = K().hochladen(ordner, name, await request.body(), unterordner)
+    def hochladen(ordner: str, name: str, unterordner: str = "", einlesen: int = 1, roh: bytes = Depends(roh_koerper)):
+        neu = K().hochladen(ordner, name, roh, unterordner)
         # Viele Dateien nacheinander: erst die letzte stösst das Einlesen an (`einlesen=0` bei den anderen). Sonst läuft schon während des
         # Hochladens ein Einlesen, konkurriert um die Kerne, und es folgen mehrere Läufe statt einem.
         return {"dateien": len(neu), "lauf": scan_starten() if einlesen else None}
@@ -485,8 +499,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return K().archive()
 
     @app.post("/api/archive/entpacken")
-    async def archiv_entpacken(request: Request):
-        d = await request.json()
+    def archiv_entpacken(d: dict = Depends(json_koerper)):
         ergebnis = K().archiv_entpacken(d.get("id", ""))
         return {**ergebnis, "lauf": scan_starten()}
 
@@ -510,8 +523,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return _bild_antwort(K().bild_pfad(mid, k), bool(t))
 
     @app.post("/api/modelle/{mid}/bilder")
-    async def bild_dazu(mid: str, request: Request):
-        return {"k": K().bild_hinzufuegen(mid, await request.body())}
+    def bild_dazu(mid: str, roh: bytes = Depends(roh_koerper)):
+        return {"k": K().bild_hinzufuegen(mid, roh)}
 
     @app.post("/api/modelle/{mid}/bilder/{k}/titel")
     def bild_titel(mid: str, k: str):
@@ -533,13 +546,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     # ---------------------------------------------------------------- Drucke (KONZEPT §4.6)
 
     @app.post("/api/drucke")
-    async def druck_neu(request: Request):
-        d = await request.json()
+    def druck_neu(d: dict = Depends(json_koerper)):
         return {"id": K().drucke.anlegen(d.get("modelle"), d.get("felder"))}
 
     @app.patch("/api/drucke/{did}")
-    async def druck_aendern(did: str, request: Request):
-        K().drucke.aendern(did, await request.json())
+    def druck_aendern(did: str, koerper: dict = Depends(json_koerper)):
+        K().drucke.aendern(did, koerper)
         return {"ok": True}
 
     @app.delete("/api/drucke/{did}")
@@ -548,14 +560,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/drucke/{did}/referenz")
-    async def druck_referenz(did: str, request: Request):
-        d = await request.json()
+    def druck_referenz(did: str, d: dict = Depends(json_koerper)):
         K().drucke.referenz(did, d.get("modell"), bool(d.get("an", True)))
         return {"ok": True}
 
     @app.post("/api/drucke/{did}/bilder")
-    async def druck_bild_dazu(did: str, request: Request):
-        return {"k": K().drucke.bild_hinzufuegen(did, await request.body())}
+    def druck_bild_dazu(did: str, roh: bytes = Depends(roh_koerper)):
+        return {"k": K().drucke.bild_hinzufuegen(did, roh)}
 
     @app.get("/api/drucke/{did}/bilder/{k}")
     def druck_bild(did: str, k: str):
@@ -567,13 +578,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/stapel")
-    async def stapel(request: Request):
-        d = await request.json()
+    def stapel(d: dict = Depends(json_koerper)):
         return K().stapel(d.get("aktion", ""), d.get("modelle", []), d.get("wert"))
 
     @app.post("/api/stapel/loeschvorschau")
-    async def stapel_loeschvorschau(request: Request):
-        return K().loeschvorschau_viele((await request.json()).get("modelle", []))
+    def stapel_loeschvorschau(koerper: dict = Depends(json_koerper)):
+        return K().loeschvorschau_viele(koerper.get("modelle", []))
 
     # ---------------------------------------------------------------- Einstellungen
 
@@ -590,8 +600,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
                 "pdf": {**PDF_STANDARD, **(e.get("pdf") or {})}, "programm": prog}
 
     @app.put("/api/einstellungen")
-    async def einstellungen_setzen(request: Request):
-        d = await request.json()
+    def einstellungen_setzen(d: dict = Depends(json_koerper)):
         werte = {}
         if "standard_material" in d:
             with zustand["bestand"].db.transaction():
@@ -644,8 +653,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return B().vorschlaege()
 
     @app.post("/api/baugruppen")
-    async def baugruppe_neu(request: Request):
-        d = await request.json()
+    def baugruppe_neu(d: dict = Depends(json_koerper)):
         if d.get("aus_sammlung"):
             return {"id": B().aus_sammlung(d["aus_sammlung"])}
         if d.get("aus_ordner"):
@@ -657,8 +665,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return B().detail(bid)
 
     @app.patch("/api/baugruppen/{bid}")
-    async def baugruppe_aendern(bid: str, request: Request):
-        B().aendern(bid, await request.json())
+    def baugruppe_aendern(bid: str, koerper: dict = Depends(json_koerper)):
+        B().aendern(bid, koerper)
         return {"ok": True}
 
     @app.delete("/api/baugruppen/{bid}")
@@ -667,15 +675,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/baugruppen/{bid}/positionen")
-    async def position_neu(bid: str, request: Request):
-        d = await request.json()
+    def position_neu(bid: str, d: dict = Depends(json_koerper)):
         for ziel in d.get("refs") or [d.get("ref", "")]:
             B().hinzufuegen(bid, ziel, d.get("menge", 1))
         return {"ok": True}
 
     @app.patch("/api/baugruppen/{bid}/positionen")
-    async def position_aendern(bid: str, request: Request):
-        d = await request.json()
+    def position_aendern(bid: str, d: dict = Depends(json_koerper)):
         ziel = d.pop("ref", "")
         B().position_aendern(bid, ziel, d)
         return {"ok": True}
@@ -686,13 +692,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.put("/api/baugruppen/{bid}/reihenfolge")
-    async def positionen_ordnen(bid: str, request: Request):
-        B().ordnen(bid, (await request.json()).get("refs", []))
+    def positionen_ordnen(bid: str, koerper: dict = Depends(json_koerper)):
+        B().ordnen(bid, koerper.get("refs", []))
         return {"ok": True}
 
     @app.post("/api/baugruppen/{bid}/material")
-    async def baugruppe_material(bid: str, request: Request):
-        d = await request.json()
+    def baugruppe_material(bid: str, d: dict = Depends(json_koerper)):
         if d.get("farbe") and not re.fullmatch(r"#[0-9a-fA-F]{6}", d["farbe"]):
             raise KatalogFehler("Farbe als #RRGGBB angeben.")
         B().material_fuer_offene(bid, (d.get("material") or "").strip()[:20] or "PLA", d.get("farbe"))
@@ -718,8 +723,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return B().kaufteile(q or None, kategorie or None)
 
     @app.post("/api/kaufteile")
-    async def kaufteil_neu(request: Request):
-        d = await request.json()
+    def kaufteil_neu(d: dict = Depends(json_koerper)):
         return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}
 
     # EIGENE: Eigene Komponenten — Anfang
@@ -732,8 +736,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return E().arten()
 
     @app.post("/api/eigene")
-    async def eigene_neu(request: Request):
-        d = await request.json()
+    def eigene_neu(d: dict = Depends(json_koerper)):
         return {"id": E().anlegen(d.get("name", ""), d.get("art", ""), d.get("masse", ""), d.get("notiz", ""))}
 
     @app.get("/api/eigene/{eid}")
@@ -741,8 +744,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return E().detail(eid)
 
     @app.patch("/api/eigene/{eid}")
-    async def eigene_aendern(eid: str, request: Request):
-        E().aendern(eid, await request.json())
+    def eigene_aendern(eid: str, koerper: dict = Depends(json_koerper)):
+        E().aendern(eid, koerper)
         return E().detail(eid)
 
     @app.delete("/api/eigene/{eid}")
@@ -755,11 +758,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return _bild_antwort(E().bild_pfad(eid), bool(t))
 
     @app.post("/api/eigene/{eid}/bild")
-    async def eigene_bild_setzen(eid: str, request: Request):
-        return {"k": E().bild_setzen(eid, await request.body())}
+    def eigene_bild_setzen(eid: str, roh: bytes = Depends(roh_koerper)):
+        return {"k": E().bild_setzen(eid, roh)}
     @app.post("/api/eigene/{eid}/datei")
-    async def eigene_datei_setzen(eid: str, name: str, request: Request):
-        bild = E().datei_setzen(eid, name, await request.body())
+    def eigene_datei_setzen(eid: str, name: str, roh: bytes = Depends(roh_koerper)):
+        bild = E().datei_setzen(eid, name, roh)
         return {**E().detail(eid), "bild_neu": bild}
 
     @app.get("/api/eigene/{eid}/datei")
@@ -805,9 +808,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"programme": liste, "standard": std, "arten": programme.ARTEN}
 
     @app.post("/api/programme/waehlen")
-    async def programm_waehlen(request: Request):
+    def programm_waehlen(koerper: dict = Depends(json_koerper)):
         """Öffnet den Dateidialog des Rechners; gespeichert wird erst mit „Speichern“."""
-        art = (await request.json()).get("art")
+        art = koerper.get("art")
         if art not in programme.ARTEN:
             raise KatalogFehler("Slicer oder CAD.")
         try:
@@ -829,8 +832,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {**i, "andere": i["andere"][:50], "andere_n": len(i["andere"])}
 
     @app.post("/api/ordner/loeschen")
-    async def ordner_loeschen(request: Request):
-        d = await request.json()
+    def ordner_loeschen(d: dict = Depends(json_koerper)):
         return K().ordner_loeschen(d.get("id", ""), d.get("tags") or (), d.get("sammlungen") or ())
 
     @app.post("/api/cad/erneut")
@@ -863,13 +865,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True, "pfad": pfad}
 
     @app.post("/api/stapel/optionen")
-    async def stapel_optionen(request: Request):
-        d = await request.json()
+    def stapel_optionen(d: dict = Depends(json_koerper)):
         return zuordnen.optionen(K(), B(), d.get("art"), d.get("modelle") or [])
 
     @app.post("/api/stapel/zuordnen")
-    async def stapel_zuordnen(request: Request):
-        d = await request.json()
+    def stapel_zuordnen(d: dict = Depends(json_koerper)):
         return zuordnen.zuordnen(K(), B(), d.get("art"), d.get("modelle") or [], d.get("ziel"), d.get("neu"))
 
     @app.get("/api/aufraeumen")
@@ -881,8 +881,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return aufraeumen.behaltene(K())
 
     @app.post("/api/modelle/{mid}/behalten")
-    async def aufraeumen_behalten(mid: str, request: Request):
-        d = await request.json() if await request.body() else {}
+    def aufraeumen_behalten(mid: str, d: dict = Depends(json_koerper)):
         aufraeumen.behalten(K(), mid, d.get("an", True))
         return {"ok": True}
 
@@ -898,8 +897,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True, "pfad": pfad}
 
     @app.post("/api/ordner/im_ordner")
-    async def ordner_im_ordner(request: Request):
-        pfad = K()._ordner_pfad((await request.json()).get("id", ""))[2]
+    def ordner_im_ordner(koerper: dict = Depends(json_koerper)):
+        pfad = K()._ordner_pfad(koerper.get("id", ""))[2]
         try:
             programme.im_ordner_zeigen(pfad)
         except (OSError, subprocess.SubprocessError) as e:
@@ -907,9 +906,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/modelle/{mid}/im_ordner")
-    async def im_ordner(mid: str, request: Request):
+    def im_ordner(mid: str, d: dict = Depends(json_koerper)):
         # Mit {"pfad": …}: genau diese Kopie (Aufräumen zeigt jede einzeln) — nur einer der Orte des Modells.
-        d = await request.json() if await request.body() else {}
         m = K().modell(mid)
         datei = aufraeumen.pfad_von(K(), mid, d["pfad"]) if d.get("pfad") else \
             next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
@@ -922,8 +920,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/modelle/{mid}/oeffnen")
-    async def modell_oeffnen(mid: str, request: Request):
-        daten = await request.json()
+    def modell_oeffnen(mid: str, daten: dict = Depends(json_koerper)):
         m = K().modell(mid)
         datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
         if not datei:

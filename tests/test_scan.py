@@ -719,6 +719,87 @@ if __name__ == "__main__":
           laeufe() == ["ganz", "ganz"])
     fl_b.schliessen()
 
+    # -- Endzustände: jeder Lauf endet in fertig, abgebrochen oder Fehler (nie „läuft nicht, ist aber nicht fertig“)
+    fz_tmp = tempfile.mkdtemp()
+    fz_samm = os.path.join(fz_tmp, "s")
+    os.makedirs(fz_samm)
+    muster.stl_binaer(os.path.join(fz_samm, "a.stl"))
+    fz_b = Bestand(os.path.join(fz_tmp, "b"))
+    fz_k = Katalog(fz_b)
+    fz_k.wurzel_hinzufuegen(fz_samm)
+    fz_s = Scanner(fz_b, fz_k, prozesse=1)
+    def _platte_voll(*_):
+        raise OSError(28, "No space left on device")
+    fz_s._anlegen = _platte_voll
+    fz_s.starten()
+    fz_s.warten(60)
+    st = fz_s.status
+    check("Fehler mitten im Einlesen: der Lauf endet in der Phase „fehler“ mit dem Grund — die Oberfläche hat einen Endzustand, nicht „wartet für immer“",
+          st.get("laeuft") is False and st.get("phase") == "fehler" and "No space left" in (st.get("abbruch") or ""))
+    del fz_s._anlegen
+    fz_s.starten()
+    fz_s.warten(60)
+    check("Nach dem Fehler läuft das nächste Einlesen normal durch", fz_s.status.get("phase") == "fertig" and fz_s.status.get("neu") == 1)
+    fz_b.schliessen()
+
+    # -- Ein Wunsch genau dann, wenn ein Lauf gerade endet, geht nicht verloren
+    import threading as _th
+    import types as _types
+    class _LangsamesEnde(_th.Event):
+        def set(self):
+            time.sleep(0.5)            # das Ende des Fadens dehnen: hier lag die Lücke zwischen „kein Folgelauf“ und dem echten Ende
+            super().set()
+    fl2_tmp = tempfile.mkdtemp()
+    fl2_b = Bestand(os.path.join(fl2_tmp, "b"))
+    fl2_s = Scanner(fl2_b, Katalog(fl2_b), prozesse=1)
+    fl2_laeufe = []
+    fl2_s.lauf = lambda nur_cad=False: fl2_laeufe.append(1)
+    _echt = _scan.threading
+    _scan.threading = _types.SimpleNamespace(Event=_LangsamesEnde, Thread=_th.Thread, Lock=_th.Lock)
+    try:
+        fl2_s.starten()
+        time.sleep(0.2)                # der erste Lauf ist durch und hat entschieden: kein Folgelauf
+        zweiter = fl2_s.starten()
+        time.sleep(1.5)
+    finally:
+        _scan.threading = _echt
+    fl2_s.warten(10)
+    check("Einlesen gewünscht, während der vorige Lauf gerade endet: es startet sofort, nichts geht verloren (vorher: Fenster wartete für immer)",
+          zweiter is True and len(fl2_laeufe) == 2)
+    fl2_b.schliessen()
+
+    # -- Abbrechen wirkt sofort, auch wenn ein Arbeiter hängt, und der hängende Arbeiter wird beendet
+    ab3_tmp = tempfile.mkdtemp()
+    ab3_samm = os.path.join(ab3_tmp, "s")
+    os.makedirs(ab3_samm)
+    muster.stl_binaer(os.path.join(ab3_samm, "a.stl"))
+    ab3_pids = os.path.join(ab3_tmp, "pids")
+    os.environ["MUSTER_PID_DATEI"] = ab3_pids
+    ab3_b = Bestand(os.path.join(ab3_tmp, "b"))
+    ab3_k = Katalog(ab3_b)
+    ab3_k.wurzel_hinzufuegen(ab3_samm)
+    ab3_s = Scanner(ab3_b, ab3_k, prozesse=1, zeitgrenze=120)
+    _rendern_echt = _scan._rendern
+    _scan._rendern = muster.arbeit_haengt       # die Arbeiter bekommen die Funktion per Name: muster.arbeit_haengt
+    try:
+        ab3_s.starten()
+        for _ in range(300):
+            if os.path.exists(ab3_pids) and open(ab3_pids).read().strip():
+                break
+            time.sleep(0.1)
+        t0 = time.monotonic()
+        ab3_s.abbrechen()
+        ab3_ende = ab3_s.warten(10)
+        ab3_dauer = time.monotonic() - t0
+    finally:
+        _scan._rendern = _rendern_echt
+    time.sleep(1)
+    ab3_pid = int(open(ab3_pids).read().split()[0])
+    check("Abbrechen, während ein Arbeiter hängt: der Lauf endet binnen Sekunden als „abgebrochen“, nicht erst nach der Zeitgrenze (120 s)",
+          ab3_ende and ab3_dauer < 5 and ab3_s.status.get("phase") == "abgebrochen")
+    check("Abbrechen: der hängende Arbeiter wird beendet, er läuft nicht weiter (und hält das Beenden von partAtlas nicht auf)", not _lebt(ab3_pid))
+    ab3_b.schliessen()
+
     # -- Protokoll: Phasen, Läufe, Herzschlag, FreeCAD je Datei — damit ein „hängt“ ohne Terminal nachvollziehbar ist
     check("Protokoll: ein ganzer Lauf nennt Beginn, Phasenwechsel mit Zahlen und die Bilanz",
           protokoll.hat("Lauf 1 beginnt: ganzes Einlesen") and protokoll.hat("Phase „hashen“", "zu prüfen") and protokoll.hat("Lauf 1 fertig", "neu"))

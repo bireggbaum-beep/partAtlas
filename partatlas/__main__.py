@@ -30,4 +30,14 @@ if __name__ == "__main__":
     # Nur localhost, solange es kein Passwort gibt (KONZEPT §2).
     # log_config=None: uvicorn richtet sein eigenes Protokoll nicht ein; seine Fehlermeldungen (etwa eine Anfrage, die mit 500 endet) gehen
     # dann wie alles andere in die Datei.
-    uvicorn.run(erstelle_app(), host="127.0.0.1", port=port, log_level="warning", log_config=None)
+    app = erstelle_app()
+
+    class Server(uvicorn.Server):
+        def handle_exit(self, sig, frame):
+            # Beim Beenden wartet uvicorn, bis jede Verbindung von selbst endet — die Live-Meldungen eines offenen Tabs (/api/live) enden
+            # nie. partAtlas liess sich dann nur abschiessen (nachgestellt am 7.10.2026), und das Abbrechen eines laufenden Einlesens wurde
+            # gar nicht erst erreicht. Darum zuerst die Live-Verbindungen schliessen; die Zeitgrenze unten fängt ab, was sonst noch hängt.
+            app.state.verteiler.beenden()
+            super().handle_exit(sig, frame)
+
+    Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", log_config=None, timeout_graceful_shutdown=5)).run()

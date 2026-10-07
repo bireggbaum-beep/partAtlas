@@ -390,6 +390,7 @@ function zeichneLeer() {
 // Wie lange das Einlesen gedauert hat, stehen lassen: wer einen grossen Bestand prüft, will die Zahl ablesen können.
 const PHASENNAME = { suchen: "Suchen", hashen: "Hashen", analysieren: "Analysieren", vorschau: "Vorschauen", cad: "STEP (FreeCAD)" };
 function scanErgebnis(m) {
+  if (m.phase === "fehler") return `Einlesen gescheitert: ${m.abbruch || "unbekannter Fehler"}`;
   if (m.dauer_s == null || (!m.gefunden && !m.abgebrochen && !m.nur_cad)) return "";
   const zeit = m.dauer_s < 1 ? "unter 1 s" : m.dauer_s < 60 ? `${zahl(m.dauer_s, 1)} s` : dauer(m.dauer_s);
   // Nach einem Abbruch keine „Eingelesen“-Zeile: es ist nicht alles eingelesen.
@@ -2175,9 +2176,11 @@ function einlesenZeigen(lauf, titel = "Einlesen") {
 function einlesenZeichnen(m) {
   if (!$("#einlesen").open || einlesen.lauf == null) return;
   const meiner = (m.lauf || 0) >= einlesen.lauf;
-  const fertig = meiner && (m.einlesen_s != null || m.abgebrochen || (!m.laeuft && m.phase === "fertig" && !m.nur_cad));
+  const fehler = meiner && m.phase === "fehler";
+  const fertig = meiner && (m.einlesen_s != null || m.abgebrochen || fehler || (!m.laeuft && m.phase === "fertig" && !m.nur_cad));
   let anteil = null, zeile, unten = "";
   if (!meiner) zeile = "Wartet, bis das laufende Einlesen fertig ist …";
+  else if (fehler) { anteil = 1; zeile = `Das Einlesen ist an einem Fehler gescheitert: ${esc(m.abbruch || "unbekannt")}`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog. Näheres steht im Protokoll.</p>`; }
   else if (m.abgebrochen) { anteil = 1; zeile = `Abgebrochen nach ${sekunden(m.dauer_s)}.`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog.</p>`; }
   else if (fertig) { anteil = 1; zeile = bilanzKopf(m); unten = bilanz(m); }
   else if (m.phase === "suchen") zeile = "Ordner durchsuchen …";
@@ -2319,7 +2322,7 @@ function liveScan(m) {
   // Während des Einlesen-Fensters wartet die Frage; es nennt sie in der Bilanz und stellt sie nach OK.
   if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
   if (m.zuletzt_eingelesen) zuletztZeigen(m.zuletzt_eingelesen);
-  if (m.phase === "fertig" || m.abgebrochen) {
+  if (m.phase === "fertig" || m.phase === "fehler" || m.abgebrochen) {
     $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
     if (scanHatVeraendert(m)) neuLaden();
   }

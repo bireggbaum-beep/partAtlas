@@ -156,13 +156,31 @@ class Scanner:
         """Nach einem harten Absturz eines Arbeiters (etwa vom Betriebssystem beendet, weil der Speicher ausging) ist der
         ganze Pool unbrauchbar: durch einen frischen ersetzen."""
         alt, self._pool = self._pool, self._neuer_pool()
-        # Ein hängender Arbeiter lässt sich nicht bitten aufzuhören; ohne terminate() lebte er weiter und hielte die CPU.
-        for p in list((getattr(alt, "_processes", None) or {}).values()):
+        self._pool_beenden(alt, hart=True)
+
+    @staticmethod
+    def _pool_beenden(pool, hart=False):
+        """Hart: die Arbeiter werden beendet, statt dass man auf sie wartet. Ein hängender Arbeiter lässt sich nicht bitten aufzuhören;
+        er lebte sonst weiter, hielte die CPU, und beim Beenden von partAtlas wartete der Prozess auf ihn."""
+        if hart:
+            for p in list((getattr(pool, "_processes", None) or {}).values()):
+                try:
+                    p.terminate()
+                except Exception:
+                    pass
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    def _abwarten(self, auftrag):
+        """Das Ergebnis eines einzelnen Auftrags, höchstens `zeitgrenze` lang — aber ein Abbruch wirkt sofort (dann None)."""
+        t0 = time.monotonic()
+        while True:
             try:
-                p.terminate()
-            except Exception:
-                pass
-        alt.shutdown(wait=False, cancel_futures=True)
+                return auftrag.result(timeout=min(0.5, self.zeitgrenze))
+            except FutZeit:
+                if self._stopp.is_set():
+                    return None
+                if time.monotonic() - t0 >= self.zeitgrenze:
+                    raise
 
     def _verteilen(self, aufgaben, arbeit):
         """Verteilt `aufgaben` [(Schlüssel, Argumente)] auf die Arbeiter und liefert (Schlüssel, Ergebnis, Fehler) nach und
@@ -179,14 +197,22 @@ class Scanner:
             stueck = offen if welle is None else offen[:welle]
             auftraege = {self._pool.submit(arbeit, *a): k for k, a in stueck}
             erledigt, zerbrochen = set(), False
-            warten = set(auftraege)
+            warten, zuletzt = set(auftraege), time.monotonic()
             while warten:
                 # Zeitgrenze = Stillstand: solange irgendeine Datei fertig wird, läuft der Lauf; kommt `zeitgrenze` Sekunden lang
                 # nichts, hängt mindestens eine. Welche, zeigt das Wellen-Verfahren unten (Pool beenden, Rest einzeln).
-                fertig, warten = wait(warten, timeout=self.zeitgrenze, return_when=FIRST_COMPLETED)
+                # In kurzen Abständen warten: ein Abbruch wirkt sofort, nicht erst, wenn die nächste Datei fertig ist (bis zur Zeitgrenze).
+                fertig, warten = wait(warten, timeout=min(0.5, self.zeitgrenze), return_when=FIRST_COMPLETED)
+                if self._stopp.is_set():
+                    for g in auftraege:
+                        g.cancel()
+                    return
                 if not fertig:
-                    zerbrochen = True
-                    break
+                    if time.monotonic() - zuletzt >= self.zeitgrenze:
+                        zerbrochen = True
+                        break
+                    continue
+                zuletzt = time.monotonic()
                 for f in fertig:
                     if self._stopp.is_set():
                         for g in auftraege:
@@ -214,7 +240,9 @@ class Scanner:
                 else:
                     for k, a in [(k, a) for k, a in stueck if k not in erledigt]:
                         try:
-                            erg, fehler = self._pool.submit(arbeit, *a).result(timeout=self.zeitgrenze), None
+                            erg, fehler = self._abwarten(self._pool.submit(arbeit, *a)), None
+                            if self._stopp.is_set():
+                                return
                         except BrokenProcessPool:
                             self._pool_neu()
                             erg, fehler = None, "Arbeitsprozess beendet (vermutlich zu wenig Speicher für diese Datei)"
@@ -274,8 +302,11 @@ class Scanner:
         return self.status.get("lauf", 0) + 1
 
     def warten(self, zeit=None):
-        if self._faden:
-            self._faden.join(zeit)
+        """Wahr, wenn kein Lauf mehr läuft."""
+        faden = self._faden
+        if faden:
+            faden.join(zeit)
+        return not (faden and faden.is_alive())
 
     def _kette_buchen(self, kette):
         """Mehrere Läufe hintereinander (Hochladen, Entpacken: jeder Auftrag, der während eines Laufs eintrifft, bekommt einen Folgelauf) sind
@@ -308,9 +339,14 @@ class Scanner:
                     self._kette_buchen(kette)
                 except Exception as e:                   # der Server soll weiterlaufen
                     log.exception("Scan abgebrochen")
-                    self._setze(laeuft=False, abbruch=str(e))
+                    # Ein Endzustand, den die Oberfläche kennt: sonst stand sie bei „läuft nicht mehr, ist aber nicht fertig“ und wartete
+                    # für immer (Fenster ohne OK, „Abbrechen“ ohne Wirkung). Was bis dahin eingelesen war, steht in der Datenbank.
+                    self._setze(laeuft=False, abbricht=False, phase="fehler", abbruch=str(e) or type(e).__name__)
                 with self._sperre:
                     if not self._nochmal:
+                        # Unter der Sperre als beendet melden: `starten` prüft hier, ob ein Lauf lebt. Vorher galt der Faden bis zu seinem
+                        # tatsächlichen Ende als lebend; ein Wunsch in dieser Lücke setzte `_nochmal` und ging verloren.
+                        self._faden = None
                         return
                     self._nur_cad = self._nochmal == "cad"
                     self._nochmal = False
@@ -495,7 +531,7 @@ class Scanner:
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
         finally:
-            self._pool.shutdown(wait=False, cancel_futures=True)
+            self._pool_beenden(self._pool, hart=self._stopp.is_set())
         # Wann zuletzt vollständig eingelesen wurde: steht neben „Bibliothek“, damit man bei „nur auf Knopfdruck“ sieht, wie alt der Stand ist.
         # Fehlt der Platz zum Schreiben, ist das keine Sache, die das Einlesen scheitern lässt.
         jetzt = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -543,7 +579,7 @@ class Scanner:
             if self._stopp.is_set():
                 return self._abgebrochen(t0)
         finally:
-            self._pool.shutdown(wait=False, cancel_futures=True)
+            self._pool_beenden(self._pool, hart=self._stopp.is_set())
         self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
         log.info("Lauf %s (Hintergrund) fertig in %s s: %s Vorschaubilder gerechnet, %s über FreeCAD", self.status.get("lauf"),
                  self.status.get("dauer_s"), self.status.get("vorschauen_gesamt"), self.status.get("cad_gesamt"))

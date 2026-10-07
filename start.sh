@@ -33,7 +33,9 @@ fi
 # Der Server ist ein Python-Prozess ("python -m partatlas", kein Programm mit eigenem Namen): nach `git pull` läuft er mit der alten
 # Fassung weiter, bis er beendet wird. Darum nennt dieses Skript, welche Fassung läuft und welche auf der Platte liegt.
 fassung_platte() { sed -n 's/^VERSION = "\(.*\)"/\1/p' partatlas/version.py; }
-fassung_laufend() { curl -fs "$URL/api/stand" 2>/dev/null | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' | head -n1; }
+# Jede Abfrage mit Zeitgrenze: hängt der Server, darf dieses Skript nicht mit hängen (ohne -m wartete curl unbegrenzt).
+antwortet() { curl -fs -m 3 "$URL/" >/dev/null 2>&1; }
+fassung_laufend() { curl -fs -m 3 "$URL/api/stand" 2>/dev/null | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' | head -n1; }
 pid_am_port() {
   if command -v lsof >/dev/null; then lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -n1
   elif command -v ss >/dev/null; then ss -ltnpH "sport = :$PORT" 2>/dev/null | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -n1
@@ -41,8 +43,33 @@ pid_am_port() {
 }
 browser_oeffnen() { xdg-open "$URL" >/dev/null 2>&1 || true; }
 
+ist_partatlas() { [ -n "$1" ] && ps -o command= -p "$1" 2>/dev/null | grep -q partatlas; }
+beenden() {   # $1 = Prozess; erst bitten, dann (nach Rückfrage oder --neu) erzwingen
+  kill "$1" 2>/dev/null || true
+  for _ in $(seq 1 30); do kill -0 "$1" 2>/dev/null || return 0; sleep 0.5; done
+  if [ "$NEU" = 1 ]; then ANTWORT=j
+  elif [ -t 0 ]; then read -r -p "partAtlas (Prozess $1) reagiert nicht aufs Beenden. Erzwingen? [J/n] " ANTWORT
+  else ANTWORT=n; fi
+  case "$ANTWORT" in n|N|nein|Nein) echo "Nicht beendet. Von Hand:  kill -9 $1"; exit 1 ;; esac
+  kill -9 "$1" 2>/dev/null || true; sleep 1
+}
+
+# Der Port ist belegt, aber nichts antwortet: ein hängender Server. Nicht einfach einen zweiten starten (der fände den Port besetzt),
+# sondern ihn benennen und nach Rückfrage beenden.
+if ! antwortet && PID="$(pid_am_port)" && [ -n "$PID" ]; then
+  if ! ist_partatlas "$PID"; then
+    echo "Port $PORT ist belegt (Prozess $PID), aber nicht von partAtlas. Anderen Port: PARTATLAS_PORT=8766 ./start.sh"; exit 1
+  fi
+  if [ "$NEU" = 1 ]; then ANTWORT=j
+  elif [ -t 0 ]; then read -r -p "partAtlas (Prozess $PID) antwortet nicht. Beenden und neu starten? [J/n] " ANTWORT
+  else echo "partAtlas (Prozess $PID) antwortet nicht. Neu starten: ./start.sh --neu"; exit 1; fi
+  case "$ANTWORT" in n|N|nein|Nein) exit 1 ;; esac
+  echo "partAtlas wird beendet (Prozess $PID) …"
+  beenden "$PID"
+fi
+
 # Läuft es schon, wird nie ein zweiter Prozess gestartet.
-if curl -fs "$URL/" >/dev/null 2>&1; then
+if antwortet; then
   LAUFEND="$(fassung_laufend)"; PLATTE="$(fassung_platte)"
   if [ "$NEU" = 0 ] && { [ -z "$LAUFEND" ] || [ "$LAUFEND" = "$PLATTE" ]; }; then
     echo "partAtlas ${LAUFEND:+$LAUFEND }läuft schon: $URL"; browser_oeffnen; exit 0
@@ -60,17 +87,12 @@ if curl -fs "$URL/" >/dev/null 2>&1; then
   esac
   PID="$(pid_am_port)"
   # Nur beenden, was wirklich partAtlas ist — am Port könnte etwas anderes hören.
-  if [ -z "$PID" ] || ! ps -o command= -p "$PID" 2>/dev/null | grep -q partatlas; then
+  if ! ist_partatlas "$PID"; then
     echo "Der Prozess an Port $PORT ist nicht auffindbar oder kein partAtlas; er wird nicht beendet."
     echo "Von Hand: Strg+C im Terminal, in dem es läuft, oder  pkill -f 'python -m partatlas'"; exit 1
   fi
   echo "partAtlas $LAUFEND wird beendet (Prozess $PID) …"
-  kill "$PID"
-  # Es beendet erst ein laufendes Einlesen sauber; das kann einen Moment dauern.
-  for _ in $(seq 1 90); do curl -fs "$URL/" >/dev/null 2>&1 || break; sleep 0.5; done
-  if curl -fs "$URL/" >/dev/null 2>&1; then
-    echo "partAtlas reagiert nicht aufs Beenden (Prozess $PID). Nochmal versuchen, oder  kill -9 $PID"; exit 1
-  fi
+  beenden "$PID"
 fi
 
 # Eigene Umgebung (Manjaro erlaubt kein pip im System, PEP 668). Neu
@@ -88,10 +110,10 @@ if [ "$DEMO_WUNSCH" = 1 ] && [ ! -d "$DEMO" ]; then
   .venv/bin/python werkzeuge/demo_sammlung.py "$DEMO" --anzahl 60
 fi
 
-( for _ in $(seq 1 40); do curl -fs "$URL/" >/dev/null 2>&1 && break; sleep 0.5; done
+( for _ in $(seq 1 40); do antwortet && break; sleep 0.5; done
   # Demo: Sammlung als Wurzelordner eintragen (einmal) und erfundene Drucke dazu.
-  if [ "$DEMO_WUNSCH" = 1 ] && [ "$(curl -fs "$URL/api/wurzeln")" = "[]" ]; then
-    curl -fs -X POST -H 'Content-Type: application/json' -d "{\"pfad\": \"$DEMO\"}" "$URL/api/wurzeln" >/dev/null
+  if [ "$DEMO_WUNSCH" = 1 ] && [ "$(curl -fs -m 5 "$URL/api/wurzeln")" = "[]" ]; then
+    curl -fs -m 30 -X POST -H 'Content-Type: application/json' -d "{\"pfad\": \"$DEMO\"}" "$URL/api/wurzeln" >/dev/null
     .venv/bin/python werkzeuge/demo_drucke.py --port "$PORT" >/dev/null 2>&1 &
   fi
   browser_oeffnen ) &

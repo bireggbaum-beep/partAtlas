@@ -333,6 +333,61 @@ if __name__ == "__main__":
         be_t0 = time.monotonic()
     be_dauer = time.monotonic() - be_t0
     check("Beenden während eines Laufs (etwa FreeCAD hängt): der Server ist in unter 10 s weg, nicht erst nach 30 s", be_dauer < 10)
+    # -- Eine langsame Anfrage hält die anderen nicht auf (vorher liefen 46 Routen als `async def` mit synchroner Arbeit in der
+    # Ereignisschleife: FreeCAD für eine eigene Komponente, der Dateidialog, jede Schreibanfrage, die auf das Einlesen wartete)
+    import threading
+    with TestClient(erstelle_app(os.path.join(tmp, "bestand_schleife"), prozesse=2)) as c:
+        c.app.state.zustand["katalog"].verschieben = lambda mid, ordner: time.sleep(2)
+        langsam = threading.Thread(target=lambda: c.post("/api/modelle/m_000001/verschieben", json={"ordner": "x"}))
+        langsam.start()
+        time.sleep(0.3)
+        t0 = time.monotonic()
+        c.get("/api/stand")
+        sl_dauer = time.monotonic() - t0
+        langsam.join()
+    check("Eine Anfrage, die 2 s arbeitet, hält andere nicht auf: /api/stand antwortet währenddessen sofort", sl_dauer < 0.5)
+    import ast
+    from partatlas import main as _main_quelle
+    baum = ast.parse(open(_main_quelle.__file__, encoding="utf-8").read())
+    BEWUSST_ASYNC = {"leben", "protokoll", "wache", "clientfehler_melden", "live", "katalogfehler", "fehlt", "get_response", "json_koerper", "roh_koerper"}
+    async_routen = [f.name for f in ast.walk(baum) if isinstance(f, ast.AsyncFunctionDef) and f.name not in BEWUSST_ASYNC]
+    check("Keine Route ist `async def` (ausser denen, die nur lesen und weiterreichen): synchrone Arbeit gehört in den Thread-Pool",
+          async_routen == [])
+
+    # -- Beenden mit offenem Tab: die Live-Verbindung endet nie von selbst; vorher liess sich partAtlas dann nur abschiessen
+    import signal
+    import socket
+    import subprocess
+    import sys
+    import urllib.request
+    with socket.socket() as so:
+        so.bind(("127.0.0.1", 0))
+        port = so.getsockname()[1]
+    quelle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    umgebung = {**os.environ, "PARTATLAS_BESTAND": os.path.join(tmp, "bestand_tab"), "PARTATLAS_PORT": str(port),
+                "PYTHONPATH": os.pathsep.join([os.environ.get("PARTATLAS_QUELLE") or quelle, os.environ.get("PYTHONPATH", "")])}
+    server = subprocess.Popen([sys.executable, "-m", "partatlas"], env=umgebung, cwd=tmp, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(100):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/api/stand", timeout=2).read()
+                break
+            except OSError:
+                time.sleep(0.1)
+        tab = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/live", timeout=30)
+        tab.readline()
+        t0 = time.monotonic()
+        server.send_signal(signal.SIGTERM)
+        try:
+            server.wait(15)
+        except subprocess.TimeoutExpired:
+            pass
+        tab_dauer = time.monotonic() - t0
+    finally:
+        if server.poll() is None:
+            server.kill()
+    check("Beenden mit offenem Tab: der Server schliesst die Live-Verbindung und ist in unter 2 s weg", tab_dauer < 2)
+
     # -- Protokoll für den Tester ohne Terminal
     from partatlas import main as hauptmodul
     check("Protokoll beim Start: Umgebung, Katalog mit Zahlen, Einstellungen, was im Bestand aussteht",

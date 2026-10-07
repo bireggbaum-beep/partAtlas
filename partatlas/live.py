@@ -51,6 +51,16 @@ class Verteiler:
             text = json.dumps({"art": "neu_laden"})
         q.put_nowait(text)
 
+    def beenden(self):
+        """Jede offene Live-Verbindung endet. Beim Beenden des Servers: sonst wartet uvicorn, bis sie von selbst endet — das tut sie nie,
+        solange ein Tab offen ist. Darf aus dem Signal-Handler gerufen werden."""
+        if self._schleife is None:
+            return
+        with self._sperre:
+            schlangen = list(self._schlangen)
+        for q in schlangen:
+            self._schleife.call_soon_threadsafe(q.put_nowait, None)
+
     def graph(self, meldung):
         self.senden("graph", {k: meldung.get(k) for k in ("ereignis", "ref", "sammlung", "kantenart", "quelle", "ziel")})
 
@@ -63,6 +73,8 @@ class Verteiler:
             while True:
                 try:
                     text = await asyncio.wait_for(q.get(), timeout=20)
+                    if text is None:          # beenden()
+                        return
                     yield f"data: {text}\n\n"
                 except asyncio.TimeoutError:
                     yield ": wach\n\n"

@@ -156,3 +156,10 @@ def arbeit_test(x):
             f.write(f"{os.getpid()}\n")
         time.sleep(600)              # ein Render, der nie fertig wird
     return x * 2
+
+
+def arbeit_haengt(*_):
+    """Statt `_rendern` (beliebige Argumente): meldet seine PID und wird nie fertig — ein Render, an dem ein Abbruch greifen muss."""
+    with open(os.environ["MUSTER_PID_DATEI"], "a") as f:
+        f.write(f"{os.getpid()}\n")
+    time.sleep(600)

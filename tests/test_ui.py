@@ -82,6 +82,14 @@ async def oberflaeche(port):
               "neu eingelesen" in text and "STL" in text and await pg.locator("#einlesen[open]").count() == 1)
         await pg.click("#ein-ok")
         check("OK schliesst das Fenster", await pg.locator("#einlesen[open]").count() == 0)
+        fehlerbild = await pg.evaluate("""() => {
+            einlesen.lauf = 99; $("#einlesen").showModal();
+            einlesenZeichnen({ lauf: 99, laeuft: false, phase: "fehler", abbruch: "No space left on device" });
+            const r = { text: $("#einlesen-inhalt").innerText, ok: !!$("#ein-ok") };
+            $("#einlesen").close(); return r;
+        }""")
+        check("Einlesen an einem Fehler gescheitert: das Fenster nennt den Grund und hat OK, statt für immer zu warten",
+              fehlerbild["ok"] and "No space left" in fehlerbild["text"])
         await pg.wait_for_selector(".karte", timeout=60000)
         check("Ordner über den Dialog des Rechners gewählt: es wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
               await pg.locator("text=SAMMLUNGEN").is_visible())

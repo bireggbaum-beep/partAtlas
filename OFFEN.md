@@ -4,7 +4,7 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Umbau der Pipeline, Schritt 1 (Durchsicht 7.10.2026, Ziel 0.50)
+## Als Nächstes: Umbau der Pipeline, Schritt 2 (Durchsicht 7.10.2026, Ziel 0.50)
 
 Durchgesehen: alle Sonnet-Commits auf `main` (0.39 bis 0.46.3), Schwerpunkt Einlesen, Beenden, `start.sh`. Suiten auf `main` grün
 (test_scan 92/92, test_api 79/79, test_cad 14/14, test_ui 97/97) — keine prüft einen der Befunde unten. Planung des Anwenders in Capacities:
@@ -47,7 +47,18 @@ vor dem Löschen einzeln ansehen. Das Repo selbst ist 2 MB; aufgebläht ist eher
 **Entschieden (7.10.2026): robuste Pipeline nach KONZEPT §3.4 bis 0.50**, Schritt für Schritt, je ein Schritt pro Chat; nach jedem
 alle Suiten samt `test_ui`. Der Tester wird mit dem Hänger nicht weiter belastet: die Pipeline soll die Stellen nicht mehr haben, an
 denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeigt: Server und Einlesen fertig in 7 s, der Browser nicht).
-1. Endzustände garantiert, Beenden mit Zeitgrenze, keine langen Arbeiten in der Ereignisschleife, `start.sh` mit Zeitgrenze (Befunde 1, 2, 3, 5, 6, 7). Aufwand 2.
+1. **Erledigt (0.47.0, 7.10.2026):** Befunde 1, 2, 3, 5, 6, 7.
+   - Ein Fehler im Einlesen endet in der Phase „fehler“ mit Grund (`abbruch`); das Fenster zeigt ihn mit OK.
+   - Ein Wunsch, während ein Lauf endet, geht nicht verloren (`_faden = None` unter der Sperre).
+   - Abbrechen wirkt binnen Sekunden, auch wenn ein Arbeiter hängt (Warten in 0,5-s-Schritten, auch bei der Einzelwiederholung);
+     beim Abbruch werden die Arbeiter beendet — vorher hielt ein hängender Arbeiter sogar das Ende des Prozesses auf (Gegenprobe: 200 s).
+   - Alle 46 Routen mit Körper sind `def` statt `async def`; den Körper lesen `json_koerper`/`roh_koerper` (Depends). Damit laufen
+     Datenbank, Platte, FreeCAD und der Dateidialog im Thread-Pool, nicht in der Ereignisschleife.
+   - Beenden schliesst zuerst die Live-Verbindungen (`Verteiler.beenden` aus `handle_exit`), dazu `timeout_graceful_shutdown=5`:
+     mit offenem Tab vorher erst nach dem Schliessen des Tabs, jetzt in 0,2 s.
+   - `start.sh`: jede Abfrage mit `-m`; ein Server, der den Port hält, aber nicht antwortet, wird erkannt und nach Rückfrage beendet
+     (notfalls `kill -9`).
+   - Tests: test_scan +5, test_api +3, test_ui +1, jede mit Gegenprobe. Die 0.47.0 auf `ccr-97d3e8b3` kam nie auf `main`; diese ist eine andere.
 2. Oberfläche: kein Einlesen-Fenster, Knopf ⟳ als einziger Weg mit Rückmeldung (§3.4), ganzer Stand beim Verbinden, ältere Listenantworten verwerfen,
    nur geänderte Kacheln nachladen. Aufwand 2–3.
 3. Worker getrennt vom Einlesen, Warteschlange je Datei im Bestand; Einlesen eines Teilbaums. Aufwand 3–4.
