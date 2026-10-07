@@ -4,27 +4,47 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Durchsicht von allem, was Sonnet gebaut hat (festgehalten 6.10.2026, Auftrag des Anwenders)
+## Als Nächstes: Befunde der Durchsicht entscheiden (Durchsicht 7.10.2026, Ziel 0.50)
 
-Der Anwender hält die letzten Fassungen für nicht durchdacht („Anbau an Anbau“, Fehler, ein Protokoll ohne Inhalt). Vor allem Weiteren: **alles
-durchsehen, was mit `Co-Authored-By: Claude Sonnet 5.5` committet ist** — auf `main` etwa ab 0.44.4 bis 0.46.3 (Liste beim Einlesen, Einlesen beim Start,
-Hintergrundlauf, der Commit „UNFERTIG“, Thumbs, `start.sh`, Beenden mit `abbrechen()`, Protokoll), dazu die 0.47.0 auf dem Branch `ccr-97d3e8b3-0n86yu`.
-**Nichts bauen**, bis der Anwender die Befunde entschieden hat.
+Durchgesehen: alle Sonnet-Commits auf `main` (0.39 bis 0.46.3), Schwerpunkt Einlesen, Beenden, `start.sh`. Suiten auf `main` grün
+(test_scan 92/92, test_api 79/79, test_cad 14/14, test_ui 97/97) — keine prüft einen der Befunde unten. Planung des Anwenders in Capacities:
+Projekt partAtlas, Release „partAtlas 0.50“. **Nichts bauen, bis der Anwender entschieden hat.** Aufwand 1–5.
 
-Prüfen:
-1. **Richtig?** Den Code auf Fehler lesen: Wettläufe zwischen Threads, Abbruch, Neustart, volle Platte.
-2. **Passt es zum Konzept?** Gegen KONZEPT §3.4 (Wurzelordner gleichrangig, Ziehen = Ordner hinzufügen, kein Hochladen; Einlesen getrennt vom
-   Worker für Vorschauen/FreeCAD, wie pDMS mit OCR). Was ist Notbehelf, was Anbau, was muss weg (etwa `einlesen=0` beim Hochladen, `_kette_buchen`).
-3. **Halten die Tests?** Jede neue Prüfung muss nachweislich fallen, wenn man die Eigenschaft entfernt; sonst raus.
-4. **Hänger des Testers (6.10.2026, 0.46.1):** Ordner mit neuem Unterordner (`Anschlag 45°.FCStd`, `Anschlag 45°-Cut001.stl`), „Neu einlesen“,
-   „hängt, nach 10 min tot, abgeschossen“; nach dem Neustart waren die Dateien im Katalog. Sein Protokoll: `14:37:26 CAD: FreeCAD-Aufruf …, 1 Dateien offen`,
-   dann nichts bis zum Neustart 14:45:11, keine Warnung (eine Zeitüberschreitung von FreeCAD hätte nach spätestens ca. 5 min eine geschrieben), und beim
-   Neustart stand die Datei nicht mehr offen — FreeCAD war also fertig, danach blieb etwas stehen (Server oder Browser, er nutzt vermutlich Firefox).
-   **Nicht nachgestellt** (Chromium, Mustermodelle, mit und ohne FreeCAD-Attrappe: läuft in 1,4 s durch). Den Ablauf nach `_cad` gezielt lesen.
-   Für den Tester bis dahin: „FCStd über FreeCAD“ auf „Nein, nie“.
+Hänger (Capacities „App-Freeze …“):
+1. **Beenden geht nicht, solange ein Tab offen ist** (nachgestellt: nach SIGTERM 20 s weiter da, beendet erst, als die Live-Verbindung zu war).
+   uvicorn wartet auf `/api/live`; das Abbrechen aus 0.46.2 wird gar nicht erreicht, `start.sh` gibt nach 45 s auf. Vorschlag:
+   `timeout_graceful_shutdown` und den Strom beim Beenden schliessen. Aufwand 1.
+2. **Fehler im Einlesen → Dialog ohne Ausweg** (nachgestellt mit „No space left on device“ in `_anlegen`): Status bleibt `laeuft=False`,
+   Phase „analysieren“, `abgebrochen=False`; die Oberfläche liest `abbruch` nirgends, zeigt kein OK, „Abbrechen“ wirkt nicht mehr. Aufwand 1.
+3. **FreeCAD in der Ereignisschleife:** `async def eigene_datei_setzen` ruft `datei_setzen` direkt, samt FreeCAD (bis ca. 5 min) — der ganze
+   Server steht. Dasselbe Muster (async-Route mit synchroner Arbeit) bei Hochladen, Ordner hinzufügen u. a.; sie warten auf jede Transaktion
+   des Einlesens. Vorschlag: `def` statt `async def`, wo nichts awaited wird. Aufwand 1–2.
+4. **Einlesen wartet modal hinter dem Hintergrundlauf:** läuft Vorschau/FreeCAD/kleine Bilder (startet nach jedem Neustart von selbst), zeigt
+   „Neu einlesen“ nur „Wartet, bis das laufende Einlesen fertig ist …“ — ohne Dauer, ggf. Stunden. Passt auf „nach dem Neustart hing es weiter“.
+   Kern von §3.4. Notlösung: Einlesen bricht den Hintergrundlauf ab (Ausstehendes bleibt im Bestand). Aufwand 2; richtig: Umbau §3.4, Aufwand 4.
+5. **Folgelauf kann verloren gehen** (aus dem Code, nicht nachgestellt): `_lauf_sicher` entscheidet „kein Folgelauf“ und endet; kommt `starten`
+   dazwischen, sieht es den Faden noch lebend, setzt `_nochmal` und kehrt zurück — kein Lauf, der Dialog wartet für immer. Aufwand 1.
+6. **Beenden schliesst die Datenbank, während der Scan noch läuft:** `warten(30)`, dann `schliessen()`; `_verteilen` prüft den Abbruch erst
+   nach einem fertigen Ergebnis (bis 180 s), die Einzelwiederholung gar nicht; hängende Arbeiter werden beim Abbruch nicht beendet. Aufwand 2.
+7. **`start.sh`: `curl` ohne `--max-time`** — hängt der Server, hängt `start.sh` mit (alte und neue Fassung). Aufwand 1.
 
-Ergebnis: eine Liste der Befunde nach Schwere, je mit Vorschlag und Aufwand. Danach den Umbau nach §3.4 planen und vom Anwender freigeben lassen,
-dann ein Schritt pro Chat.
+Zum Protokoll des Testers: 0.46.1 schrieb nach „FreeCAD-Aufruf …“ bei Erfolg **keine** Zeile mehr. Das Protokoll passt also ebenso zu „alles lief
+durch, gehangen hat Browser oder Beenden“ (1, 4). Der Schluss oben („danach blieb etwas stehen“) ist daraus nicht zu ziehen. 0.46.3 schreibt genug.
+
+Anbau statt Konzept (Capacities „Klare Ingest-Pipeline“):
+8. Der Commit „UNFERTIG … Nicht nach main“ ist auf `main` gelandet; 0.46.0 hat das Selbstschliessen still zurückgenommen. Übrig und mit §3.4
+   zu streichen: `einlesen=0` beim Hochladen, `_kette_buchen`.
+9. Während des ganzen Hintergrundlaufs alle 5 s die ganze Liste neu (Server baut alle Kacheln neu); jeder Laufbeginn schickt zuerst den alten
+   „fertig“-Stand (`_setze(fcstd_frage=0 …)` vor dem Zähler) und lädt ein weiteres Mal. Aufwand 2–3.
+10. Ein Status-Dict für Einlesen und Worker; der Worker heisst `nur_cad`. Teil des Umbaus.
+
+Kleineres: „EIGENE“-Markierungen in sechs Dateien (behalten oder raus, entscheidet der Anwender); Kommentar „3 × 1 MB“, Protokoll hat 4 MB.
+
+Repo (Capacities „Repo bereinigen“): `ccr-b2d020e3` ist ganz auf `main`; `ccr-97d3e8b3` (0.47.0) überholt; `ccr-790df345`, `ccr-ad9349b7`,
+`claude/intelligent-babbage-…`, `claude/intelligent-hawking-…` (Stand 1.–2.10.) mit vielen Commits, die inhaltlich nicht auf `main` sind —
+vor dem Löschen einzeln ansehen. Das Repo selbst ist 2 MB; aufgebläht ist eher diese Datei.
+
+Vorschlag Reihenfolge: 1, 2, 3, 5, 7 (je Aufwand 1) als Fassung für den Tester; dann Umbau §3.4 planen (4, 6, 8–10).
 
 ## Zuerst wissen
 
