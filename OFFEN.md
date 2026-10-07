@@ -13,7 +13,9 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
 - a) Einträge und Ordnerstruktur sofort aus dem Ordner (Name, Ort, Format, Grösse), Auslesen füllt nach. Aufwand 3–4.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
 - c) Reihenfolge der Warteschlange: zuerst STL/OBJ/3MF/FCStd mit Bild, danach STEP und FCStd über FreeCAD. Aufwand 1–2.
-- d) Anzeige unten links stimmt (heute „Schritt 1 von 2“, dann „1 von 3“, Texte falsch). Aufwand 1–2.
+- d) Anzeige unten links: **Schritte entfernt (7.10.2026)** — ein Balken, darüber was gerade passiert („Ordner durchsuchen“,
+  „Datenbank aufbauen“, „Daten auslesen“, „Vorschaubilder erzeugen“, „Kleine Bilder erzeugen“, „FreeCAD-Dateien umwandeln“), Zähler,
+  Restzeit; die Zeile „Danach: FreeCAD …“ ist weg. Offen: dass die Zahlen bei grossen Sammlungen stimmen (mit a/b prüfen).
 Abnahme: mit einer grossen Sammlung (Werkzeug `werkzeuge/demo_sammlung.py` mit ≈ 8000 Dateien), nicht nur mit den Suiten.
 
 ## Als Nächstes: Umbau der Pipeline, Schritt 4 (Durchsicht 7.10.2026, Ziel 0.50)

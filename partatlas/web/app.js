@@ -2129,10 +2129,8 @@ function einlesenMelden(m) {
                 aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });
 }
 
-// Klein beim Zahnrad: was gerade im Hintergrund läuft, mit Balken. Weg, sobald nichts mehr läuft.
-const SCHRITTE = { scan: [["hashen", "Dateien prüfen"], ["analysieren", "Einlesen"]],
-                   worker: [["vorschau", "Vorschaubilder"], ["thumbs", "Kleine Bilder"], ["cad", "FreeCAD"]] };
-
+// Klein beim Zahnrad: ein Balken, darüber in Worten, was gerade passiert. Keine Schritte (Einlesen und Hintergrund zählten getrennt:
+// „1 von 2“, dann „1 von 3“ — verwirrend). Weg, sobald nichts mehr läuft.
 // Restzeit aus dem bisherigen Tempo dieser Phase. Erst nach einer Weile und ein paar Dateien: vorher wäre es geraten.
 function restzeit(fertig, gesamt, sek) {
   if (!(fertig >= 10 && sek >= 20 && gesamt > fertig)) return "";
@@ -2151,25 +2149,19 @@ function hintergrundZeichnen() {
   if (!art) { h.hidden = true; return; }
   let text, fertig = null, gesamt = null;
   if (m.abbricht) text = "Wird abgebrochen …";
-  else if (m.phase === "suchen") text = "Einlesen: Ordner durchsuchen";
-  else if (m.phase === "hashen") { text = "Einlesen: Dateien prüfen"; [fertig, gesamt] = [m.geprueft, m.zu_pruefen]; }
-  else if (m.phase === "analysieren") { text = "Einlesen"; [fertig, gesamt] = [m.analysiert, m.zu_analysieren]; }
-  else if (m.phase === "vorschau") { text = "Vorschaubilder berechnen"; [fertig, gesamt] = [(m.vorschauen_gesamt || 0) - (m.vorschauen_offen || 0), m.vorschauen_gesamt]; }
-  else if (m.phase === "cad") { text = "FreeCAD wandelt um"; [fertig, gesamt] = [(m.cad_gesamt || 0) - (m.cad_offen || 0), m.cad_gesamt]; }
-  else if (m.phase === "thumbs") { text = "Kleine Bilder vorbereiten"; [fertig, gesamt] = [m.thumbs_fertig, m.thumbs_gesamt]; }
+  else if (m.phase === "suchen") text = "Ordner durchsuchen";
+  else if (m.phase === "hashen") { text = "Datenbank aufbauen"; [fertig, gesamt] = [m.geprueft, m.zu_pruefen]; }
+  else if (m.phase === "analysieren") { text = "Daten auslesen"; [fertig, gesamt] = [m.analysiert, m.zu_analysieren]; }
+  else if (m.phase === "vorschau") { text = "Vorschaubilder erzeugen"; [fertig, gesamt] = [(m.vorschauen_gesamt || 0) - (m.vorschauen_offen || 0), m.vorschauen_gesamt]; }
+  else if (m.phase === "thumbs") { text = "Kleine Bilder erzeugen"; [fertig, gesamt] = [m.thumbs_fertig, m.thumbs_gesamt]; }
+  else if (m.phase === "cad") { text = "FreeCAD-Dateien umwandeln"; [fertig, gesamt] = [(m.cad_gesamt || 0) - (m.cad_offen || 0), m.cad_gesamt]; }
   else text = "Läuft …";
   const anteil = gesamt ? fertig / gesamt : null;
-  // Wo im Ganzen: „Schritt 4 von 5“ (FreeCAD nur, wenn welche anstehen) und was danach noch kommt — damit man weiss, ob es Minuten oder Stunden sind.
-  const schritte = SCHRITTE[art].filter(([k]) => k !== "cad" || m.cad_voraus > 0 || m.cad_gesamt || m.phase === "cad");
-  const nr = schritte.findIndex(([k]) => k === m.phase) + 1;
   const rest = m.abbricht ? "" : restzeit(fertig, gesamt, m.phase_s || 0);
-  const zeile2 = [nr ? `Schritt ${nr} von ${schritte.length}` : "", rest].filter(Boolean).join(" · ");
-  const danach = !m.abbricht && m.cad_voraus > 0 && ["vorschau", "thumbs"].includes(m.phase) && !m.cad_gesamt
-    ? `Danach: FreeCAD für ${anzahl(m.cad_voraus)} Dateien — das dauert am längsten. Du kannst solange weiterarbeiten.` : "";
   h.hidden = false;
   abgleichen(h, `<div class="hg-kopf"><span>${text}</span>${gesamt ? `<span class="hg-zahl">${anzahl(fertig)} / ${anzahl(gesamt)}</span>` : ""}</div>
     <div class="balken klein ${anteil == null ? "unbestimmt" : ""}"><i style="width:${Math.round((anteil ?? 0.3) * 100)}%"></i></div>
-    ${zeile2 ? `<div class="hg-zeile dim">${zeile2}</div>` : ""}${danach ? `<div class="hg-zeile dim">${danach}</div>` : ""}`);
+    ${rest ? `<div class="hg-zeile dim">${rest}</div>` : ""}`);
 }
 
 // ---------------------------------------------------------------- Live (flatgraph bei_aenderung → SSE)
