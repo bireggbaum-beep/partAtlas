@@ -520,16 +520,17 @@ class Baugruppen:
         """Ordner mit mehreren Modellen, die noch keine Baugruppe sind — zum
         Anlegen mit einem Klick. Heute nur aus Ordnern (Schritt 2: mehr)."""
         namen = {b["name"].lower() for b in self.liste()}
-        zaehler = {}
+        # Die Namen aus den Kacheln (zwischengespeichert), nicht je Modell aus der Datenbank: das waren bei 8 600 Modellen 3,3–3,9 s je
+        # Aufruf, solange eingelesen wurde (jeder Zugriff wartete auf die Schreibsperre).
+        je_ordner = {}                      # Ordner -> Namen der Modelle darin
         for m in self.k.modelle():
             if m["entwurf"]:
                 continue
             for o in m["ordner"]:
                 if "/" in o and o.split("/", 1)[1]:
-                    zaehler.setdefault(o, []).append(m["id"])
-        vorschlag = [{"ordner": o, "name": o.rstrip("/").split("/")[-1], "anzahl": len(ids),
-                      "mengen_im_namen": sum(1 for mid in ids if menge_aus_namen(
-                          (self.db.get_node(ref(MODELL, mid), readonly=True) or {}).get("name")) > 1)}
-                     for o, ids in zaehler.items() if len(ids) >= mindestens]
+                    je_ordner.setdefault(o, []).append(m["name"])
+        vorschlag = [{"ordner": o, "name": o.rstrip("/").split("/")[-1], "anzahl": len(n),
+                      "mengen_im_namen": sum(1 for x in n if menge_aus_namen(x) > 1)}
+                     for o, n in je_ordner.items() if len(n) >= mindestens]
         vorschlag = [v for v in vorschlag if v["name"].lower() not in namen]
         return sorted(vorschlag, key=lambda v: (-v["mengen_im_namen"], -v["anzahl"]))[:12]

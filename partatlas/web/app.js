@@ -2356,7 +2356,12 @@ function live() {
     const m = JSON.parse(e.data);
     if (m.art === "scan") return liveScan(m);
     if (m.art === "worker") return liveWorker(m);
-    if (m.art === "neu_laden") { nach.refs.clear(); return neuLaden(); }    // zu viele Meldungen verpasst: alles neu
+    if (m.art === "neu_laden") {                 // zu viele Meldungen verpasst: alles neu — nach einer Liste, die noch unterwegs ist
+      nach.refs.clear();
+      if (ladeModelle.unterwegs) { ladeModelle.danach = neuLaden; return; }
+      return neuLaden();
+    }
+    if (m.art === "graph" && m.stapel) { m.stapel.forEach(liveAenderung); return; }     // der Server fasst Änderungen zusammen
     liveAenderung(m);
   };
 }

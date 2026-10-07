@@ -11,11 +11,16 @@ import threading
 import time
 
 
+STAPEL_S = 0.3
+
+
 class Verteiler:
     def __init__(self):
         self._schlangen = set()
         self._sperre = threading.Lock()
         self._schleife = None
+        self._stapel = {}               # Graph-Meldungen seit dem letzten Senden, je (Ereignis, Verweis) einmal
+        self._stapel_geplant = False
 
     def binden(self, schleife):
         self._schleife = schleife
@@ -62,7 +67,25 @@ class Verteiler:
             self._schleife.call_soon_threadsafe(q.put_nowait, None)
 
     def graph(self, meldung):
-        self.senden("graph", {k: meldung.get(k) for k in ("ereignis", "ref", "sammlung", "kantenart", "quelle", "ziel")})
+        """Sammelt Änderungen am Graphen und schickt sie höchstens alle STAPEL_S als eine Meldung. Einzeln waren es beim Einlesen tausende
+        je Sekunde: der Browser kam nicht nach, die Schlange lief über, und jedes Überlaufen hiess „alles neu laden“ — bei 8 600 Modellen
+        etwa jede Sekunde die ganze Liste samt Baugruppen-Vorschlägen (Protokoll des Anwenders, 7.10.2026). Läuft unter der Sperre von
+        flatgraph: nur merken."""
+        if self._schleife is None:
+            return
+        eintrag = {k: meldung.get(k) for k in ("ereignis", "ref", "sammlung", "kantenart", "quelle", "ziel")}
+        with self._sperre:
+            self._stapel[(eintrag["ereignis"], eintrag["ref"])] = eintrag
+            if self._stapel_geplant:
+                return
+            self._stapel_geplant = True
+        self._schleife.call_soon_threadsafe(self._schleife.call_later, STAPEL_S, self._stapel_senden)
+
+    def _stapel_senden(self):
+        with self._sperre:
+            stapel, self._stapel, self._stapel_geplant = list(self._stapel.values()), {}, False
+        if stapel:
+            self.senden("graph", {"stapel": stapel})
 
     async def strom(self, anfang=None):
         """`anfang`: liefert die Meldungen, die ein Browser beim (Wieder-)Verbinden zuerst bekommt — den ganzen Stand, nicht nur, was sich

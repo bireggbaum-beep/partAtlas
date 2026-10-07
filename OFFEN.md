@@ -26,7 +26,13 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   Mal auf die Schreib-Transaktion des Einlesens (1,3 ms statt 0,03 ms je Kachel) — jetzt baut sie unter EINER Sperre (Transaktion ohne
   Schreiben, flatgraph VERTRAG §3.1). Gemessen 3000 Dateien: Klick 0,05–0,28 s in allen Phasen; eine Einzelabfrage wartet noch bis
   0,3 s auf eine laufende Schreib-Transaktion. test_scan 104/104 (+1, beide Gegenproben fallen), test_api 85/85.
-  **Nächstes:** Test des Anwenders mit 8600 Dateien unter Windows; danach einmal alle Suiten samt test_ui, dann 0.50.
+  **Test des Anwenders (Windows, 8600 Dateien, 7.10.2026): „nichts besser, Klicks ohne Wirkung“, bis die Vorschaubilder laufen.**
+  Protokoll: `GET /api/baugruppen/vorschlaege` 3,3–3,9 s, etwa jede Sekunde neu. Ursache: jede Graph-Änderung ging einzeln an den
+  Browser; beim Einlesen tausende je Sekunde → Schlange > 1000 → „neu_laden“ → die Oberfläche lud alles neu, samt Vorschlägen (die je
+  Modell einzeln die Datenbank fragten). In meiner Messung (Linux, schneller) lief die Schlange nicht über. Behoben: `Verteiler.graph`
+  fasst zusammen (höchstens alle 0,3 s eine Meldung `stapel`, je Verweis einmal); Vorschläge lesen Namen aus den Kacheln; „neu_laden“
+  wartet auf eine laufende Liste. test_api 86/86 (+1, Gegenprobe fällt), test_baugruppen 48/48.
+  **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe
   Sekunde nur diese Modelle (`POST /api/modelle/aenderungen`, gefiltert wie die Liste; ersetzt `/api/modelle/kacheln`); fertige Kacheln

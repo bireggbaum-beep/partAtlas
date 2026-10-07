@@ -353,6 +353,27 @@ if __name__ == "__main__":
     check("Nachreichen mit Filter: was nicht in die Ansicht gehört, steht unter „weg“",
           [x["id"] for x in gefiltert["modelle"]] == [b["id"]] and gefiltert["weg"] == [a["id"]])
 
+    # -- Live: Änderungen am Graphen kommen gesammelt (einzeln liefen beim Einlesen tausende je Sekunde auf, die Schlange lief über,
+    # und jedes Überlaufen hiess „alles neu laden“ — bei 8 600 Modellen jede Sekunde die ganze Liste)
+    import asyncio, json as _json, threading as _th
+    from partatlas.live import Verteiler
+
+    async def _stapel_probe():
+        v = Verteiler()
+        v.binden(asyncio.get_running_loop())
+        q = asyncio.Queue()
+        v._schlangen.add(q)
+        schreiber = _th.Thread(target=lambda: [v.graph({"ereignis": "update_node", "ref": f"MODEL_ASSET/m_{i % 1500:06d}"}) for i in range(3000)])
+        schreiber.start()
+        while schreiber.is_alive():
+            await asyncio.sleep(0.01)
+        await asyncio.sleep(0.5)
+        return [_json.loads(q.get_nowait()) for _ in range(q.qsize())]
+    lv = asyncio.run(_stapel_probe())
+    check("Live: 3000 Änderungen kurz hintereinander kommen als wenige Sammelmeldungen, je Verweis einmal, ohne „alles neu laden“",
+          0 < len(lv) <= 5 and all(m["art"] == "graph" for m in lv)
+          and sorted({e["ref"] for m in lv for e in m["stapel"]}) == [f"MODEL_ASSET/m_{i:06d}" for i in range(1500)])
+
     # -- Eine langsame Anfrage hält die anderen nicht auf (vorher liefen 46 Routen als `async def` mit synchroner Arbeit in der
     # Ereignisschleife: FreeCAD für eine eigene Komponente, der Dateidialog, jede Schreibanfrage, die auf das Einlesen wartete)
     import threading
