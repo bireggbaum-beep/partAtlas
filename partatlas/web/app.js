@@ -215,9 +215,7 @@ async function ladeModelle() {
     zeigeAufraeumen(zustand.ansicht === "aufraeumen");
     if (zustand.ansicht === "aufraeumen") return ladeAufraeumen();
   }
-  const p = new URLSearchParams({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format,
-                                  ansicht: zustand.ansicht, sammlung: zustand.sammlung, leiste: 1,
-                                  tags: [...zustand.tags].join(","), material: [...zustand.material].join(",") });
+  const p = new URLSearchParams({ ...filterJetzt(), leiste: 1 });
   // Nur die Antwort auf die neueste Anfrage zählt. Bei 9 000 Modellen dauert eine Liste Sekunden; kam eine ältere nach einer neueren an,
   // zeigte sie einen anderen Stand (etwa die Kacheln eines anderen Ordners) als den, den die Oberfläche zu zeigen glaubte.
   const nr = ladeModelle.nr = (ladeModelle.nr || 0) + 1;
@@ -230,21 +228,39 @@ async function ladeModelle() {
   }
   const { modelle: liste, leiste } = antwort;
   if (nr !== ladeModelle.nr) return;
-  zeichneLeiste(leiste);
+  sortiere(liste, false);
+  zustand.roh = liste;
+  zustand.leisteDaten = leiste;
+  listeAnwenden();
+}
+
+// Was die Liste gerade zeigt — für /api/modelle und für das Nachreichen einzelner Modelle (dieselben Felder).
+const filterJetzt = () => ({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format, ansicht: zustand.ansicht,
+                             sammlung: zustand.sammlung, tags: [...zustand.tags].join(","), material: [...zustand.material].join(",") });
+
+// Die Sortierung, die der Server nicht macht. `nachgereicht`: neue Modelle kamen hinten dazu — dann auch nach Name wie der Server
+// (ausser bei Suche und Chips: dort ordnet der Server nach Treffern, die neuen bleiben hinten).
+function sortiere(liste, nachgereicht) {
   const s = (zustand.sammlung || zustand.ansicht === "warteschlange") ? "eigene" : zustand.sortierung;
+  const name = (x) => (x.name || "").toLowerCase();
   if (s === "neu") liste.sort((a, b) => (b.angelegt || "").localeCompare(a.angelegt || ""));
-  if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
-  if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
+  else if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
+  else if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
+  else if (nachgereicht && s === "name" && !zustand.suche && !zustand.tags.size && !zustand.material.size)
+    liste.sort((a, b) => (name(a) < name(b) ? -1 : name(a) > name(b) ? 1 : 0));
+}
+
+// zustand.roh (sortiert, mit Entwürfen) → was das Raster zeigt.
+function listeAnwenden() {
+  const liste = zustand.roh;
   // Entwürfe ausblenden: gemerkt; die Leiste sagt, wie viele fehlen, damit niemand ein Modell vermisst.
   zustand.entwuerfeN = liste.filter((m) => m.entwurf).length;
   const sichtbar = zustand.ohneEntwuerfe && zustand.ansicht !== "papierkorb" ? liste.filter((m) => !m.entwurf) : liste;
   const g = gruppiere(sichtbar);
   zustand.modelle = g.liste;
   zustand.gruppen = g.gruppen;
-  // Für das Nachladen einzelner Kacheln (teilLaden): wo steht ein Modell, zu welchem gehört eine Datei.
   zustand.idIndex = new Map(g.liste.map((x, i) => [x?.id, i]));
-  zustand.hashId = new Map(g.liste.filter((x) => x?.hash).map((x) => [x.hash, x.id]));
-  zeichneLeiste(leiste);
+  zeichneLeiste(zustand.leisteDaten);
   zeichneFilterzeile();
   zeichneStapel();
   zeichneListenkopf();
@@ -286,10 +302,7 @@ async function ladeSeite() {
     ? `${w.name} · ${(w.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || ""}` : w.name]));
   zeichnePfad();
   if (zustand.gruppierung === "ordner") {      // die Wurzeln sind jetzt bekannt: die Basis kann sich geändert haben
-    const g = gruppiere(zustand.modelle);
-    zustand.modelle = g.liste;
-    zustand.gruppen = g.gruppen;
-    raster.neu();
+    if (zustand.roh) listeAnwenden();
   }
   abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
@@ -512,7 +525,22 @@ const raster = (() => {
     if (!geplant) { geplant = true; requestAnimationFrame(() => zeichne(true)); }
   });
   window.addEventListener("resize", () => requestAnimationFrame(neu));
-  return { neu, zeichne };
+
+  // Ohne Argument: welches Modell gerade oben im Bild steht und wie weit unter dem oberen Rand. Mit: wieder dorthin scrollen.
+  // Ganz oben gibt es keinen Anker — dort sollen neue Modelle oben sichtbar dazukommen.
+  function anker(a) {
+    if (a === undefined) {
+      if (aussen.scrollTop <= 0) return null;
+      const z = zeilen[suche(aussen.scrollTop)];
+      const m = z && zustand.modelle[z.kopf ? z.kopf.start : z.von];
+      return m ? { id: m.id, abstand: z.y - aussen.scrollTop } : null;
+    }
+    const i = a && zustand.idIndex.get(a.id);
+    if (i == null) return;
+    const z = zeilen.find((r) => !r.kopf && i >= r.von && i < r.bis);
+    if (z) { aussen.scrollTop = z.y - a.abstand; zeichne(); }
+  }
+  return { neu, zeichne, anker };
 })();
 
 // Beim schnellen Ziehen an der Scrollleiste fliegen dutzende Kacheln an den Augen
@@ -2224,43 +2252,73 @@ function liveWorker(m) {
   if (vorher.laeuft && !m.laeuft && (m.vorschauen_gesamt || m.cad_gesamt)) neuLaden();
 }
 
-// Während des Einlesens ändern Vorschaubilder und FreeCAD einzelne Modelle, oft jede Sekunde. Dafür nicht die ganze Liste holen (bei 9 000
-// Modellen Sekunden, auf dem Server wie im Browser), sondern nur diese Kacheln. Neue, gelöschte und verknüpfte Modelle laden weiter alles.
-const teil = { offen: new Set(), zeit: null };
-function kachelVon(m) {
-  if (m.ereignis !== "update_node" || !m.ref) return undefined;
-  const [sammlung, schluessel] = m.ref.split("/", 2);
-  if (sammlung === "MODEL_ASSET") return zustand.idIndex?.has(schluessel) ? schluessel : null;
-  if (sammlung === "PART_GEOMETRY") return zustand.hashId?.get(schluessel) ?? null;
-  return undefined;
+// Während etwas läuft, ändern sich laufend einzelne Modelle: neue kommen dazu, Vorschaubilder und Werte werden fertig. Dafür nie die
+// ganze Liste holen (bei 9 000 Modellen Sekunden, auf dem Server wie im Browser, und jedes Mal überholt), sondern die Verweise aus den
+// Live-Meldungen sammeln und jede halbe Sekunde nur diese Modelle nachreichen: fertige Kacheln werden an Ort und Stelle ausgetauscht,
+// neue eingefügt — in jeder Ansicht, ohne dass man sie wechseln muss (KONZEPT §3.4). Ansichten mit eigener Reihenfolge oder Auswahl
+// (Neu, Warteschlange, Sammlung, Papierkorb, Baugruppe) laden weiter ganz, sie sind klein.
+const nach = { refs: new Set(), zeit: null, unterwegs: false, seite: 0 };
+const nachreichbar = () => !zustand.sammlung && !zustand.baugruppe && !["neu", "warteschlange", "papierkorb", "aufraeumen"].includes(zustand.ansicht);
+// Was eine Kachel an eine andere Stelle bringt oder in eine andere Gruppe: dann Liste neu ordnen, sonst nur austauschen.
+const lage = (x) => JSON.stringify([x.name, x.gewicht_g, x.masse, x.angelegt, x.entwurf, x.format, x.material, x.ordner, x.fehlt, x.fehler, x.drucke_n, x.gedruckt]);
+
+function nachreichenPlanen(m) {
+  for (const r of [m.ref, m.quelle, m.ziel]) if (r && /^(MODEL_ASSET|PART_GEOMETRY)\//.test(r)) nach.refs.add(r);
+  if (nach.refs.size && !nach.zeit && !nach.unterwegs) nach.zeit = setTimeout(nachreichen, 500);
 }
-async function teilLaden() {
-  teil.zeit = null;
-  const ids = [...teil.offen];
-  teil.offen.clear();
-  if (!ids.length) return;
+
+async function nachreichen() {
+  nach.zeit = null;
+  if (!nach.refs.size) return;
+  // Eine ganze Liste ist unterwegs: danach. Sie zeigt den Stand von ihrem Beginn; was seitdem kam, reichen wir dann nach.
+  if (ladeModelle.unterwegs) { nach.zeit = setTimeout(nachreichen, 500); return; }
+  const refs = [...nach.refs];
+  nach.refs.clear();
+  nach.unterwegs = true;
   const nr = ladeModelle.nr;
-  let kacheln;
-  try { kacheln = await api(`/api/modelle/kacheln?ids=${encodeURIComponent(ids.join(","))}`); } catch { return; }
-  if (nr !== ladeModelle.nr) return;            // inzwischen kam die ganze Liste neu: sie ist frischer
-  for (const k of kacheln) {
-    const i = zustand.idIndex.get(k.id);
-    if (i != null && zustand.modelle[i]?.id === k.id) zustand.modelle[i] = { ...zustand.modelle[i], ...k };
+  let r = null;
+  try { r = await api("/api/modelle/aenderungen", { method: "POST", body: { refs, filter: filterJetzt() } }); }
+  catch { refs.forEach((x) => nach.refs.add(x)); }           // später noch einmal
+  finally {
+    nach.unterwegs = false;
+    if (nach.refs.size && !nach.zeit) nach.zeit = setTimeout(nachreichen, r ? 500 : 3000);
   }
-  raster.zeichne();
-  if (zustand.gewaehlt && ids.includes(zustand.gewaehlt)) waehle(zustand.gewaehlt, true);
+  if (!r || nr !== ladeModelle.nr || !zustand.roh) return;   // inzwischen eine andere Ansicht gewählt: ihre Liste ist frischer
+  const pos = new Map(zustand.roh.map((x, i) => [x.id, i]));
+  const weg = new Set(r.weg);
+  let ordnen = false;
+  const getauscht = [];
+  for (const k of r.modelle) {
+    const i = pos.get(k.id);
+    if (i == null) { zustand.roh.push(k); ordnen = true; continue; }
+    if (lage(zustand.roh[i]) !== lage(k)) ordnen = true;
+    zustand.roh[i] = k;
+    getauscht.push(k);
+  }
+  if ([...weg].some((id) => pos.has(id))) { zustand.roh = zustand.roh.filter((x) => !weg.has(x.id)); ordnen = true; }
+  if (ordnen) {
+    // Die Kachel oben im Bild bleibt, wo sie ist: neue Modelle weiter oben schieben die Ansicht nicht weg.
+    const anker = raster.anker();
+    sortiere(zustand.roh, true);
+    listeAnwenden();
+    raster.anker(anker);
+    seiteNachladen();
+  } else {
+    for (const k of getauscht) { const i = zustand.idIndex.get(k.id); if (i != null) zustand.modelle[i] = k; }
+    raster.zeichne();
+  }
+  const ids = new Set(r.modelle.map((x) => x.id));
+  if (zustand.gewaehlt && ids.has(zustand.gewaehlt)) waehle(zustand.gewaehlt, true);
+}
+
+// Ordnerbaum und Zähler links: während des Einlesens höchstens alle 5 s, nie zwei gleichzeitig.
+function seiteNachladen() {
+  if (nach.seite) return;
+  nach.seite = setTimeout(async () => { try { await ladeSeite(); } finally { nach.seite = 0; } }, 5000);
 }
 
 function liveAenderung(m) {
-  if (etwasLaeuft()) {
-    const id = kachelVon(m);
-    if (id === null) return;                     // ein Modell, das hier gerade nicht zu sehen ist: nichts zu tun
-    if (id) {
-      teil.offen.add(id);
-      if (!teil.zeit) teil.zeit = setTimeout(teilLaden, 400);
-      return;
-    }
-  }
+  if (etwasLaeuft() && nachreichbar() && zustand.roh) return nachreichenPlanen(m);
   const meins = zustand.gewaehlt && [m.ref, m.quelle, m.ziel].includes(`MODEL_ASSET/${zustand.gewaehlt}`);
   if (meins) liveBetrifft = true;
   const feuern = () => {
@@ -2298,6 +2356,7 @@ function live() {
     const m = JSON.parse(e.data);
     if (m.art === "scan") return liveScan(m);
     if (m.art === "worker") return liveWorker(m);
+    if (m.art === "neu_laden") { nach.refs.clear(); return neuLaden(); }    // zu viele Meldungen verpasst: alles neu
     liveAenderung(m);
   };
 }

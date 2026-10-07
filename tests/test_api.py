@@ -333,7 +333,7 @@ if __name__ == "__main__":
         be_t0 = time.monotonic()
     be_dauer = time.monotonic() - be_t0
     check("Beenden während eines Laufs (etwa FreeCAD hängt): der Server ist in unter 10 s weg, nicht erst nach 30 s", be_dauer < 10)
-    # -- Einzelne Kacheln (während des Einlesens statt der ganzen Liste)
+    # -- Einzelne Modelle nachreichen (während des Einlesens statt der ganzen Liste)
     with TestClient(erstelle_app(os.path.join(tmp, "bestand_kacheln"), prozesse=2)) as c:
         kw = os.path.join(tmp, "kacheln")
         os.makedirs(kw)
@@ -342,9 +342,15 @@ if __name__ == "__main__":
         c.post("/api/wurzeln", json={"pfad": kw})
         c.app.state.zustand["scanner"].warten(60)
         alle = c.get("/api/modelle").json()
-        nur = c.get("/api/modelle/kacheln", params={"ids": f"{alle[1]['id']},gibtsnicht"}).json()
-    check("Kacheln einzeln: nur die gefragten, genau wie in der Liste; unbekannte fallen weg",
-          len(alle) == 3 and nur == [alle[1]])
+        a, b = alle[0], alle[1]
+        nur = c.post("/api/modelle/aenderungen", json={"refs": [f"MODEL_ASSET/{a['id']}", f"PART_GEOMETRY/{b['hash']}", "MODEL_ASSET/gibtsnicht"],
+                                                       "filter": {}}).json()
+        gefiltert = c.post("/api/modelle/aenderungen", json={"refs": [f"MODEL_ASSET/{a['id']}", f"MODEL_ASSET/{b['id']}"],
+                                                             "filter": {"q": b["name"]}}).json()
+    check("Nachreichen: Modell und Datei führen zur Kachel, genau wie in der Liste; unbekannte fallen weg",
+          len(alle) == 3 and sorted(nur["modelle"], key=lambda x: x["id"]) == sorted([a, b], key=lambda x: x["id"]) and nur["weg"] == ["gibtsnicht"])
+    check("Nachreichen mit Filter: was nicht in die Ansicht gehört, steht unter „weg“",
+          [x["id"] for x in gefiltert["modelle"]] == [b["id"]] and gefiltert["weg"] == [a["id"]])
 
     # -- Eine langsame Anfrage hält die anderen nicht auf (vorher liefen 46 Routen als `async def` mit synchroner Arbeit in der
     # Ereignisschleife: FreeCAD für eine eigene Komponente, der Dateidialog, jede Schreibanfrage, die auf das Einlesen wartete)

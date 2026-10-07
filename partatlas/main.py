@@ -279,11 +279,15 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return Response(json.dumps(erg, ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)),
                         media_type="application/json")
 
-    @app.get("/api/modelle/kacheln")
-    def kacheln(ids: str = ""):
-        """Nur diese Kacheln (Komma-Liste): wenn sich während des Einlesens einzelne Modelle ändern (Vorschaubild, FreeCAD), holt die
-        Oberfläche nur sie, statt alle paar Sekunden die ganze Liste. Vor /api/modelle/{mid}, sonst wäre „kacheln“ eine Kennung."""
-        erg = K().kacheln([x for x in ids.split(",") if x][:500])
+    @app.post("/api/modelle/aenderungen")
+    def aenderungen(koerper: dict = Depends(json_koerper)):
+        """Während des Einlesens: statt der ganzen Liste nur die Modelle hinter diesen Verweisen (aus den Live-Meldungen), gefiltert wie
+        /api/modelle (`filter`: dieselben Felder). „weg“: gehört nicht (mehr) in diese Ansicht. POST, weil es tausende Verweise sein können."""
+        f = koerper.get("filter") or {}
+        liste = lambda s: [x for x in (s or "").split(",") if x]
+        erg = K().aenderungen(list(koerper.get("refs") or [])[:5000], suche=f.get("q") or None, tag=f.get("tag") or None,
+                              ordner=f.get("ordner") or None, fmt=f.get("format") or None, ansicht=f.get("ansicht") or "alle",
+                              sammlung=f.get("sammlung") or None, tags=liste(f.get("tags")), materialien=liste(f.get("material")))
         return Response(json.dumps(erg, ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)),
                         media_type="application/json")
 

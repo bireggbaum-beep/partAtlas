@@ -388,14 +388,14 @@ class Katalog:
         return teile[0].split("/", 1)[1] if teile else None
 
     def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None,
-                tags=(), materialien=(), leiste=False):
+                tags=(), materialien=(), leiste=False, alle=None):
         """Wie `_modelle`, dazu die Chips der Leiste: Tags und Materialien je
         mit ODER. Wer mehr gewählte Chips trifft, steht weiter oben; bei
         Gleichstand bleibt die Reihenfolge davor (Relevanz, Name …).
 
         Mit `leiste` kommt je Chip die Anzahl dazu — gezählt vor der
         Chip-Auswahl, damit man sieht, was ein weiterer Chip brächte."""
-        basis = self._modelle(suche, tag, ordner, fmt, ansicht, sammlung)
+        basis = self._modelle(suche, tag, ordner, fmt, ansicht, sammlung, alle)
         tags, materialien = set(tags), {m.upper() for m in materialien}
         liste = basis
         if tags or materialien:
@@ -413,15 +413,27 @@ class Katalog:
         ordnen = lambda z: [{"name": k, "anzahl": v} for k, v in sorted(z.items(), key=lambda kv: (-kv[1], kv[0]))]
         return {"modelle": liste, "leiste": {"tags": ordnen(zaehl_t), "materialien": ordnen(zaehl_m)}}
 
-    def kacheln(self, ids):
-        """Die Kacheln dieser Modelle, ohne den Zwischenspeicher aller: während des Einlesens ist er nach jeder Änderung veraltet, und ihn
-        für drei Kacheln neu zu bauen kostete bei 9 000 Modellen jedes Mal die ganze Liste. Unbekannte und gelöschte fallen weg."""
-        aus = []
-        for mid in ids:
+    def aenderungen(self, refs, **filter):
+        """Für das Nachreichen während des Einlesens: die Modelle hinter diesen Graph-Verweisen (Modell, Datei, Kante), je mit der Antwort,
+        ob sie in die Ansicht mit `filter` gehören. Baut nur ihre Kacheln — die ganze Liste kostete bei 9 000 Modellen Sekunden, und der
+        Zwischenspeicher aller Kacheln ist während des Einlesens nach jeder Änderung veraltet."""
+        mids = set()
+        for r in refs:
+            sammlung, _, schluessel = r.partition("/")
+            if sammlung == MODELL:
+                mids.add(schluessel)
+            elif sammlung == DATEI:
+                mid = self.modell_von(schluessel)
+                if mid:
+                    mids.add(mid)
+        kacheln = {}
+        for mid in mids:
             m = self.db.get_node(ref(MODELL, mid), readonly=True)
             if m is not None:
-                aus.append(self._kurz(mid, m))
-        return aus
+                kacheln[mid] = self._kurz(mid, m)
+        treffer = self.modelle(**filter, alle=kacheln) if kacheln else []
+        drin = {x["id"] for x in treffer}
+        return {"modelle": treffer, "weg": sorted(mids - drin)}
 
     def _kurz_alle(self):
         """Die Kacheln aller Modelle, zwischengespeichert, solange sich der Graph nicht ändert (`Bestand.generation`).
@@ -436,7 +448,7 @@ class Katalog:
             self._kurz_zwischen = (gen, erg)
         return erg
 
-    def _modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None):
+    def _modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None, alle=None):
         """Kacheln für das Raster, gefiltert. Suche über den Wortindex (suche.py),
         Tag über die Nachbarschaft in flatgraph, der Rest über die Kacheln selbst."""
         if ansicht == "papierkorb":
@@ -444,7 +456,8 @@ class Katalog:
             liste = [self._kurz(k, v, papierkorb=True) for k, v in roh.items()
                      if self.db.get_node(ref(MODELL, k), readonly=True) is None]
             return sorted(liste, key=lambda x: (x["name"] or "").lower())
-        alle = self._kurz_alle()
+        # `alle`: nur diese Kacheln prüfen statt aller (aenderungen).
+        alle = self._kurz_alle() if alle is None else alle
         kandidaten = alle
         punkte = self.suche.suchen(suche) if suche else None
         if punkte is not None:
