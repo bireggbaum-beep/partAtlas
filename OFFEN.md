@@ -42,6 +42,11 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   Verschieben (Dateiaktionen einzeln, gewollt). test_scan 106/106 (+1, Gegenprobe fällt), test_api 86/86, test_aufraeumen 13/13.
   Offen: die Sicherung vor Massenaktionen bei grossem Bestand (nicht gemessen); Ordner entfernen hält bei 8600 Dateien die Sperre für
   eine grosse Transaktion (unter Windows nicht gemessen).
+  **Löschen 8600 danach (Protokoll Anwender):** 19 s, Zähler und Tags warteten 14–15 s. Ursache: die Sperre von flatgraph ist nicht
+  fair — der Löschende holte sie nach jeder Gruppe gleich wieder. Behoben: `_gruppenweise` lässt nach jeder Gruppe 20 ms los; `_kurz_alle`
+  nimmt die Sperre nur noch, wenn etwas nachzubauen ist (vorher auch bei unverändertem Zwischenspeicher). Nachgestellt (2936 Modelle,
+  Linux): Löschen 2,9 s, eine Anfrage alle 0,3 s wartet höchstens 0,15 s (vorher bis 14 s). Kein eigener Test (Zeitverhalten, wäre
+  wackelig); test_scan 106/106, test_api 86/86. Die Sicherung vorher: 0,04 s bei 2936 (Linux).
   **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe

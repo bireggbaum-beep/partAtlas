@@ -490,6 +490,9 @@ class Katalog:
         auf einem älteren Rechner entsprechend mehr."""
         # Unter EINER Sperre von flatgraph (eine Transaktion ohne Schreiben, VERTRAG §3.1): sonst wartet jeder der fünf Lesezugriffe
         # je Kachel einzeln auf die laufende Schreib-Transaktion des Einlesens — gemessen 1,3 ms statt 0,03 ms je Kachel.
+        with self._kurz_sperre:
+            if self._kurz_zwischen is not None and not self._kurz_offen:
+                return self._kurz_zwischen          # nichts geändert: ohne die Sperre von flatgraph (die hält gerade vielleicht ein Schreiber)
         with self._kurz_bau, self.db.transaction():
             return self._kurz_nachbauen()
 
@@ -975,13 +978,7 @@ class Katalog:
         elif aktion == "wiederherstellen":
             # In Gruppen je eine Transaktion wie beim Löschen; vorher je Modell eine Anfrage samt fsync. Sicher gebündelt: ein Modell, das
             # scheitert, hat noch nichts geschrieben (wiederherstellen legt zuerst Dateien zurück und nimmt sie bei einem Fehler selbst zurück).
-            for i in range(0, len(modelle), LOESCHEN_GRUPPE):
-                with self.db.transaction():
-                    for mid in modelle[i:i + LOESCHEN_GRUPPE]:
-                        try:
-                            self.wiederherstellen(mid)
-                        except (KatalogFehler, OSError) as e:
-                            fehler.append({"id": mid, "fehler": str(e)})
+            fehler = self._gruppenweise(modelle, self.wiederherstellen)
         elif aktion == "verschieben":
             for mid in modelle:
                 try:
@@ -991,6 +988,23 @@ class Katalog:
         else:
             raise KatalogFehler(f"Unbekannte Aktion {aktion!r}.")
         return {"fehler": fehler}
+
+    def _gruppenweise(self, modelle, aufruf):
+        """`aufruf(mid)` für viele Modelle, je LOESCHEN_GRUPPE eine Transaktion. Einzeln kostete jedes Modell seinen fsync: „alle 8 600
+        löschen“ dauerte unter Windows Minuten, und jede andere Anfrage wartete dazwischen (Protokoll des Anwenders: /api/modelle 51 s).
+        Nach jeder Gruppe kurz loslassen: die Sperre von flatgraph ist nicht fair — wer sie eben freigab, bekommt sie meist gleich wieder,
+        und Zähler und Tags warteten trotz Gruppen 14 s. Ein Modell, das scheitert, wird gemeldet; die anderen gehen weiter."""
+        fehler = []
+        for i in range(0, len(modelle), LOESCHEN_GRUPPE):
+            if i:
+                time.sleep(0.02)
+            with self.db.transaction():
+                for mid in modelle[i:i + LOESCHEN_GRUPPE]:
+                    try:
+                        aufruf(mid)
+                    except (KatalogFehler, OSError) as e:
+                        fehler.append({"id": mid, "fehler": str(e)})
+        return fehler
 
     @staticmethod
     def _zurueck(erledigt):
@@ -1365,17 +1379,8 @@ class Katalog:
         tags, sammlungen = self._mitloeschen_pruefen(modelle, tags, sammlungen)
         if len(modelle) > 1 or tags or sammlungen:
             self._sichern_vor("entfernen")      # ein einzelnes Modell holt der Papierkorb zurück; mehrere und Mitgelöschtes die Sicherung
-        fehler = []
-        # In Gruppen je eine Transaktion: einzeln kostete jedes Modell seinen fsync — „alle 8 600 löschen“ dauerte unter Windows Minuten,
-        # und jede andere Anfrage wartete dazwischen immer wieder (Protokoll des Anwenders: /api/modelle 51 s). Zwischen den Gruppen kommen
-        # andere Anfragen zum Zug. Nur Graph-Änderungen, die Dateien bleiben (siehe loeschen).
-        for i in range(0, len(modelle), LOESCHEN_GRUPPE):
-            with self.db.transaction():
-                for mid in modelle[i:i + LOESCHEN_GRUPPE]:
-                    try:
-                        self.loeschen(mid)
-                    except (KatalogFehler, OSError) as e:
-                        fehler.append({"id": mid, "fehler": str(e)})
+        # Nur Graph-Änderungen, die Dateien bleiben (siehe loeschen).
+        fehler = self._gruppenweise(modelle, self.loeschen)
         if tags or sammlungen:
             with self.db.transaction():
                 for t in tags:
