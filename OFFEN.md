@@ -12,6 +12,15 @@ bei jeder Änderung die ganze Liste (8600 Einträge) neu. Zielbild steht jetzt i
 Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
 - a) Einträge und Ordnerstruktur sofort aus dem Ordner (Name, Ort, Format, Grösse), Auslesen füllt nach. Aufwand 3–4.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
+  **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe
+  Sekunde nur diese Modelle (`POST /api/modelle/aenderungen`, gefiltert wie die Liste; ersetzt `/api/modelle/kacheln`); fertige Kacheln
+  werden ausgetauscht, neue eingefügt, die Kachel oben im Bild bleibt stehen (`raster.anker`). Ordnerbaum/Zähler höchstens alle 5 s.
+  Ansichten Neu, Warteschlange, Sammlung, Papierkorb, Baugruppe laden weiter ganz. test_api 85/85 (+1, Gegenprobe fällt).
+  **Gemessen** (Browser, 3000 Demo-Dateien, 4 Kerne, `gross_check.py` im Scratchpad — gehört als Werkzeug nach `werkzeuge/`):
+  Vorschau-Phase 4 min: Liste vollständig, Bilder erscheinen laufend (alle 3 s ≈ 30–70 mehr), Filter-Klick 0,1–0,2 s, Anfrage < 20 ms.
+  **Während des Einlesens (12 s) noch schlecht:** ein Filter-Klick 3,8 s (die ganze Liste wird neu gebaut, der Zwischenspeicher ist
+  während des Einlesens immer veraltet), die Liste hinkt hinterher (347 gezeigt bei 900 ausgelesen). Bei 8600 Dateien unter Windows dauert
+  das Einlesen viel länger — dort ist das der Hauptärger. Behebt Teil a (Einträge sofort, Auslesen im Hintergrund).
   Beobachtet beim Anwender: Vorschaubilder erschienen nicht nach und nach, sondern nur einmal am Ende, „nach 1000 Stück“ oder beim Wechsel
   auf Raster. Ursache: `kachelVon`/`teilLaden` tauschen nur Kacheln, die in der geladenen Liste stehen; die stand bei 100 (Fehler f4b9ae4).
 - c) Reihenfolge der Warteschlange: zuerst STL/OBJ/3MF/FCStd mit Bild, danach STEP und FCStd über FreeCAD. Aufwand 1–2.
