@@ -720,6 +720,14 @@ if __name__ == "__main__":
     check("… und mit einer Stapel-Aktion wieder da, ebenfalls in einem Schreibvorgang; „Behalten“ für alle auch",
           so_zurueck["fehler"] == [] and sorted(m["id"] for m in so_k.modelle()) == sorted(so_ids) and zurueck_n == 1
           and len(schreibvorgaenge) == 1 and len(_af.behaltene(so_k)) == 3)
+    # Ordner, unter dem keine Datei mehr liegt (alles im Papierkorb), entfernen: keine Sicherung — sie kopiert die ganze Datenbank samt
+    # Papierkorb, beim Anwender 4 s für einen leeren Ordner
+    from partatlas import sicherung as _si
+    so_k.loeschen_mit(so_ids)
+    so_vorher = len(_si.liste(so_b.wurzel))
+    so_k.wurzel_entfernen(next(iter(so_k.wurzeln())))
+    check("Leeren Ordner entfernen: ohne Sicherung, der Ordner ist trotzdem weg",
+          len(_si.liste(so_b.wurzel)) == so_vorher and so_k.wurzeln() == {})
     so_b.schliessen()
 
     # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)

@@ -40,7 +40,7 @@ ERLAUBT = {
     ("katalog.py", "Katalog.verschieben", "dateien.verschiebe"): "auf Wunsch des Anwenders, nie überschreibend",
     ("katalog.py", "Katalog.wiederherstellen", "dateien.verschiebe"): "Datei aus dem alten Papierkorb von partAtlas zurück an ihren Ort",
     ("katalog.py", "Katalog.bild_ablegen", "dateien.schreibe_atomar"): "eigenes Bild in vault/bilder, nur wenn es noch nicht da ist",
-    ("scan.py", "Scanner._cad", "os.replace"): "Netz aus FreeCAD arbeit/cad → netz/ im Bestand",
+    ("scan.py", "Worker._cad", "os.replace"): "Netz aus FreeCAD arbeit/cad → netz/ im Bestand",
     ("scan.py", "_analyse", "dateien.schreibe_atomar"): "Vorschau aus der Datei in vault/vorschau",
     ("scan.py", "_rendern", "dateien.schreibe_atomar"): "berechnete Vorschau in vault/vorschau",
     ("scan.py", "_cad_bild", "dateien.schreibe_atomar"): "berechnete Vorschau in vault/vorschau",

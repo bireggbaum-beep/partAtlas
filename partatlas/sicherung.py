@@ -14,6 +14,7 @@ Behalten: die neuesten 20 und dazu die erste jedes Tages für 60 Tage. Zurückho
     python -m partatlas.sicherung --jetzt         eine anlegen
     python -m partatlas.sicherung --zurueck NAME  diesen Stand zurückholen (der jetzige wird vorher selbst gesichert)
 """
+import logging
 import os
 import re
 import shutil
@@ -26,6 +27,7 @@ MINDESTABSTAND_S = 600
 NEUESTE = 20
 TAGE = 60
 # Zeit, dann ein immer zweistelliger Zähler: so ist die Reihenfolge der Namen die der Entstehung, auch in derselben Sekunde.
+log = logging.getLogger("partatlas")
 _NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{6})-(\d{2})__([\w-]+)$")
 
 
@@ -33,8 +35,9 @@ def _ordner(wurzel):
     return os.path.join(wurzel, ORDNER)
 
 
-def liste(wurzel):
-    """[{name, zeit, grund, bytes}] der fertigen Sicherungen, neueste zuerst."""
+def liste(wurzel, mit_groesse=True):
+    """[{name, zeit, grund, bytes}] der fertigen Sicherungen, neueste zuerst. Ohne `mit_groesse` keine Grössen: sie zu zählen heisst jede
+    Datei jeder Sicherung anfassen (20 Sicherungen × Hunderte Dateien) — beim Anlegen braucht man nur Namen und Zeit."""
     basis = _ordner(wurzel)
     if not os.path.isdir(basis):
         return []
@@ -43,7 +46,8 @@ def liste(wurzel):
         m = _NAME.match(n)
         if not m or not os.path.isdir(os.path.join(basis, n)):
             continue
-        groesse = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(os.path.join(basis, n)) for f in fs)
+        groesse = (sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(os.path.join(basis, n)) for f in fs)
+                   if mit_groesse else None)
         aus.append({"name": n, "zeit": f"{m.group(1)} {m.group(2)[:2]}:{m.group(2)[2:4]}:{m.group(2)[4:]}", "grund": m.group(4),
                     "bytes": groesse})
     return sorted(aus, key=lambda x: x["name"], reverse=True)
@@ -63,7 +67,7 @@ def sichern(bestand, grund, immer=False):
     """Legt eine Sicherung an; gibt ihren Namen zurück oder None, wenn die letzte jünger als 10 Minuten ist und `immer` fehlt."""
     basis = _ordner(bestand.wurzel)
     os.makedirs(basis, exist_ok=True)
-    vorhanden = liste(bestand.wurzel)
+    vorhanden = liste(bestand.wurzel, mit_groesse=False)
     if not immer and vorhanden:
         letzte = time.mktime(time.strptime(vorhanden[0]["zeit"], "%Y-%m-%d %H:%M:%S"))
         if time.time() - letzte < MINDESTABSTAND_S:
@@ -76,16 +80,20 @@ def sichern(bestand, grund, immer=False):
     n = 1 + max((int(x) for x in belegt if x.isdigit()), default=0)
     name = f"{stamm}-{n:02d}__{grund}"
     arbeit = os.path.join(basis, f".{name}.arbeit")
+    t0 = time.monotonic()
     with bestand.db.transaction():       # hält die Sperre: kein Schreiben anderer Threads während des Kopierens
         _kopieren(bestand.wurzel, arbeit)
+    kopiert = time.monotonic() - t0
     os.replace(arbeit, os.path.join(basis, name))
     _aufraeumen(bestand.wurzel)
+    # Unter Windows (Virenscanner prüft jede neue Datei) nie gemessen; so steht es beim nächsten Mal im Protokoll.
+    log.info("Sicherung %s: kopiert in %.2f s (unter der Sperre), gesamt %.2f s", name, kopiert, time.monotonic() - t0)
     return name
 
 
 def _aufraeumen(wurzel):
     """Alte Sicherungen gehen, aber nie die neuesten 20 und nie die erste eines Tages der letzten 60 Tage."""
-    alle = liste(wurzel)
+    alle = liste(wurzel, mit_groesse=False)
     behalten = {s["name"] for s in alle[:NEUESTE]}
     grenze = time.strftime("%Y-%m-%d", time.localtime(time.time() - TAGE * 86400))
     erste_des_tages = {}

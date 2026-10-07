@@ -62,6 +62,15 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   **Ordner entfernen 4,3 s (8600, Windows):** gemessen 2936 unter Linux 0,74 s ohne Sicherung (Sicherung 0,06 s): jede Datei bekommt neue
   Orte, also wird die ganze Sammlung der Dateien einmal neu geschrieben (JSON 0,35 s, fsync von 126 Dateien). Wächst mit der Grösse; unter
   Windows mit 3× so vielen Dateien und teurerem fsync passen 4 s. Während dieser Zeit warten Abfragen. Nicht behoben.
+  **Korrektur (Anwender):** der Ordner war leer (alles vorher im Papierkorb) und brauchte trotzdem 4 s — also die **Sicherung** davor:
+  sie kopiert die ganze Datenbank samt Papierkorb (hier 493 Dateien) unter der Sperre und zählte vorher die Grössen aller bis zu 20
+  alten Sicherungen, zweimal. Linux 0,11 s; Windows nicht gemessen (Virenscanner prüft jede neue Datei). Geändert: leerer Ordner →
+  keine Sicherung (nur sein Eintrag ändert sich, und der ist zurückholbar); beim Anlegen keine Grössen mehr; jede Sicherung schreibt
+  ihre Dauer ins Protokoll. Nebenbei: test_schutz kannte `Worker._cad` noch als `Scanner._cad` (seit Schritt 3 rot, nicht gelaufen).
+  test_scan 108/108 (+1, Gegenprobe fällt), test_schutz 22/22, test_api 86/86.
+  **Vorschlag, nicht gebaut:** Sicherung über harte Verweise statt Kopien (flatgraph ersetzt Dateien immer über os.replace, ändert nie
+  an Ort und Stelle — ein harter Verweis ist dann ein gültiger Stand, ohne Daten zu kopieren). Aufwand 2; dagegen: gilt nur, solange
+  wirklich nichts an Ort und Stelle schreibt, auch partAtlas selbst (einstellungen.json, vault_text) — vorher prüfen.
   **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe

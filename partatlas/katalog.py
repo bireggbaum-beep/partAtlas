@@ -100,8 +100,11 @@ class Katalog:
     def wurzel_entfernen(self, wid):
         """Nur der Eintrag geht; Dateien bleiben, ihre Orte unter dieser Wurzel
         verschwinden. Modelle ohne anderen Ort gelten danach als fehlend — samt Tags, Drucken und Verknüpfungen, die am Inhalt hängen.
-        Der Eintrag selbst bleibt im Papierkorb (`entfernte_wurzeln`) und lässt sich zurückholen."""
-        self._sichern_vor("ordner-entfernen")
+        Der Eintrag selbst bleibt im Papierkorb (`entfernte_wurzeln`) und lässt sich zurückholen.
+        Liegt keine Datei mehr darunter, ändert sich nur dieser Eintrag: dann keine Sicherung (sie kopiert die ganze Datenbank samt
+        Papierkorb — beim Anwender 4 s für einen leeren Ordner)."""
+        if any(o["wurzel"] == wid for d in self._dateien().values() for o in d.get("orte", [])):
+            self._sichern_vor("ordner-entfernen")
         with self.db.transaction():
             n = 0
             for h, d in self._dateien().items():
