@@ -259,6 +259,29 @@ Wurzelordner legt. Das gehört nicht zusammen und wird aufgelöst.
   Thread ist. Die Fassung 0.47.0 (Eingangsliste und Teillauf, nur auf dem Branch `ccr-97d3e8b3-0n86yu`, nie auf `main`) hängt am Hochladen
   und ist damit überholt.
 
+**Pipeline (7.10.2026, vom Anwender entschieden, Ziel 0.50).** Drei Stufen, der Zustand liegt im Bestand, nicht im Speicher:
+1. *Ordner aufnehmen* legt nur den Wurzelordner an.
+2. *Einlesen* gleicht ab: Fingerabdruck, Masse, Slicer-Daten, eingebettetes Bild. Immer nur eines; Wünsche währenddessen ergeben genau
+   ein weiteres. Es wartet nie auf den Worker, der pausiert solange. Eingang ist „dieser Ordner hat sich geändert“ — für alle Wurzeln
+   (Knopf ⟳) oder einen Teilbaum (eigene Dateiaktionen melden Quell- und Zielordner). Wer die Datei geändert hat, ist gleich.
+3. *Worker:* je Datei ein Auftrag (Vorschau, FreeCAD, kleine Bilder), wiederholbar, mit Zeitgrenze, nach zwei Fehlversuchen „Fehler“.
+Jede Stufe endet in fertig, abgebrochen oder Fehler mit Text. Die Oberfläche bekommt beim Verbinden und bei jeder Änderung den ganzen
+Stand; ältere Listenantworten werden verworfen; der Server blockiert nie (keine langen Arbeiten in der Ereignisschleife, Beenden mit
+Zeitgrenze).
+
+**Bedienung des Einlesens.** Zentral ist der Knopf ⟳ neben „Bibliothek“ (liest alle Ordner); im Importieren-Menü entfällt „neu
+einlesen“, dort bleibt „Ordner hinzufügen“. Kein Fenster: der Knopf dreht sich, neben „Bibliothek“ steht „liest ein …“; am Ende eine
+Meldung „3 neue Modelle“ mit „Zeigen“ (Ansicht Neu) bzw. „Nichts Neues – 8 980 Dateien geprüft“, Geändertes und Verschwundenes nur, wenn
+es das gibt. Das Ergebnis bleibt neben „Bibliothek“ stehen („gerade eben · 3 neu“). Vorschauen und FreeCAD zeigt die Anzeige beim Zahnrad.
+
+**Abnahmefall:** in FreeCAD speichern, ⟳ drücken, die Kachel steht nach wenigen Sekunden da, die Oberfläche bleibt bedienbar — auch beim
+zweiten Speichern derselben Datei, beim Drücken während FreeCAD noch schreibt, mehrfach schnell hintereinander, während der Worker rechnet,
+mit 9 000 Dateien und 4 s langsamen Antworten.
+
+**Explorer-Bedienung** (verschieben, umbenennen, hineinziehen, löschen) ist eine spätere eigene Schicht darüber: sichere Dateioperation,
+dann „Ordner geändert“. Die Pipeline liest nur und muss dafür nicht umgebaut werden. Automatische Überwachung wäre eine weitere Quelle
+derselben Meldung (Änderungszeit der Ordner abfragen, ohne fremde Pakete); offen, ob in 0.50 oder danach.
+
 ## 4. Druckhistorie, Referenz, Nochmal
 
 Der Kern von partAtlas. Aus eigener Erfahrung: acht Versuche, und keiner

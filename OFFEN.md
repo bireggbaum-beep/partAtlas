@@ -4,7 +4,7 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Befunde der Durchsicht entscheiden (Durchsicht 7.10.2026, Ziel 0.50)
+## Als Nächstes: Umbau der Pipeline, Schritt 1 (Durchsicht 7.10.2026, Ziel 0.50)
 
 Durchgesehen: alle Sonnet-Commits auf `main` (0.39 bis 0.46.3), Schwerpunkt Einlesen, Beenden, `start.sh`. Suiten auf `main` grün
 (test_scan 92/92, test_api 79/79, test_cad 14/14, test_ui 97/97) — keine prüft einen der Befunde unten. Planung des Anwenders in Capacities:
@@ -44,7 +44,16 @@ Repo (Capacities „Repo bereinigen“): `ccr-b2d020e3` ist ganz auf `main`; `cc
 `claude/intelligent-babbage-…`, `claude/intelligent-hawking-…` (Stand 1.–2.10.) mit vielen Commits, die inhaltlich nicht auf `main` sind —
 vor dem Löschen einzeln ansehen. Das Repo selbst ist 2 MB; aufgebläht ist eher diese Datei.
 
-Vorschlag Reihenfolge: 1, 2, 3, 5, 7 (je Aufwand 1) als Fassung für den Tester; dann Umbau §3.4 planen (4, 6, 8–10).
+**Entschieden (7.10.2026): robuste Pipeline nach KONZEPT §3.4 bis 0.50**, Schritt für Schritt, je ein Schritt pro Chat; nach jedem
+alle Suiten samt `test_ui`. Der Tester wird mit dem Hänger nicht weiter belastet: die Pipeline soll die Stellen nicht mehr haben, an
+denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeigt: Server und Einlesen fertig in 7 s, der Browser nicht).
+1. Endzustände garantiert, Beenden mit Zeitgrenze, keine langen Arbeiten in der Ereignisschleife, `start.sh` mit Zeitgrenze (Befunde 1, 2, 3, 5, 6, 7). Aufwand 2.
+2. Oberfläche: kein Einlesen-Fenster, Knopf ⟳ als einziger Weg mit Rückmeldung (§3.4), ganzer Stand beim Verbinden, ältere Listenantworten verwerfen,
+   nur geänderte Kacheln nachladen. Aufwand 2–3.
+3. Worker getrennt vom Einlesen, Warteschlange je Datei im Bestand; Einlesen eines Teilbaums. Aufwand 3–4.
+4. Hochladen als Bedienung raus (sicheres Ablegen bleibt im Code für den späteren Explorer), Ordner ziehen = hinzufügen. Aufwand 2–3.
+5. *Offen:* automatische Überwachung in 0.50 oder danach. Aufwand 2.
+Abnahmefall und Härtetest: KONZEPT §3.4.
 
 ## Zuerst wissen
 
