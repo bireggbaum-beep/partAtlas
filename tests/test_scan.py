@@ -252,14 +252,14 @@ if __name__ == "__main__":
     # Der erste Lauf wird nach seiner Arbeit angehalten: so liegt die neue
     # Datei sicher hinter ihm, ohne auf Zeiten zu wetten.
     import threading
-    halt, laeufe, echt = threading.Event(), [], s.lauf
+    halt, laeufe, echt = threading.Event(), [], s.einlesen
 
     def lauf_mit_halt():
         echt()
         laeufe.append(1)
         if len(laeufe) == 1:
             halt.wait(30)
-    s.lauf = lauf_mit_halt
+    s.einlesen = lauf_mit_halt
     s.starten()
     while not laeufe:
         threading.Event().wait(0.01)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     check("Zweiter Auftrag während eines Laufs wird angenommen, nicht verworfen", s.starten() is False)
     halt.set()
     s.warten(120)
-    s.lauf = echt
+    s.einlesen = echt
     check("… und der Nachlauf findet die Datei, die der erste Lauf schon hinter sich hatte",
           "Nachzuegler" in [m["name"] for m in k.modelle()])
 

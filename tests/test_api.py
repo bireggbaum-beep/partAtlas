@@ -320,13 +320,13 @@ if __name__ == "__main__":
     with TestClient(erstelle_app(be_pfad, prozesse=2)) as c:
         sc = c.app.state.zustand["scanner"]
 
-        def haengender_lauf(nur_cad=False):
+        def haengender_lauf():
             sc._stopp.clear()
             sc._setze(laeuft=True, phase="cad")
             while not sc._stopp.wait(0.05):
                 pass
             sc._setze(laeuft=False, abgebrochen=True, phase="abgebrochen")
-        sc.lauf = haengender_lauf
+        sc.einlesen = haengender_lauf
         sc.starten()
         while not sc.status.get("laeuft"):
             time.sleep(0.02)
