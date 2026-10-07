@@ -1449,6 +1449,14 @@ class Katalog:
         except OSError:
             self._zurueck(erledigt)
             raise
+        z = (d or {}).get("zuletzt_ort")
+        if not orte and z and self.wurzel_pfad(z["wurzel"]):
+            # Gelöscht, während die Datei schon fehlte (etwa nach „Ordner entfernen“): ohne gemerkten Ort. Liegt sie wieder, wo sie zuletzt
+            # lag, und ist gleich gross, gilt dieser Ort — sonst käme das Modell auf „Datei fehlt“, bis ein Einlesen es findet.
+            pfad = os.path.join(self.wurzel_pfad(z["wurzel"]), *z["pfad"].split("/"))
+            if os.path.isfile(pfad) and os.path.getsize(pfad) == z.get("groesse"):
+                st = os.stat(pfad)
+                orte.append({"wurzel": z["wurzel"], "pfad": z["pfad"], "groesse": st.st_size, "mtime": st.st_mtime})
         with self.db.transaction():
             self.db.restore_node(MODELL, mid)
             if h is not None:

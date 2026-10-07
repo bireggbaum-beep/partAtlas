@@ -730,6 +730,51 @@ if __name__ == "__main__":
           len(_si.liste(so_b.wurzel)) == so_vorher and so_k.wurzeln() == {})
     so_b.schliessen()
 
+    # -- Ordner entfernen, dann alle löschen, Ordner zurückholen, wiederherstellen (Ablauf des Anwenders, 8.10.2026): die Modelle wurden
+    # gelöscht, als ihre Datei schon fehlte, und hatten im Papierkorb keinen Ort mehr — sie kamen auf „Datei fehlt“ zurück
+    rz_tmp = tempfile.mkdtemp()
+    rz_dir = os.path.join(rz_tmp, "s")
+    os.makedirs(rz_dir)
+    for i in range(5):
+        muster.stl_binaer(os.path.join(rz_dir, f"Teil_{i}.stl"), 10 + i, 20, 30)
+    rz_b = Bestand(os.path.join(rz_tmp, "bestand"))
+    rz_k = Katalog(rz_b)
+    rz_w = rz_k.wurzel_hinzufuegen(rz_dir)
+    rz_s = Scanner(rz_b, rz_k, prozesse=2)
+    rz_s.lauf()
+    rz_ids = [m["id"] for m in rz_k.modelle()]
+
+    def rz_vorbereiten(ohne_zuletzt=False):
+        rz_k.wurzel_entfernen(rz_w)
+        if ohne_zuletzt:                       # so findet nur das Einlesen den Ort, nicht das Wiederherstellen
+            with rz_b.db.transaction():
+                for mid in rz_ids:
+                    rz_b.db.update_node("PART_GEOMETRY", rz_k.datei_von(mid), {"zuletzt_ort": None})
+        rz_k.loeschen_mit(rz_ids)
+        rz_k.wurzel_wiederherstellen(rz_w)
+    rz_vorbereiten()
+    rz_k.stapel("wiederherstellen", rz_ids)
+    check("Wiederherstellen ohne gemerkten Ort: die Datei liegt, wo sie zuletzt lag — sie ist sofort verbunden, nicht „Datei fehlt“",
+          len(rz_k.modelle()) == 5 and not any(m["fehlt"] for m in rz_k.modelle()))
+    # Dasselbe, aber wiederhergestellt mitten im Einlesen: was das Einlesen vorher als „Modell im Papierkorb“ vorgemerkt hatte, bekommt am
+    # Ende doch seinen Ort
+    rz_vorbereiten(ohne_zuletzt=True)
+    _status, rz_gefragt = rz_k.datei_status, []
+
+    def rz_status(h):
+        st = _status(h)
+        if not rz_gefragt:                     # beim ersten Fund während des Hashens stellt der Anwender alles wieder her
+            rz_gefragt.append(1)
+            for mid in rz_ids:
+                rz_k.wiederherstellen(mid)
+        return st
+    rz_k.datei_status = rz_status
+    rz_s.einlesen()
+    rz_k.datei_status = _status
+    check("Wiederhergestellt mitten im Einlesen: am Ende hat jedes Modell seinen Ort, keines bleibt auf „Datei fehlt“",
+          len(rz_k.modelle()) == 5 and not any(m["fehlt"] for m in rz_k.modelle()))
+    rz_b.schliessen()
+
     # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)
     kp_tmp = tempfile.mkdtemp()
     os.makedirs(os.path.join(kp_tmp, "s", "b"))

@@ -782,6 +782,12 @@ class Scanner(_Bahn):
                     if h:
                         self.k.ort_setzen(h, s[0], s[1], st.st_size, st.st_mtime)
             for h, s, st in zurueck:
+                # Inzwischen wiederhergestellt (der Anwender hat es während des Hashens getan): dann ist es ein lebendes Modell, und die Datei
+                # bekommt ihren Ort wie jede andere — sonst blieb es auf „Datei fehlt“ (beim Anwender 2100 von 8600).
+                if self.k.datei_status(h) == "lebt":
+                    with self.b.db.transaction():
+                        self.k.ort_setzen(h, s[0], s[1], st.st_size, st.st_mtime)
+                    continue
                 if self.k.aus_papierkorb_zurueck(h, s[0], s[1], st):
                     self._setze(zurueckgeholt=self.status["zurueckgeholt"] + 1)
                 else:

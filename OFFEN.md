@@ -68,6 +68,11 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   keine Sicherung (nur sein Eintrag ändert sich, und der ist zurückholbar); beim Anlegen keine Grössen mehr; jede Sicherung schreibt
   ihre Dauer ins Protokoll. Nebenbei: test_schutz kannte `Worker._cad` noch als `Scanner._cad` (seit Schritt 3 rot, nicht gelaufen).
   test_scan 108/108 (+1, Gegenprobe fällt), test_schutz 22/22, test_api 86/86.
+  **Ordner entfernen → alle löschen → Ordner zurückholen → mitten im Einlesen wiederherstellen (Anwender, 8.10.2026):** alle 8000 auf
+  „Datei fehlt“, 2100 blieben es. Zwei Fehler: (a) das Einlesen merkte Dateien als „Modell im Papierkorb“ vor und schrieb am Ende keinen
+  Ort, auch wenn das Modell inzwischen wiederhergestellt war — jetzt erneut geprüft, dann Ort gesetzt; (b) gelöscht, während die Datei
+  schon fehlte, hatte das Modell im Papierkorb keinen Ort — Wiederherstellen nimmt jetzt `zuletzt_ort`, wenn die Datei dort gleich gross
+  liegt. test_scan 110/110 (+2, beide Gegenproben fallen).
   **Vorschlag, nicht gebaut:** Sicherung über harte Verweise statt Kopien (flatgraph ersetzt Dateien immer über os.replace, ändert nie
   an Ort und Stelle — ein harter Verweis ist dann ein gültiger Stand, ohne Daten zu kopieren). Aufwand 2; dagegen: gilt nur, solange
   wirklich nichts an Ort und Stelle schreibt, auch partAtlas selbst (einstellungen.json, vault_text) — vorher prüfen.
