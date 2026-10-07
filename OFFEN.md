@@ -4,7 +4,11 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Umbau der Pipeline, Schritt 3 (Durchsicht 7.10.2026, Ziel 0.50)
+## Als Nächstes: Umbau der Pipeline, Schritt 4 (Durchsicht 7.10.2026, Ziel 0.50)
+
+Stand 0.49.0 auf Branch `claude/adoring-planck-q5kckw` (Schritte 1–3 erledigt, test_ui gekürzt). Nächster Chat: Schritt 4 unten
+(Hochladen als Bedienung raus, Ordner ins Fenster ziehen = Ordner hinzufügen), in kleinen Paketen (CLAUDE.md). Danach einmal alle
+Suiten samt test_ui, dann 0.50.
 
 Durchgesehen: alle Sonnet-Commits auf `main` (0.39 bis 0.46.3), Schwerpunkt Einlesen, Beenden, `start.sh`. Suiten auf `main` grün
 (test_scan 92/92, test_api 79/79, test_cad 14/14, test_ui 97/97) — keine prüft einen der Befunde unten. Planung des Anwenders in Capacities:
