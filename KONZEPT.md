@@ -273,6 +273,9 @@ Zeitgrenze).
 einlesen“, dort bleibt „Ordner hinzufügen“. Kein Fenster: der Knopf dreht sich, neben „Bibliothek“ steht „liest ein …“; am Ende eine
 Meldung „3 neue Modelle“ mit „Zeigen“ (Ansicht Neu) bzw. „Nichts Neues – 8 980 Dateien geprüft“, Geändertes und Verschwundenes nur, wenn
 es das gibt. Das Ergebnis bleibt neben „Bibliothek“ stehen („gerade eben · 3 neu“). Vorschauen und FreeCAD zeigt die Anzeige beim Zahnrad.
+Den Fortschritt — auch beim ersten Einlesen eines grossen Ordners — zeigt nur die kleine Anzeige unten links (entschieden 7.10.2026; ein
+grösseres, nicht blockierendes Feld ist verworfen, vorerst). Fenster bleiben nur für Fragen, die auf den Anwender warten: die Übersicht vor
+dem Hinzufügen eines Ordners und die Zusage für FCStd über FreeCAD.
 
 **Abnahmefall:** in FreeCAD speichern, ⟳ drücken, die Kachel steht nach wenigen Sekunden da, die Oberfläche bleibt bedienbar — auch beim
 zweiten Speichern derselben Datei, beim Drücken während FreeCAD noch schreibt, mehrfach schnell hintereinander, während der Worker rechnet,
