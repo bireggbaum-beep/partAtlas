@@ -516,37 +516,12 @@ async def oberflaeche(port):
         await pg.wait_for_selector(".karte .badge.entwurf", state="detached", timeout=5000)
         await suche("")
 
-        # -- Hochladen wie SecureSafe: erst die Liste, Häkchen weg = nicht übernommen; hineingezogene Ordner behalten ihre Struktur
-        hl = os.path.join(os.path.dirname(SAMMLUNG), "hochladen")
-        os.makedirs(hl, exist_ok=True)
-        for n, x in (("Nimm.stl", 51), ("Lass.stl", 52)):
-            muster.stl_binaer(os.path.join(hl, n), x, 12, 13)
-        open(os.path.join(hl, "Notiz.txt"), "w").write("kein Modell")
-        await pg.set_input_files("#datei-wahl", [os.path.join(hl, n) for n in ("Nimm.stl", "Lass.stl", "Notiz.txt")])
-        await pg.wait_for_selector("#dialog[open] .dl-liste")
-        zeilen = await pg.locator(".dl-zeile").count()
-        text = await pg.inner_text("#dialog")
-        await pg.locator(".dl-zeile", has_text="Lass.stl").locator("input").uncheck()
-        summe = await pg.inner_text("#dl-summe")
-        check("Hochladen: Liste mit Häkchen, Pfad und Grösse; andere Dateien nur gezählt; die Summe folgt den Häkchen",
-              zeilen == 2 and "kB" in text and "1 andere Datei" in text and summe.startswith("Ausgewählt: 1 von 2"))
-        await pg.click("#dl-weiter")
-        await pg.wait_for_selector("#dialog[open] #ordner-ziel")
-        await pg.click('#dialog button[value="ja"]')
-        await pg.wait_for_function("!document.querySelector('#toast').hidden && /neues? Modell/.test(document.querySelector('#toast').innerText)", timeout=60000)
-        check("… nur das Angehakte liegt danach im Ordner und ist eingelesen",
-              os.path.exists(os.path.join(SAMMLUNG, "Nimm.stl")) and not os.path.exists(os.path.join(SAMMLUNG, "Lass.stl"))
-              and await pg.locator("dialog[open]").count() == 0)
-        baum = await pg.evaluate("""async () => {
-          const datei = (name) => ({ name, isFile: true, isDirectory: false, file: (ok) => ok(new File(["x"], name)) });
-          const ordner = (name, kinder) => ({ name, isFile: false, isDirectory: true,
-            createReader: () => { let gelesen = false; return { readEntries: (ok) => { ok(gelesen ? [] : kinder); gelesen = true; } }; } });
-          const wurzel = ordner("Projekt", [ordner("Teile", [datei("a.stl")]), datei("b.txt"), ordner(".git", [datei("x.stl")])]);
-          const r = await abgelegtes({ items: [{ webkitGetAsEntry: () => wurzel }], files: [] });
-          return r.map((x) => [x.pfad, x.unterordner]);
-        }""")
-        check("Ordner hineingezogen: alles darin mit Unterordnern, versteckte Ordner bleiben draussen",
-              sorted(baum) == [["Projekt/Teile/a.stl", "Projekt/Teile"], ["Projekt/b.txt", "Projekt"]])
+        # Ein Entwurf für das Aufräumen (früher kam er übers Hochladen, das es seit 0.50 nicht mehr gibt)
+        muster.stl_binaer(os.path.join(SAMMLUNG, "Nimm.stl"), 51, 12, 13)
+        api(port, "/api/scan", {})
+        ende = time.time() + 60
+        while time.time() < ende and not any(x["name"] == "Nimm" for x in api(port, "/api/modelle")):
+            time.sleep(0.3)
         # -- Aufräumen: eigene Fläche unter Bereinigen, Gruppen mit Grund und Grösse, Auswahl mit Summe, Behalten
         nimm = next(x["id"] for x in api(port, "/api/modelle") if x["name"] == "Nimm")
         api(port, f"/api/modelle/{nimm}", {"entwurf": True}, "PATCH")

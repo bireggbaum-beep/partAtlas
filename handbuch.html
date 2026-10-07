@@ -185,17 +185,14 @@ td:first-child { white-space: nowrap; }
   <ul>
     <li><b>Ordner hinzufügen</b> (Knopf in der Kopfzeile): Ordner im Dialog auswählen oder den Pfad eingeben.</li>
     <li><b>Neu einlesen</b>: liest alle Ordner erneut; neue Dateien kommen dazu, Verschobenes wird wiedergefunden.</li>
-    <li><b>Hochladen</b>: Dateien per Ziehen in das Fenster ablegen; du wählst dann den Zielordner.</li>
   </ul>
   <p>Beim Einlesen entstehen Maße, Volumen und Gewicht (aus der Geometrie), ein Vorschaubild und — aus dem
   Dateinamen — vorgeschlagene Tags.</p>
-  <p>Vor dem Einlesen eines Ordners zeigt partAtlas, was kommt (Modelldateien je Format), und fragt. Danach zeigt ein Fenster den
-  Fortschritt („Eingelesen: 129 von 341“) und am Ende die Bilanz: neu je Format, Kopien, Bilder aus der Datei, was fehlt oder unlesbar
-  ist, wie lange es dauerte. Mit OK geht es weiter. Vorschaubilder und FreeCAD laufen danach im Hintergrund; den Stand zeigt eine
+  <p>Vor dem Einlesen eines Ordners zeigt partAtlas, was kommt (Modelldateien je Format), und fragt. Während des Einlesens dreht sich
+  ⟳ und neben „Bibliothek“ steht „liest ein …“; am Ende sagt eine Meldung, was dazukam („3 neue Modelle“, mit „Zeigen“). Vorschaubilder und FreeCAD laufen danach im Hintergrund; den Stand zeigt eine
   kleine Anzeige unten links beim Zahnrad.</p>
-  <p>Dateien oder ganze Ordner ins Fenster ziehen (oder Importieren › Hochladen): zuerst kommt eine Liste mit Pfad und Grösse. Häkchen weg
-  heisst, die Datei wird nicht übernommen; andere Dateien (Bilder, Texte) werden nur gezählt. Ein Archiv ist eine Zeile und kommt ganz.
-  Danach wählst du den Zielordner; die Unterordner eines hineingezogenen Ordners bleiben, wie sie sind, nichts wird überschrieben.</p>
+  <p>Hochladen gibt es nicht: die Dateien bleiben in den Ordnern, wo sie liegen. Was neu dazukommt, legst du im Dateimanager in einen
+  der Ordner und liest neu ein — oder du nimmst einen weiteren Ordner auf.</p>
   <div class="hinweis">Zum Ausprobieren ohne eigene Sammlung gibt es eine Demo mit erfundenen Modellen und
   Drucken: <code>./start.sh --demo</code>.</div>
 </section>

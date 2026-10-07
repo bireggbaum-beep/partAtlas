@@ -776,7 +776,7 @@ async function loeschenViele(modelle) {
   if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) { zustand.auswahl.clear(); waehle(null); }
 }
 
-// ---------------------------------------------------------------- Ordner wählen, Hochladen, Archive
+// ---------------------------------------------------------------- Ordner wählen, Archive
 
 async function ordnerWahl(titel, hinweis, vorwahl = "") {
   const liste = await api("/api/verzeichnisse");
@@ -792,119 +792,6 @@ async function ordnerWahl(titel, hinweis, vorwahl = "") {
     catch (e) { toast(e.message); return null; }
   }
   return ziel;
-}
-
-// Was übernommen werden kann: Modelle und Archive (wie das Dateifeld „Hochladen“). Alles andere wird nur gezählt.
-const UEBERNEHMBAR = /\.(3mf|stl|obj|step|stp|fcstd|zip|tar|gz|tgz|bz2|xz)$/i;
-const groesseText = (b) => (b < 1048576 ? `${zahl(b / 1024, 0)} kB` : `${zahl(b / 1048576, 1)} MB`);
-
-// Was hineingezogen wurde, als [{datei, pfad, unterordner}]. Ordner werden durchlaufen, versteckte (.name) bleiben aussen vor wie beim
-// Einlesen. `webkitGetAsEntry` muss noch im Drop-Ereignis laufen — deshalb zuerst, vor jedem await.
-function abgelegtes(dt) {
-  const eintraege = [...(dt.items || [])].map((i) => i.webkitGetAsEntry?.()).filter(Boolean);
-  if (!eintraege.some((e) => e.isDirectory)) return Promise.resolve([...dt.files].map((f) => ({ datei: f, pfad: f.name, unterordner: "" })));
-  return (async () => {
-    const aus = [];
-    async function lauf(e, ordner) {
-      if (e.name.startsWith(".")) return;
-      if (e.isFile) {
-        const f = await new Promise((ok, nein) => e.file(ok, nein));
-        aus.push({ datei: f, pfad: ordner ? `${ordner}/${f.name}` : f.name, unterordner: ordner });
-        return;
-      }
-      const leser = e.createReader(), hier = ordner ? `${ordner}/${e.name}` : e.name;
-      for (;;) {
-        const teil = await new Promise((ok, nein) => leser.readEntries(ok, nein));
-        if (!teil.length) break;
-        for (const x of teil) await lauf(x, hier);
-      }
-    }
-    for (const e of eintraege) await lauf(e, "");
-    return aus;
-  })();
-}
-
-// Wie in SecureSafe: erst die Liste, Häkchen weg = nicht übernehmen. Ein Archiv ist eine Zeile (sein Inhalt kommt ganz).
-async function dateiListe(eintraege) {
-  const liste = eintraege.filter((x) => UEBERNEHMBAR.test(x.datei.name) && !x.datei.name.startsWith("."))
-    .sort((a, b) => a.pfad.localeCompare(b.pfad, "de"));
-  const andere = eintraege.length - liste.length;
-  if (!liste.length) {
-    await dialog(`<h2>Nichts zu übernehmen</h2><p>Darin liegen keine Modelldateien (3MF, STL, OBJ, STEP, FCStd) und keine Archive.</p>
-      <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
-    return null;
-  }
-  const fertig = dialog(`<h2>${anzahl(liste.length)} ${liste.length === 1 ? "Datei" : "Dateien"} hinzufügen</h2>
-    <p class="dim">Häkchen weg = wird nicht übernommen. Archive kommen ganz und werden in einen Unterordner entpackt.</p>
-    <div class="dl-kopf"><label><input type="checkbox" id="dl-alle" checked> Alle</label><span id="dl-summe"></span></div>
-    <div class="dl-liste">${liste.map((x, i) => `<label class="dl-zeile"><input type="checkbox" data-dl="${i}" checked>
-      <span class="dl-pfad" title="${esc(x.pfad)}">${esc(x.pfad)}</span><span class="dl-groesse">${groesseText(x.datei.size)}</span></label>`).join("")}</div>
-    ${andere ? `<p class="dim">${anzahl(andere)} ${andere === 1 ? "andere Datei" : "andere Dateien"} (Bilder, Texte …) ${andere === 1 ? "wird" : "werden"} nicht übernommen.</p>` : ""}
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja" id="dl-weiter">Weiter</button></div>`);
-  $("#dialog").classList.add("breit");
-  dateiListeSumme(liste);
-  const a = await fertig;
-  $("#dialog").classList.remove("breit");
-  if (a !== "ja") return null;
-  return liste.filter((_, i) => $(`[data-dl="${i}"]`)?.checked);
-}
-
-function dateiListeSumme(liste) {
-  const kaesten = [...document.querySelectorAll("[data-dl]")];
-  const an = kaesten.filter((k) => k.checked);
-  const bytes = an.reduce((s, k) => s + liste[+k.dataset.dl].datei.size, 0);
-  $("#dl-summe").textContent = `Ausgewählt: ${anzahl(an.length)} von ${anzahl(kaesten.length)} · ${groesseText(bytes)}`;
-  $("#dl-alle").checked = an.length === kaesten.length;
-  $("#dl-alle").indeterminate = an.length > 0 && an.length < kaesten.length;
-  $("#dl-weiter").disabled = !an.length;
-  dateiListeSumme.liste = liste;
-}
-$("#dialog-inhalt").addEventListener("change", (e) => {
-  if (e.target.id === "dl-alle") document.querySelectorAll("[data-dl]").forEach((k) => { k.checked = e.target.checked; });
-  if (e.target.id === "dl-alle" || e.target.dataset?.dl != null) dateiListeSumme(dateiListeSumme.liste);
-});
-
-// Dateien oder hineingezogene Ordner hochladen: Liste → Zielordner → Hochladen mit Fortschritt im Einlesen-Fenster → Einlesen.
-async function hochladen(quelle) {
-  const eintraege = Array.isArray(quelle) ? quelle : [...quelle].map((f) => ({ datei: f, pfad: f.name, unterordner: "" }));
-  if (!eintraege.length) return;
-  const dateien = await dateiListe(eintraege);
-  if (!dateien?.length) return;
-  const je = {};
-  for (const x of dateien) { const e = (x.datei.name.match(/\.([^.]+)$/) || [, "?"])[1].toLowerCase(); je[e] = (je[e] || 0) + 1; }
-  const ordner = dateien.some((x) => x.unterordner);
-  const ziel = await ordnerWahl(`${anzahl(dateien.length)} ${dateien.length === 1 ? "Datei" : "Dateien"} hochladen — wohin?`,
-    `${formatListe(je)}.${ordner ? " Die Unterordner bleiben, wie sie sind." : ""} Nichts wird überschrieben.`, zustand.ordner);
-  if (!ziel) return;
-  let ok = 0, lauf = null;
-  const fehler = [];
-  einlesen.stopp = false;
-  einlesen.lauf = null;
-  if (!$("#einlesen").open) $("#einlesen").showModal();
-  for (const [i, x] of dateien.entries()) {
-    if (einlesen.stopp) break;
-    hochladenZeichnen(i, dateien.length, x.pfad);
-    try {
-      // Erst die letzte Datei stösst das Einlesen an: eines für alles, nicht eines je Datei (das bremste das Hochladen und zählte falsch).
-      const einlesenJetzt = i === dateien.length - 1 ? 1 : 0;
-      lauf = (await fetch(`/api/hochladen?ordner=${encodeURIComponent(ziel)}&name=${encodeURIComponent(x.datei.name)}&unterordner=${encodeURIComponent(x.unterordner)}&einlesen=${einlesenJetzt}`,
-        { method: "POST", body: x.datei })
-        .then(async (r) => { if (!r.ok) throw new Error((await r.json()).fehler); return (await r.json()).lauf; })) ?? lauf;
-      ok++;
-    } catch (e) { fehler.push(`${x.pfad}: ${e.message}`); }
-  }
-  if (fehler.length) toast(`${fehler.length} nicht hochgeladen: ${fehler[0]}`);
-  // Die letzte Datei startet das Einlesen. War sie selbst nicht hochladbar, aber andere schon, wird es hier nachgeholt.
-  if (!lauf && ok) { try { lauf = (await api("/api/scan", { method: "POST" })).lauf; } catch (e) { toast(e.message); } }
-  $("#einlesen").close();
-  einlesenGestartet(lauf);
-}
-
-function hochladenZeichnen(i, n, pfad) {
-  abgleichen($("#einlesen-inhalt"), `<h2>Hochladen</h2>
-    <div class="balken"><i style="width:${Math.round((i / n) * 100)}%"></i></div>
-    <p class="ein-zeile">Hochgeladen: <b>${anzahl(i)} von ${anzahl(n)}</b></p><p class="dim dl-pfad">${esc(pfad)}</p>
-    <div class="knoepfe"><button class="knopf" data-einlesen="hochladen-stopp">Abbrechen</button></div>`);
 }
 
 async function archiveEntpacken() {
@@ -1938,7 +1825,6 @@ $("#gruppierung").value = zustand.gruppierung;
     }
     case "import-knopf": $("#import-menu").hidden = !$("#import-menu").hidden; return;
     case "wurzel-neu": case "wurzel-neu-2": case "wurzel-neu-3": return wurzelNeu();
-    case "hochladen-knopf": $("#import-menu").hidden = true; return $("#datei-wahl").click();
     case "archive-knopf": return archiveEntpacken();
     case "verschieben": {
       const ziel = await ordnerWahl("Verschieben", "Die Datei wird auf der Platte verschoben. Nichts wird überschrieben.");
@@ -2018,7 +1904,6 @@ document.addEventListener("change", async (e) => {
     if (sid === "__neu") return sammlungNeu([id]);
     await api(`/api/sammlungen/${sid}/modelle`, { method: "POST", body: { modelle: [id] } }).catch((err) => toast(err.message));
   }
-  if (e.target.id === "datei-wahl") { const f = e.target.files; await hochladen(f); e.target.value = ""; return; }
   if (e.target.id === "bild-wahl" && e.target.files.length) {
     const dateien = [...e.target.files];
     e.target.value = "";
@@ -2179,7 +2064,7 @@ const formatListe = (je) => Object.entries(je || {}).sort((a, b) => b[1] - a[1])
 const sekunden = (s) => (s == null ? "" : s < 1 ? "unter 1 s" : s < 60 ? `${zahl(s, 1)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`);
 // stopp: Hochladen abbrechen. erwartet/seit: der Lauf, den ein Klick eben angestossen hat. gemeldet: der letzte Lauf, dessen Ende schon
 // gemeldet ist (null = noch unbekannt, beim ersten Stand vom Server gesetzt). ergebnis/titel: was neben „Bibliothek“ stehen bleibt.
-const einlesen = { stopp: false, erwartet: 0, seit: 0, gemeldet: null, ergebnis: "", titel: "" };
+const einlesen = { erwartet: 0, seit: 0, gemeldet: null, ergebnis: "", titel: "" };
 
 // Das Einlesen eines Laufs ist vorbei, sobald `einlesen_s` steht — danach rechnet derselbe Lauf nur noch Vorschaubilder und FreeCAD.
 const einlesenVorbei = (m) => !m.nur_cad && (m.einlesen_s != null || m.phase === "fehler" || !!m.abgebrochen || (!m.laeuft && m.phase === "fertig"));
@@ -2237,17 +2122,6 @@ function einlesenMelden(m) {
                 aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });
 }
 
-// Das Fenster #einlesen zeigt nur noch den Fortschritt beim Hochladen (entfällt mit KONZEPT §3.4, Schritt 4).
-$("#einlesen").addEventListener("click", (e) => {
-  if (e.target.closest("[data-einlesen]")?.dataset.einlesen === "hochladen-stopp") einlesen.stopp = true;
-});
-// Während das Fenster offen ist, wartet eine FCStd-Frage; danach kommt sie.
-$("#einlesen").addEventListener("close", () => {
-  const m = zustand.scan || {};
-  hintergrundZeichnen();
-  if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
-});
-
 // Klein beim Zahnrad: was gerade im Hintergrund läuft, mit Balken. Weg, sobald nichts mehr läuft.
 const SCHRITTE = { scan: [["hashen", "Dateien prüfen"], ["analysieren", "Einlesen"]],
                    worker: [["vorschau", "Vorschaubilder"], ["thumbs", "Kleine Bilder"], ["cad", "FreeCAD"]] };
@@ -2267,7 +2141,7 @@ function hintergrundZeichnen() {
   // Das Einlesen geht vor (kurz, der Anwender wartet darauf); läuft es nicht, die Hintergrundarbeit.
   const art = zustand.scan?.laeuft ? "scan" : zustand.worker?.laeuft ? "worker" : null;
   const m = art ? zustand[art] : {};
-  if (!art || $("#einlesen").open) { h.hidden = true; return; }
+  if (!art) { h.hidden = true; return; }
   let text, fertig = null, gesamt = null;
   if (m.abbricht) text = "Wird abgebrochen …";
   else if (m.phase === "suchen") text = "Einlesen: Ordner durchsuchen";
@@ -2337,7 +2211,7 @@ function liveScan(m) {
   hintergrundZeichnen();
   if (!zustand.modelle.length) zeichneLeer();
   abbrechenZeigen();
-  if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+  if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
 }
 
 // Der Worker (Vorschaubilder, kleine Bilder, FreeCAD) meldet sich getrennt vom Einlesen und läuft neben ihm.
@@ -2346,7 +2220,7 @@ function liveWorker(m) {
   zustand.worker = m;
   hintergrundZeichnen();
   abbrechenZeigen();
-  if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
+  if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
   // Am Ende der Runde einmal alles neu, was sich dabei nur Kachel für Kachel geändert hat (etwa die Sortierung nach Grösse).
   if (vorher.laeuft && !m.laeuft && (m.vorschauen_gesamt || m.cad_gesamt)) neuLaden();
 }
@@ -2440,7 +2314,7 @@ $("#nav-zurueck")?.addEventListener("click", () => history.back());
 $("#nav-vor")?.addEventListener("click", () => history.forward());
 navKnoepfe();
 
-// Dateien aus dem Dateimanager ins Fenster ziehen: hochladen.
+// Aus dem Dateimanager ins Fenster gezogen: Bilder auf Vorschau oder Druck; Modelldateien werden nicht hochgeladen (KONZEPT §3.4).
 let abwurfZaehler = 0;
 // Ein Bild aus der eigenen Leiste hat Dateityp „Files“, kommt aber nicht von
 // aussen — sonst entstünde vom Original eine Kopie als eigenes Bild.
@@ -2475,10 +2349,9 @@ window.addEventListener("drop", (e) => {
   // Auf die Galerie gezogen: Bilder zum Modell, keine neuen Modelldateien.
   if (e.target.closest?.("#i-galerie") && galerie.m && !galerie.m.papierkorb) return bilderHochladen(e.dataTransfer.files);
   if (dz) return druckBilderAblegen(dz.closest(".druck")?.dataset.druck || null, e.dataTransfer.files);
-  // Nur Bilder, aber nirgends, wo sie hingehören: nicht als Modelldatei einlesen wollen.
   const dateien = [...e.dataTransfer.files];
   if (dateien.length && dateien.every((f) => f.type.startsWith("image/"))) return toast("Bilder gehören auf die Vorschau oder auf einen Druck.");
-  abgelegtes(e.dataTransfer).then(hochladen).catch((err) => toast(err.message));
+  toast("Modelle bleiben, wo sie liegen: nimm den Ordner über Importieren › Ordner hinzufügen auf.");
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
 

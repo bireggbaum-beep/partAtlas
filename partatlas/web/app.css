@@ -841,14 +841,11 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .kopf .knopf, .logo { white-space: nowrap; }
 
 /* Einlesen (wie pDMS): Fenster mit Balken, danach Bilanz; Hintergrundarbeit klein beim Zahnrad */
-dialog.einlesen { width: min(460px, calc(100vw - 32px)); }
-.einlesen h2 { margin-top: 0; }
 .balken { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 12px 0 8px; }
 .balken i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width .3s ease; }
 .balken.unbestimmt i { width: 30% !important; animation: balken-wandern 1.2s ease-in-out infinite; }
 @keyframes balken-wandern { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
 .balken.klein { height: 4px; margin: 6px 0 0; }
-.ein-zeile { font-size: 14px; margin: 4px 0; }
 .bilanz { margin: 8px 0; padding-left: 18px; font-size: 13.5px; line-height: 1.6; }
 .hintergrund { position: fixed; left: calc(var(--s7) + 8px); bottom: 60px; z-index: 30; width: 240px; padding: 8px 10px; font-size: 12.5px;
                background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
@@ -857,14 +854,6 @@ dialog.einlesen { width: min(460px, calc(100vw - 32px)); }
 .hg-zeile { margin-top: 4px; font-size: 12px; line-height: 1.4; }
 
 /* Liste vor dem Hochladen (wie SecureSafe): Häkchen, Pfad, Grösse */
-.dl-kopf { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 4px; font-size: 13px; }
-.dl-liste { max-height: 46vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
-.dl-zeile { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 4px 8px; font-size: 13px;
-            border-bottom: 1px solid var(--line); cursor: pointer; }
-.dl-zeile:last-child { border-bottom: 0; }
-.dl-pfad { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.dl-groesse { font-family: var(--mono); color: var(--ink-3); font-size: 12px; }
-.dl-zeile input, .dl-kopf input { accent-color: var(--accent); }
 
 /* Entwurf: ein ruhiges Etikett, kein Alarm */
 .badge.entwurf { top: var(--s3); left: calc(var(--s3) + 14px); color: var(--ink-2); background: var(--panel); border: 1px dashed var(--line-strong); }

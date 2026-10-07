@@ -26,7 +26,6 @@
       <button class="knopf akzent" id="import-knopf">＋ Importieren ▾</button>
       <div class="menu" id="import-menu" hidden>
         <button id="wurzel-neu">Ordner hinzufügen …</button>
-        <button id="hochladen-knopf">Dateien hochladen …</button>
         <button id="archive-knopf">Archive entpacken …</button>
       </div>
     </div>
@@ -126,17 +125,15 @@
 
 <dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>
 <!-- Einlesen mit Fortschritt (wie pDMS): eigenes Fenster, damit eine Rückfrage (#dialog) es nicht ersetzt. -->
-<dialog id="einlesen" class="einlesen"><div id="einlesen-inhalt"></div></dialog>
 <!-- Was im Hintergrund läuft (Vorschaubilder, FreeCAD, Einlesen beim Start), klein beim Zahnrad. -->
 <div class="hintergrund" id="hintergrund" hidden></div>
 <!-- Zuordnen-Fenster (Tag, Material, Sammlung, Baugruppe) am Knopf der Auswahlleiste, siehe zuordnen.js -->
 <div class="zuordnen" id="zuordnen" hidden></div>
 <div class="toast" id="toast" hidden></div>
 <div class="menu kontext" id="kontext" hidden></div>
-<input type="file" id="datei-wahl" multiple hidden accept=".3mf,.stl,.obj,.step,.stp,.fcstd,.zip,.tar,.gz,.tgz,.bz2,.xz">
 <input type="file" id="druck-bild-wahl" hidden multiple accept="image/png,image/jpeg,image/webp">
 <input type="file" id="bild-wahl" hidden multiple accept="image/png,image/jpeg,image/webp">
-<div class="abwurf" id="abwurf" hidden>Dateien hier ablegen zum Hochladen</div>
+<div class="abwurf" id="abwurf" hidden>Bilder auf die Vorschau oder einen Druck ziehen</div>
 <script src="/web/app.js"></script>
 <script src="/web/baugruppen.js"></script>
 <script src="/web/aufraeumen.js"></script>
