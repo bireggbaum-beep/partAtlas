@@ -696,6 +696,17 @@ if __name__ == "__main__":
           "zwischen" in so2["B_Welle"]["tags"] and so2["A_Halter"]["favorit"] and not so2["C_Platte"]["favorit"]
           and sorted(gebaut) == sorted([so["B_Welle"]["id"], so["A_Halter"]["id"]]))
     so_k._kurz = _kurz
+    # Viele löschen: eine Transaktion je Gruppe, nicht je Modell (einzeln dauerte „alle 8 600 löschen“ unter Windows Minuten)
+    so_ids = [m["id"] for m in so_k.modelle()]
+    so_k._sichern_vor("entfernen")
+    _sichern, so_k._sichern_vor = so_k._sichern_vor, lambda was: None     # gesichert ist schon: gezählt wird nur das Löschen
+    schreibvorgaenge, _flush = [], so_k.db._flush_pending_writes
+    so_k.db._flush_pending_writes = lambda *a, **kw: (schreibvorgaenge.append(1), _flush(*a, **kw))[1]
+    so_fehler = so_k.loeschen_mit(so_ids)
+    so_k._sichern_vor = _sichern
+    so_k.db._flush_pending_writes = _flush
+    check("Drei Modelle löschen: alle weg, in einem Schreibvorgang statt dreien",
+          so_fehler == [] and so_k.modelle() == [] and len(schreibvorgaenge) == 1)
     so_b.schliessen()
 
     # -- Bilanz: inhaltsgleiche neue Dateien zählen als Kopien (die Übersicht nannte sie als Dateien, die Bilanz als ein Modell)

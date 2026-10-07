@@ -32,6 +32,10 @@ Teile (Aufwand 1–5, Reihenfolge noch vom Anwender zu bestätigen):
   Modell einzeln die Datenbank fragten). In meiner Messung (Linux, schneller) lief die Schlange nicht über. Behoben: `Verteiler.graph`
   fasst zusammen (höchstens alle 0,3 s eine Meldung `stapel`, je Verweis einmal); Vorschläge lesen Namen aus den Kacheln; „neu_laden“
   wartet auf eine laufende Liste. test_api 86/86 (+1, Gegenprobe fällt), test_baugruppen 48/48.
+  **Alle löschen (8600) hing ebenso** (Protokoll: /api/modelle 51 s, /api/zaehler 35 s): `loeschen_mit` schrieb je Modell eine eigene
+  Transaktion samt fsync. Jetzt je 200 eine (`LOESCHEN_GRUPPE`), dazwischen kommen andere Anfragen dran. test_scan 105/105 (+1, Gegenprobe
+  fällt), test_api 86/86. Nicht angesehen: andere Massenaktionen (Wiederherstellen vieler, Papierkorb leeren, Ordner entfernen) auf
+  dasselbe Muster prüfen; die Sicherung vor dem Löschen kostet bei grossem Bestand ebenfalls (nicht gemessen).
   **Nächstes:** erneuter Test des Anwenders; danach einmal alle Suiten samt test_ui, dann 0.50.
 - b) Oberfläche: Liste einmal laden, danach nur geänderte/neue Einträge nachreichen — kein Neuladen der ganzen Liste. Aufwand 3.
   **Gebaut (7.10.2026, 65f053d):** während etwas läuft, sammelt die Oberfläche die Verweise aus den Live-Meldungen und holt jede halbe

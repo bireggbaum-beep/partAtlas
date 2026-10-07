@@ -34,6 +34,9 @@ def ref(sammlung, kennung):
     return f"{sammlung}/{kennung}"
 
 
+LOESCHEN_GRUPPE = 200
+
+
 class Katalog:
     def __init__(self, bestand):
         self.b = bestand
@@ -1350,11 +1353,16 @@ class Katalog:
         if len(modelle) > 1 or tags or sammlungen:
             self._sichern_vor("entfernen")      # ein einzelnes Modell holt der Papierkorb zurück; mehrere und Mitgelöschtes die Sicherung
         fehler = []
-        for mid in modelle:
-            try:
-                self.loeschen(mid)
-            except (KatalogFehler, OSError) as e:
-                fehler.append({"id": mid, "fehler": str(e)})
+        # In Gruppen je eine Transaktion: einzeln kostete jedes Modell seinen fsync — „alle 8 600 löschen“ dauerte unter Windows Minuten,
+        # und jede andere Anfrage wartete dazwischen immer wieder (Protokoll des Anwenders: /api/modelle 51 s). Zwischen den Gruppen kommen
+        # andere Anfragen zum Zug. Nur Graph-Änderungen, die Dateien bleiben (siehe loeschen).
+        for i in range(0, len(modelle), LOESCHEN_GRUPPE):
+            with self.db.transaction():
+                for mid in modelle[i:i + LOESCHEN_GRUPPE]:
+                    try:
+                        self.loeschen(mid)
+                    except (KatalogFehler, OSError) as e:
+                        fehler.append({"id": mid, "fehler": str(e)})
         if tags or sammlungen:
             with self.db.transaction():
                 for t in tags:
