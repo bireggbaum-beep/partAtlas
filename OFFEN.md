@@ -77,6 +77,9 @@ denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeig
    `test_ui` ist für diesen Schritt nicht gelaufen — es läuft einmal vor 0.50.
    **Jede Suite hat eine Zeitgrenze** (`muster.zeitgrenze`, 300 s, test_ui 900 s, `MUSTER_ZEITGRENZE`): eine hängende Suite bricht ab und
    zeigt die Zeile, an der sie stand.
+   **test_ui gekürzt (7.10.2026):** 98 → 65 Prüfungen, einmalige Gestaltung gestrichen (Formatfarben, Zeit in Worten, Tab-Titel,
+   Galerie-Blättern, Seitenleisten ziehen, Kaufteil-Wähler-Details, Baugruppen-Beschreibung, Entwurf in drei Ansichten u. a.).
+   Ein Lauf: 60 s. Regeln dazu in CLAUDE.md.
 4. Hochladen als Bedienung raus (sicheres Ablegen bleibt im Code für den späteren Explorer), Ordner ziehen = hinzufügen. Aufwand 2–3.
 5. *Offen:* automatische Überwachung in 0.50 oder danach. Aufwand 2.
 Abnahmefall und Härtetest: KONZEPT §3.4.

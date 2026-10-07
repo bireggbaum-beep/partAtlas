@@ -25,7 +25,7 @@ def zeitgrenze(sekunden):
     faulthandler.dump_traceback_later(int(os.environ.get("MUSTER_ZEITGRENZE") or sekunden), exit=True)
 
 
-zeitgrenze(300)       # jede Suite ausser test_ui braucht deutlich unter einer Minute; test_ui setzt sich eine eigene
+zeitgrenze(120)       # jede Suite ausser test_ui braucht unter einer Minute; test_ui setzt sich eine eigene
 
 
 def check(name, bedingung):

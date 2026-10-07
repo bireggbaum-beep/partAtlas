@@ -7,6 +7,11 @@
   und deren Gegenprobe. Alle Suiten nur ab und zu (vor einer Fassung).
   `tests/test_ui.py` nur, wenn sich die Oberfläche geändert hat — sie
   startet Chromium und ist teuer.
+- **`test_ui.py` nie mehrfach hintereinander komplett** (Vorgabe des Anwenders, 7.10.2026): höchstens einmal je Fassung. Gegenproben
+  für Oberflächen-Prüfungen gezielt, nicht als ganze Suite. Prüfungen nur für Verhalten, das unbemerkt kaputtgehen kann — nicht für
+  einmalige Gestaltung (Farben, Abstände, Aufbau eines Panels).
+- **Jede Suite hat eine Zeitgrenze** (`muster.zeitgrenze`): hängt sie, bricht sie ab und zeigt die Zeile.
+- **Arbeit in kleinen Paketen:** vorher sagen, was und wie lange; nach spätestens ~10 Minuten anhalten und berichten.
 - **Eine Sache pro Antwort.** Nicht fünf Aspekte in einer Frage-Antwort
   bündeln; ein Verhalten durchdenken, bauen oder vorschlagen, dann das
   nächste.

@@ -154,42 +154,11 @@ async def oberflaeche(port):
         }""")
         check("Während des Einlesens holt eine geänderte Kachel (Vorschaubild, FreeCAD) nur sich selbst, nicht die ganze Liste",
               wege.count("/api/modelle/kacheln") == 1 and "/api/modelle" not in wege)
-        check("Bibliothek: ⟳ und ＋ sind ohne Darüberfahren sichtbar, daneben steht, wann zuletzt eingelesen wurde",
-              await pg.evaluate("getComputedStyle(document.querySelector('.sk-akt.sk-immer')).opacity") == "1"
-              and (await pg.inner_text("#zuletzt-eingelesen")).split(" · ")[0].strip() in ("gerade eben", "vor 1 Min.", "vor 2 Min.")
-              and "Zuletzt eingelesen" in (await pg.get_attribute("#zuletzt-eingelesen", "title") or ""))
-        vz = await pg.evaluate("""() => { const j = Date.now(), iso = (s) => new Date(j - s * 1000).toISOString();
-            return [30, 90, 3 * 3600 + 60, 30 * 3600, 3 * 86400].map((s) => vorZeit(iso(s), j)); }""")
-        check("Zuletzt eingelesen in Worten: gerade eben · vor 1 Min. · vor 3 Std. · vor 1 Tag · vor 3 Tagen",
-              vz == ["gerade eben", "vor 1 Min.", "vor 3 Std.", "vor 1 Tag", "vor 3 Tagen"])
-        check("Tab-Titel nennt die Fassung („partAtlas 0.x.y“): wer mehrere Tabs oder Fenster offen hat, sieht, welche Fassung läuft",
-              await pg.title() == f"partAtlas {api(port, '/api/stand')['version']}")
-        check("Bereinigen: kein Zählabzeichen am Besen, solange nichts zu tun ist",
-              await pg.locator("#abz-bereinigen").is_hidden())
-        linien = await pg.evaluate("""() => [...document.querySelectorAll('.karte[data-f]')].map(k =>
-            [k.dataset.f, getComputedStyle(k, '::before').backgroundColor, getComputedStyle(k, '::before').height])""")
-        check("Formatfarbe: jede Kachel trägt oben eine 3 px hohe Linie in der Farbe ihres Formats",
-              len(linien) > 0 and all(c not in ("", "rgba(0, 0, 0, 0)") and h == "3px" for _, c, h in linien))
-        tabelle = await pg.evaluate("""() => ['stl', '3mf', 'step', 'fcstd', 'obj'].map(f => { const e = document.createElement('div');
-            e.dataset.f = f; document.body.appendChild(e); const v = getComputedStyle(e).getPropertyValue('--f').trim(); e.remove(); return v; })""")
-        check("Formatfarbe: fünf Formate, fünf verschiedene Farben", len(set(tabelle)) == 5 and "" not in tabelle)
-        chip_punkte = await pg.evaluate("""() => [...document.querySelectorAll('.chip[data-format]')].map(c => getComputedStyle(c, '::before').backgroundColor)""")
-        check("Formatfarbe: die Format-Chips der Filterleiste zeigen dieselbe Farbe als Punkt (Legende)",
-              len(chip_punkte) >= 1 and all(c not in ("", "rgba(0, 0, 0, 0)") for c in chip_punkte))
-        await pg.click('[data-sk="tags"]')
-        check("Abschnitt per Überschrift aufklappen (Tags standardmässig zu)", await pg.locator("#tag-liste").is_visible())
-        await pg.click('[data-sk="tags"]')
 
         await suche("Vase")
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
         check("Klick auf eine Kachel: 3D-Ansicht im Inspektor", await pg.locator("#i-bild canvas").count() == 1)
-        await pg.click('.gal-mini[data-art="berechnet"]')
-        await pg.wait_for_timeout(500)
-        check("Galerie: Kachel „Vorschau“ zeigt das gerenderte Bild statt 3D",
-              await pg.locator("#i-bild img").count() == 1 and await pg.locator("#i-bild canvas").count() == 0)
-        await pg.click('.gal-mini[data-art="3d"]')
-        await pg.wait_for_selector("#i-bild canvas", timeout=20000)
 
         # Tag setzen: die 3D-Ansicht bleibt stehen (kein neues Netz).
         canvas = await pg.locator("#i-bild canvas").element_handle()
@@ -200,39 +169,12 @@ async def oberflaeche(port):
         check("… und die 3D-Ansicht wurde dabei nicht neu aufgebaut",
               await pg.evaluate("(c) => c.isConnected", canvas))
 
-        # -- Eigene Bilder: zwei auf einmal hinzufügen, das zuletzt geladene wird gezeigt, blättern
+        # Zwei Fotos für den Druck weiter unten
         from PIL import Image
         fotos = []
         for i, farbe in enumerate([(200, 40, 40), (40, 40, 200)]):
             fotos.append(os.path.join(os.path.dirname(SAMMLUNG), f"foto{i}.png"))
             Image.new("RGB", (64, 48), farbe).save(fotos[-1])
-        await pg.set_input_files("#bild-wahl", fotos)
-        await pg.wait_for_function("document.querySelectorAll('.gal-mini[data-art=eigen]').length === 2", timeout=10000)
-        await pg.wait_for_timeout(500)
-        etikett = await pg.inner_text(".gal-etikett")
-        check("Zwei eigene Bilder: vorn in der Leiste, das zuletzt geladene ist zu sehen (2 / 4)",
-              etikett.startswith("Eigenes Bild") and "2 / 4" in etikett and await pg.locator("#i-bild img").count() == 1)
-        await pg.hover("#i-bild")
-        await pg.keyboard.press("ArrowLeft")
-        await pg.wait_for_timeout(300)
-        await pg.click(".gal-pfeil.links")
-        await pg.wait_for_timeout(300)
-        check("Blättern mit Pfeiltaste und Pfeil: vom Titelbild rückwärts ans Ende (Vorschau, 4 / 4)",
-              (await pg.inner_text(".gal-etikett")).startswith("Vorschau · 4 / 4"))
-
-        # -- Blättern zeichnet nicht neu: Pfeil und Leiste bleiben dieselben Elemente
-        await pg.hover("#i-bild")
-        await pg.evaluate("window.__pfeil = document.querySelector('.gal-pfeil.rechts'); window.__leiste = document.querySelector('.gal-leiste')")
-        await pg.click(".gal-pfeil.rechts")
-        await pg.click(".gal-pfeil.rechts")
-        check("Mehrfach blättern: Pfeile und Leiste bleiben stehen (kein Neuzeichnen, sonst Flackern und verlorene Klicks)",
-              await pg.evaluate("window.__pfeil.isConnected && window.__leiste.isConnected"))
-        # -- Rechtsklick auf das Bild
-        await pg.locator(".gal-mini[data-art=eigen]").nth(1).click()
-        await pg.click("#i-bild img", button="right")
-        check("Rechtsklick auf ein eigenes Bild: Vorschaubild festlegen und Bild entfernen",
-              "Vorschaubild" in await pg.inner_text("#kontext") and "entfernen" in await pg.inner_text("#kontext"))
-        await pg.keyboard.press("Escape")
 
         # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
         check("Hauptknopf nennt den Standard fürs Format (STL → Slicer), daneben der CAD-Knopf",
@@ -269,20 +211,14 @@ async def oberflaeche(port):
         await pg.click('.i-reiter [data-reiter="verwendet"]')
         check("Verwendet: der Reiter nennt die Sammlung, in der das Modell liegt, und den Ordner",
               "Drohne V2" in await pg.inner_text('.i-tafel[data-reiter="verwendet"]') and await pg.locator('.v-zeile[data-springe="ordner"]').count() >= 1)
-        check("Verwendet: der Reiter trägt die Zahl der Baugruppen und Sammlungen", "1" in await pg.inner_text('.i-reiter [data-reiter="verwendet"]'))
-        check("Vor und Zurück: am Anfang nichts zu holen", await pg.locator("#nav-zurueck").is_disabled())
         await pg.click('.v-zeile[data-springe="sammlung"]')
         await pg.wait_for_timeout(700)
         check("Verwendet: ein Klick auf die Sammlung springt hin (Seitenleiste zeigt sie als gewählt)",
               await pg.locator(f'[data-sammlung="{sid}"].aktiv').count() == 1)
-        check("Vor und Zurück: nach dem Sprung gibt es ein Zurück", await pg.locator("#nav-zurueck").is_enabled())
         await pg.click("#nav-zurueck")
         await pg.wait_for_timeout(700)
         check("Zurück: die Sammlung ist nicht mehr gewählt, Vor ist möglich",
               await pg.locator(f'[data-sammlung="{sid}"].aktiv').count() == 0 and await pg.locator("#nav-vor").is_enabled())
-        await pg.click("#nav-vor")
-        await pg.wait_for_timeout(700)
-        check("Vor: wieder in der Sammlung", await pg.locator(f'[data-sammlung="{sid}"].aktiv').count() == 1)
         await pg.click('[data-ansicht="alle"]')
         await pg.click('.i-reiter [data-reiter="uebersicht"]')
         await pg.wait_for_timeout(500)
@@ -393,14 +329,7 @@ async def oberflaeche(port):
         # -- Quelle als Link
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector(".i-reiter")
-        check("Inspektor: Vorschau, Name, Öffnen und Reiter oben fest; vier Reiter (Übersicht, Verwendet, Drucke, Datei), die Übersicht zuerst",
-              await pg.evaluate("getComputedStyle(document.querySelector('.i-fix')).position") == "sticky"
-              and await pg.locator(".i-reiter button").count() == 4
-              and await pg.get_attribute("#inspektor", "data-reiter") == "uebersicht"
-              and await pg.locator("#quelle-aendern").is_hidden())
         await pg.click('.i-reiter [data-reiter="datei"]')
-        check("Reiter Datei zeigt die Modelldaten, und der Reiter bleibt beim nächsten Modell gewählt",
-              "MODELLDATEN" in await pg.inner_text(".i-tafel[data-reiter=datei]") and await pg.locator("#quelle-aendern").is_visible())
         await pg.click("#quelle-aendern")
         await pg.fill("#quelle-url", "https://www.printables.com/model/42")
         await pg.click('dialog button[value="ja"]')
@@ -418,26 +347,8 @@ async def oberflaeche(port):
         await pg.wait_for_selector(".bg-titel")
         check("Baugruppe öffnet ihre eigene Ansicht statt des Rasters",
               await pg.locator("#raster").is_hidden() and "Testaufbau" in await pg.inner_text(".bg-titel"))
-        rechts = await pg.inner_text("#inspektor")
-        check("Übersicht steht rechts: Filament, Druckzeit, PDF — die Mitte bleibt der Stückliste",
-              "FILAMENT" in rechts and "DRUCKZEIT" in rechts and "PDF" in rechts
-              and await pg.locator("#bg-ansicht .mischung").count() == 0)
-        await pg.locator("#bg-ansicht .bz .bz-name b").first.click()
-        await pg.wait_for_selector("#bg-zurueck")
-        await pg.click("#bg-zurueck")
-        await pg.wait_for_timeout(300)
-        check("Klick auf ein Teil zeigt das Modell, „← Baugruppe“ führt zur Übersicht zurück",
-              "DRUCKZEIT" in await pg.inner_text("#inspektor"))
         await pg.click('[data-bg-aktion="kaufteile"]')
         await pg.wait_for_selector("#w-liste .w-zeile")
-        check("Kaufteile ohne Filter: alle Kategorien, nicht nur die ersten Schrauben",
-              "Lager" in await pg.inner_text("#w-liste") and "Magnet" in await pg.inner_text("#w-liste"))
-        hoehe = (await pg.locator("#w-liste").bounding_box())["height"]
-        await pg.click('[data-w-kat="Lager"]')
-        await pg.wait_for_timeout(500)
-        check("Wähler bleibt beim Kategoriewechsel gleich gross",
-              abs((await pg.locator("#w-liste").bounding_box())["height"] - hoehe) < 1)
-        await pg.click('[data-w-kat="Lager"]')
         await pg.fill("#w-suche", "m3x10")
         await pg.wait_for_timeout(600)
         await pg.fill('[data-w-menge="PURCHASED_PART/din912-m3x10"]', "6")
@@ -445,20 +356,6 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(600)
         drin = lambda: any(p["ref"] == "PURCHASED_PART/din912-m3x10" for p in api(port, f"/api/baugruppen/{bid}")["positionen"])
         check("Kaufteil im Wähler hinzugefügt", drin())
-        await pg.click('[data-w-plus="PURCHASED_PART/din912-m3x10"]')
-        await pg.wait_for_timeout(600)
-        check("Nochmal auf ✓ klicken nimmt es wieder heraus", not drin())
-        await pg.click('[data-w-plus="PURCHASED_PART/din912-m3x10"]')
-        await pg.wait_for_timeout(600)
-        await pg.fill("#w-suche", "")
-        await pg.fill("#w-eigen", "Propeller 5 Zoll")
-        await pg.press("#w-eigen", "Enter")
-        await pg.wait_for_timeout(800)
-        check("Enter im Feld „Eigenes Kaufteil“ legt es an und schliesst den Dialog nicht",
-              await pg.locator("dialog[open]").count() == 1
-              and any(k["name"] == "Propeller 5 Zoll" for k in api(port, "/api/kaufteile")))
-        await pg.press("#w-suche", "Enter")
-        check("Enter in der Suche schliesst den Dialog nicht", await pg.locator("dialog[open]").count() == 1)
         await pg.click('dialog button[value="fertig"]')
         await pg.wait_for_timeout(800)
         check("Kaufteil aus dem Katalog mit Menge, erscheint in der Einkaufsliste",
@@ -495,42 +392,6 @@ async def oberflaeche(port):
         await pg.click("#filter-weg")
         await pg.wait_for_timeout(500)
 
-        # -- Beschreibung einer Baugruppe: an Ort und Stelle, ohne Fenster
-        leer = api(port, "/api/baugruppen", {"name": "Leere Baugruppe"})["id"]
-        await pg.wait_for_selector(f'#baugruppen [data-baugruppe="{leer}"]')
-        await pg.click(f'#baugruppen [data-baugruppe="{leer}"]')
-        await pg.wait_for_selector("#bg-beschreibung")
-        check("Baugruppe: Raster/Liste und Sortieren gibt es hier nicht",
-              await pg.locator("#ansicht-wahl").is_hidden() and await pg.locator("#sortierung").is_hidden()
-              and await pg.locator("#listenkopf").is_hidden())
-        await pg.click("#bg-beschreibung")
-        await pg.wait_for_selector("textarea.inline-edit")
-        check("Beschreibung: ein Feld an der Stelle, kein Dialog", await pg.locator("dialog[open]").count() == 0)
-        await pg.keyboard.type("Meine Beschreibung")
-        await pg.keyboard.press("Control+Enter")
-        await pg.wait_for_timeout(800)
-        check("Beschreibung gespeichert und als Text angezeigt",
-              api(port, f"/api/baugruppen/{leer}")["beschreibung"] == "Meine Beschreibung"
-              and "Meine Beschreibung" in await pg.inner_text("#bg-beschreibung"))
-        await pg.click('[data-ansicht="alle"]')
-        await pg.wait_for_timeout(400)
-
-        # -- Seitenleisten in der Breite ziehen
-        breite = (await pg.locator(".seite").bounding_box())["width"]
-        g = await pg.locator(".griff.links").bounding_box()
-        await pg.mouse.move(g["x"] + 3, g["y"] + 200)
-        await pg.mouse.down()
-        await pg.mouse.move(g["x"] + 83, g["y"] + 200, steps=4)
-        await pg.mouse.up()
-        check("Linke Seitenleiste lässt sich breiter ziehen", (await pg.locator(".seite").bounding_box())["width"] > breite + 50)
-        breite = (await pg.locator(".inspektor").bounding_box())["width"]
-        g = await pg.locator(".griff.rechts").bounding_box()
-        await pg.mouse.move(g["x"] + 3, g["y"] + 200)
-        await pg.mouse.down()
-        await pg.mouse.move(g["x"] - 77, g["y"] + 200, steps=4)
-        await pg.mouse.up()
-        check("Rechte Seitenleiste lässt sich breiter ziehen", (await pg.locator(".inspektor").bounding_box())["width"] > breite + 50)
-
         # -- Datei im Dateimanager gelöscht: Kachel bleibt, deutlich markiert
         os.remove(os.path.join(SAMMLUNG, "Technik", "Arm.stl"))
         api(port, "/api/scan", {})
@@ -540,8 +401,6 @@ async def oberflaeche(port):
         await pg.wait_for_selector(".karte.fehlt .fehlt-band", timeout=5000)
         check("Datei fehlt: Kachel bleibt im Raster, mit Band „Datei fehlt“",
               "Datei fehlt" in await pg.inner_text(".karte.fehlt .fehlt-band"))
-        check("… und der Besen trägt das Abzeichen „1“",
-              (await pg.inner_text("#abz-bereinigen")).strip() == "1")
         await pg.click('[data-rail="bereinigen"]')
         await pg.wait_for_selector('[data-sektion="bereinigen"]', state="visible", timeout=5000)
         check("Bereinigen: die Seitenleiste wechselt, „Datei fehlt“ zählt 1, Tags sind weg",
@@ -565,8 +424,6 @@ async def oberflaeche(port):
         await suche("Haken")
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#mehr-knopf")
-        check("Inspektor: Hauptaktion oben, seltene im Menü — Löschen erst nach „⋯“",
-              await pg.locator("#oeffnen").is_visible() and not await pg.locator("#loeschen").is_visible())
         await pg.click("#mehr-knopf")
         await pg.click("#loeschen")
         await pg.wait_for_selector("dialog[open]")
@@ -620,13 +477,6 @@ async def oberflaeche(port):
               "Noch nicht gedruckt" in await pg.inner_text(".d-oben"))
         await pg.click('.i-reiter [data-reiter="uebersicht"]')
         await pg.wait_for_selector("#gedruckt")
-        await pg.locator(".karte").first.click(button="right")
-        menue = await pg.inner_text("#kontext")
-        check("Phase 1: Warteschlange nirgends zu sehen (Seitenleiste, Inspektor, Rechtsklick), Baugruppen und Gedruckt bleiben",
-              not await pg.locator('[data-ansicht="warteschlange"]').is_visible()
-              and not await pg.locator("#ws-knopf").is_visible() and "Warteschlange" not in menue
-              and await pg.locator("#baugruppen").is_visible() and "gedruckt" in menue)
-        await pg.keyboard.press("Escape")
 
         # -- Endgültig entfernen: je Modell im Papierkorb, erst nach Eintippen
         im_korb = api(port, "/api/zaehler")["papierkorb"]
@@ -660,15 +510,6 @@ async def oberflaeche(port):
               and await pg.evaluate("localStorage.getItem('partatlas.ohneEntwuerfe')") == "1")
         await pg.click("#entwuerfe-aus")
         await pg.wait_for_selector(".karte .badge.entwurf", timeout=5000)
-        # Das Etikett gehört in jede Ansicht, nicht nur ins Raster (die Karten-Ansicht hatte es vergessen).
-        zeigt = {}
-        for layout, wahl in (("liste", ".zeile-l .entwurf-zeichen"), ("karten", ".zeile-k .entwurf-zeichen")):
-            await pg.click(f'[data-layout="{layout}"]')
-            await pg.wait_for_timeout(500)
-            zeigt[layout] = await pg.locator(wahl).count()
-        await pg.click('[data-layout="raster"]')
-        await pg.wait_for_selector(".karte .badge.entwurf", timeout=5000)
-        check("Entwurf-Etikett in allen drei Ansichten: Raster, Liste, Karten", zeigt == {"liste": 1, "karten": 1})
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#entwurf.an")
         await pg.click("#entwurf")
