@@ -2362,23 +2362,25 @@ function live() {
     einlesen.gemeldet = null;
     if (verbunden++) neuLaden();
   };
-  q.onmessage = (e) => {
-    const m = JSON.parse(e.data);
-    if (m.art === "scan") return liveScan(m);
-    if (m.art === "worker") return liveWorker(m);
-    if (m.art === "aktion") {                    // Löschen/Wiederherstellen vieler Modelle: Fortschritt unten links
-      if (m.laeuft && !zustand.aktion?.laeuft) m.beginn = Date.now(); else m.beginn = zustand.aktion?.beginn;
-      zustand.aktion = m;
-      return hintergrundZeichnen();
-    }
-    if (m.art === "neu_laden") {                 // zu viele Meldungen verpasst: alles neu — nach einer Liste, die noch unterwegs ist
-      nach.refs.clear();
-      if (ladeModelle.unterwegs) { ladeModelle.danach = neuLaden; return; }
-      return neuLaden();
-    }
-    if (m.art === "graph" && m.stapel) { m.stapel.forEach(liveAenderung); return; }     // der Server fasst Änderungen zusammen
-    liveAenderung(m);
-  };
+  q.onmessage = (e) => liveMeldung(JSON.parse(e.data));
+}
+
+// Eine Meldung vom Server (eigene Funktion: die Prüfungen speisen damit Meldungen ein wie der Server).
+function liveMeldung(m) {
+  if (m.art === "scan") return liveScan(m);
+  if (m.art === "worker") return liveWorker(m);
+  if (m.art === "aktion") {                    // Löschen/Wiederherstellen vieler Modelle: Fortschritt unten links
+    if (m.laeuft && !zustand.aktion?.laeuft) m.beginn = Date.now(); else m.beginn = zustand.aktion?.beginn;
+    zustand.aktion = m;
+    return hintergrundZeichnen();
+  }
+  if (m.art === "neu_laden") {                 // zu viele Meldungen verpasst: alles neu — nach einer Liste, die noch unterwegs ist
+    nach.refs.clear();
+    if (ladeModelle.unterwegs) { ladeModelle.danach = neuLaden; return; }
+    return neuLaden();
+  }
+  if (m.art === "graph" && m.stapel) { m.stapel.forEach(liveAenderung); return; }     // der Server fasst Änderungen zusammen
+  liveAenderung(m);
 }
 
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";

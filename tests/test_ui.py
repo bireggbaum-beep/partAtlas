@@ -103,8 +103,9 @@ async def oberflaeche(port):
         await pg.wait_for_timeout(500)
         # -- Bedienbarkeit während des Einlesens: nicht bei jeder Änderung die ganze Liste neu holen
         rl = await pg.evaluate("""async () => {
-            const orig = window.neuLaden, alt = zustand.scan; let n = 0;
-            window.neuLaden = () => { n++; };
+            // In einer Ansicht, die ganz lädt („Neu“); in den anderen wird nachgereicht (geprüft weiter unten).
+            const orig = window.neuLaden, alt = zustand.scan, ansicht = zustand.ansicht; let n = 0;
+            window.neuLaden = () => { n++; }; zustand.ansicht = "neu";
             clearTimeout(liveZeit); liveZeit = null; letztesLiveLaden = 0;       // ein Zeitgeber vom echten Einlesen davor ist noch offen
             LIVE_SCAN_MS = 400; zustand.scan = { laeuft: true };
             for (let i = 0; i < 20; i++) { liveAenderung({ ref: "x" }); await new Promise((r) => setTimeout(r, 50)); }   // eine Änderung alle 50 ms, 1 s lang
@@ -117,7 +118,7 @@ async def oberflaeche(port):
             const g = einlesen.gemeldet;
             const ohne = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 0, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
             const mitFunden = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 5, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 100 }); return n; })();
-            window.neuLaden = orig; zustand.scan = alt; LIVE_SCAN_MS = 5000; einlesen.gemeldet = g; einlesenZeichnen(alt || {}); $("#toast").hidden = true;
+            window.neuLaden = orig; zustand.scan = alt; zustand.ansicht = ansicht; LIVE_SCAN_MS = 5000; einlesen.gemeldet = g; einlesenZeichnen(alt || {}); $("#toast").hidden = true;
             return [waehrend, ohne, mitFunden, mit, sofort];
         }""")
         check("Beim Einlesen wird die Liste höchstens alle paar Sekunden neu geholt, nicht bei jeder Änderung (20 Änderungen in 1 s → 2 Neuladen bei 400 ms)",
@@ -139,7 +140,7 @@ async def oberflaeche(port):
             return zustand.modelle.length;
         }""")
         check("Kommt eine ältere Listenantwort nach einer neueren an, zeigt die Liste den Stand der neueren", n_alt > 0)
-        # -- Während des Einlesens holt eine geänderte Kachel nur sich selbst
+        # -- Während des Einlesens holt eine geänderte Kachel nur sich selbst (nachgereicht, auch aus einer Sammelmeldung des Servers)
         wege = await pg.evaluate("""async () => {
             const echt = api, wege = [], alt = zustand.scan;
             api = async (p, o) => { wege.push(p.split("?")[0]); return echt(p, o); };
@@ -149,11 +150,15 @@ async def oberflaeche(port):
             liveAenderung({ ereignis: "update_node", ref: `PART_GEOMETRY/${m.hash}` });
             liveAenderung({ ereignis: "update_node", ref: `MODEL_ASSET/${m.id}` });
             await new Promise((r) => setTimeout(r, 900));
+            const einzeln = wege.splice(0);
+            liveMeldung({ art: "graph", stapel: [{ ereignis: "update_node", ref: `MODEL_ASSET/${m.id}` }] });
+            await new Promise((r) => setTimeout(r, 900));
             api = echt; zustand.scan = alt; clearTimeout(liveZeit); liveZeit = null;
-            return wege;
+            return [einzeln, wege];
         }""")
-        check("Während des Einlesens holt eine geänderte Kachel (Vorschaubild, FreeCAD) nur sich selbst, nicht die ganze Liste",
-              wege.count("/api/modelle/kacheln") == 1 and "/api/modelle" not in wege)
+        check("Während des Einlesens holt eine geänderte Kachel (Vorschaubild, FreeCAD) nur sich selbst, nicht die ganze Liste — "
+              "auch aus einer Sammelmeldung des Servers",
+              wege[0] == ["/api/modelle/aenderungen"] and wege[1] == ["/api/modelle/aenderungen"])
 
         await suche("Vase")
         await pg.locator(".karte").first.click()

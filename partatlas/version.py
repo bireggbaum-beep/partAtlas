@@ -1,3 +1,3 @@
 # Dritte Stelle steigt mit jedem Commit unter partatlas/, zweite bei
 # sichtbarer Änderung an Oberfläche oder Bestand (wie in pDMS).
-VERSION = "0.49.0"
+VERSION = "0.50.0"

@@ -4,7 +4,20 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Zielbild „sofort da, Auslesen im Hintergrund“ (Anwender, 7.10.2026) — vor allem anderen
+## Stand: 0.50.0 auf `main` (8.10.2026, für den Tester)
+
+Pipeline nach KONZEPT §3.4: Einträge und Ordnerbaum sofort beim Einlesen, Auslesen/Vorschaubilder/FreeCAD im Hintergrund (schnelle Formate
+zuerst), Oberfläche bekommt nur Geändertes nachgereicht, bleibt in allen Phasen bedienbar; Hochladen und Ziehen ins Fenster entfernt;
+Massenaktionen (Löschen, Wiederherstellen, Behalten) gruppiert mit Anzeige unten links. Vom Anwender unter Windows mit ≈ 8600 Dateien
+getestet („Einlesen sieht jetzt sehr ok aus, bedienbar, verstehbar“); die letzten Behebungen (Abfragen unter einer Sperre, leerer Ordner
+ohne Sicherung, Wiederherstellen nach Ordner entfernen) sind nur hier nachgestellt, unter Windows noch nicht gesehen.
+Alle 14 Suiten grün: api 86, aufraeumen 13, baugruppen 48, cad 14, drucke 28, eigene 17, formate 25, sammlungen 18, scan 110, schutz 22,
+suche 26, verwalten 78, zuordnen 12; test_ui einmal komplett gelaufen (60/62 — die zwei fallenden beschrieben das alte Nachladen; neu
+gefasst und gezielt geprüft, 5/5, Gegenprobe fällt; nicht noch einmal komplett, CLAUDE.md).
+Offen danach: Gruppengrösse der Massenaktionen messen (200 ist geschätzt); Ordner entfernen mit vielen Dateien (eine grosse Transaktion);
+Sicherung über harte Verweise (Vorschlag); automatische Überwachung (Schritt 5).
+
+## Als Nächstes: Zielbild „sofort da, Auslesen im Hintergrund“ (Anwender, 7.10.2026) — erledigt in 0.50
 
 Test des Anwenders mit ≈ 8600 Dateien unter Windows: die Fassung 0.49 erfüllt sein Zielbild nicht. Gebaut war nur „Vorschaubilder und
 FreeCAD getrennt im Hintergrund“; das Einlesen liest weiterhin jede Datei ganz aus, bevor ihr Eintrag erscheint, und die Oberfläche lädt
@@ -97,7 +110,7 @@ Abnahme: mit einer grossen Sammlung (Werkzeug `werkzeuge/demo_sammlung.py` mit �
 
 ## Als Nächstes: Umbau der Pipeline, Schritt 4 (Durchsicht 7.10.2026, Ziel 0.50)
 
-Stand 0.49.0 auf Branch `claude/adoring-planck-q5kckw` (Schritte 1–3 erledigt, test_ui gekürzt). Schritt 4 erledigt; als Nächstes einmal alle Suiten samt test_ui, dann Härtetest §3.4
+Stand 0.49.0 (Schritte 1–3 erledigt, test_ui gekürzt). Schritt 4 erledigt; 0.50 siehe oben
 (Hochladen als Bedienung raus, Ordner ins Fenster ziehen = Ordner hinzufügen), in kleinen Paketen (CLAUDE.md). Danach einmal alle
 Suiten samt test_ui, dann 0.50.
 
