@@ -4,7 +4,7 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Umbau der Pipeline, Schritt 2 (Durchsicht 7.10.2026, Ziel 0.50)
+## Als Nächstes: Umbau der Pipeline, Schritt 3 (Durchsicht 7.10.2026, Ziel 0.50)
 
 Durchgesehen: alle Sonnet-Commits auf `main` (0.39 bis 0.46.3), Schwerpunkt Einlesen, Beenden, `start.sh`. Suiten auf `main` grün
 (test_scan 92/92, test_api 79/79, test_cad 14/14, test_ui 97/97) — keine prüft einen der Befunde unten. Planung des Anwenders in Capacities:
@@ -59,8 +59,15 @@ denen etwas hängen kann (Ursache bei ihm unbewiesen; sein Protokoll 0.46.3 zeig
    - `start.sh`: jede Abfrage mit `-m`; ein Server, der den Port hält, aber nicht antwortet, wird erkannt und nach Rückfrage beendet
      (notfalls `kill -9`).
    - Tests: test_scan +5, test_api +3, test_ui +1, jede mit Gegenprobe. Die 0.47.0 auf `ccr-97d3e8b3` kam nie auf `main`; diese ist eine andere.
-2. Oberfläche: kein Einlesen-Fenster, Knopf ⟳ als einziger Weg mit Rückmeldung (§3.4), ganzer Stand beim Verbinden, ältere Listenantworten verwerfen,
-   nur geänderte Kacheln nachladen. Aufwand 2–3.
+2. **Erledigt (0.48.0, 7.10.2026):** kein Einlesen-Fenster mehr (es zeigt nur noch den Fortschritt beim Hochladen, bis Schritt 4);
+   ⟳ dreht sich, neben „Bibliothek“ „liest ein …“, dann Meldung („3 neue Modelle“ mit „Zeigen“, „Nichts Neues – n Dateien geprüft“,
+   Hinweise mit Knopf nach Bereinigen) und das Ergebnis bleibt stehen. Im Importieren-Menü und oben rechts entfallen Einlesen bzw. Ergebniszeile.
+   - Neu gespeicherte Datei am selben Ort zählt als „geändert“, nicht „neu“ (Status `geaendert`).
+   - Ein Lauf beginnt mit EINER Statusmeldung (vorher zuerst nur die neue Nummer mit dem alten Ergebnis — Befund 9, beim Bauen gefunden).
+   - „Zuletzt eingelesen“ gilt ab Ende des Einlesens, nicht erst nach FreeCAD.
+   - Live-Verbindung schickt beim (Wieder-)Verbinden zuerst den ganzen Stand; ältere Antworten von Liste und Seitenleiste werden verworfen;
+     während des Einlesens lädt eine geänderte Kachel nur sich selbst (`/api/modelle/kacheln`).
+   - Tests: test_scan +3, test_api +2, test_ui +4 (Fenster-Prüfungen ersetzt), je mit Gegenprobe.
 3. Worker getrennt vom Einlesen, Warteschlange je Datei im Bestand; Einlesen eines Teilbaums. Aufwand 3–4.
 4. Hochladen als Bedienung raus (sicheres Ablegen bleibt im Code für den späteren Explorer), Ordner ziehen = hinzufügen. Aufwand 2–3.
 5. *Offen:* automatische Überwachung in 0.50 oder danach. Aufwand 2.

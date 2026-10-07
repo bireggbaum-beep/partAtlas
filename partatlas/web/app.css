@@ -61,7 +61,6 @@ button, input, select { font: inherit; color: inherit; }
         border-radius: 6px; box-shadow: var(--shadow); padding: 4px; min-width: 220px; }
 .menu button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 6px 10px; cursor: pointer; border-radius: 4px; }
 .menu button:hover { background: var(--panel-2); }
-.scan-status { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 
 .seite { grid-area: seite; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--line); padding: 10px 0 0; min-height: 0; }
 .seite > .suche-feld, .ans-leiste, .seite > div[data-ab-phase] { margin-left: 8px; margin-right: 8px; }
@@ -152,6 +151,12 @@ dialog input[type=text] { width: 100%; padding: 6px 8px; background: var(--bg); 
 dialog .knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
          padding: 8px 14px; border-radius: 6px; font-size: 13.5px; z-index: 50; }
+/* Knöpfe in der Meldung („Zeigen“, „Datei fehlt“): wie Links, in der Farbe der Meldung */
+.toast button { margin-left: 12px; padding: 0; background: none; border: 0; color: inherit; font: inherit; font-weight: 600;
+                text-decoration: underline; cursor: pointer; }
+/* ⟳ bei „Bibliothek“ dreht sich, solange eingelesen wird */
+#neu-einlesen-2.dreht { animation: einlesen-dreht 1s linear infinite; }
+@keyframes einlesen-dreht { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
   .griff { display: none; }
@@ -834,7 +839,6 @@ dialog { max-height: 92vh; overflow-y: auto; }
 .ow-ordner button, .ow-ziele button { flex: none; }
 /* Kopfzeile: Knopf und Fassung brechen nie um; die lange Einlese-Zeile kürzt sich selbst. */
 .kopf .knopf, .logo { white-space: nowrap; }
-.scan-status { min-width: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Einlesen (wie pDMS): Fenster mit Balken, danach Bilanz; Hintergrundarbeit klein beim Zahnrad */
 dialog.einlesen { width: min(460px, calc(100vw - 32px)); }

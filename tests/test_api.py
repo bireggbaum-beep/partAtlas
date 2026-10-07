@@ -333,6 +333,19 @@ if __name__ == "__main__":
         be_t0 = time.monotonic()
     be_dauer = time.monotonic() - be_t0
     check("Beenden während eines Laufs (etwa FreeCAD hängt): der Server ist in unter 10 s weg, nicht erst nach 30 s", be_dauer < 10)
+    # -- Einzelne Kacheln (während des Einlesens statt der ganzen Liste)
+    with TestClient(erstelle_app(os.path.join(tmp, "bestand_kacheln"), prozesse=2)) as c:
+        kw = os.path.join(tmp, "kacheln")
+        os.makedirs(kw)
+        for i, n in enumerate(("a", "b", "c")):
+            muster.stl_binaer(os.path.join(kw, n + ".stl"), 10 + i, 20, 30)      # verschiedener Inhalt: sonst ein Modell mit drei Orten
+        c.post("/api/wurzeln", json={"pfad": kw})
+        c.app.state.zustand["scanner"].warten(60)
+        alle = c.get("/api/modelle").json()
+        nur = c.get("/api/modelle/kacheln", params={"ids": f"{alle[1]['id']},gibtsnicht"}).json()
+    check("Kacheln einzeln: nur die gefragten, genau wie in der Liste; unbekannte fallen weg",
+          len(alle) == 3 and nur == [alle[1]])
+
     # -- Eine langsame Anfrage hält die anderen nicht auf (vorher liefen 46 Routen als `async def` mit synchroner Arbeit in der
     # Ereignisschleife: FreeCAD für eine eigene Komponente, der Dateidialog, jede Schreibanfrage, die auf das Einlesen wartete)
     import threading
@@ -374,8 +387,17 @@ if __name__ == "__main__":
                 break
             except OSError:
                 time.sleep(0.1)
-        tab = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/live", timeout=30)
-        tab.readline()
+        # Höchstens 3 s auf die erste Meldung warten: ohne den Stand beim Verbinden käme nur nach 20 s ein Wachhalte-Kommentar.
+        tab = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/live", timeout=3)
+        import json as _json
+        erste = {}
+        try:
+            zeile = ""
+            while not zeile.startswith("data:"):
+                zeile = tab.readline().decode()
+            erste = _json.loads(zeile[5:])
+        except OSError:
+            pass
         t0 = time.monotonic()
         server.send_signal(signal.SIGTERM)
         try:
@@ -387,6 +409,8 @@ if __name__ == "__main__":
         if server.poll() is None:
             server.kill()
     check("Beenden mit offenem Tab: der Server schliesst die Live-Verbindung und ist in unter 2 s weg", tab_dauer < 2)
+    check("Live-Verbindung: zuerst kommt der ganze Stand des Einlesens — eine Endmeldung, die in eine Verbindungslücke fiel, geht nicht verloren",
+          erste.get("art") == "scan" and "lauf" in erste)
 
     # -- Protokoll für den Tester ohne Terminal
     from partatlas import main as hauptmodul

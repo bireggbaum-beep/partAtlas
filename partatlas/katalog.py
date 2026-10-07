@@ -413,6 +413,16 @@ class Katalog:
         ordnen = lambda z: [{"name": k, "anzahl": v} for k, v in sorted(z.items(), key=lambda kv: (-kv[1], kv[0]))]
         return {"modelle": liste, "leiste": {"tags": ordnen(zaehl_t), "materialien": ordnen(zaehl_m)}}
 
+    def kacheln(self, ids):
+        """Die Kacheln dieser Modelle, ohne den Zwischenspeicher aller: während des Einlesens ist er nach jeder Änderung veraltet, und ihn
+        für drei Kacheln neu zu bauen kostete bei 9 000 Modellen jedes Mal die ganze Liste. Unbekannte und gelöschte fallen weg."""
+        aus = []
+        for mid in ids:
+            m = self.db.get_node(ref(MODELL, mid), readonly=True)
+            if m is not None:
+                aus.append(self._kurz(mid, m))
+        return aus
+
     def _kurz_alle(self):
         """Die Kacheln aller Modelle, zwischengespeichert, solange sich der Graph nicht ändert (`Bestand.generation`).
         Vorher baute jede Anfrage — Suche, Filter, Zähler — alle Kacheln neu: ca. 0,25 s bei 9 000 Modellen auf einer 2,8-GHz-Maschine,

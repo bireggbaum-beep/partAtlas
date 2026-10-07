@@ -64,12 +64,16 @@ class Verteiler:
     def graph(self, meldung):
         self.senden("graph", {k: meldung.get(k) for k in ("ereignis", "ref", "sammlung", "kantenart", "quelle", "ziel")})
 
-    async def strom(self):
+    async def strom(self, anfang=None):
+        """`anfang`: liefert die Meldungen, die ein Browser beim (Wieder-)Verbinden zuerst bekommt — den ganzen Stand, nicht nur, was sich
+        danach ändert. Sonst blieb eine Anzeige, deren Endmeldung in eine Verbindungslücke fiel, für immer bei „läuft“ stehen."""
         q = asyncio.Queue()
         with self._sperre:
             self._schlangen.add(q)
         try:
             yield "retry: 2000\n\n"
+            for art, daten in (anfang() if anfang else []):
+                yield f"data: {json.dumps({'art': art, **daten}, ensure_ascii=False, default=str)}\n\n"
             while True:
                 try:
                     text = await asyncio.wait_for(q.get(), timeout=20)

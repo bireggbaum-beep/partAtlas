@@ -74,22 +74,26 @@ async def oberflaeche(port):
         text = await pg.inner_text("#dialog")
         check("Vor dem Einlesen eine Übersicht: wie viele Modelldateien, je Format, mit Einlesen oder Abbrechen",
               "Modelldateien" in text and "STL" in text and await pg.locator('#dialog button[value="nein"]').count() == 1)
+        await pg.evaluate("""() => { window.__gedreht = false; new MutationObserver(() => {
+            if ($("#neu-einlesen-2").classList.contains("dreht")) window.__gedreht = true; }).observe($("#neu-einlesen-2"), { attributes: true }); }""")
         await pg.click('#dialog button[value="ja"]')
-        await pg.wait_for_selector("#einlesen[open] .balken")
-        await pg.wait_for_selector("#ein-ok", timeout=60000)
-        text = await pg.inner_text("#einlesen")
-        check("Einlesen im Fenster mit Balken; am Ende bleibt es mit der Bilanz stehen (neu, je Format, Dauer), bis man OK drückt",
-              "neu eingelesen" in text and "STL" in text and await pg.locator("#einlesen[open]").count() == 1)
-        await pg.click("#ein-ok")
-        check("OK schliesst das Fenster", await pg.locator("#einlesen[open]").count() == 0)
+        await pg.wait_for_function("!document.querySelector('#toast').hidden && document.querySelector('#toast').innerText.includes('neue Modelle')", timeout=60000)
+        text = await pg.inner_text("#toast")
+        check("Einlesen ohne Fenster: ⟳ dreht sich, am Ende eine Meldung mit der Zahl der neuen Modelle und „Zeigen“",
+              await pg.evaluate("window.__gedreht") and "3 neue Modelle" in text and "Zeigen" in text
+              and await pg.locator("dialog[open]").count() == 0)
+        await pg.wait_for_function("!document.querySelector('#neu-einlesen-2').classList.contains('dreht')")
+        check("Nach dem Einlesen steht das Ergebnis neben „Bibliothek“", "3 neu" in await pg.inner_text("#zuletzt-eingelesen"))
         fehlerbild = await pg.evaluate("""() => {
-            einlesen.lauf = 99; $("#einlesen").showModal();
-            einlesenZeichnen({ lauf: 99, laeuft: false, phase: "fehler", abbruch: "No space left on device" });
-            const r = { text: $("#einlesen-inhalt").innerText, ok: !!$("#ein-ok") };
-            $("#einlesen").close(); return r;
+            const g = einlesen.gemeldet;
+            einlesenZeichnen({ lauf: 98, laeuft: false, phase: "fehler", abbruch: "No space left on device" });
+            const r = { text: $("#toast").innerText, sichtbar: !$("#toast").hidden, zeile: $("#zuletzt-eingelesen").innerText,
+                        offen: !!document.querySelector("dialog[open]") };
+            einlesen.gemeldet = g; einlesenZeichnen(zustand.scan || {}); $("#toast").hidden = true;
+            return r;
         }""")
-        check("Einlesen an einem Fehler gescheitert: das Fenster nennt den Grund und hat OK, statt für immer zu warten",
-              fehlerbild["ok"] and "No space left" in fehlerbild["text"])
+        check("Einlesen an einem Fehler gescheitert: eine Meldung nennt den Grund, neben „Bibliothek“ steht „gescheitert“, kein Fenster wartet",
+              fehlerbild["sichtbar"] and "No space left" in fehlerbild["text"] and "gescheitert" in fehlerbild["zeile"] and not fehlerbild["offen"])
         await pg.wait_for_selector(".karte", timeout=60000)
         check("Ordner über den Dialog des Rechners gewählt: es wird eingelesen, die Kacheln kommen, die Seitenleiste ist vollständig",
               await pg.locator("text=SAMMLUNGEN").is_visible())
@@ -109,18 +113,49 @@ async def oberflaeche(port):
             const sofort = n;           // die erste Änderung nach einer Ruhepause lädt gleich, nicht erst nach LIVE_SCAN_MS
             await new Promise((r) => setTimeout(r, 600));
             const mit = zustand.modelle.length;
+            const g = einlesen.gemeldet;
             const ohne = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 0, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
-            const mitFunden = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 5, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 99 }); return n; })();
-            window.neuLaden = orig; zustand.scan = alt; LIVE_SCAN_MS = 5000;
+            const mitFunden = (() => { n = 0; liveScan({ art: "scan", laeuft: false, phase: "fertig", neu: 5, gefunden: mit, dauer_s: 1, einlesen_s: 1, lauf: 100 }); return n; })();
+            window.neuLaden = orig; zustand.scan = alt; LIVE_SCAN_MS = 5000; einlesen.gemeldet = g; einlesenZeichnen(alt || {}); $("#toast").hidden = true;
             return [waehrend, ohne, mitFunden, mit, sofort];
         }""")
         check("Beim Einlesen wird die Liste höchstens alle paar Sekunden neu geholt, nicht bei jeder Änderung (20 Änderungen in 1 s → 2 Neuladen bei 400 ms)",
               1 <= rl[0] <= 4)
         check("Die erste Änderung nach einer Ruhepause lädt sofort (kleiner Import: die Modelle erscheinen gleich, nicht erst nach 5 s)", rl[4] == 1)
         check("Ein Einlesen ohne Funde lädt am Ende nichts neu, eines mit Funden einmal", rl[3] > 0 and rl[1] == 0 and rl[2] == 1)
+        # -- Nur die neueste Listenantwort zählt (bei 9 000 Modellen dauert eine Liste Sekunden; eine ältere kam sonst über eine neuere)
+        n_alt = await pg.evaluate("""async () => {
+            const echt = api; let erste = true;
+            api = async (pfad, o) => {
+                if (erste && pfad.startsWith("/api/modelle?")) {
+                    erste = false; const r = await echt(pfad, o);
+                    await new Promise((z) => setTimeout(z, 800));
+                    return { modelle: [], leiste: r.leiste };        // die langsame, ältere Antwort: ein anderer Stand (keine Kacheln)
+                }
+                return echt(pfad, o);
+            };
+            try { await Promise.all([ladeModelle(), ladeModelle()]); } finally { api = echt; }
+            return zustand.modelle.length;
+        }""")
+        check("Kommt eine ältere Listenantwort nach einer neueren an, zeigt die Liste den Stand der neueren", n_alt > 0)
+        # -- Während des Einlesens holt eine geänderte Kachel nur sich selbst
+        wege = await pg.evaluate("""async () => {
+            const echt = api, wege = [], alt = zustand.scan;
+            api = async (p, o) => { wege.push(p.split("?")[0]); return echt(p, o); };
+            zustand.scan = { laeuft: true };
+            clearTimeout(liveZeit); liveZeit = null;
+            const m = zustand.modelle.find((x) => x.hash);
+            liveAenderung({ ereignis: "update_node", ref: `PART_GEOMETRY/${m.hash}` });
+            liveAenderung({ ereignis: "update_node", ref: `MODEL_ASSET/${m.id}` });
+            await new Promise((r) => setTimeout(r, 900));
+            api = echt; zustand.scan = alt; clearTimeout(liveZeit); liveZeit = null;
+            return wege;
+        }""")
+        check("Während des Einlesens holt eine geänderte Kachel (Vorschaubild, FreeCAD) nur sich selbst, nicht die ganze Liste",
+              wege.count("/api/modelle/kacheln") == 1 and "/api/modelle" not in wege)
         check("Bibliothek: ⟳ und ＋ sind ohne Darüberfahren sichtbar, daneben steht, wann zuletzt eingelesen wurde",
               await pg.evaluate("getComputedStyle(document.querySelector('.sk-akt.sk-immer')).opacity") == "1"
-              and (await pg.inner_text("#zuletzt-eingelesen")).strip() in ("gerade eben", "vor 1 Min.", "vor 2 Min.")
+              and (await pg.inner_text("#zuletzt-eingelesen")).split(" · ")[0].strip() in ("gerade eben", "vor 1 Min.", "vor 2 Min.")
               and "Zuletzt eingelesen" in (await pg.get_attribute("#zuletzt-eingelesen", "title") or ""))
         vz = await pg.evaluate("""() => { const j = Date.now(), iso = (s) => new Date(j - s * 1000).toISOString();
             return [30, 90, 3 * 3600 + 60, 30 * 3600, 3 * 86400].map((s) => vorZeit(iso(s), j)); }""")
@@ -656,11 +691,10 @@ async def oberflaeche(port):
         await pg.click("#dl-weiter")
         await pg.wait_for_selector("#dialog[open] #ordner-ziel")
         await pg.click('#dialog button[value="ja"]')
-        await pg.wait_for_selector("#ein-ok", timeout=60000)
+        await pg.wait_for_function("!document.querySelector('#toast').hidden && /neues? Modell/.test(document.querySelector('#toast').innerText)", timeout=60000)
         check("… nur das Angehakte liegt danach im Ordner und ist eingelesen",
               os.path.exists(os.path.join(SAMMLUNG, "Nimm.stl")) and not os.path.exists(os.path.join(SAMMLUNG, "Lass.stl"))
-              and "neu eingelesen" in await pg.inner_text("#einlesen"))
-        await pg.click("#ein-ok")
+              and await pg.locator("dialog[open]").count() == 0)
         baum = await pg.evaluate("""async () => {
           const datei = (name) => ({ name, isFile: true, isDirectory: false, file: (ok) => ok(new File(["x"], name)) });
           const ordner = (name, kinder) => ({ name, isFile: false, isDirectory: true,

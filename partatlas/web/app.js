@@ -98,12 +98,19 @@ async function api(pfad, optionen = {}) {
   return daten;
 }
 
-function toast(text) {
+// `aktionen`: [[Beschriftung, Aufruf]] — Knöpfe in der Meldung („Zeigen“). `dauer` in ms.
+function toast(text, { aktionen = [], dauer = 3500 } = {}) {
   const t = $("#toast");
   t.textContent = text;
+  for (const [was, aufruf] of aktionen) {
+    const k = document.createElement("button");
+    k.textContent = was;
+    k.onclick = () => { t.hidden = true; aufruf(); };
+    t.append(k);
+  }
   t.hidden = false;
   clearTimeout(toast.zeit);
-  toast.zeit = setTimeout(() => (t.hidden = true), 3500);
+  toast.zeit = setTimeout(() => (t.hidden = true), dauer);
 }
 
 const zahl = (x, stellen = 1) => x == null ? "–" : Number(x).toLocaleString("de-DE", { maximumFractionDigits: stellen });
@@ -211,7 +218,11 @@ async function ladeModelle() {
   const p = new URLSearchParams({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format,
                                   ansicht: zustand.ansicht, sammlung: zustand.sammlung, leiste: 1,
                                   tags: [...zustand.tags].join(","), material: [...zustand.material].join(",") });
+  // Nur die Antwort auf die neueste Anfrage zählt. Bei 9 000 Modellen dauert eine Liste Sekunden; kam eine ältere nach einer neueren an,
+  // zeigte sie einen anderen Stand (etwa die Kacheln eines anderen Ordners) als den, den die Oberfläche zu zeigen glaubte.
+  const nr = ladeModelle.nr = (ladeModelle.nr || 0) + 1;
   const { modelle: liste, leiste } = await api("/api/modelle?" + p);
+  if (nr !== ladeModelle.nr) return;
   zeichneLeiste(leiste);
   const s = (zustand.sammlung || zustand.ansicht === "warteschlange") ? "eigene" : zustand.sortierung;
   if (s === "neu") liste.sort((a, b) => (b.angelegt || "").localeCompare(a.angelegt || ""));
@@ -223,6 +234,9 @@ async function ladeModelle() {
   const g = gruppiere(sichtbar);
   zustand.modelle = g.liste;
   zustand.gruppen = g.gruppen;
+  // Für das Nachladen einzelner Kacheln (teilLaden): wo steht ein Modell, zu welchem gehört eine Datei.
+  zustand.idIndex = new Map(g.liste.map((x, i) => [x?.id, i]));
+  zustand.hashId = new Map(g.liste.filter((x) => x?.hash).map((x) => [x.hash, x.id]));
   zeichneLeiste(leiste);
   zeichneFilterzeile();
   zeichneStapel();
@@ -232,9 +246,11 @@ async function ladeModelle() {
 }
 
 async function ladeSeite() {
+  const nr = ladeSeite.nr = (ladeSeite.nr || 0) + 1;     // wie bei ladeModelle: nur die neueste Antwort zählt
   const [z, ordner, tags, sammlungen, ws, entfernt] = await Promise.all([api("/api/zaehler"), api("/api/ordner"), api("/api/tags"),
                                                               api("/api/sammlungen"), api("/api/warteschlange"),
                                                               api("/api/wurzeln/entfernt").catch(() => [])]);   // ein älterer Server kennt den Endpunkt nicht: die Seite muss trotzdem aufgehen
+  if (nr !== ladeSeite.nr) return;
   zustand.entfernteWurzeln = entfernt;
   // Der Willkommensschirm gehört in einen wirklich leeren Katalog. Sind alle Ordner entfernt, die Modelle aber noch da (als „Datei fehlt“),
   // wäre er falsch: er versteckt Bereinigen und lässt aussehen, als sei alles weg.
@@ -668,7 +684,7 @@ async function dateiSuchen() {
     <p class="dim">Alle anderen Modelle in diesem Ordner kommen dabei ebenfalls in den Katalog.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Ordner hinzufügen</button></div>`);
   if (a !== "ja") return;
-  try { einlesenZeigen((await api("/api/wurzeln", { method: "POST", body: { pfad: r.pfad } })).lauf, "Ordner einlesen"); }
+  try { einlesenGestartet((await api("/api/wurzeln", { method: "POST", body: { pfad: r.pfad } })).lauf); }
   catch (e) { toast(e.message); }
 }
 
@@ -747,7 +763,7 @@ document.addEventListener("click", async (e) => {
   if (zurueck) {
     try {
       const r = await api(`/api/wurzeln/${encodeURIComponent(zurueck.dataset.wurzelZurueck)}/wiederherstellen`, { method: "POST" });
-      einlesenZeigen(r.lauf, "Ordner wieder einlesen");
+      einlesenGestartet(r.lauf);
       await ladeSeite();
       neuLaden();
     } catch (err) { toast(err.message); }
@@ -880,8 +896,8 @@ async function hochladen(quelle) {
   if (fehler.length) toast(`${fehler.length} nicht hochgeladen: ${fehler[0]}`);
   // Die letzte Datei startet das Einlesen. War sie selbst nicht hochladbar, aber andere schon, wird es hier nachgeholt.
   if (!lauf && ok) { try { lauf = (await api("/api/scan", { method: "POST" })).lauf; } catch (e) { toast(e.message); } }
-  if (lauf) einlesenZeigen(lauf, `${anzahl(ok)} ${ok === 1 ? "Datei" : "Dateien"} einlesen`);
-  else $("#einlesen").close();
+  $("#einlesen").close();
+  einlesenGestartet(lauf);
 }
 
 function hochladenZeichnen(i, n, pfad) {
@@ -906,7 +922,7 @@ async function archiveEntpacken() {
     try { const r = await api("/api/archive/entpacken", { method: "POST", body: { id } }); n += r.entpackt; lauf = r.lauf; }
     catch (e) { toast(`${id}: ${e.message}`); }
   }
-  einlesenZeigen(lauf, `${anzahl(n)} entpackte Dateien einlesen`);
+  einlesenGestartet(lauf);
 }
 
 // ---------------------------------------------------------------- Inspektor
@@ -1713,7 +1729,7 @@ async function wurzelNeu() {
     zustand.hatWurzeln = true;
     zeichneLeer();
     ladeSeite();
-    einlesenZeigen(r.lauf, "Ordner einlesen");
+    einlesenGestartet(r.lauf);
   } catch (e) { toast(e.message); }
 }
 
@@ -1937,10 +1953,10 @@ $("#gruppierung").value = zustand.gruppierung;
       if (a === "ja") await aendern(id, { quelle_url: $("#quelle-url").value });
       return;
     }
-    case "neu-einlesen": case "neu-einlesen-2": {
+    case "neu-einlesen-2": {
       $("#import-menu").hidden = true;
       const r = await api("/api/scan", { method: "POST" });
-      return einlesenZeigen(r.lauf, "Neu einlesen");
+      return einlesenGestartet(r.lauf);
     }
     case "gedruckt": {
       // Mit Drucken führt der Knopf zu ihnen; ohne legt er einen leeren an.
@@ -2150,93 +2166,83 @@ function vorSetzen(liste, wer, vor) {
   return ohne;
 }
 
-// ---------------------------------------------------------------- Einlesen sichtbar machen (wie pDMS)
+// ---------------------------------------------------------------- Einlesen: der Knopf ⟳ bei „Bibliothek“ (KONZEPT §3.4)
 //
-// Vorher eine Übersicht (was kommt), während des Einlesens ein Fenster mit Balken und „129 von 341“, am Ende bleibt es mit der Bilanz
-// stehen, bis man OK drückt. Was danach noch läuft (Vorschaubilder, FreeCAD), zeigt eine kleine Anzeige beim Zahnrad. Vorher lief das
-// alles unsichtbar: eine Zeile oben rechts und eine Meldung, die nach Sekunden verschwand.
+// Kein Fenster: der Knopf dreht sich, neben „Bibliothek“ steht „liest ein …“, den Fortschritt zeigt die kleine Anzeige unten links.
+// Am Ende eine kurze Meldung („3 neue Modelle“, mit „Zeigen“); das Ergebnis bleibt neben „Bibliothek“ stehen. Vorher wartete ein Fenster
+// über allem auf das Ende genau eines Laufs — blieb diese Meldung aus (Fehler, Verbindungslücke), stand die ganze Oberfläche.
 
 const FORMATNAME = { stl: "STL", "3mf": "3MF", obj: "OBJ", step: "STEP", fcstd: "FCStd" };
 const anzahl = (n) => Number(n || 0).toLocaleString("de-DE");
 const formatListe = (je) => Object.entries(je || {}).sort((a, b) => b[1] - a[1])
   .map(([f, n]) => `${anzahl(n)} ${FORMATNAME[f] || f.toUpperCase()}`).join(" · ");
 const sekunden = (s) => (s == null ? "" : s < 1 ? "unter 1 s" : s < 60 ? `${zahl(s, 1)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`);
-const einlesen = { lauf: null, titel: "" };
+// stopp: Hochladen abbrechen. erwartet/seit: der Lauf, den ein Klick eben angestossen hat. gemeldet: der letzte Lauf, dessen Ende schon
+// gemeldet ist (null = noch unbekannt, beim ersten Stand vom Server gesetzt). ergebnis/titel: was neben „Bibliothek“ stehen bleibt.
+const einlesen = { stopp: false, erwartet: 0, seit: 0, gemeldet: null, ergebnis: "", titel: "" };
 
-// `lauf`: die Nummer, die der Server beim Starten zurückgibt — der Dialog folgt genau diesem Lauf.
-function einlesenZeigen(lauf, titel = "Einlesen") {
+// Das Einlesen eines Laufs ist vorbei, sobald `einlesen_s` steht — danach rechnet derselbe Lauf nur noch Vorschaubilder und FreeCAD.
+const einlesenVorbei = (m) => !m.nur_cad && (m.einlesen_s != null || m.phase === "fehler" || !!m.abgebrochen || (!m.laeuft && m.phase === "fertig"));
+const liestEin = (m) => !!(m.laeuft && !m.nur_cad && m.einlesen_s == null);
+// Gleich nach dem Klick drehen, nicht erst mit der ersten Meldung des Servers — aber höchstens kurz ohne Bestätigung von ihm.
+const einlesenAngestossen = (m) => einlesen.erwartet > (m.lauf || 0) && Date.now() - einlesen.seit < 3000;
+
+function einlesenGestartet(lauf) {
   if (!lauf) return;
-  Object.assign(einlesen, { lauf, titel });
-  $("#einlesen-inhalt")._html = null;
-  if (!$("#einlesen").open) $("#einlesen").showModal();
+  einlesen.erwartet = Math.max(einlesen.erwartet, lauf);
+  einlesen.seit = Date.now();
   einlesenZeichnen(zustand.scan || {});
-  hintergrundZeichnen(zustand.scan || {});
+  setTimeout(() => einlesenZeichnen(zustand.scan || {}), 3100);
 }
 
 function einlesenZeichnen(m) {
-  if (!$("#einlesen").open || einlesen.lauf == null) return;
-  const meiner = (m.lauf || 0) >= einlesen.lauf;
-  const fehler = meiner && m.phase === "fehler";
-  const fertig = meiner && (m.einlesen_s != null || m.abgebrochen || fehler || (!m.laeuft && m.phase === "fertig" && !m.nur_cad));
-  let anteil = null, zeile, unten = "";
-  if (!meiner) zeile = "Wartet, bis das laufende Einlesen fertig ist …";
-  else if (fehler) { anteil = 1; zeile = `Das Einlesen ist an einem Fehler gescheitert: ${esc(m.abbruch || "unbekannt")}`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog. Näheres steht im Protokoll.</p>`; }
-  else if (m.abgebrochen) { anteil = 1; zeile = `Abgebrochen nach ${sekunden(m.dauer_s)}.`; unten = `<p class="dim">Was schon eingelesen war, bleibt im Katalog.</p>`; }
-  else if (fertig) { anteil = 1; zeile = bilanzKopf(m); unten = bilanz(m); }
-  else if (m.phase === "suchen") zeile = "Ordner durchsuchen …";
-  else if (m.phase === "hashen") {
-    anteil = m.zu_pruefen ? m.geprueft / m.zu_pruefen : 1;
-    zeile = `Dateien prüfen: <b>${anzahl(m.geprueft)} von ${anzahl(m.zu_pruefen)}</b>`;
-    unten = `<p class="dim">Neue und geänderte Dateien erkennen.</p>`;
-  } else {
-    anteil = m.zu_analysieren ? m.analysiert / m.zu_analysieren : 1;
-    zeile = `Eingelesen: <b>${anzahl(m.analysiert)} von ${anzahl(m.zu_analysieren)}</b>`;
-    unten = `<p class="dim">Masse, Material und Vorschaubild aus jeder Datei lesen.</p>`;
+  const dreht = liestEin(m) || einlesenAngestossen(m);
+  const knopf = $("#neu-einlesen-2");
+  knopf.classList.toggle("dreht", dreht);
+  knopf.title = dreht ? "Liest ein …" : "Alle Ordner neu einlesen";
+  const lauf = m.lauf || 0;
+  if (einlesen.gemeldet == null) einlesen.gemeldet = einlesenVorbei(m) ? lauf : lauf - 1;      // ein Ergebnis von vor dem Laden nicht melden
+  if (einlesenVorbei(m)) {
+    einlesen.ergebnis = m.phase === "fehler" ? "gescheitert" : m.abgebrochen ? "abgebrochen"
+      : m.neu ? `${anzahl(m.neu)} neu` : m.geaendert ? `${anzahl(m.geaendert)} geändert` : "nichts Neues";
+    einlesen.titel = scanErgebnis(m);
+    if (lauf > einlesen.gemeldet) {
+      einlesen.gemeldet = lauf;
+      einlesenMelden(m);
+      if (scanHatVeraendert(m)) neuLaden();       // die neuen Kacheln jetzt, nicht erst nach Vorschaubildern und FreeCAD
+    }
   }
-  const balken = `<div class="balken ${anteil == null ? "unbestimmt" : ""}"><i style="width:${Math.round((anteil ?? 0.3) * 100)}%"></i></div>`;
-  const knoepfe = fertig || m.abgebrochen
-    ? `<button class="knopf akzent" data-einlesen="ok" id="ein-ok">OK</button>`
-    : `<button class="knopf" data-einlesen="abbrechen">Abbrechen</button>`;
-  abgleichen($("#einlesen-inhalt"), `<h2>${esc(einlesen.titel)}</h2>${balken}<p class="ein-zeile">${zeile}</p>${unten}<div class="knoepfe">${knoepfe}</div>`);
-  if (fertig && $("#ein-ok") && document.activeElement !== $("#ein-ok")) $("#ein-ok").focus();
+  zuletztZeigen();
 }
 
-function bilanzKopf(m) {
-  if (!m.neu) return `Fertig in ${sekunden(m.einlesen_s ?? m.dauer_s)}. <b>Nichts Neues</b> — alle ${anzahl(m.gefunden)} Dateien sind schon im Katalog.`;
-  return `<b>${anzahl(m.neu)} ${m.neu === 1 ? "Modell" : "Modelle"} neu eingelesen</b> in ${sekunden(m.einlesen_s ?? m.dauer_s)}`;
+// Eine Meldung, die von selbst verschwindet. Was zu tun bleibt, hat einen Knopf dorthin.
+function einlesenMelden(m) {
+  if (m.phase === "fehler") return toast(`Einlesen gescheitert: ${m.abbruch || "unbekannter Fehler"}. Was schon eingelesen war, bleibt im Katalog.`, { dauer: 10000 });
+  if (m.abgebrochen) return toast("Einlesen abgebrochen. Was schon eingelesen war, bleibt im Katalog.");
+  const modelle = (n) => `${anzahl(n)} ${n === 1 ? "Modell" : "Modelle"}`;
+  const teile = [m.neu ? `${anzahl(m.neu)} ${m.neu === 1 ? "neues Modell" : "neue Modelle"}`
+    : m.geaendert ? `${modelle(m.geaendert)} geändert` : `Nichts Neues – ${anzahl(m.gefunden)} Dateien geprüft`];
+  const ziele = [];
+  if (m.neu) ziele.push(["Zeigen", "neu"]);
+  if (m.neu && m.geaendert) teile.push(`${anzahl(m.geaendert)} geändert`);
+  if (m.verschoben) teile.push(`${anzahl(m.verschoben)} an neuem Ort`);
+  if (m.zurueckgeholt) teile.push(`${anzahl(m.zurueckgeholt)} aus dem Papierkorb zurück`);
+  if (m.aufgeraeumt) teile.push(`${anzahl(m.aufgeraeumt)} ${m.aufgeraeumt === 1 ? "Entwurf" : "Entwürfe"} aufgeräumt (Datei gelöscht)`);
+  const weg = (m.entfernt || 0) - (m.aufgeraeumt || 0);
+  if (weg > 0) { teile.push(`${anzahl(weg)} nicht mehr da`); ziele.push(["Datei fehlt", "fehlt"]); }
+  if (m.unlesbar) { teile.push(`${anzahl(m.unlesbar)} unlesbar`); ziele.push(["Unlesbar", "unlesbar"]); }
+  if (m.kopien) { teile.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Kopie" : "Kopien"} mit gleichem Inhalt`); ziele.push(["Duplikate", "duplikate"]); }
+  if (m.nicht_erreichbar?.length) teile.push(`nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)`);
+  toast(teile.join(" · "), { dauer: teile.length > 1 || ziele.length > 1 ? 9000 : 4500,
+                aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });
 }
 
-// Knapp: was dazukam, woher die Bilder sind, was zu tun bleibt — nicht jede Phase einzeln.
-function bilanz(m) {
-  const z = [];
-  if (m.neu) z.push(formatListe(m.je_format));
-  if (m.kopien) z.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Datei ist eine Kopie" : "Dateien sind Kopien"} mit gleichem Inhalt — je ein Modell, siehe Bereinigen › Duplikate`);
-  if (m.aus_datei) z.push(`${anzahl(m.aus_datei)} ${m.aus_datei === 1 ? "Vorschaubild" : "Vorschaubilder"} aus der Datei übernommen`);
-  if (m.verschoben) z.push(`${anzahl(m.verschoben)} bekannte Modelle an neuem Ort erkannt (verschoben, umbenannt oder kopiert)`);
-  if (m.zurueckgeholt) z.push(`${anzahl(m.zurueckgeholt)} aus dem Papierkorb zurückgeholt`);
-  if (m.aufgeraeumt) z.push(`${anzahl(m.aufgeraeumt)} ${m.aufgeraeumt === 1 ? "Entwurf" : "Entwürfe"} aufgeräumt (Datei gelöscht) — im Papierkorb, falls doch`);
-  if (m.entfernt - (m.aufgeraeumt || 0) > 0) z.push(`${anzahl(m.entfernt - (m.aufgeraeumt || 0))} nicht mehr im Ordner — siehe Bereinigen › Datei fehlt`);
-  if (m.unlesbar) z.push(`${anzahl(m.unlesbar)} unlesbar — siehe Bereinigen › Unlesbar`);
-  if (m.nicht_erreichbar?.length) z.push(`Nicht erreichbar: ${esc(m.nicht_erreichbar.join(", "))} (nichts als fehlend markiert)`);
-  if (m.fcstd_frage) z.push(`${anzahl(m.fcstd_frage)} ${m.fcstd_frage === 1 ? "FCStd-Datei wartet" : "FCStd-Dateien warten"} auf deine Zusage für FreeCAD — die Frage kommt nach OK`);
-  const weiter = m.laeuft ? `<p class="dim">Vorschaubilder${m.cad_gesamt || m.phase === "cad" ? " und FreeCAD" : ""} entstehen jetzt im Hintergrund.
-    Den Stand siehst du unten links beim Zahnrad.</p>` : "";
-  return (z.length ? `<ul class="bilanz">${z.map((x) => `<li>${x}</li>`).join("")}</ul>` : "") + weiter;
-}
-
-$("#einlesen").addEventListener("click", async (e) => {
-  const k = e.target.closest("[data-einlesen]");
-  if (!k) return;
-  if (k.dataset.einlesen === "hochladen-stopp") { einlesen.stopp = true; return; }
-  if (k.dataset.einlesen === "abbrechen") {
-    try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
-    return;
-  }
-  $("#einlesen").close();
+// Das Fenster #einlesen zeigt nur noch den Fortschritt beim Hochladen (entfällt mit KONZEPT §3.4, Schritt 4).
+$("#einlesen").addEventListener("click", (e) => {
+  if (e.target.closest("[data-einlesen]")?.dataset.einlesen === "hochladen-stopp") einlesen.stopp = true;
 });
-// Schliessen (OK oder Esc): das Einlesen läuft weiter, die Anzeige am Zahnrad übernimmt; eine offene FCStd-Frage kommt jetzt.
+// Während das Fenster offen ist, wartet eine FCStd-Frage; danach kommt sie.
 $("#einlesen").addEventListener("close", () => {
-  einlesen.lauf = null;
   const m = zustand.scan || {};
   hintergrundZeichnen(m);
   if (m.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
@@ -2297,9 +2303,11 @@ function zuletztZeigen(iso) {
   if (iso) zuletztEingelesen = iso;
   const el = $("#zuletzt-eingelesen");
   if (!el) return;
-  if (!zuletztEingelesen) { el.textContent = ""; el.title = ""; return; }
-  el.textContent = vorZeit(zuletztEingelesen);
-  el.title = `Zuletzt eingelesen: ${new Date(zuletztEingelesen).toLocaleString("de-DE")}`;
+  const m = zustand.scan || {};
+  if (liestEin(m) || einlesenAngestossen(m)) { el.textContent = "liest ein …"; el.title = ""; return; }
+  if (!zuletztEingelesen) { el.textContent = einlesen.ergebnis === "gescheitert" ? "gescheitert" : ""; el.title = einlesen.titel; return; }
+  el.textContent = vorZeit(zuletztEingelesen) + (einlesen.ergebnis ? ` · ${einlesen.ergebnis}` : "");
+  el.title = [`Zuletzt eingelesen: ${new Date(zuletztEingelesen).toLocaleString("de-DE")}`, einlesen.titel].filter(Boolean).join("\n");
 }
 setInterval(zuletztZeigen, 60000);
 
@@ -2308,27 +2316,59 @@ let LIVE_SCAN_MS = 5000, letztesLiveLaden = 0;       // während eines Einlesens
 
 // Hat das Einlesen etwas verändert, das in der Liste steht? Sonst ist das Neuladen am Ende überflüssig: ein Einlesen ohne Funde schreibt
 // nichts (gemessen: 0 Änderungsmeldungen), und die Liste ist schon aktuell. Bei 9 000 Modellen auf einem älteren Rechner sind das Sekunden.
-const scanHatVeraendert = (m) => !!(m.neu || m.verschoben || m.entfernt || m.zurueckgeholt || m.aufgeraeumt || m.vorschauen_gesamt || m.cad_gesamt
+const scanHatVeraendert = (m) => !!(m.neu || m.geaendert || m.verschoben || m.entfernt || m.zurueckgeholt || m.aufgeraeumt || m.vorschauen_gesamt || m.cad_gesamt
   || m.abgebrochen || !zustand.modelle.length);
 
 function liveScan(m) {
+  const vorher = zustand.scan || {};
   zustand.scan = m;
+  if (m.zuletzt_eingelesen) zuletztEingelesen = m.zuletzt_eingelesen;
   einlesenZeichnen(m);
   hintergrundZeichnen(m);
   if (!zustand.modelle.length) zeichneLeer();
   $("#scan-abbrechen").hidden = !m.laeuft || !!m.abbricht;
-  // Was läuft, zeigt das Einlesen-Fenster bzw. die Anzeige beim Zahnrad; oben bleibt nur das Ergebnis des letzten Laufs.
-  if (m.laeuft) $("#scan-status").textContent = "";
-  // Während des Einlesen-Fensters wartet die Frage; es nennt sie in der Bilanz und stellt sie nach OK.
   if (m.fcstd_frage && !zustand.fcstdGefragt && !$("#einlesen").open) { zustand.fcstdGefragt = true; fcstdFrage(m.fcstd_frage); }
-  if (m.zuletzt_eingelesen) zuletztZeigen(m.zuletzt_eingelesen);
-  if (m.phase === "fertig" || m.phase === "fehler" || m.abgebrochen) {
-    $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(m);
-    if (scanHatVeraendert(m)) neuLaden();
+  // Ende des ganzen Laufs (nach Vorschaubildern und FreeCAD): einmal alles neu, was sich dabei nur Kachel für Kachel geändert hat.
+  if (vorher.laeuft && !m.laeuft && scanHatVeraendert(m)) neuLaden();
+}
+
+// Während des Einlesens ändern Vorschaubilder und FreeCAD einzelne Modelle, oft jede Sekunde. Dafür nicht die ganze Liste holen (bei 9 000
+// Modellen Sekunden, auf dem Server wie im Browser), sondern nur diese Kacheln. Neue, gelöschte und verknüpfte Modelle laden weiter alles.
+const teil = { offen: new Set(), zeit: null };
+function kachelVon(m) {
+  if (m.ereignis !== "update_node" || !m.ref) return undefined;
+  const [sammlung, schluessel] = m.ref.split("/", 2);
+  if (sammlung === "MODEL_ASSET") return zustand.idIndex?.has(schluessel) ? schluessel : null;
+  if (sammlung === "PART_GEOMETRY") return zustand.hashId?.get(schluessel) ?? null;
+  return undefined;
+}
+async function teilLaden() {
+  teil.zeit = null;
+  const ids = [...teil.offen];
+  teil.offen.clear();
+  if (!ids.length) return;
+  const nr = ladeModelle.nr;
+  let kacheln;
+  try { kacheln = await api(`/api/modelle/kacheln?ids=${encodeURIComponent(ids.join(","))}`); } catch { return; }
+  if (nr !== ladeModelle.nr) return;            // inzwischen kam die ganze Liste neu: sie ist frischer
+  for (const k of kacheln) {
+    const i = zustand.idIndex.get(k.id);
+    if (i != null && zustand.modelle[i]?.id === k.id) zustand.modelle[i] = { ...zustand.modelle[i], ...k };
   }
+  raster.zeichne();
+  if (zustand.gewaehlt && ids.includes(zustand.gewaehlt)) waehle(zustand.gewaehlt, true);
 }
 
 function liveAenderung(m) {
+  if (zustand.scan?.laeuft) {
+    const id = kachelVon(m);
+    if (id === null) return;                     // ein Modell, das hier gerade nicht zu sehen ist: nichts zu tun
+    if (id) {
+      teil.offen.add(id);
+      if (!teil.zeit) teil.zeit = setTimeout(teilLaden, 400);
+      return;
+    }
+  }
   const meins = zustand.gewaehlt && [m.ref, m.quelle, m.ziel].includes(`MODEL_ASSET/${zustand.gewaehlt}`);
   if (meins) liveBetrifft = true;
   const feuern = () => {
@@ -2352,6 +2392,13 @@ function liveAenderung(m) {
 
 function live() {
   const q = new EventSource("/api/live");
+  let verbunden = 0;
+  q.onopen = () => {
+    // Der Server schickt zuerst den ganzen Stand. Was in der Lücke geschah (oder ob der Server neu gestartet ist), steht darin — ein Ende,
+    // das in die Lücke fiel, wird nicht nachgemeldet, steht aber neben „Bibliothek“.
+    einlesen.gemeldet = null;
+    if (verbunden++) neuLaden();
+  };
   q.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.art === "scan") return liveScan(m);
@@ -2366,7 +2413,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan && !s.scan.laeuft) $("#scan-status").textContent = $("#scan-status").title = scanErgebnis(s.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) { zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; hintergrundZeichnen(zustand.scan); } if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } $("#scan-abbrechen").hidden = !(s.scan && s.scan.laeuft && !s.scan.abbricht); if (s.scan) einlesenZeichnen(zustand.scan); }).catch(() => {});
 live();
 try { nav.nr = history.state?.nr ?? 0; nav.hoechste = nav.nr; history.replaceState(momentaufnahme(), ""); } catch { /* s. o. */ }
 $("#nav-zurueck")?.addEventListener("click", () => history.back());

@@ -316,7 +316,7 @@ class Scanner:
         if st.get("phase") != "fertig" or st.get("nur_cad"):
             return
         kette["laeufe"] += 1
-        for f in ("neu", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei"):
+        for f in ("neu", "geaendert", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei"):
             kette["summe"][f] = kette["summe"].get(f, 0) + (st.get(f) or 0)
         kette["summe"]["einlesen_s"] = round(kette["summe"].get("einlesen_s", 0) + (st.get("einlesen_s") or 0), 1)
         for name, sek in (st.get("phasen") or {}).items():
@@ -382,17 +382,17 @@ class Scanner:
     def lauf(self, nur_cad=False):
         t0 = time.monotonic()
         self._stopp.clear()
-        self._setze(fcstd_frage=0, cad_ohne_freecad=0)
         if nur_cad:
             return self._lauf_nur_cad(t0)
-        # `lauf` zählt die Läufe: der Einlesen-Dialog weiss so, welcher Lauf seiner ist. `geprueft`, `je_format`, `aus_datei`,
-        # `einlesen_s`, `vorschauen_gesamt`, `cad_gesamt`: was der Dialog und die Anzeige am Zahnrad zeigen (Fortschritt, Bilanz).
-        self._setze(lauf=self.status["lauf"] + 1, geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0,
-                    cad_gesamt=0, zu_pruefen=0, zu_analysieren=0, analysiert=0, kopien=0, aufgeraeumt=0)
-        log.info("Lauf %d beginnt: ganzes Einlesen aller Wurzelordner", self.status["lauf"])
-        self._setze(laeuft=True, phase="suchen", nur_cad=False, nicht_erreichbar=[], gefunden=0, neu=0, verschoben=0, entfernt=0, bearbeitet=0,
-                    unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False, abgebrochen=False,
-                    beginn=time.strftime("%H:%M:%S"))
+        # `lauf` zählt die Läufe: die Oberfläche weiss so, welches Ende sie schon gemeldet hat. Der Beginn ist EINE Meldung: neue Nummer,
+        # „läuft“ und zurückgesetzte Zähler zusammen. Vorher kam zuerst nur die neue Nummer — mit dem Ergebnis des vorigen Laufs („fertig,
+        # 4 neu“) —, und die Oberfläche meldete dieses alte Ergebnis als Ende des neuen Laufs.
+        log.info("Lauf %d beginnt: ganzes Einlesen aller Wurzelordner", self.status["lauf"] + 1)
+        self._setze(lauf=self.status["lauf"] + 1, laeuft=True, phase="suchen", nur_cad=False, fcstd_frage=0, cad_ohne_freecad=0,
+                    geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0, cad_gesamt=0, zu_pruefen=0, zu_analysieren=0,
+                    analysiert=0, kopien=0, aufgeraeumt=0, nicht_erreichbar=[], gefunden=0, neu=0, geaendert=0, verschoben=0, entfernt=0,
+                    bearbeitet=0, unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False,
+                    abgebrochen=False, beginn=time.strftime("%H:%M:%S"))
         index = self.k.ort_index()
         ignoriert = self.k.ignorierte_orte()
         wurzeln = self.k.wurzeln()
@@ -515,7 +515,16 @@ class Scanner:
             # Gleich hier fragen, sobald die FCStd-Dateien bekannt sind — nicht erst am Ende des Laufs. Vorher kam die Frage nach der
             # STEP-Umwandlung, und das Vorschaubild aus der FCStd-Datei (liest partAtlas ohne FreeCAD) sah aus, als sei sie schon geladen.
             # Wer antwortet, solange der Lauf noch nicht bei FreeCAD ist, bekommt die FCStd im selben Lauf; sonst folgt „nur FreeCAD“.
-            self._setze(entfernt=len(weg), phase="vorschau", cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.monotonic() - t0, 1))
+            # Das Einlesen ist hier fertig; was folgt (Vorschaubilder, FreeCAD), ist Hintergrundarbeit. „Zuletzt eingelesen“ gilt ab jetzt —
+            # vorher stand es erst nach FreeCAD, bei einer grossen Bibliothek Stunden später. Fehlt der Platz zum Schreiben, ist das kein Grund,
+            # das Einlesen scheitern zu lassen.
+            jetzt = datetime.now().astimezone().isoformat(timespec="seconds")
+            try:
+                self.b.einstellungen_setzen(zuletzt_eingelesen=jetzt)
+            except OSError as e:
+                log.warning("Zeitpunkt des Einlesens nicht gespeichert: %s", e)
+            self._setze(entfernt=len(weg), phase="vorschau", cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), einlesen_s=round(time.monotonic() - t0, 1),
+                        zuletzt_eingelesen=jetzt)
 
             self._vorschauen()
             if self._stopp.is_set():
@@ -532,17 +541,10 @@ class Scanner:
                 return self._abgebrochen(t0)
         finally:
             self._pool_beenden(self._pool, hart=self._stopp.is_set())
-        # Wann zuletzt vollständig eingelesen wurde: steht neben „Bibliothek“, damit man bei „nur auf Knopfdruck“ sieht, wie alt der Stand ist.
-        # Fehlt der Platz zum Schreiben, ist das keine Sache, die das Einlesen scheitern lässt.
-        jetzt = datetime.now().astimezone().isoformat(timespec="seconds")
-        try:
-            self.b.einstellungen_setzen(zuletzt_eingelesen=jetzt)
-        except OSError as e:
-            log.warning("Zeitpunkt des Einlesens nicht gespeichert: %s", e)
-        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1), zuletzt_eingelesen=jetzt)
+        self._setze(laeuft=False, abbricht=False, phase="fertig", dauer_s=round(time.monotonic() - t0, 1))
         st = self.status
-        log.info("Lauf %s fertig in %s s: %s Dateien gefunden, %s neu, %s verschoben, %s entfernt, %s unlesbar, %s Kopien, %s Vorschaubilder gerechnet, %s über FreeCAD",
-                 st.get("lauf"), st.get("dauer_s"), st.get("gefunden"), st.get("neu"), st.get("verschoben"), st.get("entfernt"), st.get("unlesbar"),
+        log.info("Lauf %s fertig in %s s: %s Dateien gefunden, %s neu, %s geändert, %s verschoben, %s entfernt, %s unlesbar, %s Kopien, %s Vorschaubilder gerechnet, %s über FreeCAD",
+                 st.get("lauf"), st.get("dauer_s"), st.get("gefunden"), st.get("neu"), st.get("geaendert"), st.get("verschoben"), st.get("entfernt"), st.get("unlesbar"),
                  st.get("kopien"), st.get("vorschauen_gesamt"), st.get("cad_gesamt"))
 
     def hat_offenes(self):
@@ -560,10 +562,10 @@ class Scanner:
         """Der Hintergrundlauf, ohne Suchen und Hashen: Vorschaubilder, kleine Bilder, FreeCAD — alles, was im Bestand als „ausstehend“ steht.
         Heisst aus Gewohnheit `nur_cad` (so kam er zuerst, nach der Zusage für FCStd). Zähler von Suchen und Hashen bleiben vom letzten Lauf
         stehen: es wurde nichts neu eingelesen. Setzt nach einem Abbruch oder Neustart genau dort fort, wo es aufhörte."""
-        self._setze(lauf=self.status["lauf"] + 1, einlesen_s=None)
-        log.info("Lauf %d beginnt: Hintergrundlauf (Vorschaubilder, kleine Bilder, FreeCAD), ohne die Ordner zu durchsuchen", self.status["lauf"])
-        self._setze(laeuft=True, phase="vorschau", nur_cad=True, bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False,
-                    vorschauen_gesamt=0, cad_gesamt=0, cad_voraus=self._cad_anzahl(), beginn=time.strftime("%H:%M:%S"))
+        log.info("Lauf %d beginnt: Hintergrundlauf (Vorschaubilder, kleine Bilder, FreeCAD), ohne die Ordner zu durchsuchen", self.status["lauf"] + 1)
+        self._setze(lauf=self.status["lauf"] + 1, laeuft=True, phase="vorschau", nur_cad=True, fcstd_frage=0, cad_ohne_freecad=0, einlesen_s=None,
+                    bearbeitet=0, abbruch=None, abbricht=False, abgebrochen=False, vorschauen_gesamt=0, cad_gesamt=0, cad_voraus=self._cad_anzahl(),
+                    beginn=time.strftime("%H:%M:%S"))
         self._pool = self._neuer_pool()
         try:
             self._vorschauen()
@@ -592,16 +594,21 @@ class Scanner:
     def _anlegen(self, gruppe, neu_je_hash, vorgaenger):
         if not gruppe:
             return
+        geaendert = 0
         with self.b.db.transaction():
             for h, felder, vorschau_status, fehler in gruppe:
                 orte = [{"wurzel": s[0], "pfad": s[1], "groesse": st.st_size, "mtime": st.st_mtime}
                         for s, _, st in neu_je_hash[h]]
-                self.k.neue_datei(h, felder, orte, vorschau_status, fehler, vorgaenger.get(h))
+                # Dieselbe Datei neu gespeichert (etwa aus FreeCAD): das Modell bleibt mit Tags, Baugruppen und Drucken, nur der Inhalt ist
+                # neu. Für den Anwender ist das „geändert“ — „1 neues Modell“ wäre falsch.
+                alt_mid = self.k.modell_von(vorgaenger[h]) if h in vorgaenger else None
+                mid = self.k.neue_datei(h, felder, orte, vorschau_status, fehler, vorgaenger.get(h))
+                geaendert += bool(alt_mid and mid == alt_mid)
         je_format = dict(self.status["je_format"])
         for _, felder, _, _ in gruppe:
             f = felder.get("format") or "?"
             je_format[f] = je_format.get(f, 0) + 1
-        self._setze(neu=self.status["neu"] + len(gruppe), je_format=je_format,
+        self._setze(neu=self.status["neu"] + len(gruppe) - geaendert, geaendert=self.status.get("geaendert", 0) + geaendert, je_format=je_format,
                     aus_datei=self.status["aus_datei"] + sum(1 for g in gruppe if g[2] == "eingebettet"),
                     unlesbar=self.status["unlesbar"] + sum(1 for g in gruppe if g[3]),
                     analysiert=self.status["analysiert"] + len(gruppe),

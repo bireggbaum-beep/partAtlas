@@ -199,7 +199,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
 
     @app.get("/api/live")
     async def live():
-        return StreamingResponse(verteiler.strom(), media_type="text/event-stream",
+        return StreamingResponse(verteiler.strom(lambda: [("scan", dict(zustand["scanner"].status))]), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache"})
 
     # ---------------------------------------------------------------- Wurzeln und Scan
@@ -276,6 +276,14 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
                           tags=liste(tags), materialien=liste(material), leiste=leiste)
         # Selbst in JSON wandeln: FastAPIs Umwandlung (`jsonable_encoder`) brauchte bei 9 000 Treffern 0,7 s von 1,3 s, `json.dumps` 0,1 s.
         # Auf einem älteren Rechner sind das die Sekunden zwischen Klick und Liste (Messung vom 5.10.2026, siehe OFFEN.md).
+        return Response(json.dumps(erg, ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)),
+                        media_type="application/json")
+
+    @app.get("/api/modelle/kacheln")
+    def kacheln(ids: str = ""):
+        """Nur diese Kacheln (Komma-Liste): wenn sich während des Einlesens einzelne Modelle ändern (Vorschaubild, FreeCAD), holt die
+        Oberfläche nur sie, statt alle paar Sekunden die ganze Liste. Vor /api/modelle/{mid}, sonst wäre „kacheln“ eine Kennung."""
+        erg = K().kacheln([x for x in ids.split(",") if x][:500])
         return Response(json.dumps(erg, ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)),
                         media_type="application/json")
 

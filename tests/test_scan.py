@@ -719,6 +719,36 @@ if __name__ == "__main__":
           laeufe() == ["ganz", "ganz"])
     fl_b.schliessen()
 
+    # -- Rückmeldung am Knopf ⟳ (KONZEPT §3.4): was der Anwender nach dem Speichern in FreeCAD sieht
+    rm_tmp = tempfile.mkdtemp()
+    rm_samm = os.path.join(rm_tmp, "s")
+    os.makedirs(rm_samm)
+    muster.stl_binaer(os.path.join(rm_samm, "Teil.stl"), 10, 20, 30)
+    rm_b = Bestand(os.path.join(rm_tmp, "b"))
+    rm_k = Katalog(rm_b)
+    rm_k.wurzel_hinzufuegen(rm_samm)
+    rm_meldungen = []
+    rm_s = Scanner(rm_b, rm_k, melden=rm_meldungen.append, prozesse=1)
+    rm_s.starten()
+    rm_s.warten(60)
+    rm_mid = rm_k.modelle()[0]["id"]
+    rm_k.tag_setzen(rm_mid, "behalten")
+    time.sleep(0.05)
+    muster.stl_binaer(os.path.join(rm_samm, "Teil.stl"), 11, 20, 30)       # dieselbe Datei, neu gespeichert
+    del rm_meldungen[:]
+    rm_s.starten()
+    rm_s.warten(60)
+    st = rm_s.status
+    check("Dieselbe Datei neu gespeichert: das Einlesen meldet „1 geändert“, nicht „1 neu“ — das Modell bleibt mit seinen Tags",
+          st.get("neu") == 0 and st.get("geaendert") == 1 and [m["id"] for m in rm_k.modelle()] == [rm_mid] and "behalten" in rm_k.tags_von(rm_mid))
+    erste = next(m for m in rm_meldungen if m.get("lauf") == 2)
+    check("Ein Lauf beginnt mit EINER Meldung (neue Nummer und „läuft“ zusammen): sonst sah die Oberfläche das Ergebnis des vorigen Laufs als Ende des neuen",
+          erste.get("laeuft") is True and erste.get("neu") == 0 and erste.get("phase") == "suchen")
+    beim_ende = next(m for m in rm_meldungen if m.get("einlesen_s") is not None)
+    check("„Zuletzt eingelesen“ steht, sobald das Einlesen fertig ist — nicht erst nach Vorschaubildern und FreeCAD",
+          beim_ende.get("phase") == "vorschau" and beim_ende.get("zuletzt_eingelesen") and beim_ende.get("laeuft") is True)
+    rm_b.schliessen()
+
     # -- Endzustände: jeder Lauf endet in fertig, abgebrochen oder Fehler (nie „läuft nicht, ist aber nicht fertig“)
     fz_tmp = tempfile.mkdtemp()
     fz_samm = os.path.join(fz_tmp, "s")
