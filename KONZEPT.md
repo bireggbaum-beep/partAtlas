@@ -258,6 +258,12 @@ Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
      | Eigene Bilder und Druckfotos | an | lassen sich nicht neu erzeugen |
      | Vorschaubilder | aus | „partAtlas erzeugt sie nach dem Wiederherstellen neu“ |
 
+   - **Regel für alles, was noch kommt** (G-Code, Dokumentenanhänge, Bilder von Baugruppen …): was der Anwender selbst hinzufügt,
+     lässt sich nicht neu erzeugen → eigene Zeile, Vorgabe **an**; was partAtlas erzeugt → Vorgabe **aus**. Wer eine neue Art von Daten
+     baut, trägt sie hier ein (Zeile im Reiter mit Grösse, Gruppe) — sonst fehlt sie im Backup, ohne dass es jemand merkt (eine Prüfung
+     soll das finden: jeder Ordner im Bestand gehört zu einer Zeile oder ist ausdrücklich ausgenommen).
+   - Das ZIP enthält ein **Inhaltsverzeichnis** (Fassung von partAtlas, gewählte Zeilen, Anzahl und Grösse je Zeile): das Wiederherstellen
+     weiss, was drin ist und was nicht — auch bei einem ZIP aus einer älteren Fassung.
    - **Zielordner** einstellbar; Dateiname `partAtlas-Backup-JJJJ-MM-TT.zip`; behalten werden die letzten **2** ZIPs im Zielordner
      (einstellbar) — bei mehreren GB je ZIP soll der Ordner nicht volllaufen.
    - Vor dem Erstellen die erwartete Gesamtgrösse, beim Erstellen Fortschritt unten links (wie beim Einlesen); die Bedienung bleibt frei.
