@@ -1953,7 +1953,7 @@ $("#gruppierung").value = zustand.gruppierung;
     return;
   }
   const klappe = t.closest("[data-klappe]");
-  if (klappe && klappe.textContent) {
+  if (klappe && (klappe.classList.contains("auf") || klappe.classList.contains("zu"))) {
     const id = klappe.dataset.klappe;
     zustand.offen.has(id) ? zustand.offen.delete(id) : zustand.offen.add(id);
     localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));

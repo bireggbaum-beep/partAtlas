@@ -1010,7 +1010,8 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 
 /* Aufklapp-Pfeile als gezeichneter Winkel (wie in VS Code) — das Zeichen ▸ war
    in kleiner Schrift nur ein Punkt. */
-.pfeil, .g-pfeil { position: relative; flex: none; }
+.pfeil, .g-pfeil { position: relative; flex: none; height: 16px; }
+.pfeil { vertical-align: middle; }
 .pfeil.auf::before, .pfeil.zu::before, .g-pfeil.auf::before, .g-pfeil.zu::before {
   content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
   border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); }
