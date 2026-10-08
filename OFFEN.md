@@ -83,12 +83,14 @@ aktualisieren.
   ob grössere Fächer lohnen; klären, ob ein Wechsel einen Umzug der Speicherform braucht.
 - Aus v0.60 (s. o.): Gruppengrösse 200 beim Löschen messen; Ordner entfernen mit vielen Dateien.
 
-## Stand: 0.54.0 auf `main` (8.10.2026, für den Tester)
+## Stand: 0.54.1 auf `main` (8.10.2026, für den Tester)
 
 - Aufklapp-Pfeile (Ordnerbaum, Gruppenköpfe) als gezeichneter Winkel statt der Zeichen ▸/▾,
   die in kleiner Schrift nur wie ein Punkt wirkten. `test_ui.py` 67/67.
 - Kachelgröße auch rechts in der Statuszeile: kleiner Knopf, Menü Klein/Mittel/Groß (nur im Raster sichtbar).
   Einstellungen › Ansicht bleibt und ändert dasselbe. Nur im Browser von Hand geprüft, `test_ui.py` nicht gelaufen.
+- Listenkopf: eigene Fläche, kräftigerer Unterstrich, sichtbare Trennlinien zwischen den Spalten (beim Überfahren
+  Akzent-Griff zum Breitenziehen). Nur Sichtprüfung hell/dunkel.
 
 ## Stand davor: 0.53.1 auf `main` (8.10.2026, für den Tester)
 

@@ -206,16 +206,18 @@ body:has(#stapel:not([hidden])) .toast { bottom: 150px; }
 .segment button.an { background: var(--accent); color: var(--accent-ink); }
 .listenkopf, .zeile-l { display: grid; grid-template-columns: var(--listen-spalten, var(--s6) var(--s5) minmax(144px, 1fr) var(--s7) 144px var(--s8) 144px var(--s7));
                         align-items: center; gap: 0 var(--s3); padding: 0 var(--s4); font-size: 13px; }
-.listenkopf { height: var(--s6); border-bottom: 1px solid var(--line); font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+.listenkopf { height: var(--s6); background: color-mix(in oklch, var(--ink) 7%, var(--panel)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line-strong);
+              font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-2); }
 .listenkopf button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; padding: 0; }
 .listenkopf button.an, .listenkopf button:hover { color: var(--ink); }
-.lk-spalten { position: relative; justify-self: end; }
-.lk-zelle { position: relative; min-width: 0; overflow: visible; white-space: nowrap; }
+.lk-spalten { position: relative; justify-self: end; display: flex; align-items: center; }
+.listenkopf { align-items: stretch; }
+.lk-zelle { position: relative; min-width: 0; overflow: visible; white-space: nowrap; display: flex; align-items: center; }
 .lk-zelle > button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 /* Die Grenze liegt in der Lücke zwischen zwei Spalten (gap = --s3): der Griff sitzt mittig darauf. */
-.lk-griff { position: absolute; top: 4px; bottom: 4px; right: calc(var(--s3) / -2 - 5px); width: 10px; cursor: col-resize; z-index: 2; }
-.lk-griff::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: transparent; }
-.lk-griff:hover::after, .lk-griff.zieht::after { background: var(--accent); }
+.lk-griff { position: absolute; top: 0; bottom: 0; right: calc(var(--s3) / -2 - 5px); width: 10px; cursor: col-resize; z-index: 2; }
+.lk-griff::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: var(--line-strong); }
+.lk-griff:hover::after, .lk-griff.zieht::after { left: 3.5px; width: 2px; background: var(--accent); }
 .lk-spalten #spalten-knopf { font-size: 15px; padding: 0 6px; letter-spacing: 0; }
 .lk-menu { top: 26px; left: auto; right: 0; min-width: 180px; font: var(--fs-body)/1.4 'Barlow', 'Segoe UI', Helvetica, sans-serif;
            letter-spacing: 0; color: var(--ink); }
