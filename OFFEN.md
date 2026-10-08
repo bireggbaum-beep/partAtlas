@@ -72,6 +72,14 @@ aktualisieren.
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
+## Später: Performance-Feinschliff (Anwender, 8.10.2026: „irgendwann“, nicht jetzt)
+
+- **Einstellungen › Sicherungen öffnet in 5–7 s** (Windows, 8 600 Modelle): `sicherung.liste(mit_groesse=True)` zählt jede Datei jeder
+  Sicherung. Abhilfe: Grösse beim Anlegen einmal merken (Datei neben `stand`). Aufwand 1.
+- **Kalter Start unter Windows** (einmal 47 s Datenbank lesen, danach 2–3,5 s bei 2 265 Dateien): nur angehen, wenn es wiederkommt;
+  dann in flatgraph weniger, grössere Dateien (Umzug der Speicherform).
+- Aus v0.60 (s. o.): Gruppengrösse 200 beim Löschen messen; Ordner entfernen mit vielen Dateien.
+
 ## Stand: 0.52.1 auf `main` (8.10.2026, für den Tester)
 
 Seit 0.51.4: Inspektor mit Reitern ganz oben (Bild nur in der Übersicht), Kopfzeile in einer Linie (Name, Slicer-/CAD-Knopf wie in der Liste,
