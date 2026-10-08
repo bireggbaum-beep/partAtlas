@@ -83,6 +83,11 @@ aktualisieren.
   ob grössere Fächer lohnen; klären, ob ein Wechsel einen Umzug der Speicherform braucht.
 - Aus v0.60 (s. o.): Gruppengrösse 200 beim Löschen messen; Ordner entfernen mit vielen Dateien.
 
+## Auf dem Branch (8.10.2026, noch nicht auf `main`)
+
+- Aufklapp-Pfeile (Ordnerbaum, Gruppenköpfe) als gezeichneter Winkel statt der Zeichen ▸/▾,
+  die in kleiner Schrift nur wie ein Punkt wirkten. Nur Sichtprüfung, `test_ui.py` nicht gelaufen.
+
 ## Stand: 0.53.1 auf `main` (8.10.2026, für den Tester)
 
 Gruppenbänder, Format-Etikett, Kachelzeilen und -grösse (0.52.2–0.52.6), Seite sofort erreichbar beim Start (0.53.0), Sicherung beim

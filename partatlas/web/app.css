@@ -1007,3 +1007,13 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 .sk-zeit { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: clip; color: var(--ink-3);
            font: 400 11.5px var(--sans, inherit); text-transform: none; letter-spacing: 0; margin-right: 4px; text-align: right; }
 .sk-titel { flex: none; }
+
+/* Aufklapp-Pfeile als gezeichneter Winkel (wie in VS Code) — das Zeichen ▸ war
+   in kleiner Schrift nur ein Punkt. */
+.pfeil, .g-pfeil { position: relative; flex: none; }
+.pfeil.auf::before, .pfeil.zu::before, .g-pfeil.auf::before, .g-pfeil.zu::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+  border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); }
+.pfeil.zu::before, .g-pfeil.zu::before { transform: translate(-65%, -50%) rotate(-45deg); }
+.pfeil.auf::before, .g-pfeil.auf::before { transform: translate(-50%, -70%) rotate(45deg); }
+.eintrag:hover .pfeil::before, .gruppe:hover .g-pfeil::before { border-color: var(--ink); }

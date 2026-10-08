@@ -208,7 +208,7 @@ function gruppenKopf(g, y) {
   const alle = ids.length > 0 && ids.every((id) => zustand.auswahl.has(id));
   const ordnerSprung = zustand.gruppierung === "ordner" && g.key !== basisId();
   return `<div class="gruppe ${zu ? "zu" : ""}" data-id="g:${esc(g.key)}" data-gruppe="${esc(g.key)}" style="top:${y}px" title="${zu ? "Aufklappen" : "Zuklappen"}">
-    <span class="g-pfeil">${zu ? "▸" : "▾"}</span>
+    <span class="g-pfeil ${zu ? "zu" : "auf"}"></span>
     <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
     ${ordnerSprung ? `<span class="g-name g-ordner" data-gruppe-ordner="${esc(g.key)}" title="In diesen Ordner wechseln">${esc(g.label)}</span>`
       : `<span class="g-name">${esc(g.label)}</span>`}<em>${g.n}</em></div>`;
@@ -346,7 +346,7 @@ function zweig(k, tiefe) {
   const ort = tiefe === 0 && zustand.doppelteWurzeln?.has(k.name)
     ? `<small class="wz-ort">${esc((k.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || (k.pfad || ""))}</small>` : "";
   let html = `<button class="eintrag ${aktiv}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
-    <span><span class="pfeil" data-klappe="${esc(k.id)}">${hatKinder ? (offen ? "▾" : "▸") : ""}</span>${esc(k.name)}${ort}</span><em>${k.anzahl}</em></button>`;
+    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}</span><em>${k.anzahl}</em></button>`;
   if (hatKinder && offen) html += k.kinder.map((c) => zweig(c, tiefe + 1)).join("");
   return html;
 }
