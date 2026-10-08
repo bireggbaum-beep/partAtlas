@@ -83,7 +83,12 @@ aktualisieren.
   ob grössere Fächer lohnen; klären, ob ein Wechsel einen Umzug der Speicherform braucht.
 - Aus v0.60 (s. o.): Gruppengrösse 200 beim Löschen messen; Ordner entfernen mit vielen Dateien.
 
-## Stand: 0.52.1 auf `main` (8.10.2026, für den Tester)
+## Stand: 0.53.1 auf `main` (8.10.2026, für den Tester)
+
+Gruppenbänder, Format-Etikett, Kachelzeilen und -grösse (0.52.2–0.52.6), Seite sofort erreichbar beim Start (0.53.0), Sicherung beim
+Start nur bei Änderungen (0.53.1). Auf Wunsch des Anwenders ohne vollen test_ui-Lauf; geprüft je Paket (test_api 86/86, test_schutz 23/23).
+
+## Stand davor: 0.52.1 auf `main` (8.10.2026, für den Tester)
 
 Seit 0.51.4: Inspektor mit Reitern ganz oben (Bild nur in der Übersicht), Kopfzeile in einer Linie (Name, Slicer-/CAD-Knopf wie in der Liste,
 ⋯ mit „Öffnen mit …“). Auf Wunsch des Anwenders ohne vollen test_ui-Lauf auf `main` (zuletzt komplett bei 0.52.0: 67/67); die geänderten
