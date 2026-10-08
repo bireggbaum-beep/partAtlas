@@ -1059,8 +1059,6 @@ async function waehle(id, live = false) {
   $("#inspektor").innerHTML = `
     <div class="i-fix">
       ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
-      <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
-      <div class="i-griff" title="Höhe der Vorschau ziehen (Doppelklick: zurücksetzen)"></div>
       <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
       ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button>
         <button class="knopf gefahr" id="endgueltig">Endgültig entfernen …</button></div>`
@@ -1074,6 +1072,10 @@ async function waehle(id, live = false) {
           </div></div>
       </div>`}
       ${reiterKopf}
+      ${/* Das Vorschaubild unter den Reitern und nur in der Übersicht (CSS): die anderen Reiter bekommen den Platz (Capacities
+           „Inspektorfenster: Reiter ganz oben“) — dort wird später mehr aus den 3MF-Dateien stehen. */ ""}
+      <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
+      <div class="i-griff" title="Höhe der Vorschau ziehen (Doppelklick: zurücksetzen)"></div>
     </div>
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? fehltTeil(m) : ""}
@@ -1113,6 +1115,7 @@ async function waehle(id, live = false) {
       ${orte}
     </div>`;
   $("#inspektor").dataset.reiter = reiter;
+  $("#inspektor").classList.toggle("mit-reitern", !papierkorb);
   $("#inspektor").dataset.id = id;
   if (menuOffen) $("#mehr-menu").hidden = false;
   if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }

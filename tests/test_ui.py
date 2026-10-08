@@ -229,6 +229,20 @@ async def oberflaeche(port):
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
         check("Klick auf eine Kachel: 3D-Ansicht im Inspektor", await pg.locator("#i-bild canvas").count() == 1)
+        # Reiter über dem Vorschaubild, das Bild nur in der Übersicht; ein Modell, das in einem anderen Reiter gewählt wurde, zeigt seine
+        # 3D-Ansicht beim Wechsel zur Übersicht in voller Grösse (sie entstand in einem versteckten, grössenlosen Bereich)
+        await pg.click('.i-reiter [data-reiter="datei"]')
+        im_datei = await pg.locator("#i-galerie").is_visible()
+        await pg.evaluate("waehle(null)")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector(".i-reiter")
+        await pg.wait_for_timeout(800)
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')
+        await pg.wait_for_timeout(800)
+        gross = await pg.evaluate("(() => { const c = document.querySelector('#i-bild canvas'); return !!c && c.clientWidth > 100 && c.clientHeight > 100; })()")
+        oben = await pg.evaluate("document.querySelector('.i-reiter').getBoundingClientRect().top < document.querySelector('#i-galerie').getBoundingClientRect().top")
+        check("Inspektor: Reiter über dem Vorschaubild, das Bild nur in der Übersicht; nach Wahl in einem anderen Reiter in voller Grösse",
+              not im_datei and gross and oben)
 
         # Tag setzen: die 3D-Ansicht bleibt stehen (kein neues Netz).
         canvas = await pg.locator("#i-bild canvas").element_handle()

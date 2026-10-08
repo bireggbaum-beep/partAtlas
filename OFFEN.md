@@ -34,7 +34,12 @@ aktualisieren.
    anteilig bis zu ihrem Minimum, und reicht selbst das nicht (Liste 435 px mit sechs Spalten), darunter — nie über den Rand (im Bild
    geprüft, schmal und breit). Beim Ziehen gelten die gezeigten Breiten, damit die Grenze genau der Maus folgt. test_ui +1 (gezielt,
    Gegenprobe fällt). **Listenkopf damit fertig**; Spalten verschieben bleibt für später.
-3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
+3. **Inspektor: Reiter ganz oben (Capacities, für 0.50 geplant) — erledigt (0.52.0):** Name, Öffnen und Reiterleiste oben, darunter das
+   Vorschaubild, nur im Reiter Übersicht (im Papierkorb ohne Reiter immer). Die anderen Reiter beginnen direkt unter der Leiste — Platz für
+   mehr aus den 3MF-Dateien. Geprüft: eine in einem anderen Reiter gewählte 3D-Ansicht erscheint beim Wechsel in voller Grösse. test_ui
+   67/67 komplett (zweimal: der erste Lauf brach an der neuen Prüfung ab), +1 mit Gegenprobe (gezielt). In Capacities: App-Freeze,
+   Klare Ingest-Pipeline, Listen-Header auf Erledigt; Reiter auf In Arbeit → nach Abnahme Erledigt.
+4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
