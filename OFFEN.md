@@ -10,7 +10,13 @@ aktualisieren.
    (vorher schon davor, auch bei belegtem Port); `einlesen=0` aus `/api/hochladen` entfernt (kein Aufrufer mehr; test_verwalten 76/76,
    die zwei Prüfungen dazu entfallen); Kommentar 3 × 4 MB. **Zurückgestellt auf v0.60:** Gruppengrösse 200 messen
    (funktioniert heute); Ordner entfernen mit vielen Dateien (seltene Aktion). „EIGENE“-Markierungen entfernt (0.50.2): sie markierten „Eigene Komponente“ als rückbaubar; die Funktion bleibt (Anwender).
-2. Danach **Listenköpfe analog zu pDMS** (steht in Capacities).
+2. **Listenkopf analog zu pDMS** (Capacities „Listen-Header analog zu pDMS“), vier Pakete: (1) Sortieren per Klick, zweiter Klick dreht
+   die Richtung; (2) Häkchen „alle“ links im Kopf; (3) ⋮ rechts: Spalten ein/aus (Format, Grösse, Gewicht, Status, Material, Tags,
+   Dateigrösse, Eingelesen, Ordner, Drucke; gemerkt); (4) Spaltenbreite ziehen (Anwender: „essenziell“). Verschieben von Spalten später.
+   **Paket 1 erledigt (0.51.0):** jede Spalte ausser Bild/Häkchen sortierbar (Name, Format, Grösse, Gewicht, Status), ▲/▼, zweiter Klick
+   dreht; erster Klick: Name/Format/Status aufsteigend, Zahlen absteigend; Auswahlfeld „Sortieren“ folgt (Format, Status neu darin).
+   Sortiert wird jetzt immer in der Oberfläche (natürliche Reihenfolge, bei Gleichstand nach Name); bei Suche/Chips gilt die Relevanz,
+   bis man eine Spalte anklickt — ein neuer Suchbegriff setzt das zurück (wie pDMS). test_ui +1 (gezielt geprüft, Gegenprobe fällt).
 3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

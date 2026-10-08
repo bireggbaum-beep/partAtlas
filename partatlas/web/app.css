@@ -207,6 +207,7 @@ body:has(#stapel:not([hidden])) .toast { bottom: 150px; }
                         align-items: center; gap: 0 var(--s3); padding: 0 var(--s4); font-size: 13px; }
 .listenkopf { height: var(--s6); border-bottom: 1px solid var(--line); font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
 .listenkopf button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; padding: 0; }
+.listenkopf button.an, .listenkopf button:hover { color: var(--ink); }
 .zeile-l { position: absolute; left: 0; right: 0; height: var(--s6); border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
 .zeile-l:hover { background: var(--panel); }
 .zeile-l.gewaehlt { background: var(--accent-soft); }

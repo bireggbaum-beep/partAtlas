@@ -31,7 +31,7 @@ const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
   ohneEntwuerfe: localStorageLesen("ohneEntwuerfe") === "1",
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
-  sortierung: "name", gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
+  sortierung: "name", absteigend: false, gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
   gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
 
@@ -228,7 +228,7 @@ async function ladeModelle() {
   }
   const { modelle: liste, leiste } = antwort;
   if (nr !== ladeModelle.nr) return;
-  sortiere(liste, false);
+  sortiere(liste);
   zustand.roh = liste;
   zustand.leisteDaten = leiste;
   listeAnwenden();
@@ -238,16 +238,34 @@ async function ladeModelle() {
 const filterJetzt = () => ({ q: zustand.suche, ordner: zustand.ordner, format: zustand.format, ansicht: zustand.ansicht,
                              sammlung: zustand.sammlung, tags: [...zustand.tags].join(","), material: [...zustand.material].join(",") });
 
-// Die Sortierung, die der Server nicht macht. `nachgereicht`: neue Modelle kamen hinten dazu — dann auch nach Name wie der Server
-// (ausser bei Suche und Chips: dort ordnet der Server nach Treffern, die neuen bleiben hinten).
-function sortiere(liste, nachgereicht) {
-  const s = (zustand.sammlung || zustand.ansicht === "warteschlange") ? "eigene" : zustand.sortierung;
-  const name = (x) => (x.name || "").toLowerCase();
-  if (s === "neu") liste.sort((a, b) => (b.angelegt || "").localeCompare(a.angelegt || ""));
-  else if (s === "gewicht") liste.sort((a, b) => (b.gewicht_g || 0) - (a.gewicht_g || 0));
-  else if (s === "groesse") liste.sort((a, b) => Math.max(...(b.masse || [0])) - Math.max(...(a.masse || [0])));
-  else if (nachgereicht && s === "name" && !zustand.suche && !zustand.tags.size && !zustand.material.size)
-    liste.sort((a, b) => (name(a) < name(b) ? -1 : name(a) > name(b) ? 1 : 0));
+// Wonach sortiert werden kann, mit der Richtung, die ein erster Klick wählt (Name A–Z, Zahlen und „Neueste“ grösste zuerst).
+// Ein zweiter Klick auf dieselbe Spalte dreht die Richtung um.
+const STATUS_RANG = { offen: 0, gedruckt: 1, fehlt: 2, unlesbar: 3 };
+const SORTIERUNGEN = {
+  name: { wert: (m) => m.name || "", ab: false },
+  neu: { wert: (m) => m.angelegt || "", ab: true },
+  gewicht: { wert: (m) => m.gewicht_g || 0, ab: true },
+  groesse: { wert: (m) => Math.max(...(m.masse || [0])), ab: true },
+  format: { wert: (m) => m.format || "", ab: false },
+  status: { wert: (m) => STATUS_RANG[GRUPPEN.status.schluessel(m)], ab: false },
+};
+function sortierungWaehlen(k) {
+  zustand.absteigend = zustand.sortierung === k ? !zustand.absteigend : SORTIERUNGEN[k].ab;
+  zustand.sortierung = k;
+  $("#sortierung").value = k;
+}
+
+// Die Sortierung macht die Oberfläche (der Server liefert nach Name). Ausnahmen: eigene Reihenfolge (Sammlung, Warteschlange) und bei
+// Suche oder Chips die Relevanz des Servers, solange nach Name aufsteigend steht — wer eine Spalte anklickt, bekommt seine Wahl.
+function sortiere(liste) {
+  if (zustand.sammlung || zustand.ansicht === "warteschlange") return;
+  const k = zustand.sortierung, art = SORTIERUNGEN[k];
+  if (!art) return;
+  if (k === "name" && !zustand.absteigend && (zustand.suche || zustand.tags.size || zustand.material.size) && !sortiere.angeklickt) return;
+  const dreh = zustand.absteigend ? -1 : 1;
+  const vergleich = (a, b) => (typeof a === "string" ? natuerlich(a, b) : a - b);
+  // Bei Gleichstand nach Name — sonst springen gleich schwere Modelle bei jedem Nachladen.
+  liste.sort((a, b) => dreh * vergleich(art.wert(a), art.wert(b)) || natuerlich(a.name || "", b.name || ""));
 }
 
 // zustand.roh (sortiert, mit Entwürfen) → was das Raster zeigt.
@@ -599,8 +617,8 @@ function zeileK(m, y) {
 }
 
 // Die Liste ist die schlanke Tabelle zum Sortieren; Tags, Ordner und Material zeigen die Karten.
-const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", ""], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
-                       ["STATUS", ""], ["", ""]];
+const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", "format"], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
+                       ["STATUS", "status"], ["", ""]];
 
 function zeileL(m, y) {
   const url = bildUrl(m);
@@ -618,7 +636,7 @@ function zeileL(m, y) {
 
 function zeichneListenkopf() {
   $("#listenkopf").innerHTML = LISTENSPALTEN.map(([t, k]) =>
-    k ? `<button data-sortiere="${k}">${t}${zustand.sortierung === k ? " ▾" : ""}</button>` : `<span>${t}</span>`).join("");
+    k ? `<button data-sortiere="${k}" class="${zustand.sortierung === k ? "an" : ""}" title="Sortieren${zustand.sortierung === k ? " — noch einmal: andere Richtung" : ""}">${t}${zustand.sortierung === k ? (zustand.absteigend ? " ▼" : " ▲") : ""}</button>` : `<span>${t}</span>`).join("");
 }
 
 // ---------------------------------------------------------------- Mehrfachauswahl
@@ -1753,7 +1771,7 @@ $("#gruppierung").value = zustand.gruppierung;
     return raster.neu();
   }
   const sort = t.closest("[data-sortiere]");
-  if (sort) { zustand.sortierung = sort.dataset.sortiere; $("#sortierung").value = zustand.sortierung; return ladeModelle(); }
+  if (sort) { sortierungWaehlen(sort.dataset.sortiere); sortiere.angeklickt = true; return ladeModelle(); }
   const zeileListe = t.closest(".zeile-l, .zeile-k");
   if (zeileListe && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(zeileListe.dataset.id, e.shiftKey);
   if (zeileListe) return waehle(zeileListe.dataset.id);
@@ -1947,7 +1965,7 @@ document.addEventListener("change", async (e) => {
     e.target.value = "";
     return bilderHochladen(dateien);
   }
-  if (e.target.id === "sortierung") { zustand.sortierung = e.target.value; ladeModelle(); }
+  if (e.target.id === "sortierung") { zustand.sortierung = ""; sortierungWaehlen(e.target.value); sortiere.angeklickt = true; ladeModelle(); }
   if (e.target.id === "gruppierung") {
     zustand.gruppierung = e.target.value;
     zustand.eingeklappt.clear();
@@ -1982,7 +2000,8 @@ let suchZeit;
 $("#suche").addEventListener("input", (e) => {
   $("#suche-x").hidden = !e.target.value;
   clearTimeout(suchZeit);
-  suchZeit = setTimeout(() => { zustand.suche = e.target.value.trim(); ladeModelle(); }, 150);
+  // Ein neuer Suchbegriff ordnet wieder nach Relevanz (wie pDMS); eine angeklickte Spalte gilt bis dahin.
+  suchZeit = setTimeout(() => { zustand.suche = e.target.value.trim(); sortiere.angeklickt = false; ladeModelle(); }, 150);
 });
 
 function sucheLeeren() {
@@ -2309,7 +2328,7 @@ async function nachreichen() {
   if (ordnen) {
     // Die Kachel oben im Bild bleibt, wo sie ist: neue Modelle weiter oben schieben die Ansicht nicht weg.
     const anker = raster.anker();
-    sortiere(zustand.roh, true);
+    sortiere(zustand.roh);
     listeAnwenden();
     raster.anker(anker);
     seiteNachladen();

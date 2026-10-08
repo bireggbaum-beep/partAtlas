@@ -160,6 +160,22 @@ async def oberflaeche(port):
               "auch aus einer Sammelmeldung des Servers",
               wege[0] == ["/api/modelle/aenderungen"] and wege[1] == ["/api/modelle/aenderungen"])
 
+        # -- Listenkopf: Klick sortiert, ein zweiter Klick dreht die Richtung; das Auswahlfeld oben folgt
+        await pg.click('[data-layout="liste"]')
+        reihen = []
+        for kopf in ("gewicht", "gewicht", "name", "name"):
+            await pg.click(f'#listenkopf [data-sortiere="{kopf}"]')
+            await pg.wait_for_timeout(300)
+            reihen.append(await pg.evaluate("""() => [zustand.modelle.map((m) => [m.name, m.gewicht_g || 0]), $("#sortierung").value,
+                                                      $("#listenkopf .an").innerText]"""))
+        gew = lambda r: [g for _, g in r[0]]
+        nam = lambda r: [n.lower() for n, _ in r[0]]
+        check("Listenkopf: Gewicht schwerste zuerst, noch ein Klick leichteste zuerst; Name A–Z, dann Z–A; Auswahlfeld und Pfeil folgen",
+              gew(reihen[0]) == sorted(gew(reihen[0]), reverse=True) and gew(reihen[1]) == sorted(gew(reihen[1]))
+              and nam(reihen[2])[0] < nam(reihen[2])[-1] and nam(reihen[3])[0] > nam(reihen[3])[-1]
+              and reihen[1][1] == "gewicht" and reihen[3][1] == "name" and reihen[0][2].endswith("▼") and reihen[1][2].endswith("▲"))
+        await pg.click('[data-layout="raster"]')
+
         await suche("Vase")
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
