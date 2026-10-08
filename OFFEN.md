@@ -39,6 +39,11 @@ aktualisieren.
    mehr aus den 3MF-Dateien. Geprüft: eine in einem anderen Reiter gewählte 3D-Ansicht erscheint beim Wechsel in voller Grösse. test_ui
    67/67 komplett (zweimal: der erste Lauf brach an der neuen Prüfung ab), +1 mit Gegenprobe (gezielt). In Capacities: App-Freeze,
    Klare Ingest-Pipeline, Listen-Header auf Erledigt; Reiter auf In Arbeit → nach Abnahme Erledigt.
+   **Kopfzeile des Inspektors aufgeräumt (0.52.1, Anwender: „plump, Krautsalat“):** eine Linie — Name links, rechts dieselben Symbolknöpfe
+   wie in der Liste (Slicer, CAD; `programmKnoepfe`, gestrichelt, wenn keins eingerichtet) und dezent ⋯ in gleicher Grösse. Der grosse
+   „Öffnen“-Knopf und das „▾“-Auswahlfeld sind weg; ihr Inhalt steht im ⋯-Menü (alle Programme je Art, „Mit dem System öffnen“,
+   „Programme einstellen …“), darunter Umbenennen, Verschieben, Bild, Löschen. Papierkorb: Wiederherstellen/Endgültig unverändert.
+   test_ui: drei Prüfungen auf die neuen Knöpfe umgestellt, gezielt mit Slicer-/FreeCAD-Ersatz geprüft (4/4).
 4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

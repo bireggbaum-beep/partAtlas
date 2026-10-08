@@ -260,11 +260,12 @@ async def oberflaeche(port):
             fotos.append(os.path.join(os.path.dirname(SAMMLUNG), f"foto{i}.png"))
             Image.new("RGB", (64, 48), farbe).save(fotos[-1])
 
-        # -- Öffnen in …: Hauptknopf mit dem Standard, in den Einstellungen umstellbar
-        check("Hauptknopf nennt den Standard fürs Format (STL → Slicer), daneben der CAD-Knopf",
-              "PrusaSlicer" in await pg.inner_text("#oeffnen")
-              and "FreeCAD" in await pg.inner_text(".i-haupt"))
-        await pg.click("#oeffnen")
+        # -- Öffnen in …: in der Kopfzeile des Inspektors dieselben Knöpfe wie in der Liste, in den Einstellungen umstellbar
+        slicer = '#inspektor .i-aktionen [data-hv-art="slicer"]'
+        check("Kopfzeile: Knopf für den Slicer (PrusaSlicer) und daneben der für CAD (FreeCAD)",
+              "PrusaSlicer" in await pg.get_attribute(slicer, "title")
+              and "FreeCAD" in await pg.get_attribute('#inspektor .i-aktionen [data-hv-art="cad"]', "title"))
+        await pg.click(slicer)
         await pg.wait_for_timeout(1000)
         check("… und startet ihn mit der Datei des Modells",
               os.path.exists(PROTOKOLL) and "prusa-slicer " in open(PROTOKOLL).read() and "Vase.stl" in open(PROTOKOLL).read())
@@ -278,8 +279,8 @@ async def oberflaeche(port):
         await pg.wait_for_function("document.querySelector('.prog-wahl').innerText.includes('FreeCAD')")
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
-        check("Einstellungen: FreeCAD als Slicer gewählt, der Hauptknopf für STL folgt",
-              "FreeCAD" in await pg.inner_text("#oeffnen"))
+        check("Einstellungen: FreeCAD als Slicer gewählt, der Slicer-Knopf folgt",
+              "FreeCAD" in await pg.get_attribute(slicer, "title"))
 
         global WID
         WID = api(port, "/api/wurzeln")[0]["id"]

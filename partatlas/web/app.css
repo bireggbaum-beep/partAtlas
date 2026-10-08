@@ -505,7 +505,14 @@ body.bg-offen .nur-katalog { display: none; }
 .i-fix .i-bild { aspect-ratio: auto; height: var(--bild-h, calc((var(--insp-b, 377px) - 2 * var(--s4)) / var(--phi))); margin: 0; }
 /* Das Bild füllt den Rahmen und schrumpft mit ihm; sonst bestimmte seine Eigengrösse die Zeile und der Rahmen schnitte es nur ab. */
 .i-fix .i-bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.i-fix .i-name { margin: 0; font-size: 16px; }
+/* Kopfzeile: Name links, rechts dieselben Symbolknöpfe wie in der Liste und dezent ⋯ — eine Linie, gleiche Grösse. */
+.i-kopfzeile { display: flex; align-items: center; gap: var(--s3); }
+.i-fix .i-name { margin: 0; font-size: 16px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.i-aktionen { display: flex; align-items: center; gap: var(--s1); flex: none; }
+.i-aktionen .mehr { position: relative; }
+.i-aktionen #mehr-knopf { font-size: 15px; line-height: 1; color: var(--ink-2); }
+.i-aktionen .menu { top: 32px; left: auto; right: 0; min-width: 260px; }
+.menu .menu-titel { font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); padding: 6px 10px 2px; }
 .i-fix .galerie { margin-top: 10px; }
 .i-fix .i-name .dim { font-weight: 400; margin-left: 1px; }
 .i-fix .gal-leiste { margin-top: 6px; }

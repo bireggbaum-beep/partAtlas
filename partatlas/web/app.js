@@ -1059,18 +1059,20 @@ async function waehle(id, live = false) {
   $("#inspektor").innerHTML = `
     <div class="i-fix">
       ${zustand.baugruppe ? `<button class="zurueck" id="bg-zurueck">← Baugruppe</button>` : ""}
-      <div class="i-name">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
-      ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button>
-        <button class="knopf gefahr" id="endgueltig">Endgültig entfernen …</button></div>`
-        : `<div class="i-haupt">${oeffnenKnoepfe(m, prog)}
-        <div class="mehr"><button class="schalter" id="mehr-knopf" title="Weitere Aktionen">⋯</button>
+      <div class="i-kopfzeile">
+        <div class="i-name" title="${esc(m.name + (endung[m.format] || ""))}">${esc(m.name)}<span class="dim">${esc(endung[m.format] || "")}</span></div>
+        ${papierkorb ? "" : `<div class="i-aktionen">${m.fehlt || m.fehler ? "" : programmKnoepfe(m, prog)}
+          <div class="mehr"><button type="button" class="hv-btn" id="mehr-knopf" title="Weitere Aktionen" aria-label="Weitere Aktionen">⋯</button>
           <div class="menu" id="mehr-menu" hidden>
+            ${m.fehlt || m.fehler ? "" : `${oeffnenMitEintraege(m, prog)}<hr>`}
             <button id="umbenennen">Umbenennen …</button>
             <button id="verschieben">In anderen Ordner verschieben …</button>
             <button id="gal-plus-menu">Bild hinzufügen …</button>
             <hr><button id="loeschen" class="gefahr">Löschen …</button>
-          </div></div>
-      </div>`}
+          </div></div></div>`}
+      </div>
+      ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button>
+        <button class="knopf gefahr" id="endgueltig">Endgültig entfernen …</button></div>` : ""}
       ${reiterKopf}
       ${/* Das Vorschaubild unter den Reitern und nur in der Übersicht (CSS): die anderen Reiter bekommen den Platz (Capacities
            „Inspektorfenster: Reiter ganz oben“) — dort wird später mehr aus den 3MF-Dateien stehen. */ ""}
@@ -1600,19 +1602,25 @@ const HV_ICONS = {
 // Beim Überfahren: im Slicer / im CAD öffnen. Nur, wo es geht (Datei da, Programm für das Format da).
 function hoverAktionen(m) {
   if (!programmDaten || m.fehlt || m.fehler || zustand.ansicht === "papierkorb") return "";
+  const knoepfe = programmKnoepfe(m, programmDaten);
+  return knoepfe ? `<div class="hv">${knoepfe}</div>` : "";
+}
+
+// Slicer und CAD als Symbolknöpfe — dieselben in der Liste (beim Darüberfahren) und im Inspektor (immer).
+function programmKnoepfe(m, programmDaten) {
   const { je } = programmeFuer(m, programmDaten);
   const knoepfe = ["slicer", "cad"].map((a) => {
     if (je[a]?.length) {
       const p = je[a][0];
-      return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
+      return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" data-hv-art="${a}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
     }
     // Gar kein Programm dieser Art eingerichtet: der Knopf bleibt da, gedämpft, und führt in die Einstellungen —
     // sonst findet niemand heraus, warum er fehlt. (Kann nur das Format nicht, bleibt er weg.)
     if (programmDaten.programme.some((p) => p.art === a)) return "";
     const name = programmDaten.arten?.[a] || a;
-    return `<button type="button" class="hv-btn leer" data-hv-einrichten="1" title="Noch kein ${esc(name)} eingerichtet — in den Einstellungen wählen" aria-label="${esc(name)} einrichten">${HV_ICONS[a]}</button>`;
+    return `<button type="button" class="hv-btn leer" data-hv-einrichten="1" data-hv-art="${a}" title="Noch kein ${esc(name)} eingerichtet — in den Einstellungen wählen" aria-label="${esc(name)} einrichten">${HV_ICONS[a]}</button>`;
   }).join("");
-  return knoepfe ? `<div class="hv">${knoepfe}</div>` : "";
+  return knoepfe;
 }
 
 let programmCache = null;
@@ -1638,21 +1646,12 @@ function programmeFuer(m, prog) {
   return { je, hauptArt: std ? std.art : null };
 }
 
-function oeffnenKnoepfe(m, prog) {
-  const { je, hauptArt } = programmeFuer(m, prog);
-  const arten = Object.keys(prog.arten).filter((a) => je[a].length).sort((x, y) => (y === hauptArt) - (x === hauptArt));
-  if (!arten.length) return `<button class="knopf" id="oeffnen" data-system="1" title="Mit dem Standardprogramm des Systems öffnen">↗ Öffnen</button>`;
-  const knoepfe = arten.map((art, i) => {
-    const p = je[art][0];
-    return `<button class="knopf ${i === 0 ? "akzent" : ""}" ${i === 0 ? 'id="oeffnen"' : ""} data-oeffne-pfad="${esc(p.pfad)}"
-      title="In ${esc(p.name)} öffnen (${esc(prog.arten[art])})">${ART_SYMBOL[art] || "↗"} ${esc(p.name)}</button>`;
-  }).join("");
-  const weitere = Object.entries(prog.arten).map(([art, titel]) => {
-    const g = je[art].slice(1);
-    return g.length ? `<optgroup label="${esc(titel)}">${g.map((p) => `<option value="${esc(p.pfad)}">${esc(p.name)}</option>`).join("")}</optgroup>` : "";
-  }).join("");
-  return knoepfe + `<select class="knopf schmal" id="oeffnen-mit" title="Öffnen mit … (weitere Programme)"><option value="">▾</option>${weitere}
-      <option value="__system">Mit dem System öffnen</option><option value="__einstellungen">Programme einstellen …</option></select>`;
+// „Öffnen mit …“ im ⋯-Menü des Inspektors: alle erkannten Programme je Art, dazu das System und die Einstellungen.
+function oeffnenMitEintraege(m, prog) {
+  const { je } = programmeFuer(m, prog);
+  const gruppen = Object.entries(prog.arten || {}).filter(([art]) => je[art]?.length).map(([art, titel]) =>
+    `<div class="menu-titel">${esc(titel.toUpperCase())}</div>${je[art].map((p) => `<button data-oeffne-pfad="${esc(p.pfad)}">${esc(p.name)}</button>`).join("")}`).join("");
+  return `${gruppen}<button id="oeffnen-system">Mit dem System öffnen</button><button id="prog-einstellen">Programme einstellen …</button>`;
 }
 
 async function modellOeffnen(body, id = $("#inspektor").dataset.id) {
@@ -2056,7 +2055,8 @@ $("#gruppierung").value = zustand.gruppierung;
     }
     case "favorit": { const m = zustand.modelle.find((x) => x.id === id); await aendern(id, { favorit: !(m && m.favorit) }); return waehle(id); }
     case "entwurf": { const m = await api(`/api/modelle/${id}`); await aendern(id, { entwurf: !m.entwurf }); return waehle(id); }
-    case "oeffnen": { const k = $("#oeffnen"); return modellOeffnen(k.dataset.system ? { system: true } : { pfad: k.dataset.oeffnePfad }); }
+    case "oeffnen-system": $("#mehr-menu").hidden = true; return modellOeffnen({ system: true });
+    case "prog-einstellen": $("#mehr-menu").hidden = true; localStorageSchreiben("einstellungen-abschnitt", "programme"); return einstellungen();
     case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
     case "gal-plus-menu": $("#mehr-menu").hidden = true; return $("#bild-wahl").click();
     case "umbenennen": return umbenennen(id);
@@ -2094,12 +2094,6 @@ document.addEventListener("change", async (e) => {
     if (!wert) return;
     try { await api(`/api/modelle/${id}/material`, { method: "POST", body: { material: wert } }); } catch (err) { toast(err.message); }
     return waehle(id);
-  }
-  if (e.target.id === "oeffnen-mit" && e.target.value) {
-    const w = e.target.value;
-    e.target.value = "";
-    if (w === "__einstellungen") return einstellungen();
-    return modellOeffnen(w === "__system" ? { system: true } : { pfad: w });
   }
   if (e.target.id === "sammlung-dazu" && e.target.value) {
     const id = $("#inspektor").dataset.id, sid = e.target.value;
@@ -2857,8 +2851,8 @@ async function kontextAktion(k, knopf) {
 }
 
 document.addEventListener("click", (e) => {
-  const b = e.target.closest?.("#inspektor [data-oeffne-pfad]:not(#oeffnen)");
-  if (b) modellOeffnen({ pfad: b.dataset.oeffnePfad });
+  const b = e.target.closest?.("#inspektor [data-oeffne-pfad]");
+  if (b) { $("#mehr-menu").hidden = true; modellOeffnen({ pfad: b.dataset.oeffnePfad }); }
 });
 document.addEventListener("contextmenu", (e) => {
   const k = e.target.closest?.(".karte, .zeile-l, .zeile-k");
