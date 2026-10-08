@@ -445,7 +445,8 @@ if __name__ == "__main__":
     check("Protokoll beim Start: Umgebung, Katalog mit Zahlen, Einstellungen, was im Bestand aussteht",
           log_sammler.hat("Umgebung: Python") and log_sammler.hat("Katalog:", "Modelle", "Wurzelordner") and log_sammler.hat("Einstellungen: Beim Start einlesen")
           and log_sammler.hat("Ausstehend im Bestand"))
-    check("Protokoll: Beginn und Ende des Servers stehen drin", log_sammler.hat("nimmt Anfragen an") and log_sammler.hat("partAtlas beendet"))
+    check("Protokoll: Beginn und Ende des Servers stehen drin (bereit meldet __main__, sobald der Port offen ist)",
+          log_sammler.hat("Katalog geöffnet") and log_sammler.hat("partAtlas beendet"))
     with TestClient(erstelle_app(os.path.join(tmp, "bestand_protokoll"), prozesse=2)) as c:
         c.post("/api/clientfehler", json={"meldung": "x is not a function", "ort": "app.js:12:3"})
         check("Ein Fehler in der Oberfläche (JavaScript) kommt ins Protokoll, mit Ort",
