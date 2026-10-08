@@ -4,6 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Als Nächstes: Backup & Wiederherstellung (KONZEPT §3.3a, entschieden 8.10.2026)
+
+In Paketen: (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen in der Oberfläche, Aufbewahrung 5 / 30 Tage;
+(2) Backup als ZIP erstellen und wiederherstellen; (3) Erinnerung nach 30 Tagen (Punkt am Zahnrad). Vorbild pDMS (`services/backup.py`,
+`services/export.py`), aber aufgeräumter.
+
 ## Stand: 0.50.0 auf `main` (8.10.2026, für den Tester)
 
 Pipeline nach KONZEPT §3.4: Einträge und Ordnerbaum sofort beim Einlesen, Auslesen/Vorschaubilder/FreeCAD im Hintergrund (schnelle Formate

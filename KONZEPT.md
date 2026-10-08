@@ -233,6 +233,43 @@ Was davon nicht abgedeckt ist: Sammlungen, Baugruppen, Drucke und Tags lassen si
 Graph und in den Sicherungen noch da), aber nicht in der Oberfläche zurückholen; das Zurückholen einer Sicherung geht nur über die
 Kommandozeile.
 
+### 3.3a Backup & Wiederherstellung — Zielbild (8.10.2026, vom Anwender entschieden, noch nicht gebaut)
+
+Vorbild pDMS, aber aufgeräumter. Ein eigener Reiter **„Backup & Wiederherstellung“** im Einstellungsdialog; was er tut, muss ohne
+Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
+
+| | Was es ist | Wogegen es hilft |
+|---|---|---|
+| **Backup (ZIP)** | der ganze Katalog in einer Datei zum Wegtragen | Plattenschaden, Umzug auf einen anderen Rechner |
+| **Automatische Sicherung (nur Datenbank)** | Stände der Datenbank neben dem Bestand | eigene Fehlgriffe (alles gelöscht, falscher Ordner entfernt) |
+| **Papierkorb** | einzelne entfernte Modelle und Ordner | ein Klick zu schnell |
+
+**Aufbau des Reiters**, von oben nach unten:
+
+1. **Backup.** Eine Zeile zum Stand: „Letztes Backup vor 12 Tagen · 8 600 Modelle · 45 MB“ bzw. „Noch kein Backup. Der Katalog liegt nur
+   auf diesem Rechner.“ Darunter zwei Knöpfe: **Backup erstellen …** (Ziel wählt der Anwender) und **Aus Backup wiederherstellen …**.
+   - Im ZIP: Datenbank, Einstellungen, eigene Bilder, Druckfotos, eigene Dateien — alles, was sich nicht neu erzeugen lässt.
+   - Nicht im ZIP: die Modelldateien (sie liegen in den Ordnern des Anwenders) und Abgeleitetes (Vorschaubilder, kleine Bilder,
+     FreeCAD-Netze; partAtlas erzeugt sie nach dem Wiederherstellen neu).
+   - Wiederherstellen ersetzt den Katalog vollständig, nicht dazugemischt; vorher eine automatische Sicherung des jetzigen Stands.
+   - Erinnerung: liegt das letzte Backup länger als **30 Tage** zurück (oder gab es nie eines, aber Modelle), ein Punkt am Zahnrad und
+     der Hinweis oben im Reiter. Kein Fenster.
+2. **Automatische Sicherung (nur Datenbank).** Die Überschrift sagt es, ein Satz darunter erklärt es: „Sichert die Datenbank — Modelle,
+   Tags, Drucke, Baugruppen, Ordner — vor jeder Massenaktion und beim Start. Nicht enthalten: Bilder und deine Modelldateien. Liegt auf
+   demselben Rechner: kein Ersatz für ein Backup.“
+   - Liste der Stände mit Zeit und Anlass in Worten („vor dem Entfernen von 8 600 Modellen“), je Zeile **Zurückholen**. Zurückholen geht
+     in der Oberfläche (Einlesen und Hintergrund halten an, Datenbank wird getauscht); vorher wird der jetzige Stand gesichert, also ist
+     auch das Zurückholen umkehrbar.
+   - Behalten: die letzten **5** und dazu je Tag den neuesten für **30 Tage** (wie pDMS), in den Einstellungen änderbar.
+   - Schnell auch bei grossem Bestand: was sich nie an Ort und Stelle ändert, wird verlinkt statt kopiert (wie pDMS; vorher prüfen, dass
+     wirklich nichts an Ort und Stelle schreibt).
+3. **Unten in einem Satz:** „Deine Modelldateien sichert partAtlas nicht — sie liegen in deinen Ordnern und gehören in dein normales
+   Backup.“
+
+**Gestaltung:** aufgeräumter als in pDMS — klare Abschnitte mit Überschrift und einem erklärenden Satz, Knöpfe rechtsbündig in einer
+Zeile, Liste als ruhige Tabelle (Zeit · Anlass · Zurückholen), kein Kleingedrucktes in Absätzen, keine Pfade und Befehle in der
+Oberfläche. Ersetzt den heutigen Absatz „Sicherungen“ und den Hinweis auf `python -m partatlas.sicherung`.
+
 ### 3.4 Ordner aufnehmen und einlesen — Zielbild (5.10.2026, vom Anwender entschieden, noch nicht gebaut)
 
 Die heutige Fassung ist ein **Hybrid**: Wurzelordner, die an Ort und Stelle bleiben, daneben Hochladen mit Zielordner, das Kopien in die
