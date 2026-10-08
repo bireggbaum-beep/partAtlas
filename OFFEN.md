@@ -23,6 +23,10 @@ aktualisieren.
    **Paket 2 erledigt (0.51.2):** Häkchen „alle“ im Listenkopf (Spalte der Zeilen-Häkchen): wählt alle Gezeigten bzw. keine; Strich, wenn ein
    Teil gewählt ist; folgt jeder Auswahl (`kopfWahlZeichnen` aus `zeichneStapel`). test_ui +1 (gezielt, Gegenprobe fällt).
    Nebenbei: test_api-Prüfung zum Protokoll nachgezogen (seit 0.50.1 rot, nicht gelaufen).
+   **Paket 3 erledigt (0.51.3):** ⋮ rechts im Kopf öffnet die Spaltenwahl (Format, Grösse, Gewicht, Status, Material, Tags, Datei, Eingelesen,
+   Ordner, Drucke; „Vorgabe“ setzt zurück), gemerkt im Browser (`partatlas.spalten`). Kopf und Zeilen aus einer Definition (`SPALTEN`), ein
+   gemeinsames Raster (`--listen-spalten`); Breiten „mindestens–höchstens“, damit viele Spalten nicht über den Rand laufen (im Bild geprüft).
+   Neu sortierbar: Datei, Material, Ordner, Drucke. test_ui +1 (gezielt, Gegenprobe fällt).
 3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

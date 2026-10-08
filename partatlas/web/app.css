@@ -203,11 +203,18 @@ body:has(#stapel:not([hidden])) .toast { bottom: 150px; }
 .segment { display: flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .segment button { background: none; border: 0; padding: 3px 10px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
 .segment button.an { background: var(--accent); color: var(--accent-ink); }
-.listenkopf, .zeile-l { display: grid; grid-template-columns: var(--s6) var(--s5) minmax(144px, 1fr) var(--s7) 144px var(--s8) 144px var(--s7);
+.listenkopf, .zeile-l { display: grid; grid-template-columns: var(--listen-spalten, var(--s6) var(--s5) minmax(144px, 1fr) var(--s7) 144px var(--s8) 144px var(--s7));
                         align-items: center; gap: 0 var(--s3); padding: 0 var(--s4); font-size: 13px; }
 .listenkopf { height: var(--s6); border-bottom: 1px solid var(--line); font: 500 var(--fs-label) var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
 .listenkopf button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; padding: 0; }
 .listenkopf button.an, .listenkopf button:hover { color: var(--ink); }
+.lk-spalten { position: relative; justify-self: end; }
+.lk-spalten #spalten-knopf { font-size: 15px; padding: 0 6px; letter-spacing: 0; }
+.lk-menu { top: 26px; left: auto; right: 0; min-width: 180px; font: var(--fs-body)/1.4 'Barlow', 'Segoe UI', Helvetica, sans-serif;
+           letter-spacing: 0; color: var(--ink); }
+.lk-menu label { display: flex; gap: 8px; align-items: center; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+.lk-menu label:hover { background: var(--panel-2); }
+.lk-menu #spalten-vorgabe { border-top: 1px solid var(--line); margin-top: 4px; border-radius: 0; color: var(--ink-2); }
 .zeile-l { position: absolute; left: 0; right: 0; height: var(--s6); border-bottom: 1px solid var(--line); cursor: pointer; background: var(--bg); }
 .zeile-l:hover { background: var(--panel); }
 .zeile-l.gewaehlt { background: var(--accent-soft); }

@@ -185,6 +185,19 @@ async def oberflaeche(port):
         keine = await pg.evaluate("[zustand.auswahl.size, $('#kopf-alle').checked]")
         check("Listenkopf: Häkchen wählt alle Gezeigten, nach Abwahl einer Zeile ein Strich, dann wieder alle, dann keine",
               alle[0] == alle[1] > 0 and alle[2] and teil == [False, True] and wieder and keine == [0, False])
+        # Spalten über ⋮: Status aus, Ordner an — Kopf und Zeilen folgen, und die Wahl übersteht ein Neuladen
+        await pg.click("#spalten-knopf")
+        await pg.click('#spalten-menu [data-spalte="status"]')
+        await pg.click('#spalten-menu [data-spalte="ordner"]')
+        sp = await pg.evaluate("""() => [[...document.querySelectorAll('#listenkopf > *')].map((x) => x.innerText.trim()),
+                                          document.querySelector('.zeile-l').children.length, document.querySelectorAll('#listenkopf > *').length]""")
+        await pg.reload()
+        await pg.wait_for_selector("#listenkopf [data-sortiere]")
+        nach = await pg.evaluate("zustand.spalten")
+        check("Spalten über ⋮: Status weg, Ordner da, Zeilen haben so viele Zellen wie der Kopf; nach dem Neuladen gleich",
+              "STATUS" not in " ".join(sp[0]) and any(x.startswith("ORDNER") for x in sp[0]) and sp[1] == sp[2]
+              and "ordner" in nach and "status" not in nach)
+        await pg.evaluate("localStorage.removeItem('partatlas.spalten')")
         await pg.click('[data-layout="raster"]')
 
         await suche("Vase")

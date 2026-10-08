@@ -248,6 +248,10 @@ const SORTIERUNGEN = {
   groesse: { wert: (m) => Math.max(...(m.masse || [0])), ab: true },
   format: { wert: (m) => m.format || "", ab: false },
   status: { wert: (m) => STATUS_RANG[GRUPPEN.status.schluessel(m)], ab: false },
+  datei: { wert: (m) => m.groesse || 0, ab: true },
+  material: { wert: (m) => m.material || "", ab: false },
+  ordner: { wert: (m) => ordnerText(m), ab: false },
+  drucke: { wert: (m) => m.drucke_n || 0, ab: true },
 };
 function sortierungWaehlen(k) {
   zustand.absteigend = zustand.sortierung === k ? !zustand.absteigend : SORTIERUNGEN[k].ab;
@@ -619,28 +623,74 @@ function zeileK(m, y) {
 }
 
 // Die Liste ist die schlanke Tabelle zum Sortieren; Tags, Ordner und Material zeigen die Karten.
-const LISTENSPALTEN = [["", ""], ["", ""], ["NAME", "name"], ["FORMAT", "format"], ["GRÖSSE", "groesse"], ["GEWICHT", "gewicht"],
-                       ["STATUS", "status"], ["", ""]];
+// Die wählbaren Spalten der Liste (⋮ rechts im Kopf). Name, Bild und Häkchen sind immer da. Vorgabe: die Spalten von früher.
+// Breiten als „mindestens, höchstens“: wird es eng (viele Spalten, schmales Fenster), schrumpfen alle anteilig statt über den Rand zu laufen.
+const ordnerText = (m) => {
+  const [w, ...rest] = (m.ordner[0] || "").split("/").filter(Boolean);
+  return w ? [wurzelName(w), ...rest].join(" / ") : "";
+};
+const statusText = (m) => m.ohne_datei ? "ohne Datei" : m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt`
+  : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
+const SPALTEN = {
+  format: { titel: "FORMAT", sort: "format", breite: "minmax(48px, 64px)", zelle: (m) => esc(endung[m.format] || "") },
+  groesse: { titel: "GRÖSSE", sort: "groesse", breite: "minmax(72px, 144px)", zelle: (m) => esc(masse(m.masse)) },
+  gewicht: { titel: "GEWICHT", sort: "gewicht", breite: "minmax(56px, 80px)", zelle: (m) => (m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : "") },
+  status: { titel: "STATUS", sort: "status", breite: "minmax(64px, 144px)", zelle: (m) => statusText(m) },
+  material: { titel: "MATERIAL", sort: "material", breite: "minmax(56px, 96px)", zelle: (m) => esc((m.materialien || []).join(", ")) },
+  tags: { titel: "TAGS", sort: "", breite: "minmax(64px, 160px)", zelle: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
+  datei: { titel: "DATEI", sort: "datei", breite: "minmax(56px, 80px)", zelle: (m) => (m.groesse ? groesseText(m.groesse) : "") },
+  neu: { titel: "EINGELESEN", sort: "neu", breite: "minmax(72px, 96px)", zelle: (m) => (m.angelegt ? new Date(m.angelegt).toLocaleDateString("de-DE") : "") },
+  ordner: { titel: "ORDNER", sort: "ordner", breite: "minmax(72px, 180px)", zelle: (m) => esc(ordnerText(m)) },
+  drucke: { titel: "DRUCKE", sort: "drucke", breite: "minmax(48px, 64px)", zelle: (m) => (m.drucke_n ? String(m.drucke_n) : "") },
+};
+const SPALTEN_VORGABE = ["format", "groesse", "gewicht", "status"];
+const groesseText = (b) => (b < 1048576 ? `${zahl(b / 1024, 0)} kB` : `${zahl(b / 1048576, 1)} MB`);
+function spaltenLesen() {
+  try { const l = JSON.parse(localStorageLesen("spalten") || "null"); if (Array.isArray(l)) return l.filter((k) => SPALTEN[k]); } catch { /* Vorgabe */ }
+  return [...SPALTEN_VORGABE];
+}
+zustand.spalten = spaltenLesen();
+// Kopf und Zeilen teilen dasselbe Raster: eine Variable an der Wurzel, gesetzt bei jeder Änderung der Spalten.
+function spaltenRaster() {
+  const mitte = zustand.spalten.map((k) => SPALTEN[k].breite).join(" ");
+  document.documentElement.style.setProperty("--listen-spalten", `var(--s6) var(--s5) minmax(120px, 1fr) ${mitte} var(--s7)`);
+}
+spaltenRaster();
 
 function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
-  const status = m.ohne_datei ? "ohne Datei" : m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
     <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}</span>
-    <span class="mono">${esc(endung[m.format] || "")}</span>
-    <span class="mono">${esc(masse(m.masse))}</span>
-    <span class="mono">${m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : ""}</span>
-    <span class="mono">${status}</span>${hoverAktionen(m)}</div>`;
+    ${zustand.spalten.map((k) => `<span class="mono">${SPALTEN[k].zelle(m)}</span>`).join("")}${hoverAktionen(m)}</div>`;
 }
 
 function zeichneListenkopf() {
-  $("#listenkopf").innerHTML = LISTENSPALTEN.map(([t, k], i) => i === 1
-    ? `<span><input type="checkbox" id="kopf-alle" title="Alle auswählen" aria-label="Alle auswählen"></span>` :
-    k ? `<button data-sortiere="${k}" class="${zustand.sortierung === k ? "an" : ""}" title="Sortieren${zustand.sortierung === k ? " — noch einmal: andere Richtung" : ""}">${t}${zustand.sortierung === k ? (zustand.absteigend ? " ▼" : " ▲") : ""}</button>` : `<span>${t}</span>`).join("");
+  const kopf = (k, t) => `<button data-sortiere="${k}" class="${zustand.sortierung === k ? "an" : ""}" title="Sortieren${zustand.sortierung === k
+    ? " — noch einmal: andere Richtung" : ""}">${t}${zustand.sortierung === k ? (zustand.absteigend ? " ▼" : " ▲") : ""}</button>`;
+  abgleichen($("#listenkopf"), `<span></span>
+    <span><input type="checkbox" id="kopf-alle" title="Alle auswählen" aria-label="Alle auswählen"></span>
+    ${kopf("name", "NAME")}
+    ${zustand.spalten.map((k) => (SPALTEN[k].sort ? kopf(SPALTEN[k].sort, SPALTEN[k].titel) : `<span>${SPALTEN[k].titel}</span>`)).join("")}
+    <span class="lk-spalten"><button type="button" id="spalten-knopf" title="Spalten ein- und ausblenden" aria-label="Spalten ein- und ausblenden"
+      aria-haspopup="true">⋮</button>
+      <div class="menu lk-menu" id="spalten-menu" ${zustand.spaltenMenu ? "" : "hidden"}>${Object.entries(SPALTEN).map(([k, sp]) =>
+        `<label><input type="checkbox" data-spalte="${k}" ${zustand.spalten.includes(k) ? "checked" : ""}> ${sp.titel[0]}${sp.titel.slice(1).toLowerCase()}</label>`).join("")}
+        <button type="button" id="spalten-vorgabe">Vorgabe</button></div></span>`);
   kopfWahlZeichnen();
+}
+
+// Eine Spalte an oder aus: Reihenfolge wie in SPALTEN, gemerkt für den nächsten Start.
+function spalteSetzen(k, an) {
+  const wahl = new Set(zustand.spalten);
+  an ? wahl.add(k) : wahl.delete(k);
+  zustand.spalten = Object.keys(SPALTEN).filter((x) => wahl.has(x));
+  localStorageSchreiben("spalten", JSON.stringify(zustand.spalten));
+  spaltenRaster();
+  zeichneListenkopf();
+  raster.zeichne();
 }
 
 // Häkchen „alle“ im Listenkopf: an, wenn alle Gezeigten gewählt sind, ein Strich, wenn ein Teil.
@@ -1784,6 +1834,13 @@ $("#gruppierung").value = zustand.gruppierung;
     $("#raster").scrollTop = 0;
     return raster.neu();
   }
+  if (t.closest("#spalten-knopf")) { zustand.spaltenMenu = !zustand.spaltenMenu; $("#spalten-menu").hidden = !zustand.spaltenMenu; return; }
+  if (t.closest("#spalten-vorgabe")) {
+    zustand.spalten = [...SPALTEN_VORGABE]; localStorageSchreiben("spalten", JSON.stringify(zustand.spalten));
+    spaltenRaster(); zeichneListenkopf(); return raster.zeichne();
+  }
+  if (t.closest("#spalten-menu")) return;
+  if (zustand.spaltenMenu) { zustand.spaltenMenu = false; $("#spalten-menu").hidden = true; }      // Klick daneben schliesst
   const sort = t.closest("[data-sortiere]");
   if (sort) { sortierungWaehlen(sort.dataset.sortiere); sortiere.angeklickt = true; return ladeModelle(); }
   const zeileListe = t.closest(".zeile-l, .zeile-k");
@@ -1980,6 +2037,7 @@ document.addEventListener("change", async (e) => {
     return bilderHochladen(dateien);
   }
   if (e.target.id === "kopf-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
+  if (e.target.dataset?.spalte) return spalteSetzen(e.target.dataset.spalte, e.target.checked);
   if (e.target.id === "sortierung") { zustand.sortierung = ""; sortierungWaehlen(e.target.value); sortiere.angeklickt = true; ladeModelle(); }
   if (e.target.id === "gruppierung") {
     zustand.gruppierung = e.target.value;
