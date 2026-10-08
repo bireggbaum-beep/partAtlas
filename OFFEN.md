@@ -48,7 +48,13 @@ aktualisieren.
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
-## Stand: 0.51.4 auf `main` (8.10.2026, für den Tester)
+## Stand: 0.52.1 auf `main` (8.10.2026, für den Tester)
+
+Seit 0.51.4: Inspektor mit Reitern ganz oben (Bild nur in der Übersicht), Kopfzeile in einer Linie (Name, Slicer-/CAD-Knopf wie in der Liste,
+⋯ mit „Öffnen mit …“). Auf Wunsch des Anwenders ohne vollen test_ui-Lauf auf `main` (zuletzt komplett bei 0.52.0: 67/67); die geänderten
+Prüfungen gezielt (Reiter 1/1, Öffnen 4/4).
+
+## Stand davor: 0.51.4 auf `main` (8.10.2026, für den Tester)
 
 Seit 0.50: Listenkopf wie pDMS (Sortieren per Klick mit Richtung, Häkchen „alle“, Spalten über ⋮, Spaltenbreite ziehen), Format-Chips zählen
 in der Ansicht, Protokoll meldet Bereitschaft erst bei offenem Port, Rückbau-Markierungen „EIGENE“ entfernt. Geprüft: nach jeder Änderung
