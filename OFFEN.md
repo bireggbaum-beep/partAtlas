@@ -64,6 +64,10 @@ aktualisieren.
    x s (n Dateien)“. **Ursache offen:** hier öffnen 1 000 Modelle (190 Dateien) in 0,06 s; Verdacht Virenscanner je Datei — das nächste
    Windows-Protokoll entscheidet; Abhilfe dann in flatgraph (weniger, grössere Dateien = Umzug der Speicherform). Geprüft: test_api 86/86,
    Warteseite gezielt (verzögertes Öffnen).
+   Erster Windows-Lauf danach: Datenbank 3,5 s (2 265 Dateien), die 47 s kamen nicht wieder (vermutlich kalter Start). **Sicherung beim
+   Start mit Abgleich (0.53.1):** statt „höchstens alle 10 Minuten“ nur, wenn sich seit der letzten etwas geändert hat — Fingerabdruck aus
+   Pfad, Grösse, Änderungszeit (nur `stat`), Datei `stand` in jeder Sicherung. Spart beim Anwender 6 s je Start ohne Änderung.
+   test_schutz 23/23, Gegenprobe (Abgleich ausgeschaltet → fällt).
 4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

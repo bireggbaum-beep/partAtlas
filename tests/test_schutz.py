@@ -107,7 +107,9 @@ if __name__ == "__main__":
     # -- Sicherungen
     erste = sicherung.sichern(b, "test", immer=True)
     check("Sicherung angelegt, mit Datenbank und Einstellungen", erste and os.path.isdir(os.path.join(b.wurzel, "sicherungen", erste, "datenbank")))
-    check("Ohne „immer“ höchstens eine je 10 Minuten", sicherung.sichern(b, "start") is None)
+    check("Beim Start keine Sicherung, wenn sich seit der letzten nichts geändert hat", sicherung.sichern(b, "start") is None)
+    b.einstellungen_setzen(probe_sicherung=1)
+    check("Beim Start eine Sicherung, sobald sich seit der letzten etwas geändert hat", sicherung.sichern(b, "start") is not None)
     vor_zahl = len(sicherung.liste(b.wurzel))
     k.wurzel_entfernen(w)
     check("Vor einer Massenaktion (Ordner entfernen) entsteht immer eine Sicherung",

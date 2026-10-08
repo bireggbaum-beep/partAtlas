@@ -4,7 +4,7 @@ Sicherungen der Datenbank — damit kein Fehler (im Programm oder beim Bedienen)
 Was gesichert wird: `datenbank/` (flatgraph: Modelle, Tags, Drucke, Baugruppen, Sammlungen, Ordner), `vault_text/` (lange Texte)
 und `einstellungen.json`. Nicht der Vault mit Bildern: er wächst nur (KONZEPT §3.2), seine Dateien bleiben gültig.
 
-Wann: beim Start (höchstens alle 10 Minuten) und vor jeder Massenaktion immer (Wurzelordner entfernen, Ordner aus dem Katalog
+Wann: beim Start, wenn sich seit der letzten Sicherung etwas geändert hat, und vor jeder Massenaktion immer (Wurzelordner entfernen, Ordner aus dem Katalog
 entfernen, mehrere Modelle entfernen). Kopiert wird unter der Sperre von flatgraph (eine leere Transaktion hält sie): kein anderer
 Thread schreibt währenddessen, die Kopie ist ein Stand und keine Mischung. Fertig ist eine Sicherung erst nach `os.replace` des
 Arbeitsordners — eine abgebrochene liegt als `.…arbeit` da und zählt nicht.
@@ -16,6 +16,7 @@ Behalten: die neuesten 20 und dazu die erste jedes Tages für 60 Tage. Zurückho
 """
 import logging
 import os
+import hashlib
 import re
 import shutil
 import sys
@@ -23,7 +24,7 @@ import time
 
 ORDNER = "sicherungen"
 TEILE = ("datenbank", "vault_text", "einstellungen.json")
-MINDESTABSTAND_S = 600
+STAND = "stand"         # Fingerabdruck des gesicherten Stands, neben den TEILEN; das Zurückholen kopiert ihn nicht mit
 NEUESTE = 20
 TAGE = 60
 # Zeit, dann ein immer zweistelliger Zähler: so ist die Reihenfolge der Namen die der Entstehung, auch in derselben Sekunde.
@@ -63,15 +64,38 @@ def _kopieren(wurzel, ziel):
             shutil.copy2(quelle, os.path.join(ziel, teil))
 
 
+def _stand(wurzel):
+    """Fingerabdruck aus Pfad, Grösse und Änderungszeit jeder gesicherten Datei. Reicht als Vergleich, weil flatgraph und partAtlas nie
+    an Ort und Stelle schreiben (os.replace): jede Änderung ist eine neue Datei mit neuer Zeit. Nur `stat`, kein Lesen — unter Windows
+    kostet das Lesen jeder Datei den Virenscanner."""
+    h = hashlib.sha256()
+    for teil in TEILE:
+        pfad = os.path.join(wurzel, teil)
+        if os.path.isfile(pfad):
+            dateien = [pfad]
+        else:
+            dateien = sorted(os.path.join(d, f) for d, _, fs in os.walk(pfad) for f in fs)
+        for datei in dateien:
+            st = os.stat(datei)
+            h.update(f"{os.path.relpath(datei, wurzel)}\0{st.st_size}\0{st.st_mtime_ns}\n".encode())
+    return h.hexdigest()
+
+
+def _letzter_stand(basis, vorhanden):
+    try:
+        with open(os.path.join(basis, vorhanden[0]["name"], STAND), encoding="utf-8") as f:
+            return f.read().strip()
+    except (IndexError, OSError):
+        return None             # keine Sicherung oder eine von vor dem Abgleich: dann wird gesichert
+
+
 def sichern(bestand, grund, immer=False):
-    """Legt eine Sicherung an; gibt ihren Namen zurück oder None, wenn die letzte jünger als 10 Minuten ist und `immer` fehlt."""
+    """Legt eine Sicherung an und gibt ihren Namen zurück. Ohne `immer` nur, wenn sich seit der letzten etwas geändert hat, sonst None:
+    vorher kopierte jeder Start die ganze Datenbank (unter Windows 6 s bei 8 600 Modellen, Protokoll des Anwenders, 8.10.2026), auch
+    wenn seit der letzten Sicherung nichts geschehen war."""
     basis = _ordner(bestand.wurzel)
     os.makedirs(basis, exist_ok=True)
     vorhanden = liste(bestand.wurzel, mit_groesse=False)
-    if not immer and vorhanden:
-        letzte = time.mktime(time.strptime(vorhanden[0]["zeit"], "%Y-%m-%d %H:%M:%S"))
-        if time.time() - letzte < MINDESTABSTAND_S:
-            return None
     grund = re.sub(r"[^\w-]+", "-", grund).strip("-") or "sicherung"
     stamm = time.strftime("%Y-%m-%d_%H%M%S")
     # Hinter der höchsten Nummer dieser Sekunde, nie in einer Lücke: eine frei geräumte niedrige Nummer sortierte die neue Sicherung
@@ -81,8 +105,14 @@ def sichern(bestand, grund, immer=False):
     name = f"{stamm}-{n:02d}__{grund}"
     arbeit = os.path.join(basis, f".{name}.arbeit")
     t0 = time.monotonic()
-    with bestand.db.transaction():       # hält die Sperre: kein Schreiben anderer Threads während des Kopierens
+    with bestand.db.transaction():       # hält die Sperre: kein Schreiben anderer Threads während des Vergleichens und Kopierens
+        stand = _stand(bestand.wurzel)
+        if not immer and stand == _letzter_stand(basis, vorhanden):
+            log.info("Keine Sicherung (%s): unverändert seit %s (Abgleich %.2f s)", grund, vorhanden[0]["name"], time.monotonic() - t0)
+            return None
         _kopieren(bestand.wurzel, arbeit)
+        with open(os.path.join(arbeit, STAND), "w", encoding="utf-8") as f:
+            f.write(stand)
     kopiert = time.monotonic() - t0
     os.replace(arbeit, os.path.join(basis, name))
     _aufraeumen(bestand.wurzel)
