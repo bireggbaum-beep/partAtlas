@@ -14,6 +14,9 @@ ohne Sicherung, Wiederherstellen nach Ordner entfernen) sind nur hier nachgestel
 Alle 14 Suiten grün: api 86, aufraeumen 13, baugruppen 48, cad 14, drucke 28, eigene 17, formate 25, sammlungen 18, scan 110, schutz 22,
 suche 26, verwalten 78, zuordnen 12; test_ui einmal komplett gelaufen (60/62 — die zwei fallenden beschrieben das alte Nachladen; neu
 gefasst und gezielt geprüft, 5/5, Gegenprobe fällt; nicht noch einmal komplett, CLAUDE.md).
+**Rückmeldung des Testers (8.10.2026):** „In 0.50 funktioniert der Import.“ Er hat im Explorer einen Unterordner („Mähklingen“, 11 Objekte)
+in einen schon aufgenommenen Ordner gelegt und in partAtlas ohne Fehler eingelesen. Damit ist der Hänger aus 0.46 bei ihm nicht mehr
+aufgetreten.
 Offen danach: Gruppengrösse der Massenaktionen messen (200 ist geschätzt); Ordner entfernen mit vielen Dateien (eine grosse Transaktion);
 Sicherung über harte Verweise (Vorschlag); automatische Überwachung (Schritt 5).
 
