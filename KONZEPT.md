@@ -240,7 +240,7 @@ Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
 
 | | Was es ist | Wogegen es hilft |
 |---|---|---|
-| **Backup (ZIP)** | der ganze Katalog in einer Datei zum Wegtragen | Plattenschaden, Umzug auf einen anderen Rechner |
+| **Backup (ZIP)** | alles in einer Datei zum Wegtragen: Modelldateien und Katalog | Plattenschaden, Umzug auf einen anderen Rechner |
 | **Automatische Sicherung (nur Datenbank)** | Stände der Datenbank neben dem Bestand | eigene Fehlgriffe (alles gelöscht, falscher Ordner entfernt) |
 | **Papierkorb** | einzelne entfernte Modelle und Ordner | ein Klick zu schnell |
 
@@ -248,10 +248,16 @@ Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
 
 1. **Backup.** Eine Zeile zum Stand: „Letztes Backup vor 12 Tagen · 8 600 Modelle · 45 MB“ bzw. „Noch kein Backup. Der Katalog liegt nur
    auf diesem Rechner.“ Darunter zwei Knöpfe: **Backup erstellen …** (Ziel wählt der Anwender) und **Aus Backup wiederherstellen …**.
-   - Im ZIP: Datenbank, Einstellungen, eigene Bilder, Druckfotos, eigene Dateien — alles, was sich nicht neu erzeugen lässt.
-   - Nicht im ZIP: die Modelldateien (sie liegen in den Ordnern des Anwenders) und Abgeleitetes (Vorschaubilder, kleine Bilder,
-     FreeCAD-Netze; partAtlas erzeugt sie nach dem Wiederherstellen neu).
+   - Satz unter der Überschrift: „Alles in einer ZIP-Datei: deine Modelldateien, die Datenbank, Einstellungen, eigene Bilder und
+     Druckfotos. Nicht dabei sind nur Vorschaubilder; partAtlas erzeugt sie neu.“ (Entschieden 8.10.2026: Modelldateien immer dabei,
+     kein Häkchen — „alles in einer Datei“ ist, was man von einem Backup erwartet.)
+   - Nicht im ZIP: Abgeleitetes (Vorschaubilder, kleine Bilder, FreeCAD-Netze).
+   - Grösse und Dauer: bei 8 600 Modellen mehrere GB und Minuten. Vorher die ungefähre Grösse, beim Erstellen Fortschritt.
    - Wiederherstellen ersetzt den Katalog vollständig, nicht dazugemischt; vorher eine automatische Sicherung des jetzigen Stands.
+   - Modelldateien beim Wiederherstellen — partAtlas überschreibt nie (§3.3): liegt eine Datei am alten Ort mit gleichem Inhalt, bleibt
+     sie unberührt; fehlt sie, wird sie dorthin zurückgelegt; liegt dort eine andere gleichen Namens, bleibt diese, und die Bilanz nennt
+     sie. Gibt es die alten Ordner nicht (anderer Rechner), fragt partAtlas nach einem Zielordner und legt die Struktur darunter an; die
+     Wurzelordner zeigen dann dorthin.
    - Erinnerung: liegt das letzte Backup länger als **30 Tage** zurück (oder gab es nie eines, aber Modelle), ein Punkt am Zahnrad und
      der Hinweis oben im Reiter. Kein Fenster.
 2. **Automatische Sicherung (nur Datenbank).** Die Überschrift sagt es, ein Satz darunter erklärt es: „Sichert die Datenbank — Modelle,
@@ -263,8 +269,6 @@ Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
    - Behalten: die letzten **5** und dazu je Tag den neuesten für **30 Tage** (wie pDMS), in den Einstellungen änderbar.
    - Schnell auch bei grossem Bestand: was sich nie an Ort und Stelle ändert, wird verlinkt statt kopiert (wie pDMS; vorher prüfen, dass
      wirklich nichts an Ort und Stelle schreibt).
-3. **Unten in einem Satz:** „Deine Modelldateien sichert partAtlas nicht — sie liegen in deinen Ordnern und gehören in dein normales
-   Backup.“
 
 **Gestaltung:** aufgeräumter als in pDMS — klare Abschnitte mit Überschrift und einem erklärenden Satz, Knöpfe rechtsbündig in einer
 Zeile, Liste als ruhige Tabelle (Zeit · Anlass · Zurückholen), kein Kleingedrucktes in Absätzen, keine Pfade und Befehle in der
