@@ -240,19 +240,27 @@ Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
 
 | | Was es ist | Wogegen es hilft |
 |---|---|---|
-| **Backup (ZIP)** | alles in einer Datei zum Wegtragen: Modelldateien und Katalog | Plattenschaden, Umzug auf einen anderen Rechner |
+| **Backup (ZIP)** | Katalog und (einstellbar) Modelldateien und Bilder in einer Datei, in einem festen Ordner | Plattenschaden, Umzug auf einen anderen Rechner |
 | **Automatische Sicherung (nur Datenbank)** | Stände der Datenbank neben dem Bestand | eigene Fehlgriffe (alles gelöscht, falscher Ordner entfernt) |
 | **Papierkorb** | einzelne entfernte Modelle und Ordner | ein Klick zu schnell |
 
 **Aufbau des Reiters**, von oben nach unten:
 
-1. **Backup.** Eine Zeile zum Stand: „Letztes Backup vor 12 Tagen · 8 600 Modelle · 45 MB“ bzw. „Noch kein Backup. Der Katalog liegt nur
-   auf diesem Rechner.“ Darunter zwei Knöpfe: **Backup erstellen …** (Ziel wählt der Anwender) und **Aus Backup wiederherstellen …**.
-   - Satz unter der Überschrift: „Alles in einer ZIP-Datei: deine Modelldateien, die Datenbank, Einstellungen, eigene Bilder und
-     Druckfotos. Nicht dabei sind nur Vorschaubilder; partAtlas erzeugt sie neu.“ (Entschieden 8.10.2026: Modelldateien immer dabei,
-     kein Häkchen — „alles in einer Datei“ ist, was man von einem Backup erwartet.)
-   - Nicht im ZIP: Abgeleitetes (Vorschaubilder, kleine Bilder, FreeCAD-Netze).
-   - Grösse und Dauer: bei 8 600 Modellen mehrere GB und Minuten. Vorher die ungefähre Grösse, beim Erstellen Fortschritt.
+1. **Backup.** Gedacht für den Ablauf des Anwenders: partAtlas legt das ZIP in einen **festen Zielordner**, den das eigene
+   Backup-Programm des Anwenders (Sync, Cloud, NAS) ohnehin mitnimmt. Eine Zeile zum Stand: „Letztes Backup vor 12 Tagen · 8 600 Modelle ·
+   4,2 GB“ bzw. „Noch kein Backup.“ Knöpfe **Backup erstellen** und **Aus Backup wiederherstellen …**.
+   - **Einstellbar, was hinein kommt** (Entschieden 8.10.2026: der Anwender mag Einstellungen), je Zeile mit erwarteter Grösse:
+
+     | Inhalt | Vorgabe | Hinweis |
+     |---|---|---|
+     | Datenbank und Einstellungen | immer | klein |
+     | Modelldateien | an | der grösste Teil |
+     | Eigene Bilder und Druckfotos | an | lassen sich nicht neu erzeugen |
+     | Vorschaubilder | aus | „partAtlas erzeugt sie nach dem Wiederherstellen neu“ |
+
+   - **Zielordner** einstellbar; Dateiname `partAtlas-Backup-JJJJ-MM-TT.zip`; behalten werden die letzten **2** ZIPs im Zielordner
+     (einstellbar) — bei mehreren GB je ZIP soll der Ordner nicht volllaufen.
+   - Vor dem Erstellen die erwartete Gesamtgrösse, beim Erstellen Fortschritt unten links (wie beim Einlesen); die Bedienung bleibt frei.
    - Wiederherstellen ersetzt den Katalog vollständig, nicht dazugemischt; vorher eine automatische Sicherung des jetzigen Stands.
    - Modelldateien beim Wiederherstellen — partAtlas überschreibt nie (§3.3): liegt eine Datei am alten Ort mit gleichem Inhalt, bleibt
      sie unberührt; fehlt sie, wird sie dorthin zurückgelegt; liegt dort eine andere gleichen Namens, bleibt diese, und die Bilanz nennt
@@ -260,6 +268,7 @@ Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:
      Wurzelordner zeigen dann dorthin.
    - Erinnerung: liegt das letzte Backup länger als **30 Tage** zurück (oder gab es nie eines, aber Modelle), ein Punkt am Zahnrad und
      der Hinweis oben im Reiter. Kein Fenster.
+   - *Später möglich:* Backup nach Zeitplan (etwa wöchentlich beim Start). Nicht Teil des ersten Schritts.
 2. **Automatische Sicherung (nur Datenbank).** Die Überschrift sagt es, ein Satz darunter erklärt es: „Sichert die Datenbank — Modelle,
    Tags, Drucke, Baugruppen, Ordner — vor jeder Massenaktion und beim Start. Nicht enthalten: Bilder und deine Modelldateien. Liegt auf
    demselben Rechner: kein Ersatz für ein Backup.“
