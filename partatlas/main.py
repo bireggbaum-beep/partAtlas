@@ -25,7 +25,7 @@ from fastapi.staticfiles import StaticFiles
 
 import numpy as np
 
-from .eigene import Eigene      # EIGENE
+from .eigene import Eigene
 from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
@@ -89,7 +89,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         k = Katalog(b)
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
-        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))      # EIGENE
+        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))
         s.schleifenprobe = verteiler.antwortzeit
         _startinfo(b, k, s)
         # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
@@ -139,7 +139,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     def B():
         return zustand["baugruppen"]
 
-    def E():      # EIGENE
+    def E():
         return zustand["eigene"]
 
     # -- Wache: schreibende Anfragen nur von der eigenen Oberfläche. Ein
@@ -770,7 +770,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
     def kaufteil_neu(d: dict = Depends(json_koerper)):
         return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}
 
-    # EIGENE: Eigene Komponenten — Anfang
+    # Eigene Komponenten
     @app.get("/api/eigene")
     def eigene_liste(q: str = ""):
         return E().liste(q or None)
@@ -815,7 +815,6 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         if not pfad:
             raise HTTPException(404)
         return FileResponse(pfad, filename=name)
-    # EIGENE: Ende
 
     @app.get("/api/tags")
     @am_stueck

@@ -131,7 +131,7 @@ class Stueckliste:
         self.k = baugruppen.k
         self.b = baugruppen.k.b
 
-    def eigene_bild(self, eid):      # EIGENE
+    def eigene_bild(self, eid):
         b = (self.k.db.get_node(f"{EIGEN}/{eid}", readonly=True) or {}).get("bild")
         return self.b.pfad(*b["datei"].split("/")) if b else None
 
@@ -141,7 +141,7 @@ class Stueckliste:
     def _bild(self, kurz, seite=11 * mm):
         if not self.opt["bilder"]:
             return ""
-        pfad = kurz.get("pfad")      # EIGENE: Bild einer eigenen Komponente
+        pfad = kurz.get("pfad")      # Bild einer eigenen Komponente
         if pfad:
             pass
         elif kurz.get("bild"):
@@ -191,7 +191,7 @@ class Stueckliste:
                                                  f"Kaufteil{' · ' + _esc(t['norm']) if t.get('norm') else ''}</font>", S["zelle"]),
                                str(menge), f"{gesamt}" + ("" if t.get("einheit", "Stück") == "Stück" else f" {t['einheit']}"), "", "", "",
                                self._ok(kante.get("erledigt", 0) >= gesamt)])
-            elif art == "eigen":      # EIGENE
+            elif art == "eigen":
                 e = self.k.db.get_node(f"{EIGEN}/{kid}", readonly=True)
                 detail = " · ".join(x for x in ("Eigene Komponente", e.get("art"), e.get("masse")) if x)
                 zeilen.append([nr, self._bild({"id": kid, "pfad": self.eigene_bild(kid)}, 9 * mm),

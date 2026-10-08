@@ -215,7 +215,7 @@ function stuecklisteTafel(d, leer, offenDruck) {
   <div class="bg-werkzeug">
     <button class="knopf" data-bg-aktion="teile">＋ Druckteile</button>
     <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button>
-    <button class="knopf" data-bg-aktion="eigene">＋ Eigene Komponente</button>      <!-- EIGENE -->
+    <button class="knopf" data-bg-aktion="eigene">＋ Eigene Komponente</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
     <span class="bg-luecke"></span>
     <button class="knopf" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
@@ -257,7 +257,7 @@ function position(p, nr) {
     vorschau = symbolFuer(p.kategorie);
     name = esc(p.name);
     unter = `${esc(p.kategorie || "")}${p.einheit && p.einheit !== "Stück" ? " · in " + esc(p.einheit) : ""}`;
-  } else if (p.art === "eigen") {      // EIGENE
+  } else if (p.art === "eigen") {
     vorschau = p.eigen_bild ? `<img loading="lazy" src="/api/eigene/${esc(p.id)}/bild?t=1" alt="">` : "🔩";
     name = esc(p.name);
     unter = ["Eigene Komponente", p.eigen_art, p.eigen_masse, p.eigen_datei].filter(Boolean).map(esc).join(" · ");
@@ -439,7 +439,7 @@ async function bgAktion(aktion) {
   const d = bgDaten;
   switch (aktion) {
     case "teile": case "kaufteile": case "unter": return waehler(aktion);
-    case "eigene": return eigeneWaehlen();      // EIGENE, siehe eigene.js
+    case "eigene": return eigeneWaehlen();      // siehe eigene.js
 
     case "warteschlange": {
       const { eingereiht } = await api(`/api/baugruppen/${bid()}/warteschlange`, { method: "POST" });

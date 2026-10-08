@@ -924,7 +924,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .zw-status { color: var(--ink-2); }
 body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 
-/* EIGENE: Eigene Komponenten */
+/* Eigene Komponenten */
 .eig-form { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--s3); margin-top: var(--s3); }
 .eig-bild { width: 96px; height: 96px; border-radius: 8px; border: 1px dashed var(--line); background: var(--plate); display: grid; place-items: center;
   color: var(--ink-3); cursor: pointer; overflow: hidden; font-size: 13px; }

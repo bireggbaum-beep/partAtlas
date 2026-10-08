@@ -4,9 +4,6 @@ Platte, eine Schraube aus dem Fabriklager. Ein eigenes Objekt mit Name, Bild und
 
 Bewusst schlicht (Entscheidung 03.10.2026): keine Bestandsverwaltung, kein Lagerort, keine Einkäufe. Die Menge in der Stückliste ist der
 Bedarf, nicht der Bestand. Die freie Angabe `art` (Lagerteil, Eigenbau, Fundstück …) ist nur ein Etikett und füllt sich von selbst.
-
-Zum Entfernen, falls es dem Anwender nichts taugt: diese Datei, `web/eigene.js`, `tests/test_eigene.py` und die mit „EIGENE“
-markierten Stellen in baugruppen.py, stueckliste.py, main.py, web/baugruppen.js und index.html.
 """
 import hashlib
 import os

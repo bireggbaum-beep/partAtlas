@@ -1,6 +1,5 @@
-// EIGENE: Eigene Komponenten in der Baugruppe — Auswahl, Neuanlage mit Bild, Bearbeiten.
+// Eigene Komponenten in der Baugruppe — Auswahl, Neuanlage mit Bild, Bearbeiten.
 // Ein Teil, das weder gedruckt noch gekauft ist (60 Jahre altes Kugellager, selbst Gefrästes). Keine Bestandsverwaltung: die Menge ist der Bedarf.
-// Entfernen: diese Datei, die Markierungen „EIGENE“ in baugruppen.js/index.html und das Gegenstück in partatlas/eigene.py.
 
 function eigeneFormular(w = {}, arten = []) {
   return `<div class="eig-form">
