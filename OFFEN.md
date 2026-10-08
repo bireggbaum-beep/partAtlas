@@ -8,8 +8,10 @@ aktualisieren.
 
 1. Offene Punkte nach 0.50 abarbeiten. **Erledigt (0.50.1):** Protokoll schreibt „nimmt Anfragen an“ erst, wenn der Port offen ist
    (vorher schon davor, auch bei belegtem Port); `einlesen=0` aus `/api/hochladen` entfernt (kein Aufrufer mehr; test_verwalten 76/76,
-   die zwei Prüfungen dazu entfallen); Kommentar 3 × 4 MB. **Offen:** Gruppengrösse 200 messen; „EIGENE“-Markierungen (Anwender
-   entscheidet); Ordner entfernen mit vielen Dateien (zurückgestellt, seltene Aktion).
+   die zwei Prüfungen dazu entfallen); Kommentar 3 × 4 MB. **Zurückgestellt auf v0.60:** Gruppengrösse 200 messen
+   (funktioniert heute); Ordner entfernen mit vielen Dateien (seltene Aktion). **Offen, Anwender entscheidet:** „EIGENE“ markiert die
+   Funktion „Eigene Komponente“ (0.40.0, dritte Bauteilart in Baugruppen) als rückbaubar — Funktion behalten (dann nur Markierungen weg,
+   Aufwand 1) oder ausbauen (Aufwand 2, vorher prüfen, ob welche angelegt sind)? Der Anwender kannte die Markierungen nicht.
 2. Danach **Listenköpfe analog zu pDMS** (steht in Capacities).
 3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
