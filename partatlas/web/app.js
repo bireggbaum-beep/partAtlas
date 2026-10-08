@@ -637,8 +637,19 @@ function zeileL(m, y) {
 }
 
 function zeichneListenkopf() {
-  $("#listenkopf").innerHTML = LISTENSPALTEN.map(([t, k]) =>
+  $("#listenkopf").innerHTML = LISTENSPALTEN.map(([t, k], i) => i === 1
+    ? `<span><input type="checkbox" id="kopf-alle" title="Alle auswählen" aria-label="Alle auswählen"></span>` :
     k ? `<button data-sortiere="${k}" class="${zustand.sortierung === k ? "an" : ""}" title="Sortieren${zustand.sortierung === k ? " — noch einmal: andere Richtung" : ""}">${t}${zustand.sortierung === k ? (zustand.absteigend ? " ▼" : " ▲") : ""}</button>` : `<span>${t}</span>`).join("");
+  kopfWahlZeichnen();
+}
+
+// Häkchen „alle“ im Listenkopf: an, wenn alle Gezeigten gewählt sind, ein Strich, wenn ein Teil.
+function kopfWahlZeichnen() {
+  const k = $("#kopf-alle");
+  if (!k) return;
+  const n = zustand.modelle.filter((m) => zustand.auswahl.has(m.id)).length;
+  k.checked = n > 0 && n === zustand.modelle.length;
+  k.indeterminate = n > 0 && n < zustand.modelle.length;
 }
 
 // ---------------------------------------------------------------- Mehrfachauswahl
@@ -664,6 +675,7 @@ function waehleAus(id, bereich) {
 }
 
 function zeichneStapel() {
+  kopfWahlZeichnen();
   // Was nicht mehr in der Liste ist (gelöscht, weggefiltert), ist auch nicht gewählt.
   const sichtbar = new Set(zustand.modelle.map((m) => m.id));
   for (const id of [...zustand.auswahl]) if (!sichtbar.has(id)) zustand.auswahl.delete(id);
@@ -1967,6 +1979,7 @@ document.addEventListener("change", async (e) => {
     e.target.value = "";
     return bilderHochladen(dateien);
   }
+  if (e.target.id === "kopf-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
   if (e.target.id === "sortierung") { zustand.sortierung = ""; sortierungWaehlen(e.target.value); sortiere.angeklickt = true; ladeModelle(); }
   if (e.target.id === "gruppierung") {
     zustand.gruppierung = e.target.value;

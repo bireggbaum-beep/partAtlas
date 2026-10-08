@@ -20,6 +20,9 @@ aktualisieren.
    **Fehler (Anwender, 0.51.1 behoben):** Format-Chips zeigten die Zahlen des ganzen Katalogs statt der Ansicht. Jetzt zählt der Server in
    der Ansicht (Ordner, Suche, Chips), ohne den Format-Filter selbst (`leiste.formate`). test_suche 28/28 (+2, Gegenprobe fällt).
    Nicht berücksichtigt: ausgeblendete Entwürfe (blendet die Oberfläche aus, der Server zählt sie mit).
+   **Paket 2 erledigt (0.51.2):** Häkchen „alle“ im Listenkopf (Spalte der Zeilen-Häkchen): wählt alle Gezeigten bzw. keine; Strich, wenn ein
+   Teil gewählt ist; folgt jeder Auswahl (`kopfWahlZeichnen` aus `zeichneStapel`). test_ui +1 (gezielt, Gegenprobe fällt).
+   Nebenbei: test_api-Prüfung zum Protokoll nachgezogen (seit 0.50.1 rot, nicht gelaufen).
 3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

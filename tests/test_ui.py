@@ -174,6 +174,17 @@ async def oberflaeche(port):
               gew(reihen[0]) == sorted(gew(reihen[0]), reverse=True) and gew(reihen[1]) == sorted(gew(reihen[1]))
               and nam(reihen[2])[0] < nam(reihen[2])[-1] and nam(reihen[3])[0] > nam(reihen[3])[-1]
               and reihen[1][1] == "gewicht" and reihen[3][1] == "name" and reihen[0][2].endswith("▼") and reihen[1][2].endswith("▲"))
+        # Häkchen „alle“ im Kopf: alle, ein Teil (Strich), keine
+        await pg.click("#kopf-alle")
+        alle = await pg.evaluate("[zustand.auswahl.size, zustand.modelle.length, $('#kopf-alle').checked]")
+        await pg.locator(".zeile-l .wahl-l").first.click()
+        teil = await pg.evaluate("[$('#kopf-alle').checked, $('#kopf-alle').indeterminate]")
+        await pg.click("#kopf-alle")
+        wieder = await pg.evaluate("zustand.auswahl.size === zustand.modelle.length")
+        await pg.click("#kopf-alle")
+        keine = await pg.evaluate("[zustand.auswahl.size, $('#kopf-alle').checked]")
+        check("Listenkopf: Häkchen wählt alle Gezeigten, nach Abwahl einer Zeile ein Strich, dann wieder alle, dann keine",
+              alle[0] == alle[1] > 0 and alle[2] and teil == [False, True] and wieder and keine == [0, False])
         await pg.click('[data-layout="raster"]')
 
         await suche("Vase")
