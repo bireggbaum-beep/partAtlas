@@ -4,11 +4,16 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Als Nächstes: Backup & Wiederherstellung (KONZEPT §3.3a, entschieden 8.10.2026)
+## Als Nächstes (8.10.2026, Anwender)
 
-In Paketen: (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen in der Oberfläche, Aufbewahrung 5 / 30 Tage;
-(2) Backup als ZIP erstellen und wiederherstellen; (3) Erinnerung nach 30 Tagen (Punkt am Zahnrad). Vorbild pDMS (`services/backup.py`,
-`services/export.py`), aber aufgeräumter.
+1. Offene Punkte nach 0.50 abarbeiten. **Erledigt (0.50.1):** Protokoll schreibt „nimmt Anfragen an“ erst, wenn der Port offen ist
+   (vorher schon davor, auch bei belegtem Port); `einlesen=0` aus `/api/hochladen` entfernt (kein Aufrufer mehr; test_verwalten 76/76,
+   die zwei Prüfungen dazu entfallen); Kommentar 3 × 4 MB. **Offen:** Gruppengrösse 200 messen; „EIGENE“-Markierungen (Anwender
+   entscheidet); Ordner entfernen mit vielen Dateien (zurückgestellt, seltene Aktion).
+2. Danach **Listenköpfe analog zu pDMS** (steht in Capacities).
+3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
+   (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
+   (3) Erinnerung nach 30 Tagen.
 
 ## Stand: 0.50.0 auf `main` (8.10.2026, für den Tester)
 

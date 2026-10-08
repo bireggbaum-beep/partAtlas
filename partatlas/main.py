@@ -103,7 +103,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
             # Auch ohne „Beim Start einlesen“: was im Hintergrund noch aussteht (Vorschaubilder, FreeCAD), wird fortgesetzt — ohne die Ordner
             # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
             s.starten(nur_cad=True)
-        log.info("partAtlas ist gestartet und nimmt Anfragen an")
+        # Hier ist der Port noch nicht offen (uvicorn öffnet ihn erst danach); „nimmt Anfragen an“ schreibt __main__, wenn er es wirklich ist.
+        log.info("Katalog geöffnet")
         yield
         log.info("partAtlas wird beendet (Einlesen läuft: %s, Phase „%s“)", s.status.get("laeuft"), s.status.get("phase"))
         # Beenden bricht ein laufendes Einlesen ab (was fertig ist, steht in der Datenbank), statt bis zu 30 s darauf zu warten: sonst
@@ -520,11 +521,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         return {"ok": True}
 
     @app.post("/api/hochladen")
-    def hochladen(ordner: str, name: str, unterordner: str = "", einlesen: int = 1, roh: bytes = Depends(roh_koerper)):
+    def hochladen(ordner: str, name: str, unterordner: str = "", roh: bytes = Depends(roh_koerper)):
+        # Seit 0.50 keine Bedienung mehr (KONZEPT §3.4); bleibt für den späteren Ordnerbrowser.
         neu = K().hochladen(ordner, name, roh, unterordner)
-        # Viele Dateien nacheinander: erst die letzte stösst das Einlesen an (`einlesen=0` bei den anderen). Sonst läuft schon während des
-        # Hochladens ein Einlesen, konkurriert um die Kerne, und es folgen mehrere Läufe statt einem.
-        return {"dateien": len(neu), "lauf": scan_starten() if einlesen else None}
+        return {"dateien": len(neu), "lauf": scan_starten()}
 
     @app.get("/api/archive")
     def archive():

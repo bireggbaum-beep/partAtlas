@@ -175,18 +175,6 @@ if __name__ == "__main__":
         neu = next(x for x in c.get("/api/modelle").json() if x["name"] == "Lampen_Fuss_v2")
         check("Wieder an: Tags aus dem Namen kommen zurück", "lampen" in neu["tags"] or "fuss" in neu["tags"])
 
-        # -- Viele Dateien hochladen: nur die letzte stösst das Einlesen an (`einlesen=0` bei den anderen)
-        lauf_vorher = c.get("/api/stand").json()["scan"]["lauf"]
-        r = c.post("/api/hochladen", params={"ordner": w, "name": "Stapel_Eins.stl", "einlesen": 0}, content=stl_bytes(61))
-        time.sleep(0.8)
-        check("Hochladen mit einlesen=0: die Datei liegt da, aber es startet kein Einlesen",
-              r.status_code == 200 and r.json()["lauf"] is None and c.get("/api/stand").json()["scan"]["lauf"] == lauf_vorher
-              and "Stapel_Eins" not in {x["name"] for x in c.get("/api/modelle").json()})
-        r = c.post("/api/hochladen", params={"ordner": w, "name": "Stapel_Zwei.stl", "einlesen": 1}, content=stl_bytes(62))
-        warten(c)
-        namen = {x["name"] for x in c.get("/api/modelle").json()}
-        check("Die letzte Datei stösst ein einziges Einlesen an, das beide findet", r.json()["lauf"] is not None and {"Stapel_Eins", "Stapel_Zwei"} <= namen)
-
         # -- Hochladen
         r = c.post("/api/hochladen", params={"ordner": f"{w}/Deko", "name": "Stern.stl"}, content=stl_bytes())
         warten(c)
