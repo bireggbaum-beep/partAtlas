@@ -7,6 +7,8 @@
   und deren Gegenprobe. Alle Suiten nur ab und zu (vor einer Fassung).
   `tests/test_ui.py` nur, wenn sich die Oberfläche geändert hat — sie
   startet Chromium und ist teuer.
+- **`test_ui.py` komplett NUR unmittelbar vor einem Push auf `main` für den Tester** (Vorgabe des Anwenders, 8.10.2026, nach zu vielen
+  Läufen) — nicht je Fassung auf dem Branch, nicht nach jedem Paket. Sonst nur die geänderten Prüfungen gezielt (eigenes kleines Skript).
 - **`test_ui.py` nie mehrfach hintereinander komplett** (Vorgabe des Anwenders, 7.10.2026): höchstens einmal je Fassung. Gegenproben
   für Oberflächen-Prüfungen gezielt, nicht als ganze Suite. Prüfungen nur für Verhalten, das unbemerkt kaputtgehen kann — nicht für
   einmalige Gestaltung (Farben, Abstände, Aufbau eines Panels).
