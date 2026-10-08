@@ -311,7 +311,6 @@ async function ladeSeite() {
   const abz = $("#abz-bereinigen");
   abz.hidden = !zu;
   abz.textContent = zu > 99 ? "99+" : zu;
-  zustand.formate = z.formate;
   if (zustand.leiste) zeichneLeiste(zustand.leiste);
   // Zwei Wurzeln gleichen Namens (etwa „3D-Druck“ auf zwei Laufwerken): der übergeordnete Ordner unterscheidet sie.
   const namen = ordner.map((w) => w.name);
@@ -367,7 +366,10 @@ function zeichneLeiste(l) {
   const chip = (art, aktiv, name, text, n) => `<button class="chip ${aktiv ? "aktiv" : ""}" data-${art}="${esc(name)}">${text}${n != null ? `<em>${n}</em>` : ""}</button>`;
   const auswahl = (liste, wahl, n) => [...liste.slice(0, n), ...liste.slice(n).filter((x) => wahl.has(x.name))];
   const mat = auswahl(l.materialien, zustand.material, 8).map((x) => chip("mat", zustand.material.has(x.name), x.name, esc(x.name), x.anzahl)).join("");
-  const fmt = Object.entries(zustand.formate || {}).sort().map(([f, n]) => chip("format", zustand.format === f, f, esc((endung[f] || f).slice(1).toUpperCase()), n)).join("");
+  // Zahlen aus der Ansicht (Server, ohne den Format-Filter selbst); der gewählte Chip bleibt sichtbar, auch wenn er hier nichts trifft.
+  const formate = { ...(l.formate || {}) };
+  if (zustand.format && !(zustand.format in formate)) formate[zustand.format] = 0;
+  const fmt = Object.entries(formate).sort().map(([f, n]) => chip("format", zustand.format === f, f, esc((endung[f] || f).slice(1).toUpperCase()), n)).join("");
   const tags = [...zustand.tags].map((t) => `<button class="chip aktiv" data-tag="${esc(t)}" title="Filter entfernen">#${esc(t)} ×</button>`).join("");
   const leer = !zustand.tags.size && !zustand.material.size && !zustand.format;
   const entwuerfe = zustand.entwuerfeN || zustand.ohneEntwuerfe

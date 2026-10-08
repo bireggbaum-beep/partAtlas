@@ -59,6 +59,20 @@ if __name__ == "__main__":
         check("Leiste zählt vor der Auswahl: mit PETG gewählt trotzdem #prototyp 2 (Deckel hat kein PETG)",
               mat == {"PETG": 1, "PLA": 1} and tag.get("prototyp") == 2 and [m["name"] for m in l["modelle"]] == ["Platte"])
 
+        # -- Format-Chips zählen in der Ansicht (vorher: im ganzen Katalog), ohne den Format-Filter selbst
+        def je_format(liste):
+            z = {}
+            for m in liste:
+                z[m["format"]] = z.get(m["format"], 0) + 1
+            return z
+        mit_suche = c.get("/api/modelle", params={"q": "arm", "leiste": 1}).json()
+        alle_f = je_format(c.get("/api/modelle").json())
+        mit_format = c.get("/api/modelle", params={"format": "3mf", "leiste": 1}).json()
+        check("Format-Chips zählen, was die Ansicht zeigt (Suche „arm“), nicht den ganzen Katalog",
+              mit_suche["leiste"]["formate"] == je_format(mit_suche["modelle"]) and mit_suche["leiste"]["formate"] != alle_f)
+        check("… und mit gewähltem Format zeigen die anderen Formate weiter, was ein Klick brächte",
+              mit_format["leiste"]["formate"] == alle_f and [m["format"] for m in mit_format["modelle"]] == ["3mf"])
+
         # -- Material als Knoten: vorgesehen vom Anwender, aus der 3MF über die Datei
         c.post(f"/api/modelle/{ids['Kamerahalter']}/material", json={"material": "petg"})
         c.post(f"/api/modelle/{ids['Kamerahalter']}/material", json={"material": "PLA+"})

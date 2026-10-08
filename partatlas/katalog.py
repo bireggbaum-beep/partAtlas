@@ -446,8 +446,17 @@ class Katalog:
                 zaehl_t[t] = zaehl_t.get(t, 0) + 1
             for m in x.get("materialien") or ():
                 zaehl_m[m] = zaehl_m.get(m, 0) + 1
+        # Formate: gezählt in der Ansicht, wie sie dasteht (Ordner, Suche, Chips), nur ohne den Format-Filter selbst — sonst zeigte jeder
+        # andere Format-Chip 0. Vorher kamen die Zahlen aus dem ganzen Katalog (/api/zaehler) und passten zu keiner Ansicht.
+        ohne_fmt = liste if not fmt else self._modelle(suche, tag, ordner, None, ansicht, sammlung, alle)
+        if fmt and (tags or materialien):
+            ohne_fmt = [x for x in ohne_fmt if treffer(x)]
+        zaehl_f = {}
+        for x in ohne_fmt:
+            zaehl_f[x["format"]] = zaehl_f.get(x["format"], 0) + 1
         ordnen = lambda z: [{"name": k, "anzahl": v} for k, v in sorted(z.items(), key=lambda kv: (-kv[1], kv[0]))]
-        return {"modelle": liste, "leiste": {"tags": ordnen(zaehl_t), "materialien": ordnen(zaehl_m)}}
+        return {"modelle": liste, "leiste": {"tags": ordnen(zaehl_t), "materialien": ordnen(zaehl_m),
+                                            "formate": {k: v for k, v in zaehl_f.items() if k}}}
 
     def aenderungen(self, refs, **filter):
         """Für das Nachreichen während des Einlesens: die Modelle hinter diesen Graph-Verweisen (Modell, Datei, Kante), je mit der Antwort,

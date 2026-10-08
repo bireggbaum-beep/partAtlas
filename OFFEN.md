@@ -17,6 +17,9 @@ aktualisieren.
    dreht; erster Klick: Name/Format/Status aufsteigend, Zahlen absteigend; Auswahlfeld „Sortieren“ folgt (Format, Status neu darin).
    Sortiert wird jetzt immer in der Oberfläche (natürliche Reihenfolge, bei Gleichstand nach Name); bei Suche/Chips gilt die Relevanz,
    bis man eine Spalte anklickt — ein neuer Suchbegriff setzt das zurück (wie pDMS). test_ui +1 (gezielt geprüft, Gegenprobe fällt).
+   **Fehler (Anwender, 0.51.1 behoben):** Format-Chips zeigten die Zahlen des ganzen Katalogs statt der Ansicht. Jetzt zählt der Server in
+   der Ansicht (Ordner, Suche, Chips), ohne den Format-Filter selbst (`leiste.formate`). test_suche 28/28 (+2, Gegenprobe fällt).
+   Nicht berücksichtigt: ausgeblendete Entwürfe (blendet die Oberfläche aus, der Server zählt sie mit).
 3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
