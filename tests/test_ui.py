@@ -198,6 +198,31 @@ async def oberflaeche(port):
               "STATUS" not in " ".join(sp[0]) and any(x.startswith("ORDNER") for x in sp[0]) and sp[1] == sp[2]
               and "ordner" in nach and "status" not in nach)
         await pg.evaluate("localStorage.removeItem('partatlas.spalten')")
+        await pg.reload()
+        await pg.wait_for_selector('#listenkopf [data-griff="format"]')
+        # Breite ziehen: die Grenze zwischen Format und Grösse 30 px nach rechts — Format breiter, Grösse genau so viel schmaler, die Tabelle
+        # gleich breit; nach dem Neuladen gemerkt; Doppelklick setzt zurück
+        fenster = pg.viewport_size
+        await pg.set_viewport_size({"width": 1800, "height": fenster["height"]})       # breit genug, dass nichts geschrumpft ist
+        await pg.wait_for_timeout(200)
+        breiten = "() => ['format', 'groesse'].map((k) => document.querySelector(`#listenkopf [data-griff=\"${k}\"]`).parentElement.getBoundingClientRect().width)"
+        vor = await pg.evaluate(breiten)
+        g = await pg.locator('#listenkopf [data-griff="format"]').bounding_box()
+        await pg.mouse.move(g["x"] + g["width"] / 2, g["y"] + g["height"] / 2)
+        await pg.mouse.down()
+        await pg.mouse.move(g["x"] + g["width"] / 2 + 30, g["y"] + g["height"] / 2, steps=5)
+        await pg.mouse.up()
+        nach = await pg.evaluate(breiten)
+        await pg.reload()
+        await pg.wait_for_selector('#listenkopf [data-griff="format"]')
+        gemerkt = await pg.evaluate(breiten)
+        await pg.dblclick('#listenkopf [data-griff="format"]')
+        zurueck = await pg.evaluate(breiten)
+        check("Spaltenbreite ziehen: links +30, rechts −30, Summe gleich; nach dem Neuladen gemerkt; Doppelklick setzt zurück",
+              abs(nach[0] - vor[0] - 30) <= 2 and abs(vor[1] - nach[1] - 30) <= 2 and abs(sum(nach) - sum(vor)) <= 2
+              and all(abs(a - b) <= 2 for a, b in zip(gemerkt, nach)) and abs(zurueck[0] - vor[0]) <= 2)
+        await pg.evaluate("localStorage.removeItem('partatlas.spaltenBreiten')")
+        await pg.set_viewport_size(fenster)
         await pg.click('[data-layout="raster"]')
 
         await suche("Vase")

@@ -624,7 +624,8 @@ function zeileK(m, y) {
 
 // Die Liste ist die schlanke Tabelle zum Sortieren; Tags, Ordner und Material zeigen die Karten.
 // Die wählbaren Spalten der Liste (⋮ rechts im Kopf). Name, Bild und Häkchen sind immer da. Vorgabe: die Spalten von früher.
-// Breiten als „mindestens, höchstens“: wird es eng (viele Spalten, schmales Fenster), schrumpfen alle anteilig statt über den Rand zu laufen.
+// Breiten: `w` ist die gewünschte (Vorgabe oder gezogen), `min` die kleinste. Wird es eng (viele Spalten, schmales Fenster), schrumpfen
+// alle anteilig statt über den Rand zu laufen, und bekommen die gezogene Breite zurück, sobald Platz ist (spaltenRaster).
 const ordnerText = (m) => {
   const [w, ...rest] = (m.ordner[0] || "").split("/").filter(Boolean);
   return w ? [wurzelName(w), ...rest].join(" / ") : "";
@@ -632,16 +633,16 @@ const ordnerText = (m) => {
 const statusText = (m) => m.ohne_datei ? "ohne Datei" : m.fehlt ? "⚠ fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt`
   : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
 const SPALTEN = {
-  format: { titel: "FORMAT", sort: "format", breite: "minmax(48px, 64px)", zelle: (m) => esc(endung[m.format] || "") },
-  groesse: { titel: "GRÖSSE", sort: "groesse", breite: "minmax(72px, 144px)", zelle: (m) => esc(masse(m.masse)) },
-  gewicht: { titel: "GEWICHT", sort: "gewicht", breite: "minmax(56px, 80px)", zelle: (m) => (m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : "") },
-  status: { titel: "STATUS", sort: "status", breite: "minmax(64px, 144px)", zelle: (m) => statusText(m) },
-  material: { titel: "MATERIAL", sort: "material", breite: "minmax(56px, 96px)", zelle: (m) => esc((m.materialien || []).join(", ")) },
-  tags: { titel: "TAGS", sort: "", breite: "minmax(64px, 160px)", zelle: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
-  datei: { titel: "DATEI", sort: "datei", breite: "minmax(56px, 80px)", zelle: (m) => (m.groesse ? groesseText(m.groesse) : "") },
-  neu: { titel: "EINGELESEN", sort: "neu", breite: "minmax(72px, 96px)", zelle: (m) => (m.angelegt ? new Date(m.angelegt).toLocaleDateString("de-DE") : "") },
-  ordner: { titel: "ORDNER", sort: "ordner", breite: "minmax(72px, 180px)", zelle: (m) => esc(ordnerText(m)) },
-  drucke: { titel: "DRUCKE", sort: "drucke", breite: "minmax(48px, 64px)", zelle: (m) => (m.drucke_n ? String(m.drucke_n) : "") },
+  format: { titel: "FORMAT", sort: "format", min: 48, w: 64, zelle: (m) => esc(endung[m.format] || "") },
+  groesse: { titel: "GRÖSSE", sort: "groesse", min: 72, w: 144, zelle: (m) => esc(masse(m.masse)) },
+  gewicht: { titel: "GEWICHT", sort: "gewicht", min: 56, w: 80, zelle: (m) => (m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : "") },
+  status: { titel: "STATUS", sort: "status", min: 64, w: 144, zelle: (m) => statusText(m) },
+  material: { titel: "MATERIAL", sort: "material", min: 56, w: 96, zelle: (m) => esc((m.materialien || []).join(", ")) },
+  tags: { titel: "TAGS", sort: "", min: 64, w: 160, zelle: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
+  datei: { titel: "DATEI", sort: "datei", min: 56, w: 80, zelle: (m) => (m.groesse ? groesseText(m.groesse) : "") },
+  neu: { titel: "EINGELESEN", sort: "neu", min: 72, w: 96, zelle: (m) => (m.angelegt ? new Date(m.angelegt).toLocaleDateString("de-DE") : "") },
+  ordner: { titel: "ORDNER", sort: "ordner", min: 72, w: 180, zelle: (m) => esc(ordnerText(m)) },
+  drucke: { titel: "DRUCKE", sort: "drucke", min: 48, w: 64, zelle: (m) => (m.drucke_n ? String(m.drucke_n) : "") },
 };
 const SPALTEN_VORGABE = ["format", "groesse", "gewicht", "status"];
 const groesseText = (b) => (b < 1048576 ? `${zahl(b / 1024, 0)} kB` : `${zahl(b / 1048576, 1)} MB`);
@@ -651,11 +652,36 @@ function spaltenLesen() {
 }
 zustand.spalten = spaltenLesen();
 // Kopf und Zeilen teilen dasselbe Raster: eine Variable an der Wurzel, gesetzt bei jeder Änderung der Spalten.
+const BREITE_GRENZE = 600;
+zustand.breiten = (() => { try { return JSON.parse(localStorageLesen("spaltenBreiten") || "{}") || {}; } catch { return {}; } })();
+const breiteVon = (k) => Math.max(SPALTEN[k].min, Math.min(BREITE_GRENZE, zustand.breiten[k] ?? SPALTEN[k].w));
+// Das Einpassen rechnet die Oberfläche selbst (nicht das Raster des Browsers): nur so liegen die gezeigten Breiten fest, und eine
+// gezogene Grenze folgt genau der Maus. Name bekommt den Rest, mindestens NAME_MIN.
+const NAME_MIN = 120;
+const cssPx = (name) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+function spaltenPlatz() {
+  const kopf = $("#listenkopf");
+  if (!kopf || !kopf.clientWidth) return Infinity;            // Kopf nicht zu sehen (Raster, Karten): nichts einzupassen
+  const spalten = 4 + zustand.spalten.length;                 // Bild, Häkchen, Name, …, ⋮
+  return kopf.clientWidth - 2 * cssPx("--s4") - (spalten - 1) * cssPx("--s3") - cssPx("--s6") - cssPx("--s5") - cssPx("--s7") - NAME_MIN;
+}
 function spaltenRaster() {
-  const mitte = zustand.spalten.map((k) => SPALTEN[k].breite).join(" ");
-  document.documentElement.style.setProperty("--listen-spalten", `var(--s6) var(--s5) minmax(120px, 1fr) ${mitte} var(--s7)`);
+  let w = zustand.spalten.map(breiteVon);
+  const platz = spaltenPlatz(), summe = w.reduce((a, b) => a + b, 0);
+  if (summe > platz) w = w.map((x, i) => Math.max(SPALTEN[zustand.spalten[i]].min, Math.floor((x * platz) / summe)));
+  // Passen nicht einmal die Mindestbreiten (sehr schmale Liste, viele Spalten), dürfen alle darunter — der Text wird gekürzt, aber nichts
+  // ragt über den Rand in den rechten Bereich, und ⋮ bleibt erreichbar. Untergrenze: gleicher Anteil am Rest, höchstens 24 px.
+  const nochZuBreit = w.reduce((a, b) => a + b, 0);
+  if (nochZuBreit > platz && platz > 0) {
+    const boden = Math.max(4, Math.min(24, Math.floor(platz / w.length)));
+    w = w.map((x) => Math.max(boden, Math.floor((x * platz) / nochZuBreit)));
+  }
+  zustand.gezeigt = Object.fromEntries(zustand.spalten.map((k, i) => [k, w[i]]));
+  document.documentElement.style.setProperty("--listen-spalten",
+    `var(--s6) var(--s5) minmax(${NAME_MIN}px, 1fr) ${w.map((x) => `${x}px`).join(" ")} var(--s7)`);
 }
 spaltenRaster();
+new ResizeObserver(() => spaltenRaster()).observe($("#listenkopf"));       // Fenster, Seitenleisten, Liste ein/aus
 
 function zeileL(m, y) {
   const url = bildUrl(m);
@@ -668,12 +694,13 @@ function zeileL(m, y) {
 }
 
 function zeichneListenkopf() {
+  const griff = (k) => `<i class="lk-griff" data-griff="${k}" title="Breite ziehen (Doppelklick: zurücksetzen)"></i>`;
   const kopf = (k, t) => `<button data-sortiere="${k}" class="${zustand.sortierung === k ? "an" : ""}" title="Sortieren${zustand.sortierung === k
     ? " — noch einmal: andere Richtung" : ""}">${t}${zustand.sortierung === k ? (zustand.absteigend ? " ▼" : " ▲") : ""}</button>`;
   abgleichen($("#listenkopf"), `<span></span>
     <span><input type="checkbox" id="kopf-alle" title="Alle auswählen" aria-label="Alle auswählen"></span>
-    ${kopf("name", "NAME")}
-    ${zustand.spalten.map((k) => (SPALTEN[k].sort ? kopf(SPALTEN[k].sort, SPALTEN[k].titel) : `<span>${SPALTEN[k].titel}</span>`)).join("")}
+    <span class="lk-zelle">${kopf("name", "NAME")}${griff("name")}</span>
+    ${zustand.spalten.map((k) => `<span class="lk-zelle">${SPALTEN[k].sort ? kopf(SPALTEN[k].sort, SPALTEN[k].titel) : SPALTEN[k].titel}${griff(k)}</span>`).join("")}
     <span class="lk-spalten"><button type="button" id="spalten-knopf" title="Spalten ein- und ausblenden" aria-label="Spalten ein- und ausblenden"
       aria-haspopup="true">⋮</button>
       <div class="menu lk-menu" id="spalten-menu" ${zustand.spaltenMenu ? "" : "hidden"}>${Object.entries(SPALTEN).map(([k, sp]) =>
@@ -681,6 +708,50 @@ function zeichneListenkopf() {
         <button type="button" id="spalten-vorgabe">Vorgabe</button></div></span>`);
   kopfWahlZeichnen();
 }
+
+// Breite ziehen wie im Dateimanager: die Linie ist die Grenze zwischen ihren beiden Nachbarn — die linke Spalte wird breiter, die rechte
+// gibt genau so viel ab, die Tabelle bleibt gleich breit. Rechts vom Namen gibt nur die rechte Spalte ab (der Name nimmt den Rest),
+// rechts von der letzten nimmt sie sich den Platz vom Namen. Gemessen wird, was gerade zu sehen ist (auch geschrumpfte Spalten).
+document.addEventListener("pointerdown", (e) => {
+  const g = e.target.closest?.(".lk-griff");
+  if (!g) return;
+  e.preventDefault();
+  const links = g.dataset.griff, i = zustand.spalten.indexOf(links);
+  const rechts = links === "name" ? zustand.spalten[0] : zustand.spalten[i + 1];
+  // Was zu sehen ist, wird zur gewünschten Breite: dann passt alles, nichts schrumpft mehr, und die Grenze folgt der Maus.
+  zustand.spalten.forEach((k) => { zustand.breiten[k] = zustand.gezeigt[k]; });
+  const frei = Math.max(0, spaltenPlatz() - zustand.spalten.reduce((a, k) => a + zustand.gezeigt[k], 0));
+  const start = { x: e.clientX, l: links === "name" ? 0 : zustand.gezeigt[links], r: rechts ? zustand.gezeigt[rechts] : 0 };
+  g.setPointerCapture(e.pointerId);
+  g.classList.add("zieht");
+  const bewegen = (ev) => {
+    let d = ev.clientX - start.x;
+    // Keine Spalte schmaler als ihr Minimum und keine breiter als die Grenze.
+    if (links !== "name") d = Math.min(Math.max(d, SPALTEN[links].min - start.l), BREITE_GRENZE - start.l);
+    if (rechts) d = Math.max(Math.min(d, start.r - SPALTEN[rechts].min), start.r - BREITE_GRENZE);
+    else d = Math.min(d, frei);                 // die letzte Spalte nimmt sich nur, was der Name über sein Minimum hinaus hat
+    if (links !== "name") zustand.breiten[links] = Math.round(start.l + d);
+    if (rechts) zustand.breiten[rechts] = Math.round(start.r - d);
+    spaltenRaster();
+  };
+  const ende = () => {
+    g.removeEventListener("pointermove", bewegen);
+    g.classList.remove("zieht");
+    localStorageSchreiben("spaltenBreiten", JSON.stringify(zustand.breiten));
+  };
+  g.addEventListener("pointermove", bewegen);
+  g.addEventListener("pointerup", ende, { once: true });
+  g.addEventListener("pointercancel", ende, { once: true });
+});
+document.addEventListener("dblclick", (e) => {
+  const g = e.target.closest?.(".lk-griff");
+  if (!g) return;
+  const k = g.dataset.griff === "name" ? zustand.spalten[0] : g.dataset.griff;
+  if (!k) return;
+  delete zustand.breiten[k];
+  localStorageSchreiben("spaltenBreiten", JSON.stringify(zustand.breiten));
+  spaltenRaster();
+});
 
 // Eine Spalte an oder aus: Reihenfolge wie in SPALTEN, gemerkt für den nächsten Start.
 function spalteSetzen(k, an) {
@@ -1834,9 +1905,11 @@ $("#gruppierung").value = zustand.gruppierung;
     $("#raster").scrollTop = 0;
     return raster.neu();
   }
+  if (t.closest(".lk-griff")) return;          // Ziehen an der Spaltengrenze sortiert nicht
   if (t.closest("#spalten-knopf")) { zustand.spaltenMenu = !zustand.spaltenMenu; $("#spalten-menu").hidden = !zustand.spaltenMenu; return; }
   if (t.closest("#spalten-vorgabe")) {
     zustand.spalten = [...SPALTEN_VORGABE]; localStorageSchreiben("spalten", JSON.stringify(zustand.spalten));
+    zustand.breiten = {}; localStorageSchreiben("spaltenBreiten", "{}");
     spaltenRaster(); zeichneListenkopf(); return raster.zeichne();
   }
   if (t.closest("#spalten-menu")) return;

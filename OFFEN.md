@@ -27,6 +27,13 @@ aktualisieren.
    Ordner, Drucke; „Vorgabe“ setzt zurück), gemerkt im Browser (`partatlas.spalten`). Kopf und Zeilen aus einer Definition (`SPALTEN`), ein
    gemeinsames Raster (`--listen-spalten`); Breiten „mindestens–höchstens“, damit viele Spalten nicht über den Rand laufen (im Bild geprüft).
    Neu sortierbar: Datei, Material, Ordner, Drucke. test_ui +1 (gezielt, Gegenprobe fällt).
+   **Paket 4 erledigt (0.51.4):** Spaltenbreite ziehen wie in pDMS — die Linie im Kopf ist die Grenze zweier Nachbarn (links breiter, rechts
+   genau so viel schmaler, Tabelle gleich breit; rechts vom Namen gibt nur die rechte ab; rechts von der letzten nimmt sie vom Namen, nur
+   über dessen Minimum). Doppelklick setzt die Spalte zurück, „Vorgabe“ im ⋮-Menü alle. Gemerkt (`partatlas.spaltenBreiten`).
+   Einpassen rechnet jetzt die Oberfläche (`spaltenRaster`, bei jeder Grössenänderung über ResizeObserver): passt es nicht, schrumpfen alle
+   anteilig bis zu ihrem Minimum, und reicht selbst das nicht (Liste 435 px mit sechs Spalten), darunter — nie über den Rand (im Bild
+   geprüft, schmal und breit). Beim Ziehen gelten die gezeigten Breiten, damit die Grenze genau der Maus folgt. test_ui +1 (gezielt,
+   Gegenprobe fällt). **Listenkopf damit fertig**; Spalten verschieben bleibt für später.
 3. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
