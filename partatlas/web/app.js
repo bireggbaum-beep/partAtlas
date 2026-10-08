@@ -31,6 +31,8 @@ const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
   ohneEntwuerfe: localStorageLesen("ohneEntwuerfe") === "1",
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
+  // Einstellungen › Ansicht: Dateiformat unten links auf dem Vorschaubild (je Browser gemerkt, wie Layout und Thema).
+  formatEtikett: localStorageLesen("formatEtikett") === "1",
   sortierung: "name", absteigend: false, gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
   gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
@@ -597,6 +599,7 @@ function karte(m, x, y) {
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
       ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
+      ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
@@ -2107,6 +2110,11 @@ document.addEventListener("change", async (e) => {
     return bilderHochladen(dateien);
   }
   if (e.target.id === "kopf-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
+  if (e.target.id === "ein-format-etikett") {          // wirkt sofort, auch ohne „Speichern“
+    zustand.formatEtikett = e.target.checked;
+    localStorageSchreiben("formatEtikett", e.target.checked ? "1" : "0");
+    return raster.zeichne();
+  }
   if (e.target.dataset?.spalte) return spalteSetzen(e.target.dataset.spalte, e.target.checked);
   if (e.target.id === "sortierung") { zustand.sortierung = ""; sortierungWaehlen(e.target.value); sortiere.angeklickt = true; ladeModelle(); }
   if (e.target.id === "gruppierung") {

@@ -46,6 +46,9 @@ aktualisieren.
    test_ui: drei Prüfungen auf die neuen Knöpfe umgestellt, gezielt mit Slicer-/FreeCAD-Ersatz geprüft (4/4).
    **Gruppenbänder sichtbarer (0.52.2, Anwender: „zu unauffällig“):** eigener Hintergrund, Name in der Textschrift 15 px statt grauer
    Monospace 12,5 px, Anzahl als Pille; Höhe unverändert. Reine Gestaltung, kein Test.
+   **Format-Etikett auf den Kacheln (0.52.3, Wunsch des Anwenders):** Einstellungen › Ansicht (neuer Abschnitt) › „Dateiformat auf dem
+   Vorschaubild zeigen“ — unten links STL/3MF/STEP … in der Farbe des Formats; wirkt sofort, gemerkt je Browser (`partatlas.formatEtikett`),
+   Vorgabe aus. Im Bild geprüft, kein Test.
 4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

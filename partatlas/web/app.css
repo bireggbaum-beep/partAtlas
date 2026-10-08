@@ -884,6 +884,10 @@ dialog { max-height: 92vh; overflow-y: auto; }
 /* Liste vor dem Hochladen (wie SecureSafe): Häkchen, Pfad, Grösse */
 
 /* Entwurf: ein ruhiges Etikett, kein Alarm */
+/* Dateiformat auf dem Vorschaubild (Einstellungen › Ansicht), unten links, in der Farbe des Formats. */
+.fmt-etikett { position: absolute; left: var(--s3); bottom: var(--s3); font: 600 11px var(--mono); letter-spacing: 0.06em; padding: 1px var(--s2);
+               border-radius: 4px; color: var(--ink); background: color-mix(in oklch, var(--f, var(--panel)) 30%, var(--panel));
+               border: 1px solid var(--f, var(--line)); pointer-events: none; }
 .badge.entwurf { top: var(--s3); left: calc(var(--s3) + 14px); color: var(--ink-2); background: var(--panel); border: 1px dashed var(--line-strong); }
 .entwurf-zeichen { color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: 999px; padding: 0 6px; font-size: 11px; }
 .leiste-luecke { flex: 1; }

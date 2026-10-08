@@ -582,6 +582,10 @@ async function einstellungen() {
         <button type="button" class="knopf ${e.gilt.farbe ? "" : "aktiv"}" data-mw-farbe="">keine</button></div>
       <div class="i-titel">ROLLENGRÖSSE</div>
       <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>`],
+    ["ansicht", "Ansicht", `
+      <div class="i-titel">KACHELN</div>
+      <label><input type="checkbox" id="ein-format-etikett" ${zustand.formatEtikett ? "checked" : ""}> Dateiformat auf dem Vorschaubild zeigen</label>
+      <p class="dim">Unten links auf jeder Kachel, etwa STL, 3MF, STEP — in der Farbe des Formats. Gilt für diesen Browser.</p>`],
     ["einlesen", "Einlesen", `
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
