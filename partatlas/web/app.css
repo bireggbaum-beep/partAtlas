@@ -825,7 +825,7 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
           border-top: 1px solid var(--line); border-bottom: 1px solid var(--line-strong); background: var(--panel); cursor: pointer;
           user-select: none; z-index: 1; }
 .gruppe:hover { background: var(--panel-2); }
-.gruppe .g-pfeil { width: var(--s4); color: var(--ink-2); font-size: 13px; text-align: center; }
+.gruppe .g-pfeil { margin-right: calc(-1 * var(--s2, 4px)); }
 .gruppe input { margin: 0; accent-color: var(--accent); }
 .gruppe .g-name { font: 600 15px 'Barlow', 'Segoe UI', Helvetica, sans-serif; color: var(--ink); overflow: hidden; text-overflow: ellipsis;
                   white-space: nowrap; }
@@ -1008,13 +1008,14 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
            font: 400 11.5px var(--sans, inherit); text-transform: none; letter-spacing: 0; margin-right: 4px; text-align: right; }
 .sk-titel { flex: none; }
 
-/* Aufklapp-Pfeile als gezeichneter Winkel (wie in VS Code) — das Zeichen ▸ war
-   in kleiner Schrift nur ein Punkt. */
-.pfeil, .g-pfeil { position: relative; flex: none; height: 16px; }
-.pfeil { vertical-align: middle; }
-.pfeil.auf::before, .pfeil.zu::before, .g-pfeil.auf::before, .g-pfeil.zu::before {
-  content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
-  border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); }
-.pfeil.zu::before, .g-pfeil.zu::before { transform: translate(-65%, -50%) rotate(-45deg); }
-.pfeil.auf::before, .g-pfeil.auf::before { transform: translate(-50%, -70%) rotate(45deg); }
-.eintrag:hover .pfeil::before, .gruppe:hover .g-pfeil::before { border-color: var(--ink); }
+/* Aufklapp-Pfeile: Winkel wie in VS Code. Das Zeichen ▸ war in kleiner Schrift nur ein Punkt.
+   Ein festes SVG in einer festen Box, nur gedreht — so wird nichts von `.eintrag span { overflow: hidden }` abgeschnitten
+   und offen/zu sind gleich gross. */
+.pfeil, .g-pfeil { flex: none; display: inline-block; width: 16px; height: 16px; vertical-align: middle; overflow: visible; }
+.pfeil.auf, .pfeil.zu, .g-pfeil.auf, .g-pfeil.zu {
+  background-color: var(--ink-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.5 2.5 L11 8 L5.5 13.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.5 2.5 L11 8 L5.5 13.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+.pfeil { margin-right: 2px; }
+.pfeil.auf, .g-pfeil.auf { transform: rotate(90deg); }
+.eintrag:hover .pfeil, .gruppe:hover .g-pfeil { background-color: var(--ink); }
