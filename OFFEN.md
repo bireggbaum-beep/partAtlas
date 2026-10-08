@@ -38,7 +38,13 @@ aktualisieren.
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
-## Stand: 0.50.0 auf `main` (8.10.2026, für den Tester)
+## Stand: 0.51.4 auf `main` (8.10.2026, für den Tester)
+
+Seit 0.50: Listenkopf wie pDMS (Sortieren per Klick mit Richtung, Häkchen „alle“, Spalten über ⋮, Spaltenbreite ziehen), Format-Chips zählen
+in der Ansicht, Protokoll meldet Bereitschaft erst bei offenem Port, Rückbau-Markierungen „EIGENE“ entfernt. Geprüft: nach jeder Änderung
+die betroffene Suite (suche 28, api 86, verwalten 76, eigene 17, baugruppen 48), test_ui einmal komplett 66/66.
+
+## Stand davor: 0.50.0 auf `main` (8.10.2026, für den Tester)
 
 Pipeline nach KONZEPT §3.4: Einträge und Ordnerbaum sofort beim Einlesen, Auslesen/Vorschaubilder/FreeCAD im Hintergrund (schnelle Formate
 zuerst), Oberfläche bekommt nur Geändertes nachgereicht, bleibt in allen Phasen bedienbar; Hochladen und Ziehen ins Fenster entfernt;
