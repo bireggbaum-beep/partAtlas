@@ -592,6 +592,7 @@ function statusBadge(m) {
 }
 
 // Was unter dem Namen auf der Kachel steht (Einstellungen › Ansicht). Die Kachel wächst mit: je Zeile 18 px (kachelHoehe).
+// Leere Zeilen (kein Gewicht, kein Material) fallen weg, statt eine Lücke zu lassen; die Zeilen rücken nach oben.
 const KACHEL_ZEILEN = {
   masse: { titel: "Grösse", zeile: (m) => (m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "") },
   gewicht: { titel: "Gewicht", zeile: (m) => (m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "") },
@@ -616,7 +617,7 @@ function karte(m, x, y) {
       ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
-      ${zustand.kachelZeilen.map((k) => `<div class="info">${KACHEL_ZEILEN[k].zeile(m) || "&nbsp;"}</div>`).join("")}</div></div>`;
+      ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}</div></div>`;
 }
 
 // Karten: wie eine Liste, aber höher — rechts neben dem Bild ist Platz für mehr vom Modell.
