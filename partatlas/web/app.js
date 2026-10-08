@@ -611,6 +611,35 @@ function kachelHoeheSetzen() {
 }
 kachelHoeheSetzen();
 
+function kachelGroesseSetzen(wert) {
+  zustand.kachelGroesse = wert;
+  localStorageSchreiben("kachelGroesse", wert);
+  kachelHoeheSetzen();
+  raster.neu();
+}
+
+// Statuszeile rechts: unauffälliger Knopf, der die Kachelgrösse als kleines Menü anbietet. Nur im Raster wirksam.
+function kachelKnopfZeigen() { $("#kachel-knopf").hidden = zustand.layout !== "raster"; $("#kachel-menue").hidden = true; }
+$("#kachel-knopf").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menue = $("#kachel-menue");
+  if (!menue.hidden) { menue.hidden = true; return; }
+  menue.innerHTML = `<div class="km-kopf">Vorschaukacheln</div>` + [["klein", "Klein"], ["mittel", "Mittel"], ["gross", "Gross"]].map(([k, t]) =>
+    `<button role="menuitemradio" aria-checked="${zustand.kachelGroesse === k}" data-kachel="${k}"><span class="haken">${zustand.kachelGroesse === k ? "✓" : ""}</span>${t}</button>`).join("");
+  menue.hidden = false;
+  const r = e.currentTarget.getBoundingClientRect();
+  menue.style.right = `${Math.round(innerWidth - r.right)}px`;
+  menue.style.bottom = `${Math.round(innerHeight - r.top + 4)}px`;
+});
+$("#kachel-menue").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-kachel]")?.dataset.kachel;
+  if (!k) return;
+  $("#kachel-menue").hidden = true;
+  kachelGroesseSetzen(k);
+});
+document.addEventListener("click", () => { $("#kachel-menue").hidden = true; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#kachel-menue").hidden = true; });
+
 function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (nurCad(m) ? nurCadText(m) : "keine Vorschau");
@@ -1927,6 +1956,7 @@ document.addEventListener("click", async (e) => {
     zustand.layout = lay.dataset.layout;
     localStorageSchreiben("layout", zustand.layout);
     document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
+    kachelKnopfZeigen();
 $("#gruppierung").value = zustand.gruppierung;
     $("#raster").scrollTop = 0;
     return raster.neu();
@@ -2139,12 +2169,7 @@ document.addEventListener("change", async (e) => {
     kachelHoeheSetzen();
     return raster.neu();
   }
-  if (e.target.name === "ein-kachelgroesse") {          // Einstellungen › Ansicht: Kachelgrösse, sofort
-    zustand.kachelGroesse = e.target.value;
-    localStorageSchreiben("kachelGroesse", e.target.value);
-    kachelHoeheSetzen();
-    return raster.neu();
-  }
+  if (e.target.name === "ein-kachelgroesse") return kachelGroesseSetzen(e.target.value);   // Einstellungen › Ansicht, sofort
   if (e.target.id === "ein-format-etikett") {          // wirkt sofort, auch ohne „Speichern“
     zustand.formatEtikett = e.target.checked;
     localStorageSchreiben("formatEtikett", e.target.checked ? "1" : "0");
@@ -2636,6 +2661,7 @@ window.addEventListener("drop", (e) => {
   if (dz) return druckBilderAblegen(dz.closest(".druck")?.dataset.druck || null, e.dataTransfer.files);
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
+kachelKnopfZeigen();
 
 // Datei-Details auf- oder zugeklappt lassen, wie man es zuletzt wollte.
 document.addEventListener("toggle", (e) => {
