@@ -390,7 +390,7 @@ if __name__ == "__main__":
     import ast
     from partatlas import main as _main_quelle
     baum = ast.parse(open(_main_quelle.__file__, encoding="utf-8").read())
-    BEWUSST_ASYNC = {"leben", "protokoll", "wache", "clientfehler_melden", "live", "katalogfehler", "fehlt", "get_response", "json_koerper", "roh_koerper"}
+    BEWUSST_ASYNC = {"leben", "protokoll", "bereit", "wache", "clientfehler_melden", "live", "katalogfehler", "fehlt", "get_response", "json_koerper", "roh_koerper"}
     async_routen = [f.name for f in ast.walk(baum) if isinstance(f, ast.AsyncFunctionDef) and f.name not in BEWUSST_ASYNC]
     check("Keine Route ist `async def` (ausser denen, die nur lesen und weiterreichen): synchrone Arbeit gehört in den Thread-Pool",
           async_routen == [])

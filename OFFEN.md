@@ -57,6 +57,13 @@ aktualisieren.
    **Leerzeile unter dem Namen weg, Kachelgrösse (0.52.5/0.52.6):** leere Zeilen (z. B. ohne Gewicht) fallen weg; Ansicht › Kacheln:
    Klein 144 / Mittel 178 (Vorgabe) / Gross 233 px, Bild wächst quadratisch mit (`--karte-b`), je Browser (`partatlas.kachelGroesse`).
    Nur Syntax geprüft (Anwender: nicht übertesten).
+   **Seite sofort erreichbar beim Start (0.53.0, Anwender unter Windows: 47 s „Seite nicht erreichbar“):** `python -m partatlas` öffnet
+   den Port sofort, der Bestand wird im Thread geöffnet (`erstelle_app(im_hintergrund=True)`, Tests im Prozess weiter vorher). Bis dahin
+   zeigt „/“ `web/oeffnen.html` („Bestand wird geöffnet …“, fragt jede Sekunde, lädt dann die Oberfläche; Fehler beim Öffnen steht dort),
+   /api/* antwortet 503. Offene Tabs verbinden die Live-Meldungen nach einem 503 selbst neu. Neue Protokollzeile „Datenbank gelesen in
+   x s (n Dateien)“. **Ursache offen:** hier öffnen 1 000 Modelle (190 Dateien) in 0,06 s; Verdacht Virenscanner je Datei — das nächste
+   Windows-Protokoll entscheidet; Abhilfe dann in flatgraph (weniger, grössere Dateien = Umzug der Speicherform). Geprüft: test_api 86/86,
+   Warteseite gezielt (verzögertes Öffnen).
 4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

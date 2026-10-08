@@ -2558,16 +2558,19 @@ function liveAenderung(m) {
   liveZeit = setTimeout(feuern, 300);
 }
 
+let liveVerbunden = 0;
 function live() {
   const q = new EventSource("/api/live");
-  let verbunden = 0;
   q.onopen = () => {
     // Der Server schickt zuerst den ganzen Stand. Was in der Lücke geschah (oder ob der Server neu gestartet ist), steht darin — ein Ende,
     // das in die Lücke fiel, wird nicht nachgemeldet, steht aber neben „Bibliothek“.
     einlesen.gemeldet = null;
-    if (verbunden++) neuLaden();
+    if (liveVerbunden++) neuLaden();
   };
   q.onmessage = (e) => liveMeldung(JSON.parse(e.data));
+  // Nach einem Neustart antwortet der Server, solange er den Bestand öffnet, mit 503 — darauf gibt EventSource auf, statt wie bei
+  // einem geschlossenen Port weiter zu versuchen. Darum selbst neu verbinden.
+  q.onerror = () => { if (q.readyState === EventSource.CLOSED) setTimeout(live, 2000); };
 }
 
 // Eine Meldung vom Server (eigene Funktion: die Prüfungen speisen damit Meldungen ein wie der Server).

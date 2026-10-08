@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # Nur localhost, solange es kein Passwort gibt (KONZEPT §2).
     # log_config=None: uvicorn richtet sein eigenes Protokoll nicht ein; seine Fehlermeldungen (etwa eine Anfrage, die mit 500 endet) gehen
     # dann wie alles andere in die Datei.
-    app = erstelle_app()
+    app = erstelle_app(im_hintergrund=True)
 
     class Server(uvicorn.Server):
         async def startup(self, sockets=None):

@@ -15,6 +15,7 @@ import platform
 import re
 import subprocess
 import sys
+import threading
 import time
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
@@ -73,14 +74,23 @@ def _startinfo(b, k, s):
         log.exception("Angaben zum Start liessen sich nicht ermitteln")
 
 
-def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
+def _dateien(pfad):
+    return sum(len(fs) for _, _, fs in os.walk(pfad))
+
+
+def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hintergrund=False):
+    """`im_hintergrund`: der Port ist sofort offen und der Bestand wird in einem Thread geöffnet; bis er bereit ist, zeigt „/“ eine
+    Warteseite und /api/* antwortet 503. Unter Windows dauerte das Öffnen bei 8 600 Modellen 47 s, in denen die Seite nicht erreichbar
+    war (Protokoll des Anwenders, 8.10.2026). Die Tests im selben Prozess öffnen weiter vorher — sie fragen gleich danach ab."""
     verteiler = Verteiler()
     zustand = {}
+    oeffnen_stand = {"bereit": False, "fehler": None}
 
-    @asynccontextmanager
-    async def leben(app):
-        verteiler.binden(asyncio.get_running_loop())
+    def oeffnen():
+        t0 = time.monotonic()
         b = Bestand(bestand_pfad, bei_aenderung=verteiler.graph)
+        # Die Dauer und die Zahl der Dateien belegen, ob es am Lesen vieler kleiner Dateien liegt (Virenscanner unter Windows).
+        log.info("Datenbank gelesen in %.1f s (%d Dateien)", time.monotonic() - t0, _dateien(os.path.join(b.wurzel, "datenbank")))
         # Vor allem anderen, auch vor dem Nachziehen alter Bestände in Katalog(): der Stand, mit dem diese Sitzung beginnt.
         try:
             sicherung.sichern(b, "start")
@@ -103,9 +113,33 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
             # Auch ohne „Beim Start einlesen“: was im Hintergrund noch aussteht (Vorschaubilder, FreeCAD), wird fortgesetzt — ohne die Ordner
             # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
             s.starten(nur_cad=True)
-        # Hier ist der Port noch nicht offen (uvicorn öffnet ihn erst danach); „nimmt Anfragen an“ schreibt __main__, wenn er es wirklich ist.
+        # Ohne `im_hintergrund` ist der Port hier noch nicht offen; „nimmt Anfragen an“ schreibt __main__, wenn er es wirklich ist.
+        oeffnen_stand["bereit"] = True
         log.info("Katalog geöffnet")
+
+    def oeffnen_sicher():
+        try:
+            oeffnen()
+        except Exception as e:
+            oeffnen_stand["fehler"] = f"{type(e).__name__}: {e}"
+            log.exception("Der Bestand liess sich nicht öffnen")
+
+    @asynccontextmanager
+    async def leben(app):
+        verteiler.binden(asyncio.get_running_loop())
+        if im_hintergrund:
+            faden = threading.Thread(target=oeffnen_sicher, name="Bestand öffnen", daemon=True)
+            faden.start()
+        else:
+            faden = None
+            oeffnen()
         yield
+        if faden:
+            faden.join()           # flatgraph lässt sich beim Lesen nicht unterbrechen; danach sauber schliessen
+        if not oeffnen_stand["bereit"]:
+            log.info("partAtlas beendet (Bestand war nicht geöffnet)")
+            return
+        b, s = zustand["bestand"], zustand["scanner"]
         log.info("partAtlas wird beendet (Einlesen läuft: %s, Phase „%s“)", s.status.get("laeuft"), s.status.get("phase"))
         # Beenden bricht ein laufendes Einlesen ab (was fertig ist, steht in der Datenbank), statt bis zu 30 s darauf zu warten: sonst
         # reagiert partAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
@@ -168,6 +202,17 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
         elif request.method not in ("GET", "HEAD", "OPTIONS"):
             log.info("Anfrage %s %s → %s (%.2f s)", request.method, request.url.path, antwort.status_code, dauer)
         return antwort
+
+    @app.middleware("http")
+    async def bereit(request: Request, call_next):
+        if oeffnen_stand["bereit"] or request.url.path.startswith("/web/") or request.url.path == "/api/clientfehler":
+            return await call_next(request)
+        if request.url.path == "/":
+            # 200, nicht 503: start.sh erkennt am Startpunkt, dass partAtlas läuft, und startet keinen zweiten Prozess.
+            return FileResponse(os.path.join(WEB, "oeffnen.html"), headers={"Cache-Control": "no-store"})
+        fehler = oeffnen_stand["fehler"]
+        return JSONResponse({"fehler": f"Der Bestand liess sich nicht öffnen: {fehler}" if fehler else "Der Bestand wird geöffnet …",
+                             "oeffnet": not fehler, "version": VERSION}, status_code=503, headers={"Retry-After": "1"})
 
     @app.post("/api/clientfehler")
     async def clientfehler_melden(request: Request):

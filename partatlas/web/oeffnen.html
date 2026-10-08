@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de" data-app="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>partAtlas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23e87a5c%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/web/app.css">
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink); }
+  .warten { text-align: center; padding: var(--s5); max-width: 34em; }
+  .warten h1 { font-size: var(--fs-body); font-weight: 600; margin: 0 0 var(--s3); }
+  .warten p { color: var(--ink-3); font-size: var(--fs-meta); margin: 0; line-height: 1.5; }
+  .warten .fehler { color: var(--crit); }
+</style>
+</head>
+<body>
+<!-- Steht da, solange der Server den Bestand öffnet (main.py, `im_hintergrund`); danach lädt die Seite von selbst die Oberfläche. -->
+<div class="warten">
+  <h1>Bestand wird geöffnet …</h1>
+  <p id="text">Die Sammlung wird gelesen. Die Seite erscheint von selbst, sobald sie bereit ist.</p>
+</div>
+<script>
+try { document.documentElement.dataset.app = localStorage.getItem("partatlas.thema") || "dark"; } catch { /* privates Fenster */ }
+const t0 = Date.now();
+async function fragen() {
+  try {
+    const r = await fetch("/api/stand", { cache: "no-store" });
+    if (r.ok) return location.reload();
+    const d = await r.json().catch(() => ({}));
+    if (d.oeffnet === false) {
+      document.querySelector("h1").textContent = "Der Bestand liess sich nicht öffnen";
+      const p = document.getElementById("text");
+      p.textContent = `${d.fehler || ""} Näheres steht im Protokoll (partatlas.log im Bestand).`;
+      p.className = "fehler";
+      return;
+    }
+    const s = Math.round((Date.now() - t0) / 1000);
+    if (s >= 5) document.getElementById("text").textContent = `Die Sammlung wird gelesen (seit ${s} s). Die Seite erscheint von selbst, sobald sie bereit ist.`;
+  } catch { /* Server noch nicht da oder neu gestartet: weiter fragen */ }
+  setTimeout(fragen, 1000);
+}
+fragen();
+</script>
+</body>
+</html>
