@@ -54,6 +54,9 @@ aktualisieren.
    als Auswahl **vorgesehen, noch nicht angewendet** (Anwender: „nur eine Auswahl vorsehen“): gespeichert als `vorschau_farbe` (Server,
    #RRGGBB geprüft), der Dialog sagt das. **Später:** Worker rechnet Bilder ohne eigene Farbe in der Datei mit dieser Farbe neu (Farben aus
    der Datei gehen vor); 3D-Ansicht im Browser ebenso. Nicht im Bild geprüft (Anwender hat abgebrochen); test_api 86/86, test_verwalten 76/76.
+   **Leerzeile unter dem Namen weg, Kachelgrösse (0.52.5/0.52.6):** leere Zeilen (z. B. ohne Gewicht) fallen weg; Ansicht › Kacheln:
+   Klein 144 / Mittel 178 (Vorgabe) / Gross 233 px, Bild wächst quadratisch mit (`--karte-b`), je Browser (`partatlas.kachelGroesse`).
+   Nur Syntax geprüft (Anwender: nicht übertesten).
 4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.

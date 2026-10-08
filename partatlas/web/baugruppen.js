@@ -592,6 +592,8 @@ async function einstellungen() {
       <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>`],
     ["ansicht", "Ansicht", `
       <div class="i-titel">KACHELN</div>
+      <div class="kachelgroesse">${[["klein", "Klein"], ["mittel", "Mittel"], ["gross", "Gross"]].map(([k, t]) =>
+        `<label><input type="radio" name="ein-kachelgroesse" value="${k}" ${zustand.kachelGroesse === k ? "checked" : ""}> ${t}</label>`).join("")}</div>
       <label><input type="checkbox" id="ein-format-etikett" ${zustand.formatEtikett ? "checked" : ""}> Dateiformat auf dem Vorschaubild zeigen</label>
       <p class="dim">Unten links auf jeder Kachel, etwa STL, 3MF, STEP — in der Farbe des Formats.</p>
       <div class="i-titel">UNTER DEM NAMEN</div>

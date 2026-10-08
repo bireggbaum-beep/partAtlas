@@ -33,6 +33,7 @@ const zustand = {
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
   // Einstellungen › Ansicht: Dateiformat unten links auf dem Vorschaubild (je Browser gemerkt, wie Layout und Thema).
   formatEtikett: localStorageLesen("formatEtikett") === "1",
+  kachelGroesse: ["klein", "mittel", "gross"].includes(localStorageLesen("kachelGroesse")) ? localStorageLesen("kachelGroesse") : "mittel",
   kachelZeilen: (() => { try { const l = JSON.parse(localStorageLesen("kachelZeilen") || "null"); if (Array.isArray(l)) return l; } catch { /* Vorgabe */ }
     return ["masse", "gewicht"]; })(),
   sortierung: "name", absteigend: false, gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
@@ -481,7 +482,7 @@ const raster = (() => {
   let spalten = 1, geplant = false;
   let zeilen = [];   // { y, h, kopf: Gruppe } oder { y, h, von, bis } (Indizes in zustand.modelle)
   const mass = () => zustand.layout === "liste" ? { B: 0, H: 34, LUECKE: 0, RAND: 0 }
-    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 144, H: kachelHoehe(), LUECKE: 13, RAND };
+    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: kachelBreite(), H: kachelHoehe(), LUECKE: 13, RAND };
 
   // Alle Zeilen mit Höhe und Lage einmal ausrechnen: Bänder und Zeilen, eingeklappte Gruppen ohne Zeilen.
   function neu() {
@@ -599,9 +600,15 @@ const KACHEL_ZEILEN = {
   material: { titel: "Material", zeile: (m) => esc((m.materialien || []).join(", ")) },
   tags: { titel: "Tags", zeile: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
 };
-// Bild 144 + oben 13 + Name 21 + Zeilen + unten 13; nie kleiner als bisher (233 = 144 + 89).
-const kachelHoehe = () => Math.max(233, 144 + 13 + 21 + 18 * zustand.kachelZeilen.length + 13);
-function kachelHoeheSetzen() { document.documentElement.style.setProperty("--karte-h", `${kachelHoehe()}px`); }
+// Kachelgrösse (Einstellungen › Ansicht) nach den Fibonacci-Abständen: 144, 144 + 34, 233. Das Bild bleibt quadratisch.
+const KACHEL_BREITE = { klein: 144, mittel: 178, gross: 233 };
+const kachelBreite = () => KACHEL_BREITE[zustand.kachelGroesse];
+// Bild + oben 13 + Name 21 + Zeilen + unten 13; nie kleiner als Bild + 89 (die Höhe von früher).
+const kachelHoehe = () => Math.max(kachelBreite() + 89, kachelBreite() + 13 + 21 + 18 * zustand.kachelZeilen.length + 13);
+function kachelHoeheSetzen() {
+  document.documentElement.style.setProperty("--karte-h", `${kachelHoehe()}px`);
+  document.documentElement.style.setProperty("--karte-b", `${kachelBreite()}px`);
+}
 kachelHoeheSetzen();
 
 function karte(m, x, y) {
@@ -2129,6 +2136,12 @@ document.addEventListener("change", async (e) => {
     e.target.checked ? wahl.add(e.target.dataset.kachelZeile) : wahl.delete(e.target.dataset.kachelZeile);
     zustand.kachelZeilen = Object.keys(KACHEL_ZEILEN).filter((k) => wahl.has(k));
     localStorageSchreiben("kachelZeilen", JSON.stringify(zustand.kachelZeilen));
+    kachelHoeheSetzen();
+    return raster.neu();
+  }
+  if (e.target.name === "ein-kachelgroesse") {          // Einstellungen › Ansicht: Kachelgrösse, sofort
+    zustand.kachelGroesse = e.target.value;
+    localStorageSchreiben("kachelGroesse", e.target.value);
     kachelHoeheSetzen();
     return raster.neu();
   }

@@ -89,11 +89,11 @@ button, input, select { font: inherit; color: inherit; }
 
 /* Raster-Kachel: 144 × 233 — zwei Glieder der Reihe, 144 + 89 = 233 (Verhältnis 1 : φ). Oben das Bild (quadratisch, 144),
    darunter ein Textfeld von 89; Rand 13, Zeilen 21 / 18 / 18. Aufgesetztes (Punkt, Haken, Herz, Plakette) hält 8 Abstand zur Kante. */
-.karte { position: absolute; width: var(--s9); height: var(--karte-h, calc(var(--s9) + var(--s8))); background: var(--panel); outline: 1px solid transparent; outline-offset: -1px;
+.karte { position: absolute; width: var(--karte-b, var(--s9)); height: var(--karte-h, calc(var(--s9) + var(--s8))); background: var(--panel); outline: 1px solid transparent; outline-offset: -1px;
          border-radius: 10px; overflow: hidden; cursor: pointer; transition: outline-color 0.12s, box-shadow 0.12s; }
 .karte:hover { outline-color: var(--line-strong); box-shadow: var(--shadow); }
 .karte.gewaehlt { outline-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.karte .bild { height: var(--s9); position: relative; background: linear-gradient(160deg, var(--plate-2), var(--plate)); }
+.karte .bild { height: var(--karte-b, var(--s9)); position: relative; background: linear-gradient(160deg, var(--plate-2), var(--plate)); }
 .karte img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .karte .platzhalter { position: absolute; inset: 0; display: grid; place-items: center; font: 12.5px var(--mono); color: var(--ink-3); }
 .badge { position: absolute; font: 12px var(--mono); padding: 1px 6px; border-radius: 999px; }
@@ -885,6 +885,8 @@ dialog { max-height: 92vh; overflow-y: auto; }
 /* Liste vor dem Hochladen (wie SecureSafe): Häkchen, Pfad, Grösse */
 
 /* Entwurf: ein ruhiges Etikett, kein Alarm */
+/* Kachelgrösse in Einstellungen › Ansicht: drei Wahlknöpfe in einer Zeile. */
+.kachelgroesse { display: flex; gap: var(--s5); margin: var(--s2) 0 var(--s3); }
 /* Dateiformat auf dem Vorschaubild (Einstellungen › Ansicht), unten links, in der Farbe des Formats. */
 .fmt-etikett { position: absolute; left: var(--s3); bottom: var(--s3); font: 600 11px var(--mono); letter-spacing: 0.06em; padding: 1px var(--s2);
                border-radius: 4px; color: var(--ink); background: color-mix(in oklch, var(--f, var(--panel)) 30%, var(--panel));
