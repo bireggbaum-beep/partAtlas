@@ -9,7 +9,7 @@
   startet Chromium und ist teuer.
 - **`test_ui.py` komplett NUR unmittelbar vor einem Push auf `main` für den Tester** (Vorgabe des Anwenders, 8.10.2026, nach zu vielen
   Läufen) — nicht je Fassung auf dem Branch, nicht nach jedem Paket. Sonst nur die geänderten Prüfungen gezielt (eigenes kleines Skript).
-- **`test_ui.py` nie mehrfach hintereinander komplett** (Vorgabe des Anwenders, 7.10.2026): höchstens einmal je Fassung. Gegenproben
+- **`test_ui.py` nie mehrfach hintereinander komplett** (Vorgabe des Anwenders, 7.10.2026). Gegenproben
   für Oberflächen-Prüfungen gezielt, nicht als ganze Suite. Prüfungen nur für Verhalten, das unbemerkt kaputtgehen kann — nicht für
   einmalige Gestaltung (Farben, Abstände, Aufbau eines Panels).
 - **Jede Suite hat eine Zeitgrenze** (`muster.zeitgrenze`): hängt sie, bricht sie ab und zeigt die Zeile.
