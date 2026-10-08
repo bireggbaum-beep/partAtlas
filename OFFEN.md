@@ -78,6 +78,9 @@ aktualisieren.
   Sicherung. Abhilfe: Grösse beim Anlegen einmal merken (Datei neben `stand`). Aufwand 1.
 - **Kalter Start unter Windows** (einmal 47 s Datenbank lesen, danach 2–3,5 s bei 2 265 Dateien): nur angehen, wenn es wiederkommt;
   dann in flatgraph weniger, grössere Dateien (Umzug der Speicherform).
+- **flatgraph: Fachgrösse** (`FACH_GROESSE = 25`, Repo flatgraphdb): unter Linux gemessenes Optimum (25 je Fach; 400 je Fach öffnet
+  kalt 0,51 s statt ~1 s, kostet aber 4 ms je geschriebenem Knoten). Unter Windows zählt jede Datei mehr (Virenscanner) — dort nachmessen,
+  ob grössere Fächer lohnen; klären, ob ein Wechsel einen Umzug der Speicherform braucht.
 - Aus v0.60 (s. o.): Gruppengrösse 200 beim Löschen messen; Ordner entfernen mit vielen Dateien.
 
 ## Stand: 0.52.1 auf `main` (8.10.2026, für den Tester)
