@@ -33,6 +33,8 @@ const zustand = {
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
   // Einstellungen › Ansicht: Dateiformat unten links auf dem Vorschaubild (je Browser gemerkt, wie Layout und Thema).
   formatEtikett: localStorageLesen("formatEtikett") === "1",
+  kachelZeilen: (() => { try { const l = JSON.parse(localStorageLesen("kachelZeilen") || "null"); if (Array.isArray(l)) return l; } catch { /* Vorgabe */ }
+    return ["masse", "gewicht"]; })(),
   sortierung: "name", absteigend: false, gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
   gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
@@ -479,7 +481,7 @@ const raster = (() => {
   let spalten = 1, geplant = false;
   let zeilen = [];   // { y, h, kopf: Gruppe } oder { y, h, von, bis } (Indizes in zustand.modelle)
   const mass = () => zustand.layout === "liste" ? { B: 0, H: 34, LUECKE: 0, RAND: 0 }
-    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 144, H: 233, LUECKE: 13, RAND };
+    : zustand.layout === "karten" ? { B: 0, H: 115, LUECKE: 0, RAND: 0 } : { B: 144, H: kachelHoehe(), LUECKE: 13, RAND };
 
   // Alle Zeilen mit Höhe und Lage einmal ausrechnen: Bänder und Zeilen, eingeklappte Gruppen ohne Zeilen.
   function neu() {
@@ -589,6 +591,18 @@ function statusBadge(m) {
     : m.drucke_n ? `<span class="badge gedruckt" title="${m.drucke_n}× gedruckt">✓${m.drucke_n > 1 ? " " + m.drucke_n + "×" : ""}</span>` : "";
 }
 
+// Was unter dem Namen auf der Kachel steht (Einstellungen › Ansicht). Die Kachel wächst mit: je Zeile 18 px (kachelHoehe).
+const KACHEL_ZEILEN = {
+  masse: { titel: "Grösse", zeile: (m) => (m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "") },
+  gewicht: { titel: "Gewicht", zeile: (m) => (m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "") },
+  material: { titel: "Material", zeile: (m) => esc((m.materialien || []).join(", ")) },
+  tags: { titel: "Tags", zeile: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
+};
+// Bild 144 + oben 13 + Name 21 + Zeilen + unten 13; nie kleiner als bisher (233 = 144 + 89).
+const kachelHoehe = () => Math.max(233, 144 + 13 + 21 + 18 * zustand.kachelZeilen.length + 13);
+function kachelHoeheSetzen() { document.documentElement.style.setProperty("--karte-h", `${kachelHoehe()}px`); }
+kachelHoeheSetzen();
+
 function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (nurCad(m) ? nurCadText(m) : "keine Vorschau");
@@ -602,8 +616,7 @@ function karte(m, x, y) {
       ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
-      <div class="masse">${m.masse ? m.masse.map((v) => zahl(v, v < 10 ? 1 : 0)).join(" × ") + " mm" : "&nbsp;"}</div>
-      <div class="tags">${m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "&nbsp;"}</div></div></div>`;
+      ${zustand.kachelZeilen.map((k) => `<div class="info">${KACHEL_ZEILEN[k].zeile(m) || "&nbsp;"}</div>`).join("")}</div></div>`;
 }
 
 // Karten: wie eine Liste, aber höher — rechts neben dem Bild ist Platz für mehr vom Modell.
@@ -2110,6 +2123,14 @@ document.addEventListener("change", async (e) => {
     return bilderHochladen(dateien);
   }
   if (e.target.id === "kopf-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
+  if (e.target.dataset?.kachelZeile) {                // Einstellungen › Ansicht: Zeile auf der Kachel an/aus, sofort
+    const wahl = new Set(zustand.kachelZeilen);
+    e.target.checked ? wahl.add(e.target.dataset.kachelZeile) : wahl.delete(e.target.dataset.kachelZeile);
+    zustand.kachelZeilen = Object.keys(KACHEL_ZEILEN).filter((k) => wahl.has(k));
+    localStorageSchreiben("kachelZeilen", JSON.stringify(zustand.kachelZeilen));
+    kachelHoeheSetzen();
+    return raster.neu();
+  }
   if (e.target.id === "ein-format-etikett") {          // wirkt sofort, auch ohne „Speichern“
     zustand.formatEtikett = e.target.checked;
     localStorageSchreiben("formatEtikett", e.target.checked ? "1" : "0");

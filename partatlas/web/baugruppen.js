@@ -426,6 +426,13 @@ async function materialWahl(titel, vorher = {}) {
   return a === "ja" ? { material: mwWahl.material, farbe: mwWahl.farbe } : null;
 }
 const mwWahl = { material: null, farbe: null };
+const vfWahl = { farbe: null };          // Farbe der Vorschaubilder (Einstellungen › Ansicht)
+document.addEventListener("click", (e) => {
+  const f = e.target.closest?.("[data-vf-farbe]");
+  if (!f) return;
+  vfWahl.farbe = f.dataset.vfFarbe || null;
+  document.querySelectorAll("[data-vf-farbe]").forEach((x) => x.classList.toggle("aktiv", x === f));
+});
 document.addEventListener("click", (e) => {
   const m = e.target.closest?.("[data-mw-mat]"), f = e.target.closest?.("[data-mw-farbe]");
   if (m) { mwWahl.material = m.dataset.mwMat; document.querySelectorAll("[data-mw-mat]").forEach((x) => x.classList.toggle("aktiv", x === m)); }
@@ -569,6 +576,7 @@ async function einstellungen() {
   const e = await api("/api/einstellungen");
   Object.assign(progWahl, { ...e.programm, geaendert: {} });
   Object.assign(mwWahl, { material: e.gilt.material, farbe: e.gilt.farbe });
+  vfWahl.farbe = e.vorschau_farbe || null;
   $("#dialog").classList.add("einst");
   // Alle Abschnitte stehen im Dialog, nur einer ist sichtbar: so gilt beim Speichern,
   // was in jedem eingestellt wurde, auch wenn man zwischendurch gewechselt hat.
@@ -585,7 +593,15 @@ async function einstellungen() {
     ["ansicht", "Ansicht", `
       <div class="i-titel">KACHELN</div>
       <label><input type="checkbox" id="ein-format-etikett" ${zustand.formatEtikett ? "checked" : ""}> Dateiformat auf dem Vorschaubild zeigen</label>
-      <p class="dim">Unten links auf jeder Kachel, etwa STL, 3MF, STEP — in der Farbe des Formats. Gilt für diesen Browser.</p>`],
+      <p class="dim">Unten links auf jeder Kachel, etwa STL, 3MF, STEP — in der Farbe des Formats.</p>
+      <div class="i-titel">UNTER DEM NAMEN</div>
+      ${Object.entries(KACHEL_ZEILEN).map(([k, z]) => `<label><input type="checkbox" data-kachel-zeile="${k}" ${zustand.kachelZeilen.includes(k) ? "checked" : ""}> ${z.titel}</label>`).join("")}
+      <p class="dim">Mehr Zeilen machen die Kachel etwas höher. Gilt für diesen Browser und wirkt sofort.</p>
+      <div class="i-titel">FARBE DER VORSCHAUBILDER</div>
+      <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === e.vorschau_farbe ? "aktiv" : ""}" data-vf-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
+        <button type="button" class="knopf ${e.vorschau_farbe ? "" : "aktiv"}" data-vf-farbe="">Vorgabe</button></div>
+      <p class="dim">Für Modelle, deren Datei keine eigene Farbe mitbringt — Farben aus der Datei gehen immer vor.
+        Vorgesehen für eine spätere Fassung: die gewählte Farbe wird gespeichert, die Bilder ändern sich noch nicht.</p>`],
     ["einlesen", "Einlesen", `
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
@@ -635,7 +651,7 @@ async function einstellungen() {
   $("#dialog").classList.remove("einst");
   if (a !== "ja") return;
   try {
-    await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe,
+    await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe, vorschau_farbe: vfWahl.farbe,
                                                           rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked, scan_beim_start: $("#ein-start").checked,
                                                           fcstd_freecad: $("#ein-fcstd").value || null,
                                                           programm: progWahl.geaendert,

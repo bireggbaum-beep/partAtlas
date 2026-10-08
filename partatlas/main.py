@@ -652,6 +652,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None):
             if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
                 raise KatalogFehler("Farbe als #RRGGBB angeben.")
             werte["standard_farbe"] = f
+        if "vorschau_farbe" in d:
+            # Für Vorschaubilder ohne eigene Farbe in der Datei. Vorgesehen, noch nicht angewendet (OFFEN.md): später rechnet der Worker
+            # die betroffenen Bilder damit neu. None = die Vorgabe von partAtlas.
+            f = d["vorschau_farbe"] or None
+            if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
+                raise KatalogFehler("Farbe als #RRGGBB angeben.")
+            werte["vorschau_farbe"] = f
         if "auto_tags" in d:
             werte["auto_tags"] = bool(d["auto_tags"])
         if "scan_beim_start" in d:

@@ -49,6 +49,11 @@ aktualisieren.
    **Format-Etikett auf den Kacheln (0.52.3, Wunsch des Anwenders):** Einstellungen › Ansicht (neuer Abschnitt) › „Dateiformat auf dem
    Vorschaubild zeigen“ — unten links STL/3MF/STEP … in der Farbe des Formats; wirkt sofort, gemerkt je Browser (`partatlas.formatEtikett`),
    Vorgabe aus. Im Bild geprüft, kein Test.
+   **Einstellungen › Ansicht erweitert (0.52.4):** „Unter dem Namen“ — Grösse, Gewicht, Material, Tags je an/aus (Vorgabe Grösse und
+   Gewicht), die Kachel wächst je Zeile um 18 px (`kachelHoehe`), sofort, je Browser (`partatlas.kachelZeilen`). „Farbe der Vorschaubilder“
+   als Auswahl **vorgesehen, noch nicht angewendet** (Anwender: „nur eine Auswahl vorsehen“): gespeichert als `vorschau_farbe` (Server,
+   #RRGGBB geprüft), der Dialog sagt das. **Später:** Worker rechnet Bilder ohne eigene Farbe in der Datei mit dieser Farbe neu (Farben aus
+   der Datei gehen vor); 3D-Ansicht im Browser ebenso. Nicht im Bild geprüft (Anwender hat abgebrochen); test_api 86/86, test_verwalten 76/76.
 4. **Backup & Wiederherstellung (KONZEPT §3.3a) später** — grösser als gedacht, nicht direkt nach dem Umbau des Einlesens. Pakete:
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
