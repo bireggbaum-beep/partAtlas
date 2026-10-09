@@ -72,6 +72,16 @@ aktualisieren.
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
+## Nächste inhaltliche Stufe: Datei zum Druck (KONZEPT §4.6 Stufe b) — Vorarbeit 9.10.2026
+
+Zwei echte G-Codes des Testers geprüft (AnycubicSlicerNext 1.3.9.4, Kobra 3 V2, dieselbe Testscheibe in PLA und ASA):
+der volle Konfigurationsblock steht am Ende (543 Schlüssel, `; CONFIG_BLOCK_START`), davor Filament in mm/cm³/g, Kosten,
+Druckzeit je Modus; im Kopf `source_info` mit Modellname und Platte, zwei eingebettete PNG-Vorschauen. Die Frage aus §4.1
+(„steht die Konfiguration drin?“) ist für Anycubic damit beantwortet. Vergleich PLA ↔ ASA: 47 Schlüssel verschieden, viele
+doppelt je Düsenart (`_BRASS`, `_HS`); `different_settings_to_system` nennt, was der Anwender am Profil selbst geändert hat.
+Offen für den Entwurf: welche Schlüssel zum Profil-Hash gehören (Kosten wohl nicht); Zuordnung zum Modell nur als Vorschlag —
+der Name in `source_info` („Testscheibe_4_5mm-Cut002.stl“) weicht vom Dateinamen („Testscheibe_45mm-Cut002“) ab.
+
 ## 3D-Ansicht ohne funktionierendes WebGL (9.10.2026, Linux-Tester)
 
 Tester: GeForce 9 (nv96), nouveau, X11 (wegen Anycubic Slicer Next). WebGL 2 zeigt ein Bild und verliert dann den Kontext;
