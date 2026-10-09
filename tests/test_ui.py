@@ -517,23 +517,25 @@ async def oberflaeche(port):
               "Haken.stl" in text and "Warteschlange" in text and "Tags:" in text and "HAS_TAG" not in text)
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
-        # WebGL bricht nach dem Start weg (alter Treiber beim Tester): statt einer leeren Fläche das Bild,
-        # und kein neuer Versuch beim nächsten Modell. Danach lädt die Seite ohnehin neu (Phase 1).
+        # WebGL bricht nach dem Start weg (alter Treiber beim Tester): die 3D-Ansicht kommt ohne Grafikkarte wieder
+        # (Canvas 2D, gezeichnet), mit Hinweis; beim nächsten Modell kein neuer WebGL-Versuch. Danach lädt die Seite neu (Phase 1).
         await suche("Vase")
         await pg.locator(".karte").first.click()
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
         await pg.evaluate("document.querySelector('#i-bild canvas').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()")
-        await pg.wait_for_timeout(800)
-        weg = await pg.evaluate("""() => ({ canvas: !!document.querySelector('#i-bild canvas'),
-            bild: !!document.querySelector('#i-bild .gal-haupt img'), mini3d: !!document.querySelector('.gal-mini[data-art="3d"]'),
-            toast: !$('#toast').hidden && $('#toast').innerText.includes('WebGL') })""")
+        gezeichnet = """() => { const c = document.querySelector('#i-bild canvas.ohne-gpu');
+            if (!c || !c.width) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 200) n++; return n; }"""
+        await pg.wait_for_function(f"({gezeichnet})() > 500", timeout=10000)
+        weg = await pg.evaluate("""() => ({ leinwaende: document.querySelectorAll('#i-bild canvas').length,
+            toast: !$('#toast').hidden && $('#toast').innerText.includes('ohne Grafikkarte') })""")
         await pg.evaluate("waehle(null)")
         await suche("Arm")
         await pg.locator(".karte").first.click()
-        await pg.wait_for_timeout(800)
-        check("WebGL bricht ab: Bild statt 3D-Ansicht mit Hinweis, beim nächsten Modell kein neuer Versuch",
-              weg == {"canvas": False, "bild": True, "mini3d": False, "toast": True}
-              and await pg.locator("#i-bild canvas").count() == 0 and await pg.locator("#i-bild .gal-haupt img").count() == 1)
+        await pg.wait_for_function(f"({gezeichnet})() > 500", timeout=10000)
+        check("WebGL bricht ab: 3D-Ansicht ohne Grafikkarte gezeichnet, mit Hinweis; beim nächsten Modell kein neuer WebGL-Versuch",
+              weg == {"leinwaende": 1, "toast": True}
+              and await pg.locator("#i-bild canvas").count() == 1 and await pg.locator("#i-bild canvas.ohne-gpu").count() == 1)
         # -- Phase 1 (Vorgabe): keine Warteschlange, Baugruppen bleiben
         await pg.goto(f"http://127.0.0.1:{port}/")
         await pg.wait_for_selector(".karte")

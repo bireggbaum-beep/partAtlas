@@ -82,10 +82,21 @@ Zum Ausprobieren ohne Code: `LIBGL_ALWAYS_SOFTWARE=1 firefox` (WebGL über llvmp
 (`webglcontextlost`) oder lässt sich kein Renderer anlegen, baut die Galerie ohne 3D-Ansicht neu auf (Bild statt leerer Fläche,
 Hinweis) und versucht es auf dieser Seite nicht wieder. test_ui +1, gezielt geprüft; Gegenproben (Lauscher weg, Merker weg) fallen.
 
-**Offen, Pakete 2–4 (Aufwand 3 zusammen, Anwender: muss wieder rausnehmbar sein):** Software-Viewer mit Canvas 2D als Rückfall
-(eigenes Modul `web/viewer_ohne_gpu.js`, eine Weiche in `app.js`), ausgedünntes Netz vom Server (`/netz?duenn=1`, vorhandenes
-Ausdünnen), Schalter Einstellungen › Ansicht › „3D-Ansicht ohne Grafikkarte“, eine Prüfung in test_ui. Herausnehmen = genau diese
-Stellen; Paket 1 bleibt in jedem Fall.
+**Paket 2 erledigt (0.55.0):** Software-Viewer `web/viewer_ohne_gpu.js` (Canvas 2D, Dreiecke nach Tiefe sortiert, flach und beidseitig
+beleuchtet, Raster, Drehen/Verschieben/Zoomen, langsames Selbstdrehen wie im WebGL-Viewer; gezeichnet nur bei Änderung, Pixelfaktor 1).
+Netze über 30 000 Dreiecke werden in der Oberfläche vereinfacht (Ecken auf ein Raster gezogen; 500 000 Dreiecke hier 0,3 s), beim
+Drehen die grobe Stufe (6 000), sobald die feine länger als 40 ms brauchte. Weiche `dreiD()` in `app.js`: ohne WebGL 2 oder nach einem
+Abbruch dieses Modul, Hinweis einmal. Die test_ui-Prüfung aus Paket 1 prüft jetzt: nach dem Abbruch gezeichnete Ansicht ohne
+Grafikkarte, beim nächsten Modell direkt. Gezielt geprüft, im Bild angesehen (Quader, Vase); Gegenprobe (Weiche weg) fällt.
+Auf dem alten Rechner des Testers nicht gemessen.
+
+**Offen, Pakete 3–4:** ausgedünntes Netz vom Server (`/netz?duenn=1`, vorhandenes Ausdünnen — spart dem alten Rechner das Laden und
+Vereinfachen grosser Netze), Schalter Einstellungen › Ansicht › „3D-Ansicht ohne Grafikkarte“ (für Treiber, die ohne Fehlermeldung
+falsch zeichnen), eine Prüfung mit Chromium ohne WebGL.
+
+**Herausnehmen:** `web/viewer_ohne_gpu.js` löschen; in `app.js` `dreiD()` wieder nur `viewer.js`, `dreiDSchliessen` auf ein Modul,
+`webglAbgebrochen` → wie 0.54.2 Galerie ohne 3D (`kann3d` wieder mit `v.webglMoeglich()`); die test_ui-Prüfung auf „Bild statt
+3D“ zurück (Fassung 0.54.2). Paket 1 bleibt in jedem Fall.
 
 **Desktop-App (Gespräch 9.10.2026, noch kein Ticket):** Ziel ein echtes Programm mit Updates wie VS Code. Richtung Tauri
 (Browser-App-Modus und Electron vom Anwender verworfen). Erstes Risiko: WebGL unter WebKitGTK auf Manjaro — vorher mit Epiphany

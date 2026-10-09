@@ -1414,18 +1414,27 @@ $("#druck-bild-wahl").addEventListener("change", async (e) => {
 // Pfeiltasten oder Wischen; eigene Bilder per ＋, Hineinziehen oder Strg+V.
 // Ohne WebGL fehlt nur die 3D-Ansicht.
 
-let viewer = null, dreiDModul = null;
+let viewer = null, dreiDModul = null, ohneGpuModul = null;
 const galerie = { m: null, folien: [], i: 0, ziel: null };
+// Weiche: ohne WebGL (oder nach einem Abbruch) zeichnet viewer_ohne_gpu.js
+// mit Canvas 2D. Rückbaubar, siehe OFFEN.md; ohne das Modul gilt wieder
+// „nur das Bild“.
 async function dreiD() {
   if (!dreiDModul) dreiDModul = import("/web/viewer.js");
-  return dreiDModul;
+  const v = await dreiDModul;
+  if (v.webglMoeglich()) return v;
+  if (!ohneGpuModul) ohneGpuModul = import("/web/viewer_ohne_gpu.js");
+  return ohneGpuModul;
+}
+async function dreiDSchliessen() {
+  for (const modul of [dreiDModul, ohneGpuModul]) if (modul) (await modul).schliessen();
 }
 
 async function zeigeGalerie(m) {
   const hatNetz = !m.papierkorb && !m.fehlt && !m.fehler_text && !nurCad(m);
   const v = await dreiD().catch(() => null);
   if (zustand.gewaehlt !== m.id) return;
-  const kann3d = hatNetz && v && v.webglMoeglich();
+  const kann3d = hatNetz && !!v;
   const eigene = m.ansichten.filter((a) => a.art === "eigen");
   const folien = [...eigene, ...(kann3d ? [{ art: "3d", titel: "3D-Ansicht" }] : []),
                   ...m.ansichten.filter((a) => a.art !== "eigen")];
@@ -1475,7 +1484,7 @@ async function umschalten() {
   const bild = $("#i-bild");
   if (!bild || !m) return;
   const f = folien[i];
-  if (dreiDModul) (await dreiD()).schliessen();
+  await dreiDSchliessen();
   viewer = null;
   if (galerie.i !== i || $("#i-bild") !== bild) return;
   const haupt = bild.querySelector(".gal-haupt");
@@ -1496,7 +1505,7 @@ async function zeichneGalerie() {
   const f = folien[i];
   const n = folien.length;
   const darf = !m.papierkorb;
-  if (dreiDModul) (await dreiD()).schliessen();
+  await dreiDSchliessen();
   viewer = null;
   const pfeile = n > 1 ? `<button class="gal-pfeil links" data-gal="-1" title="Vorheriges (←)">‹</button>
     <button class="gal-pfeil rechts" data-gal="1" title="Nächstes (→)">›</button>` : "";
@@ -1518,21 +1527,23 @@ async function lade3d(m) {
     const puffer = await antwort.arrayBuffer();
     if (zustand.gewaehlt !== m.id || galerie.folien[galerie.i]?.art !== "3d" || !feld.isConnected) return;
     const farbe = m.platten.flatMap((p) => p.filamente).map((f) => f.farbe).find(Boolean) || null;
-    viewer = v.zeige(feld, puffer, farbe, () => ohneDreiD(m));
+    viewer = v.zeige(feld, puffer, farbe, () => webglAbgebrochen(m));
     feld.querySelector(".laden")?.remove();
   } catch (e) {
-    if (dreiDModul && !(await dreiD()).webglMoeglich()) return ohneDreiD(m);
+    if (dreiDModul && !(await dreiDModul).webglMoeglich() && !webglGemeldet) return webglAbgebrochen(m);
     const laden = feld.querySelector(".laden");
     if (laden) laden.textContent = e.message;
   }
 }
 
-// WebGL ist abgebrochen: die Galerie ohne 3D-Ansicht neu aufbauen, damit
-// das Bild zu sehen ist statt einer leeren Fläche.
-function ohneDreiD(m) {
+// WebGL ist abgebrochen: dieselbe Ansicht noch einmal, jetzt über die
+// Weiche ohne Grafikkarte. Einmal melden, nicht bei jedem Modell.
+let webglGemeldet = false;
+function webglAbgebrochen(m) {
   viewer = null;
-  toast("3D-Ansicht auf diesem Rechner nicht möglich (WebGL abgebrochen) — gezeigt wird das Bild.", { dauer: 6000 });
-  if (zustand.gewaehlt === m.id) zeigeGalerie(m);
+  if (!webglGemeldet) toast("WebGL ist auf diesem Rechner abgebrochen — die 3D-Ansicht läuft jetzt ohne Grafikkarte (gröber).", { dauer: 6000 });
+  webglGemeldet = true;
+  if (zustand.gewaehlt === m.id && galerie.folien[galerie.i]?.art === "3d") lade3d(m);
 }
 
 async function bilderHochladen(dateien) {
