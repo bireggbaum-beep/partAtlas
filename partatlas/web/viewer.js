@@ -9,11 +9,16 @@ import * as THREE from "three";
 import { OrbitControls } from "/web/vendor/OrbitControls.js";
 
 let aktiv = null;
+// Einmal abgebrochen, bleibt es für diese Seite aus: alte Treiber (nouveau
+// auf einer GeForce 9, Tester) zeigen ein Bild und verlieren dann den
+// Kontext — jeder neue Versuch flackert nur und kann den Browser hängen.
+let abgebrochen = false;
 
+// three.js ab r163 kann nur noch WebGL 2; reines WebGL 1 reicht nicht.
 export function webglMoeglich() {
+  if (abgebrochen) return false;
   try {
-    const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+    return !!document.createElement("canvas").getContext("webgl2");
   } catch { return false; }
 }
 
@@ -25,6 +30,8 @@ export function schliessen() {
   aktiv.geometrie.dispose();
   aktiv.material.dispose();
   aktiv.renderer.dispose();
+  // Das eigene Freigeben ist kein Abbruch.
+  aktiv.renderer.domElement.removeEventListener("webglcontextlost", aktiv.verloren);
   aktiv.renderer.forceContextLoss();
   aktiv.renderer.domElement.remove();
   aktiv = null;
@@ -32,10 +39,17 @@ export function schliessen() {
 
 // `puffer`: ArrayBuffer mit float32, 9 Werte je Dreieck (Z nach oben, wie
 // auf dem Druckbett). `farbe`: '#RRGGBB' aus dem Slicer oder null.
-export function zeige(behaelter, puffer, farbe) {
+// `beiAbbruch`: wird gerufen, wenn WebGL nach dem Start wegbricht.
+export function zeige(behaelter, puffer, farbe, beiAbbruch = () => {}) {
   schliessen();
   const breite = behaelter.clientWidth, hoehe = behaelter.clientHeight;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  } catch (e) {
+    abgebrochen = true;
+    throw e;
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(breite, hoehe);
   behaelter.appendChild(renderer.domElement);
@@ -91,7 +105,14 @@ export function zeige(behaelter, puffer, farbe) {
   });
   beobachter.observe(behaelter);
 
-  aktiv = { renderer, steuerung, geometrie, material, beobachter, rahmen: 0 };
+  const verloren = (e) => {
+    e.preventDefault();
+    abgebrochen = true;
+    schliessen();
+    beiAbbruch();
+  };
+  renderer.domElement.addEventListener("webglcontextlost", verloren);
+  aktiv = { renderer, steuerung, geometrie, material, beobachter, verloren, rahmen: 0 };
   const schleife = () => {
     aktiv.rahmen = requestAnimationFrame(schleife);
     steuerung.update();

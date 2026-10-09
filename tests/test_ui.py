@@ -517,6 +517,23 @@ async def oberflaeche(port):
               "Haken.stl" in text and "Warteschlange" in text and "Tags:" in text and "HAS_TAG" not in text)
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
+        # WebGL bricht nach dem Start weg (alter Treiber beim Tester): statt einer leeren Fläche das Bild,
+        # und kein neuer Versuch beim nächsten Modell. Danach lädt die Seite ohnehin neu (Phase 1).
+        await suche("Vase")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_selector("#i-bild canvas", timeout=20000)
+        await pg.evaluate("document.querySelector('#i-bild canvas').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()")
+        await pg.wait_for_timeout(800)
+        weg = await pg.evaluate("""() => ({ canvas: !!document.querySelector('#i-bild canvas'),
+            bild: !!document.querySelector('#i-bild .gal-haupt img'), mini3d: !!document.querySelector('.gal-mini[data-art="3d"]'),
+            toast: !$('#toast').hidden && $('#toast').innerText.includes('WebGL') })""")
+        await pg.evaluate("waehle(null)")
+        await suche("Arm")
+        await pg.locator(".karte").first.click()
+        await pg.wait_for_timeout(800)
+        check("WebGL bricht ab: Bild statt 3D-Ansicht mit Hinweis, beim nächsten Modell kein neuer Versuch",
+              weg == {"canvas": False, "bild": True, "mini3d": False, "toast": True}
+              and await pg.locator("#i-bild canvas").count() == 0 and await pg.locator("#i-bild .gal-haupt img").count() == 1)
         # -- Phase 1 (Vorgabe): keine Warteschlange, Baugruppen bleiben
         await pg.goto(f"http://127.0.0.1:{port}/")
         await pg.wait_for_selector(".karte")

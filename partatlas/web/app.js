@@ -1517,13 +1517,22 @@ async function lade3d(m) {
     if (!antwort.ok) throw new Error((await antwort.json().catch(() => ({}))).detail || "Netz nicht lesbar");
     const puffer = await antwort.arrayBuffer();
     if (zustand.gewaehlt !== m.id || galerie.folien[galerie.i]?.art !== "3d" || !feld.isConnected) return;
-    feld.querySelector(".laden")?.remove();
     const farbe = m.platten.flatMap((p) => p.filamente).map((f) => f.farbe).find(Boolean) || null;
-    viewer = v.zeige(feld, puffer, farbe);
+    viewer = v.zeige(feld, puffer, farbe, () => ohneDreiD(m));
+    feld.querySelector(".laden")?.remove();
   } catch (e) {
+    if (dreiDModul && !(await dreiD()).webglMoeglich()) return ohneDreiD(m);
     const laden = feld.querySelector(".laden");
     if (laden) laden.textContent = e.message;
   }
+}
+
+// WebGL ist abgebrochen: die Galerie ohne 3D-Ansicht neu aufbauen, damit
+// das Bild zu sehen ist statt einer leeren Fläche.
+function ohneDreiD(m) {
+  viewer = null;
+  toast("3D-Ansicht auf diesem Rechner nicht möglich (WebGL abgebrochen) — gezeigt wird das Bild.", { dauer: 6000 });
+  if (zustand.gewaehlt === m.id) zeigeGalerie(m);
 }
 
 async function bilderHochladen(dateien) {

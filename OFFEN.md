@@ -72,6 +72,25 @@ aktualisieren.
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
+## 3D-Ansicht ohne funktionierendes WebGL (9.10.2026, Linux-Tester)
+
+Tester: GeForce 9 (nv96), nouveau, X11 (wegen Anycubic Slicer Next). WebGL 2 zeigt ein Bild und verliert dann den Kontext;
+Firefox und Chromium gleich, „Software-Rendering“ in Firefox ändert nichts (betrifft nur das Zusammensetzen der Seite, nicht WebGL).
+Zum Ausprobieren ohne Code: `LIBGL_ALWAYS_SOFTWARE=1 firefox` (WebGL über llvmpipe) — Ergebnis offen.
+
+**Paket 1 erledigt (0.54.2):** `webglMoeglich` verlangt WebGL 2 (three.js r170 kann kein WebGL 1 mehr). Bricht WebGL ab
+(`webglcontextlost`) oder lässt sich kein Renderer anlegen, baut die Galerie ohne 3D-Ansicht neu auf (Bild statt leerer Fläche,
+Hinweis) und versucht es auf dieser Seite nicht wieder. test_ui +1, gezielt geprüft; Gegenproben (Lauscher weg, Merker weg) fallen.
+
+**Offen, Pakete 2–4 (Aufwand 3 zusammen, Anwender: muss wieder rausnehmbar sein):** Software-Viewer mit Canvas 2D als Rückfall
+(eigenes Modul `web/viewer_ohne_gpu.js`, eine Weiche in `app.js`), ausgedünntes Netz vom Server (`/netz?duenn=1`, vorhandenes
+Ausdünnen), Schalter Einstellungen › Ansicht › „3D-Ansicht ohne Grafikkarte“, eine Prüfung in test_ui. Herausnehmen = genau diese
+Stellen; Paket 1 bleibt in jedem Fall.
+
+**Desktop-App (Gespräch 9.10.2026, noch kein Ticket):** Ziel ein echtes Programm mit Updates wie VS Code. Richtung Tauri
+(Browser-App-Modus und Electron vom Anwender verworfen). Erstes Risiko: WebGL unter WebKitGTK auf Manjaro — vorher mit Epiphany
+(nutzt WebKitGTK) prüfen. Kein .deb/macOS; Windows-Installer + AppImage; PyInstaller `onedir`; freier Port.
+
 ## Später: Performance-Feinschliff (Anwender, 8.10.2026: „irgendwann“, nicht jetzt)
 
 - **Einstellungen › Sicherungen öffnet in 5–7 s** (Windows, 8 600 Modelle): `sicherung.liste(mit_groesse=True)` zählt jede Datei jeder
