@@ -350,6 +350,43 @@ derselben Meldung (Änderungszeit der Ordner abfragen, ohne fremde Pakete); offe
 Der Kern von partAtlas. Aus eigener Erfahrung: acht Versuche, und keiner
 weiss mehr, mit welchen Einstellungen.
 
+### 4.0 Zielbild: Was, Wie, Ergebnis (9.10.2026, mit dem Anwender)
+
+**Das Modell ist das *Was*, die Slicer-Datei das *Wie*, der Druck das *Ergebnis*. Das Wie hängt am Druck, nicht am Modell.**
+
+- **Modell** — Geometrie, egal in welchem Format (STL, STEP, OBJ, 3MF). Danach wird gesucht.
+- **Slicer-Datei** — wie gedruckt wurde: **G-Code** (fix, nur für diesen Drucker, diese Düse, dieses Material; direkt wieder
+  druckbar) oder **Slicer-Projekt** (3MF; änderbar, neu zu slicen). Beide tragen die Einstellungen.
+- **Druck** — ein Ereignis (Datum, Ergebnis, Foto) an einem oder mehreren Modellen; seine Slicer-Datei hängt an ihm.
+- Ein 3MF ist ein Modell **mit mitgeliefertem Rezept** (Einstellungen aus der Datei), kein fixer G-Code. Ein STL bringt
+  keins mit — sein gespeichertes Profil ist **sein guter Druck** (Referenz). Für den Anwender verschwindet damit der
+  Unterschied: jedes Modell hat Drucke, jeder Druck hat sein Wie.
+- Ein geslicter, noch nicht gedruckter G-Code ist ein **geplanter Druck** (Warteschlange). Ablauf als eine Linie:
+  Modell → slicen → G-Code (Warteschlange) → gedruckt → Ergebnis, Foto → bei Erfolg Referenz.
+
+**Anwendungsfall „Mini, drei Wochen später“ (vom Anwender bestätigt).** Eine TTRPG-Figur als STL, einmal gedruckt, gut.
+Drei Wochen später: in partAtlas „Zwerg“ suchen statt auf der Platte; die Kachel zeigt „2× gedruckt“; im Reiter Drucke je
+eine Zeile, die den Druck wiedererkennen lässt (Datum, Ergebnis, Schicht, Stützen, Dauer, Foto) — das feine war das
+zweite. Dann:
+- **Nochmal drucken** — derselbe G-Code noch einmal, wenn es genau so werden soll.
+- **Mit diesen Einstellungen im Slicer öffnen** — wenn es diesmal anders (feiner) werden soll.
+
+Was es dafür braucht:
+1. **Festhalten ohne Zutun.** Muss der Anwender nach jedem Druck etwas eintragen, tut es nach zwei Wochen niemand mehr.
+   Ziel: neuer G-Code wird erkannt, dem Modell vorgeschlagen, gefragt wird nur „gut geworden?“ (Foto freiwillig).
+   *Offen:* wie der G-Code beim Anwender zum Drucker kommt (Datei/Ordner/USB oder direkt aus dem Slicer per WLAN/Cloud) —
+   davon hängt ab, ob ein beobachteter Ordner reicht.
+2. **Eine Zusammenfassungszeile je Druck** — die 5–6 Werte, an denen man ihn wiedererkennt, nicht die 543.
+3. **„Mit diesen Einstellungen öffnen“.** Einen G-Code kann der Slicer nur ansehen, nicht bearbeiten. *Idee, ungeprüft:*
+   partAtlas baut aus Modell + Einstellungen des G-Codes ein Slicer-Projekt (Orca-Projekte tragen dieselben Schlüssel) —
+   an einem echten Projekt des Anycubic Slicer Next prüfen. Sicherer, aber mit Zutun: das Projekt beim Slicen mitspeichern.
+4. **Nochmal drucken** ohne Anbindung: den G-Code zum Drucker bringen wie beim ersten Mal (Ordner/USB, oder im Slicer
+   öffnen und von dort senden — *ungeprüft*, ob der Anycubic Slicer einen fertigen G-Code senden kann); mit Anbindung
+   direkt (§4.3, Phase 2).
+
+Weitere Fragen, die der Graph beantwortet: Warum ging Versuch 3 schief, Versuch 5 nicht (Vergleich, §4.1)? Was kostet und
+dauert es wirklich? Welche Einstellungen funktionieren für ASA auf dem Kobra — über alle Modelle?
+
 ### 4.1 Jeder Druck mit seinen Einstellungen
 
 - **Die Einstellungen stehen im G-Code:** OrcaSlicer, PrusaSlicer und
