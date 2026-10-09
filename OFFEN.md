@@ -113,7 +113,15 @@ falsch zeichnen), eine Prüfung mit Chromium ohne WebGL.
   ob grössere Fächer lohnen; klären, ob ein Wechsel einen Umzug der Speicherform braucht.
 - Aus v0.60 (s. o.): Gruppengrösse 200 beim Löschen messen; Ordner entfernen mit vielen Dateien.
 
-## Stand: 0.54.1 auf `main` (8.10.2026, für den Tester)
+## Stand: 0.55.0 auf `main` (9.10.2026, für den Tester)
+
+- 3D-Ansicht: bricht WebGL ab oder fehlt WebGL 2 (Linux-Tester, GeForce 9 mit nouveau), zeichnet partAtlas die Ansicht ohne
+  Grafikkarte (Canvas 2D, gröber), mit einmaligem Hinweis; kein neuer WebGL-Versuch bis zum Neuladen (0.54.2, 0.55.0).
+- Alle Suiten vor dem Push: 13 ohne test_ui bestanden, `test_ui.py` 68/68. Die neue Prüfung brauchte zwei Korrekturen im Test
+  (Reiter „Übersicht“ wählen; Arm.stl ist dort schon entfernt, deshalb die Vase zweimal) — die App war nicht betroffen.
+- Vom Tester erbeten: 3D-Ansicht auf seinem Rechner ansehen (flüssig genug?), danach Entscheid über Pakete 3–4.
+
+## Stand davor: 0.54.1 auf `main` (8.10.2026, für den Tester)
 
 - Aufklapp-Pfeile (Ordnerbaum, Gruppenköpfe) als gezeichneter Winkel statt der Zeichen ▸/▾,
   die in kleiner Schrift nur wie ein Punkt wirkten. `test_ui.py` 67/67.

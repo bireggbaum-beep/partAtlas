@@ -521,6 +521,8 @@ async def oberflaeche(port):
         # (Canvas 2D, gezeichnet), mit Hinweis; beim nächsten Modell kein neuer WebGL-Versuch. Danach lädt die Seite neu (Phase 1).
         await suche("Vase")
         await pg.locator(".karte").first.click()
+        await pg.click('.i-reiter [data-reiter="uebersicht"]')      # der zuletzt gewählte Reiter bleibt, die Ansicht nur in der Übersicht
+        await pg.click('.gal-mini[data-art="3d"]')
         await pg.wait_for_selector("#i-bild canvas", timeout=20000)
         await pg.evaluate("document.querySelector('#i-bild canvas').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()")
         gezeichnet = """() => { const c = document.querySelector('#i-bild canvas.ohne-gpu');
@@ -529,9 +531,11 @@ async def oberflaeche(port):
         await pg.wait_for_function(f"({gezeichnet})() > 500", timeout=10000)
         weg = await pg.evaluate("""() => ({ leinwaende: document.querySelectorAll('#i-bild canvas').length,
             toast: !$('#toast').hidden && $('#toast').innerText.includes('ohne Grafikkarte') })""")
+        # Arm.stl fehlt hier schon (weiter oben entfernt): dasselbe Modell neu wählen = neue Ansicht
         await pg.evaluate("waehle(null)")
-        await suche("Arm")
+        await pg.wait_for_timeout(300)
         await pg.locator(".karte").first.click()
+        await pg.click('.gal-mini[data-art="3d"]')
         await pg.wait_for_function(f"({gezeichnet})() > 500", timeout=10000)
         check("WebGL bricht ab: 3D-Ansicht ohne Grafikkarte gezeichnet, mit Hinweis; beim nächsten Modell kein neuer WebGL-Versuch",
               weg == {"leinwaende": 1, "toast": True}
