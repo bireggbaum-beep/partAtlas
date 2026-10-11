@@ -291,6 +291,52 @@ if __name__ == "__main__":
         check("Alles wiederholen führt genau zum Stand von vorher zurück", (pos(modul), pos(bid)) == stand)
         c.delete(f"/api/baugruppen/{oben}"); c.delete(f"/api/baugruppen/{unter}")      # Hilfs-Baugruppen dieses Abschnitts
 
+        # -- Projekte: Klammer um einen Bau-Auftrag (KONZEPT §4.5a)
+        pid = c.post("/api/projekte", json={"name": "Halloween Deko"}).json()["id"]
+        check("Projekt anlegen: Kennung p_…, Status Entwurf, eigene Liste (nicht in der Baugruppenliste)",
+              pid.startswith("p_") and c.get(f"/api/projekte/{pid}").json()["status"] == "Entwurf"
+              and [x["name"] for x in c.get("/api/projekte").json()] == ["Halloween Deko"]
+              and "Halloween Deko" not in [x["name"] for x in c.get("/api/baugruppen").json()])
+        modul_s = c.get(f"/api/baugruppen/{modul}").json()["summen"]
+        c.post(f"/api/projekte/{pid}/positionen", json={"ref": f"ASSEMBLY/{modul}", "menge": 2})
+        c.post(f"/api/projekte/{pid}/positionen", json={"ref": f"MODEL_ASSET/{m['Einzelteil']}", "menge": 3})
+        c.post(f"/api/projekte/{pid}/positionen", json={"ref": "PURCHASED_PART/din912-m3x10", "menge": 1})
+        dp = c.get(f"/api/projekte/{pid}").json()
+        einkauf_p = {e["name"]: e["bedarf"] for e in dp["summen"]["einkauf"]}
+        einkauf_m = {e["name"]: e["bedarf"] for e in modul_s["einkauf"]}
+        check("Projekt mit lose Teilen, Baugruppe und Kaufteil: Summen über beide Ebenen (2× Baugruppe + 3 lose; 2×4+1 Schrauben)",
+              dp["art"] == "projekt" and len(dp["positionen"]) == 3 and dp["summen"]["druckteile"] == 2 * modul_s["druckteile"] + 3
+              and einkauf_p["Zylinderkopfschraube M3×10"] == 2 * einkauf_m["Zylinderkopfschraube M3×10"] + 1)
+        check("Ein Projekt steckt in nichts und enthält kein Projekt",
+              c.post(f"/api/baugruppen/{bid}/positionen", json={"ref": f"PROJECT/{pid}"}).status_code == 400
+              and c.post(f"/api/projekte/{pid}/positionen", json={"ref": f"PROJECT/{pid}"}).status_code == 400)
+        check("Der Kern bleibt unberührt: das lose Modell zeigt das Projekt nicht als Baugruppe",
+              c.get(f"/api/modelle/{m['Einzelteil']}").json()["baugruppen"] == [])
+        wege = c.get("/api/verwendung", params={"ziel": f"MODEL_ASSET/{m['Halter']}"}).json()
+        ueber_projekt = [w for w in wege if w["weg"][0]["name"] == "Halloween Deko"]
+        check("Wo verbaut reicht bis zum Projekt: Halloween Deko › Arm-Modul, 2 × 2 = 4×",
+              len(ueber_projekt) == 1 and [x["name"] for x in ueber_projekt[0]["weg"]] == ["Halloween Deko", "Arm-Modul"] and ueber_projekt[0]["gesamt"] == 4)
+        c.patch(f"/api/projekte/{pid}", json={"status": "In Arbeit"})
+        check("Projekt-Status ist frei wählbar; an einer Baugruppe gibt es keinen Status",
+              c.get(f"/api/projekte/{pid}").json()["status"] == "In Arbeit"
+              and c.patch(f"/api/baugruppen/{modul}", json={"status": "Fertig"}).status_code == 400)
+        c.post("/api/baugruppen/rueckgaengig")
+        check("Rückgängig gilt auch für Projekte (Status zurück)", c.get(f"/api/projekte/{pid}").json()["status"] == "Entwurf")
+        c.patch(f"/api/projekte/{pid}/positionen", json={"ref": f"MODEL_ASSET/{m['Einzelteil']}", "menge": 5})
+        check("Position im Projekt ändern", {p["name"]: p["menge"] for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"] == 5)
+        c.post("/api/baugruppen/rueckgaengig")
+        c.delete(f"/api/projekte/{pid}/positionen", params={"ref": f"MODEL_ASSET/{m['Einzelteil']}"})
+        c.post("/api/baugruppen/rueckgaengig")
+        check("Rückgängig bringt die Menge und eine entfernte Position im Projekt zurück",
+              {p["name"]: p["menge"] for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"] == 3)
+        check("Export des Projekts: CSV, Markdown und PDF",
+              all(c.get(f"/api/projekte/{pid}/export", params={"format": f}).status_code == 200 for f in ("csv", "md", "pdf"))
+              and "Einzelteil" in c.get(f"/api/projekte/{pid}/export").text)
+        c.delete(f"/api/projekte/{pid}")
+        check("Projekt löschen: Modelle und Baugruppen bleiben",
+              c.get("/api/projekte").json() == [] and "Arm-Modul" in [x["name"] for x in c.get("/api/baugruppen").json()]
+              and len(c.get("/api/modelle").json()) == 4)
+
         # -- Lange Beschreibung liegt in vault_text/ und kommt beim Lesen ganz zurück
         lang = ("Bauanleitung: " + "Teil an Teil schrauben, dann prüfen. " * 60).strip()
         kurz = "Kurz."

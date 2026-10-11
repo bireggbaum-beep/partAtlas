@@ -764,42 +764,60 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             return {"id": B().aus_ordner(d["aus_ordner"])}
         return {"id": B().aus_modellen(d.get("name", ""), d.get("modelle", []))}
 
+    @app.get("/api/projekte")
+    @am_stueck
+    def projekte():
+        return B().projekte()
+
+    @app.post("/api/projekte")
+    def projekt_neu(d: dict = Depends(json_koerper)):
+        return {"id": B().projekt_anlegen(d.get("name", ""))}
+
+    # Projekte teilen sich Detail, Positionen, Material, Export und Rückgängig mit den Baugruppen (dieselbe Logik, Kennung `p_…`).
+    @app.get("/api/projekte/{bid}")
     @app.get("/api/baugruppen/{bid}")
     def baugruppe(bid: str):
         return B().detail(bid)
 
+    @app.patch("/api/projekte/{bid}")
     @app.patch("/api/baugruppen/{bid}")
     def baugruppe_aendern(bid: str, koerper: dict = Depends(json_koerper)):
         B().aendern(bid, koerper)
         return {"ok": True}
 
+    @app.delete("/api/projekte/{bid}")
     @app.delete("/api/baugruppen/{bid}")
     def baugruppe_loeschen(bid: str):
         B().loeschen(bid)
         return {"ok": True}
 
+    @app.post("/api/projekte/{bid}/positionen")
     @app.post("/api/baugruppen/{bid}/positionen")
     def position_neu(bid: str, d: dict = Depends(json_koerper)):
         for ziel in d.get("refs") or [d.get("ref", "")]:
             B().hinzufuegen(bid, ziel, d.get("menge", 1))
         return {"ok": True}
 
+    @app.patch("/api/projekte/{bid}/positionen")
     @app.patch("/api/baugruppen/{bid}/positionen")
     def position_aendern(bid: str, d: dict = Depends(json_koerper)):
         ziel = d.pop("ref", "")
         B().position_aendern(bid, ziel, d)
         return {"ok": True}
 
+    @app.delete("/api/projekte/{bid}/positionen")
     @app.delete("/api/baugruppen/{bid}/positionen")
     def position_weg(bid: str, ref: str):
         B().position_entfernen(bid, ref)
         return {"ok": True}
 
+    @app.put("/api/projekte/{bid}/reihenfolge")
     @app.put("/api/baugruppen/{bid}/reihenfolge")
     def positionen_ordnen(bid: str, koerper: dict = Depends(json_koerper)):
         B().ordnen(bid, koerper.get("refs", []))
         return {"ok": True}
 
+    @app.post("/api/projekte/{bid}/material")
     @app.post("/api/baugruppen/{bid}/material")
     def baugruppe_material(bid: str, d: dict = Depends(json_koerper)):
         if d.get("farbe") and not re.fullmatch(r"#[0-9a-fA-F]{6}", d["farbe"]):
@@ -807,10 +825,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         B().material_fuer_offene(bid, (d.get("material") or "").strip()[:20] or "PLA", d.get("farbe"))
         return {"ok": True}
 
+    @app.post("/api/projekte/{bid}/warteschlange")
     @app.post("/api/baugruppen/{bid}/warteschlange")
     def baugruppe_warteschlange(bid: str):
         return {"eingereiht": B().fehlende_in_warteschlange(bid)}
 
+    @app.get("/api/projekte/{bid}/export")
     @app.get("/api/baugruppen/{bid}/export")
     def baugruppe_export(bid: str, format: str = "csv"):
         art = format if format in ("md", "pdf") else "csv"

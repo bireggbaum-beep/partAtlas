@@ -28,6 +28,11 @@ BAUGRUPPE = "ASSEMBLY"
 KAUFTEIL = "PURCHASED_PART"
 EIGEN = "CUSTOM_COMPONENT"            # eigene Komponenten, siehe eigene.py
 ENTHAELT = "CONTAINS"
+# Projekt: die Klammer um einen Bau-Auftrag (KONZEPT §4.5a). Eigene Kante, damit der Kern (Löschvorschau, Suche, Aufräumen), der `CONTAINS`
+# als „steckt in Baugruppe“ liest, unberührt bleibt. Dieselbe Positionslogik wie bei Baugruppen; ein Projekt steckt in nichts.
+PROJEKT = "PROJECT"
+BENOETIGT = "REQUIRES"
+BEHAELTER = {BAUGRUPPE: ENTHAELT, PROJEKT: BENOETIGT}       # Art des Behälters -> Kante zu seinen Positionen
 
 ARTEN = {MODELL: "modell", BAUGRUPPE: "baugruppe", KAUFTEIL: "kaufteil", EIGEN: "eigen"}
 POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
@@ -77,17 +82,30 @@ class Baugruppen:
                 for k, v in neu.items():
                     self.db.create_node(KAUFTEIL, k, v)
 
+    # ------------------------------------------------------------ Behälter: Baugruppe oder Projekt
+
+    @staticmethod
+    def _col(bid):
+        """Kennungen von Projekten beginnen mit `p_`, die von Baugruppen mit `b_`."""
+        return PROJEKT if bid.startswith("p_") else BAUGRUPPE
+
+    def _b(self, bid):
+        return ref(self._col(bid), bid)
+
+    def _rel(self, bid):
+        return BEHAELTER[self._col(bid)]
+
     # ------------------------------------------------------------ Rückgängig
 
     def _zustand(self, r):
         """Was an einem Knoten änderbar ist: bei einer Baugruppe Name, Beschreibung und Positionen (mit allen ihren Feldern und der
         Reihenfolge), bei einem Kaufteil die Bezugsangaben. None, wenn es den Knoten nicht mehr gibt."""
         col, _, kid = r.partition("/")
-        if col == BAUGRUPPE:
+        if col in BEHAELTER:
             n = self.db.get_node_full(r)
             if n is None:
                 return None
-            return {"name": n["name"], "beschreibung": n.get("beschreibung", ""),
+            return {"name": n["name"], "beschreibung": n.get("beschreibung", ""), **({"status": n.get("status", "")} if col == PROJEKT else {}),
                     "kanten": [(ziel, {k: v for k, v in kante.items() if k in (*POSITIONSFELDER, "position")})
                                for _, ziel, kante in self._positionen(kid)]}
         n = self.db.get_node(r, readonly=True)
@@ -97,14 +115,14 @@ class Baugruppen:
         col, _, kid = r.partition("/")
         if z is None or self._zustand(r) is None:
             return                              # inzwischen gelöscht: nichts wiederherzustellen
-        if col != BAUGRUPPE:
+        if col not in BEHAELTER:
             return self.db.update_node(KAUFTEIL, kid, z)
-        self.db.update_node(BAUGRUPPE, kid, {"name": z["name"], "beschreibung": z["beschreibung"]})
+        self.db.update_node(col, kid, {k: v for k, v in z.items() if k != "kanten"})
         for eid, _, _ in self._positionen(kid):
             self.db.delete_edge(eid)
         for ziel, meta in z["kanten"]:
             if self.teile.existiert(ziel):      # ein Ziel, das es nicht mehr gibt, bleibt weg
-                self.db.create_edge(ref(BAUGRUPPE, kid), ziel, ENTHAELT, meta=dict(meta))
+                self.db.create_edge(ref(col, kid), ziel, BEHAELTER[col], meta=dict(meta))
 
     def _unterbaugruppen(self, bid, gesehen=None):
         gesehen = gesehen if gesehen is not None else set()
@@ -200,18 +218,24 @@ class Baugruppen:
     # ------------------------------------------------------------ Baugruppen
 
     def _pruefen(self, bid):
-        b = self.db.get_node(ref(BAUGRUPPE, bid), readonly=True)
+        b = self.db.get_node(self._b(bid), readonly=True)
         if b is None:
-            raise KatalogFehler(f"Baugruppe {bid} gibt es nicht.")
+            raise KatalogFehler(f"{'Projekt' if self._col(bid) == PROJEKT else 'Baugruppe'} {bid} gibt es nicht.")
         return b
 
     def anlegen(self, name, positionen=()):
+        return self._anlegen(BAUGRUPPE, name, positionen)
+
+    def projekt_anlegen(self, name, positionen=()):
+        return self._anlegen(PROJEKT, name, positionen)
+
+    def _anlegen(self, col, name, positionen):
         name = (name or "").strip()
         if not name or len(name) > 120:
             raise KatalogFehler("Name leer oder zu lang.")
         with self.db.transaction():
-            bid = self.db.next_id(BAUGRUPPE, "b_", 4)
-            self.db.create_node(BAUGRUPPE, bid, {"name": name, "beschreibung": "", "angelegt": jetzt()})
+            bid = self.db.next_id(col, "p_" if col == PROJEKT else "b_", 4)
+            self.db.create_node(col, bid, {"name": name, "beschreibung": "", **({"status": "Entwurf"} if col == PROJEKT else {}), "angelegt": jetzt()})
             for r, menge in positionen:
                 self._hinzufuegen(bid, r, menge)
         return bid
@@ -236,22 +260,27 @@ class Baugruppen:
             neu["name"] = name[:120]
         if "beschreibung" in werte:
             neu["beschreibung"] = str(werte["beschreibung"] or "")[:4000]
+        if "status" in werte:
+            # Frei gewählt und ohne Wirkung (Entwurf, In Arbeit, Fertig …) — kein Freigabeverfahren; nur Projekte haben ihn.
+            if self._col(bid) != PROJEKT:
+                raise KatalogFehler("Nur ein Projekt hat einen Status.")
+            neu["status"] = str(werte["status"] or "").strip()[:40]
         if neu:
-            text = "Name ändern" if "name" in neu and "beschreibung" not in neu else "Beschreibung ändern" if "name" not in neu else "Name und Beschreibung ändern"
-            with self._protokolliert(f"{text} ({b['name']})", [ref(BAUGRUPPE, bid)]):
-                self.db.update_node(BAUGRUPPE, bid, neu)
+            text = " und ".join(n for n, k in (("Name", "name"), ("Beschreibung", "beschreibung"), ("Status", "status")) if k in neu) + " ändern"
+            with self._protokolliert(f"{text} ({b['name']})", [self._b(bid)]):
+                self.db.update_node(self._col(bid), bid, neu)
 
     def loeschen(self, bid):
         """Die Baugruppe geht; Modelle und Kaufteile bleiben."""
         self._pruefen(bid)
-        self.db.soft_delete(BAUGRUPPE, bid)
+        self.db.soft_delete(self._col(bid), bid)
 
     # ------------------------------------------------------------ Positionen
 
     def _positionen(self, bid):
         """[(kanten_id, ziel_ref, kante)] in Reihenfolge, nur lebende Ziele."""
         liste = [(eid, e["target"], e) for eid, e in
-                 self.db.get_connected_edges(ref(BAUGRUPPE, bid), direction="out", rel_type=ENTHAELT)
+                 self.db.get_connected_edges(self._b(bid), direction="out", rel_type=self._rel(bid))
                  if self.db.get_node(e["target"], readonly=True) is not None]
         return sorted(liste, key=lambda p: (p[2].get("position", 0), p[1]))
 
@@ -278,7 +307,7 @@ class Baugruppen:
             # Nochmal dazu heisst: eins mehr — so fühlt sich Ziehen richtig an.
             return self._neu_legen(bid, vorhanden, {"menge": vorhanden[2].get("menge", 1) + menge})
         pos = max((p[2].get("position", 0) for p in self._positionen(bid)), default=-1) + 1
-        self.db.create_edge(ref(BAUGRUPPE, bid), ziel, ENTHAELT,
+        self.db.create_edge(self._b(bid), ziel, self._rel(bid),
                             meta={"menge": menge, "erledigt": 0, "position": pos})
 
     def _neu_legen(self, bid, position, aenderung):
@@ -286,11 +315,11 @@ class Baugruppen:
         meta = {k: kante[k] for k in (*POSITIONSFELDER, "position") if k in kante}
         meta.update(aenderung)
         self.db.delete_edge(eid)
-        self.db.create_edge(ref(BAUGRUPPE, bid), ziel, ENTHAELT, meta=meta)
+        self.db.create_edge(self._b(bid), ziel, self._rel(bid), meta=meta)
 
     def hinzufuegen(self, bid, ziel, menge=1):
         b = self._pruefen(bid)
-        with self._protokolliert(f"Teil hinzufügen ({b['name']})", [ref(BAUGRUPPE, bid)]), self.db.transaction():
+        with self._protokolliert(f"Teil hinzufügen ({b['name']})", [self._b(bid)]), self.db.transaction():
             self._hinzufuegen(bid, ziel, menge)
 
     def position_aendern(self, bid, ziel, werte):
@@ -320,7 +349,7 @@ class Baugruppen:
                 v = str(v or "").strip()[:200] or None
             aenderung[k] = v
         text = " und ".join(FELDNAMEN[k] for k in aenderung) + " ändern"
-        with self._protokolliert(f"{text} ({b['name']})", [ref(BAUGRUPPE, bid)]), self.db.transaction():
+        with self._protokolliert(f"{text} ({b['name']})", [self._b(bid)]), self.db.transaction():
             self._neu_legen(bid, p, aenderung)
 
     def material_fuer_offene(self, bid, material, farbe=None):
@@ -329,7 +358,7 @@ class Baugruppen:
         zwanzig."""
         b = self._pruefen(bid)
         with self._protokolliert(f"Material für alle offenen Teile setzen ({b['name']})",
-                                 [ref(BAUGRUPPE, x) for x in self._unterbaugruppen(bid)]), self.db.transaction():
+                                 [self._b(x) for x in self._unterbaugruppen(bid)]), self.db.transaction():
             self._material_setzen(bid, self.teile.material_knoten(material), farbe, set())
 
     def _material_setzen(self, bid, material, farbe, gesehen):
@@ -350,7 +379,7 @@ class Baugruppen:
 
     def position_entfernen(self, bid, ziel):
         b = self._pruefen(bid)
-        with self._protokolliert(f"Position entfernen ({b['name']})", [ref(BAUGRUPPE, bid)]):
+        with self._protokolliert(f"Position entfernen ({b['name']})", [self._b(bid)]):
             for eid, r, _ in self._positionen(bid):
                 if r == ziel:
                     self.db.delete_edge(eid)
@@ -360,7 +389,7 @@ class Baugruppen:
         alt = self._positionen(bid)
         reihe = [r for r in dict.fromkeys(ziele) if any(p[1] == r for p in alt)] + \
                 [p[1] for p in alt if p[1] not in ziele]
-        with self._protokolliert(f"Reihenfolge ändern ({b['name']})", [ref(BAUGRUPPE, bid)]), self.db.transaction():
+        with self._protokolliert(f"Reihenfolge ändern ({b['name']})", [self._b(bid)]), self.db.transaction():
             for p in alt:
                 self._neu_legen(bid, p, {"position": reihe.index(p[1])})
 
@@ -433,14 +462,21 @@ class Baugruppen:
                              "verwendet_in": len(self.verwendet_in(ref(BAUGRUPPE, bid)))})
         return sorted(ergebnis, key=lambda x: x["name"].lower())
 
+    def projekte(self):
+        ergebnis = [{"id": pid, "name": p["name"], "status": p.get("status", ""), **self.fortschritt(pid), "positionen": len(self._positionen(pid))}
+                    for pid, p in self.db.list_nodes(PROJEKT, readonly=True).items()]
+        return sorted(ergebnis, key=lambda x: x["name"].lower())
+
     def verbaut_in(self, ziel):
         """Wo steckt dieses Teil — über alle Ebenen bis zur obersten Baugruppe. Je Verwendung ein Weg von oben nach unten
         („Drohne › Arm-Modul“) mit der Menge je Ebene und der Gesamtmenge. Gegenstück zu `verwendet_in`, das nur die Eltern nennt."""
         wege = []
 
+        def eltern_kanten(knoten):      # in Baugruppen (CONTAINS) und in Projekten (REQUIRES)
+            return [e for rel in BEHAELTER.values() for _, e in self.db.get_connected_edges(knoten, direction="in", rel_type=rel)]
+
         def hoch(knoten, weg, faktor, gesehen):
-            eltern = [(e["source"], e.get("menge", 1)) for _, e in
-                      self.db.get_connected_edges(knoten, direction="in", rel_type=ENTHAELT)]
+            eltern = [(e["source"], e.get("menge", 1)) for e in eltern_kanten(knoten)]
             for quelle, menge in sorted(eltern):
                 if quelle in gesehen:
                     continue
@@ -449,7 +485,7 @@ class Baugruppen:
                     continue
                 schritt = {"id": quelle.split("/", 1)[1], "name": b["name"], "menge": menge}
                 neu = [schritt] + weg
-                if self.db.get_connected_edges(quelle, direction="in", rel_type=ENTHAELT):
+                if eltern_kanten(quelle):
                     hoch(quelle, neu, faktor * menge, gesehen | {quelle})
                 else:
                     wege.append({"weg": neu, "gesamt": faktor * menge})
@@ -511,9 +547,10 @@ class Baugruppen:
                 eintrag.update(name=u["name"], unter_bedarf=f["bedarf"], unter_erledigt=f["erledigt"],
                                unter_positionen=len(self._positionen(kid)))
             positionen.append(eintrag)
-        return {"id": bid, "name": b["name"], "beschreibung": self.db.get_node_full(ref(BAUGRUPPE, bid)).get("beschreibung", ""), "exemplare": exemplare,
+        return {"id": bid, "art": "projekt" if self._col(bid) == PROJEKT else "baugruppe", "name": b["name"], "status": b.get("status", ""),
+                "beschreibung": self.db.get_node_full(self._b(bid)).get("beschreibung", ""), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
-                "summen": self.summen(bid), "verwendet_in": self.verwendet_in(ref(BAUGRUPPE, bid)),
+                "summen": self.summen(bid), "verwendet_in": self.verwendet_in(self._b(bid)),
                 "materialien": self.teile.materialien(), "verlauf": self.verlauf()}
 
     def summen(self, bid):

@@ -84,7 +84,9 @@ Befehlspalette (Strg+K), Rechtsklick (Wo verbaut, Tauschen, Fork). Entwurf: `moc
 keine Konsolenfehler). **Offen/Entscheid:** 3D zeigt nur das Einzelteil (Gesamtansicht braucht Platzierungen aus 3MF/FreeCAD); Platte = Sammlung oder eigener Knoten;
 Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkbank nüchtern (die „freundlich“-Vorgabe galt dem Katalog).
 **Reihenfolge (Anwender, 11.10.2026: Ideen werden eingereiht, nicht sofort aufgegriffen):**
-1. Projekt-Backend (`PROJECT`, `REQUIRES`, Positionslogik verallgemeinert, Tests) — **jetzt**.
+1. Projekt-Backend (`PROJECT`, `REQUIRES`, Positionslogik verallgemeinert, Tests) — **erledigt (0.59.0)**: `/api/projekte[/{id}…]`, Kennung `p_…` wählt Knotenart und Kante, Status frei,
+   Wo verbaut bis zum Projekt, Rückgängig gilt mit. test_baugruppen 83/83 (+11; fünf Gegenproben fallen: gleiche Kante, Wo verbaut ohne Projekte, Status überall, Projekt in Projekt,
+   Rückgängig ohne Status). Noch offen daran: Löschvorschau/Inspektor kennen „steckt in Projekt“ nicht (Kern liest `CONTAINS`); `exemplare` zählt nur Baugruppen als Eltern.
 2. Rückgängig je Projekt statt einer Liste für alle (kleine Anpassung danach).
 3. Platten (`PRINT_PLATE`, `PRINTS` mit Mengen, „verteilt“ aus dem Bedarf).
 4. Werkbank-Oberfläche (Baum, Inspektor, Reiter) hinter dem Labor-Schalter.
