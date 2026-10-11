@@ -107,7 +107,10 @@ Backend `PROJECT` (Positionslogik verallgemeinern, Tests), dann Platten, dann di
 Grund: Schritte aus einem Projekt tauchen im anderen als „Rückgängig“ auf).
 **Oberfläche Paket 2 erledigt (0.62.0, Labor):** Seitenleiste „Projekte“ + Werkbank-Vollbild (`web/werkbank.js`, Stile am Ende von `app.css`): Baum, Eigenschaften, Teile-Wähler, Rückgängig,
 Baustein öffnen. Mitte zeigt vorerst Kennzahlen und die Vorschau des gewählten Teils. Gezielt im Browser geprüft (19/19, zwei Gegenproben fallen), nicht in `test_ui`. Beim Prüfen
-aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen. **Offen (Paket 3):** Reiter Stückliste und Fertigung; (Paket 4) Katalog-Schublade, Ziehen.
+aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen. **Nachgezogen auf den Stil des Mocks (Anwender: „wirkt wie der Viewer, nicht wie ein Werkzeug“):** Mitte mit Reitern (Vorschau · Stückliste · Fertigung) statt Kennzahlen-Karten, die flache
+Stückliste als dichte Tabelle (Druckteile mit Menge, Material, Gewicht, Zeit; Kaufteile nach Kategorie mit Bezug), Statuszeile unten, Suche im Baum, 13 px und 24–26 px Zeilen; Bilder
+jetzt im hellen Thema (die App startet standardmässig dunkel). Neue Prüfungen 23/23 (Tabelle, Zeile wählt im Baum, Suche, Statuszeile; Gegenprobe Suche fällt). **Offen (Paket 3):** Reiter Fertigung
+mit den Platten; (Paket 4) Katalog-Schublade, Ziehen.
 **Reihenfolge geändert (Anwender, 11.10.2026): erst das Backend so weit, dass man in der Oberfläche ein Projekt anlegen, Dinge zuordnen und auf Platten verteilen kann (zum Ausprobieren, ob das die
 richtige Art ist), dann die Oberfläche.** Paket 1 erledigt (0.61.0): Druckeinstellungen an der Position, Baum- und flache Stückliste-Endpunkte; test_baugruppen 97/97 (+10, vier Gegenproben fallen).
 Exporte (CSV/MD/PDF) zeigen die Druckeinstellungen noch nicht. **Oberfläche in Paketen:** (2) Projektliste in der Seitenleiste + Werkbank-Gerüst mit Baum und Inspektor, (3) Reiter Stückliste und

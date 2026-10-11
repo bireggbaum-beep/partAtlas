@@ -532,7 +532,7 @@ PRINT_PLATE    ─[PRINTS {menge}]──▶ MODEL_ASSET
 **Oberfläche.** Die Werkbank öffnet ein Projekt oder eine Baugruppe als eigenen Baustein; der Reiter „Fertigung“ (Platten) gehört nur zum Projekt. Mock:
 `mock/werkbank.html`. **Gebaut (0.62.0, Labor):** Abschnitt „Projekte“ in der Seitenleiste (anlegen, öffnen), Werkbank als Vollbild (`web/werkbank.js`): Baum links mit Auf- und Zuklappen,
 Eigenschaften rechts (Menge, Druckvorgabe, Bezug, Name, Status, Notizen), „＋ Teil hinzufügen“ (Druckteile, Kaufteile, Baugruppen), Rückgängig/Wiederholen mit Strg+Z, „Als Baustein
-öffnen“ und „Wo verbaut“. Stückliste und Fertigung (Platten) in der Mitte folgen.
+öffnen“ und „Wo verbaut“; in der Mitte Reiter Vorschau und Stückliste (flach, als dichte Tabelle), Statuszeile mit den Summen, Suche im Baum. Die Fertigung (Platten) folgt.
 
 **Offen.** „Zum Projekt machen“ für bestehende oberste Baugruppen; Platte ↔ erzeugte 3MF-Datei und ↔ Drucke (§4.6); Rückgängig je Projekt statt eine Liste für
 alle; wie die Seitenleiste Modell, Baugruppe, Projekt und Sammlung auseinanderhält; Fortschritt über mehrere Projekte.

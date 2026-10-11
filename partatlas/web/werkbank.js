@@ -8,7 +8,8 @@
 // ihrer Baugruppe (und damit überall, wo diese Baugruppe verwendet wird). Alle Änderungen tragen `?im=<Kennung>` — das Projekt, das gerade
 // offen ist, führt die Liste fürs Rückgängig.
 
-const wb = { id: null, baum: null, flach: null, detail: null, sel: null, offen: new Set(), zurueck: [], index: {}, materialien: [] };
+const wb = { id: null, baum: null, flach: null, detail: null, sel: null, offen: new Set(), zurueck: [], index: {}, materialien: [], filter: "",
+  reiter: ["vorschau", "stueckliste", "fertigung"].includes(localStorageLesen("wb-reiter")) ? localStorageLesen("wb-reiter") : "stueckliste" };
 
 const wbBasis = (id) => (id.startsWith("p_") ? "/api/projekte" : "/api/baugruppen");
 const wbIst = (typ) => (wb.id || "").startsWith(typ === "projekt" ? "p_" : "b_");
@@ -51,7 +52,8 @@ async function neuesProjekt() {
 
 async function wbOeffne(id, { zurueck = null } = {}) {
   if (zurueck) wb.zurueck.push(zurueck);
-  Object.assign(wb, { id, sel: null, baum: null, flach: null, detail: null, offen: new Set() });
+  Object.assign(wb, { id, sel: null, baum: null, flach: null, detail: null, offen: new Set(), filter: "" });
+  if ($("#wb-suche")) $("#wb-suche").value = "";
   if (!wb.materialien.length) api("/api/materialien").then((m) => { wb.materialien = m; }).catch(() => {});
   const el = $("#werkbank");
   if (!el.dataset.gebaut) wbGeruest();
@@ -108,15 +110,17 @@ function wbGeruest() {
   el.dataset.gebaut = "1";
   el.innerHTML = `
     <div class="wb-kopf" id="wb-kopf"></div>
-    <div class="wb-raum" id="wb-raum" style="--wb-l:${Number(localStorageLesen("wb-l")) || 320}px;--wb-r:${Number(localStorageLesen("wb-r")) || 340}px">
+    <div class="wb-raum" id="wb-raum" style="--wb-l:${Number(localStorageLesen("wb-l")) || 300}px;--wb-r:${Number(localStorageLesen("wb-r")) || 330}px">
       <section class="wb-spalte"><div class="wb-titel"><b>AUFBAU</b><span class="wb-luecke"></span>
         <button class="wb-kn" id="wb-auf" title="Alles aufklappen">⊞</button><button class="wb-kn" id="wb-zu" title="Alles zuklappen">⊟</button></div>
+        <div class="wb-filter"><input id="wb-suche" placeholder="Im Baum suchen …" autocomplete="off"></div>
         <div class="wb-baum" id="wb-baum" tabindex="0"></div></section>
       <div class="wb-griff" data-g="l"></div>
       <section class="wb-spalte wb-mitte" id="wb-mitte"></section>
       <div class="wb-griff" data-g="r"></div>
       <section class="wb-spalte"><div class="wb-titel"><b>EIGENSCHAFTEN</b></div><div class="wb-insp" id="wb-insp"></div></section>
-    </div>`;
+    </div>
+    <div class="wb-stat" id="wb-stat"></div>`;
   el.querySelectorAll(".wb-griff").forEach((g) => g.addEventListener("mousedown", (e) => {
     e.preventDefault();
     g.classList.add("zieht");
@@ -143,6 +147,7 @@ function wbZeichne(inspektor = true) {
   wbKopf();
   wbBaum();
   wbMitte();
+  wbStatus();
   if (inspektor) wbInspektor();
 }
 
@@ -175,11 +180,19 @@ function wbZeile(e, container, tief, pfad) {
     ${tags}${baug ? `<span class="wb-sub">${unter}</span>` : ""}<span class="wb-m">${e.menge}×</span></div>`;
 }
 
+// Suche im Baum: eine Zeile bleibt, wenn sie selbst passt oder etwas darunter; Zweige mit Treffern klappen dabei auf.
+function wbTrifft(e) {
+  const q = wb.filter.trim().toLowerCase();
+  if (!q) return true;
+  return e.name.toLowerCase().includes(q) || (e.art === "baugruppe" && (e.positionen || []).some(wbTrifft));
+}
+
 function wbZeilen(positionen, container, tief, pfad, aus) {
   for (const e of positionen) {
+    if (!wbTrifft(e)) continue;
     aus.push(wbZeile(e, container, tief, pfad));
     const p = [...pfad, e.ref].join("|");
-    if (e.art === "baugruppe" && wb.offen.has(p)) wbZeilen(e.positionen || [], e.id, tief + 1, [...pfad, e.ref], aus);
+    if (e.art === "baugruppe" && (wb.offen.has(p) || wb.filter.trim())) wbZeilen(e.positionen || [], e.id, tief + 1, [...pfad, e.ref], aus);
   }
 }
 
@@ -193,21 +206,71 @@ function wbBaum() {
 }
 
 function wbMitte() {
-  const s = wb.flach?.summen || {}, sel = wb.sel ? wb.index[wb.sel.p]?.e : null;
-  const feld = (n, w, u) => `<div class="wb-feld"><small>${n}</small><b>${w}</b><span>${u || "&nbsp;"}</span></div>`;
-  const bild = sel?.art === "modell" ? bildUrl(sel) : null;
+  const f = wb.flach || { druck: [], kauf: [], eigene: [] };
+  const reiter = [["vorschau", "Vorschau", ""], ["stueckliste", "Stückliste", f.druck.length + f.kauf.length + f.eigene.length || ""],
+    ["fertigung", "Fertigung", ""]];
   abgleichen($("#wb-mitte"), `
-    <div class="wb-felder">
-      ${feld("DRUCKTEILE", s.druckteile ?? "–", "Stück gesamt")}
-      ${feld("KAUFTEILE", s.kaufteile ?? "–", `${(wb.flach?.kauf || []).length} Sorten`)}
-      ${feld("GEWICHT", s.gewicht_g != null ? `${zahl(s.gewicht_g, 0)} g` : "–", s.gewicht_geschaetzt ? "teils geschätzt *" : "")}
-      ${feld("DRUCKZEIT", s.zeit_s ? dauer(s.zeit_s) : "–", s.zeit_s ? "aus dem Slicer" : "")}
-    </div>
-    <div class="wb-platz">
-      ${bild ? `<img src="${bild}" alt="">` : ""}
-      <b>${bild ? esc(sel.name) : "Stückliste und Fertigung"}</b>
-      <span>${bild ? "Vorschau des gewählten Teils." : "Hier kommen die flache Stückliste und die Druckplatten. Bis dahin: Baum links, Eigenschaften rechts."}</span>
-    </div>`);
+    <div class="wb-reiter">${reiter.map(([k, t, n]) => `<button data-wr-tab="${k}" class="${wb.reiter === k ? "an" : ""}">${t}${n ? `<span class="zahl">${n}</span>` : ""}</button>`).join("")}</div>
+    <div class="wb-flaeche">${wb.reiter === "vorschau" ? wbVorschau() : wb.reiter === "fertigung" ? wbFertigung() : wbStueckliste(f)}</div>`);
+}
+
+function wbVorschau() {
+  const sel = wb.sel ? wb.index[wb.sel.p]?.e : null;
+  if (sel?.art === "modell") {
+    const bild = bildUrl(sel);
+    return `<div class="wb-vorschau">${bild ? `<img src="${bild}" alt="">` : ""}<b>${esc(sel.name)}${esc(endung[sel.format] || "")}</b>
+      <span>${bild ? "Vorschau des gewählten Teils" : "Für dieses Teil gibt es noch kein Vorschaubild"}</span></div>`;
+  }
+  return `<div class="wb-vorschau"><span>Ein Druckteil im Baum wählen.</span></div>`;
+}
+
+function wbFertigung() {
+  return `<div class="wb-vorschau"><b>Fertigung</b><span>Die Druckplatten kommen als Nächstes.</span></div>`;
+}
+
+// Die Stückliste über alle Ebenen, flach: Druckteile je einmal mit Gesamtmenge, darunter die Kaufteile nach Kategorie. Eine Zeile anklicken
+// wählt das erste Vorkommen im Baum.
+function wbStueckliste(f) {
+  const gewaehlt = wb.sel ? wb.index[wb.sel.p]?.e.ref : null;
+  const s = f.summen || {};
+  const druck = f.druck.map((d) => `<tr class="zl ${gewaehlt === d.ref ? "sel" : ""}" data-bz="${esc(d.ref)}">
+      <td>${WB_ICON.modell}</td><td class="n">${esc(d.name)}${esc(endung[d.format] || "")}${d.entwurf ? ' <span class="wb-leise">✎</span>' : ""}${d.fehlt ? ' <span class="wb-tag warn">Datei fehlt</span>' : ""}</td>
+      <td class="re">${d.menge}×</td><td>${esc(d.materialien.map((m) => m.material).join(" · "))}</td>
+      <td class="re">${d.ohne_daten ? "–" : zahl(d.gewicht_g, 1) + " g" + (d.gewicht_geschaetzt ? " *" : "")}</td><td class="re">${d.zeit_s ? dauer(d.zeit_s) : "–"}</td></tr>`).join("");
+  const kategorien = [...new Set(f.kauf.map((k) => k.kategorie || ""))];
+  const kauf = kategorien.map((kat) => {
+    const l = f.kauf.filter((k) => (k.kategorie || "") === kat);
+    return `<tr class="gr"><td></td><td colspan="2">${esc(kat || "Ohne Kategorie")}</td><td class="re">${l.reduce((a, k) => a + k.menge, 0)}×</td><td></td></tr>`
+      + l.map((k) => `<tr class="zl ${gewaehlt === k.ref ? "sel" : ""}" data-bz="${esc(k.ref)}"><td>${WB_ICON.kaufteil}</td><td class="n">${esc(k.name)}</td>
+        <td class="wb-leise">${esc(k.norm || "")}</td><td class="re">${k.menge}×</td>
+        <td>${/^https?:\/\//i.test(k.link || "") ? `<a href="${esc(k.link)}" target="_blank" rel="noopener noreferrer">${esc(new URL(k.link).hostname.replace(/^www\./, ""))} ↗</a>` : '<span class="wb-leise">–</span>'}</td></tr>`).join("");
+  }).join("");
+  const eigene = f.eigene.map((e) => `<tr class="zl ${gewaehlt === e.ref ? "sel" : ""}" data-bz="${esc(e.ref)}"><td>${WB_ICON.eigen}</td><td class="n">${esc(e.name)}</td><td class="wb-leise">${esc(e.art)}</td>
+      <td class="re">${e.menge}×</td><td></td></tr>`).join("");
+  if (!f.druck.length && !f.kauf.length && !f.eigene.length) return `<div class="wb-leer">Noch nichts in der Stückliste.<br>Mit „＋ Teil hinzufügen“ Druckteile, Kaufteile oder Baugruppen einfügen.</div>`;
+  return `${f.druck.length ? `<div class="wb-ab">DRUCKTEILE · ${f.druck.length} ${f.druck.length === 1 ? "Sorte" : "Sorten"}, ${s.druckteile ?? 0} Stück</div>
+    <table class="wb-tab"><thead><tr><th></th><th>Benennung</th><th class="re">Menge</th><th>Material</th><th class="re">Gewicht</th><th class="re">Zeit</th></tr></thead><tbody>${druck}
+      <tr class="gr"><td></td><td>Summe</td><td class="re">${s.druckteile ?? 0}×</td><td></td><td class="re">${zahl(s.gewicht_g, 1)} g${s.gewicht_geschaetzt ? " *" : ""}</td><td class="re">${s.zeit_s ? dauer(s.zeit_s) : "–"}</td></tr></tbody></table>` : ""}
+    ${f.kauf.length ? `<div class="wb-ab">ZUKAUFTEILE · ${f.kauf.length} ${f.kauf.length === 1 ? "Sorte" : "Sorten"}</div>
+    <table class="wb-tab"><thead><tr><th></th><th>Benennung</th><th>Norm</th><th class="re">Menge</th><th>Bezugsquelle</th></tr></thead><tbody>${kauf}</tbody></table>` : ""}
+    ${f.eigene.length ? `<div class="wb-ab">EIGENE KOMPONENTEN</div><table class="wb-tab"><thead><tr><th></th><th>Benennung</th><th>Art</th><th class="re">Menge</th><th></th></tr></thead><tbody>${eigene}</tbody></table>` : ""}
+    <div class="wb-leise" style="padding-top:6px">Summen über alle Ebenen. * geschätzt (ohne Slicer-Daten). Zeile anklicken wählt das Teil im Baum.</div>`;
+}
+
+function wbStatus() {
+  const s = wb.flach?.summen || {}, sel = wb.sel ? wb.index[wb.sel.p] : null;
+  abgleichen($("#wb-stat"), `<span>Druckteile <b>${s.druckteile ?? "–"}</b></span><span>Zukaufteile <b>${s.kaufteile ?? "–"}</b></span>
+    <span>Gewicht <b>${s.gewicht_g != null ? zahl(s.gewicht_g, 0) + " g" + (s.gewicht_geschaetzt ? " *" : "") : "–"}</b></span><span>Druckzeit <b>${s.zeit_s ? dauer(s.zeit_s) : "–"}</b></span>
+    <span class="wb-luecke"></span><span>Auswahl: <b>${sel ? esc(sel.pfad.map((r, i) => wb.index[sel.pfad.slice(0, i + 1).join("|")]?.e.name || "").join(" › ")) : "–"}</b></span>`);
+}
+
+// Aus der Stückliste: das erste Vorkommen im Baum wählen und seine Äste aufklappen.
+function wbWaehleRef(ref) {
+  const f = Object.values(wb.index).find((x) => x.e.ref === ref);
+  if (!f) return;
+  for (let i = 1; i < f.pfad.length; i++) wb.offen.add(f.pfad.slice(0, i).join("|"));
+  wb.sel = { p: f.p };
+  wbBaum(); wbMitte(); wbStatus(); wbInspektor();
 }
 
 // ---------------------------------------------------------------- Inspektor
@@ -424,7 +487,11 @@ document.addEventListener("click", (e) => {
   const pf = t.closest(".wb-pf[data-t]");
   if (pf) { const p = pf.dataset.t; wb.offen.has(p) ? wb.offen.delete(p) : wb.offen.add(p); return wbBaum(); }
   const z = t.closest(".wb-z[data-p]");
-  if (z) { wb.sel = z.dataset.p ? { p: z.dataset.p } : null; wbBaum(); wbMitte(); return wbInspektor(); }
+  if (z) { wb.sel = z.dataset.p ? { p: z.dataset.p } : null; wbBaum(); wbMitte(); wbStatus(); return wbInspektor(); }
+  const tab = t.closest("[data-wr-tab]");
+  if (tab) { wb.reiter = tab.dataset.wrTab; localStorageSchreiben("wb-reiter", wb.reiter); return wbMitte(); }
+  const bz = t.closest("[data-bz]");
+  if (bz) return wbWaehleRef(bz.dataset.bz);
   const m = t.closest("[data-wm]");
   if (m) { const s = wbSelAktuell(); return s && wbPosition("menge", s.e.menge + Number(m.dataset.wm)).then(() => wbInspektor()); }
   const leer = t.closest("[data-wf-leer]");
@@ -432,6 +499,10 @@ document.addEventListener("click", (e) => {
 });
 
 // Eingaben speichern beim Verlassen des Feldes (change); ein abgelehnter Wert stellt das Feld wieder auf den echten Stand.
+document.addEventListener("input", (e) => {
+  if (e.target.id === "wb-suche") { wb.filter = e.target.value; wbBaum(); }
+});
+
 document.addEventListener("change", (e) => {
   if (e.target.id === "ein-labor") return ladeProjekteLeiste();
   if (!e.target.closest?.("#werkbank")) return;
@@ -461,7 +532,7 @@ document.addEventListener("keydown", (e) => {
     const s = wbSelAktuell();
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       const n = zeilen[i + (e.key === "ArrowDown" ? 1 : -1)];
-      if (n) { wb.sel = n.dataset.p ? { p: n.dataset.p } : null; wbBaum(); wbMitte(); wbInspektor(); }
+      if (n) { wb.sel = n.dataset.p ? { p: n.dataset.p } : null; wbBaum(); wbMitte(); wbStatus(); wbInspektor(); }
     } else if (s && s.e.art === "baugruppe") {
       if (e.key === "ArrowRight") { wb.offen.add(s.p); wbBaum(); }
       else if (wb.offen.has(s.p)) { wb.offen.delete(s.p); wbBaum(); }
