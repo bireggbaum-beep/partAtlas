@@ -1157,7 +1157,8 @@ body.wb-an { overflow: hidden; }
 .wb-ft tbody.wb-ftg.wb-drop td { background: var(--accent-soft); outline: none; }
 .wb-ft tr.wb-pos { cursor: grab; }
 .wb-ft input { background: transparent; border: 1px solid transparent; border-radius: var(--radius); padding: 1px 5px; font-weight: 600; width: 10em; }
-.wb-ft input.wb-pmat { font-weight: 400; width: 9em; padding: 1px 4px; font: 400 11px var(--mono); border-color: var(--line-strong); }
+.wb-ft input.wb-pmat { font-weight: 400; width: 9em; padding: 1px 4px; font: 400 11px var(--mono); border-color: var(--line-strong); border-radius: 3px; color: var(--ink-2); }
+.wb-ft input.wb-pmat:placeholder-shown { border-color: transparent; color: var(--ink-3); }
 .wb-ft input:hover, .wb-ft input:focus { border-color: var(--accent); outline: none; background: var(--bg); }
 .wb-ft .wb-auf { font-size: 12px; padding: 1px 3px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); max-width: 9em; }
 .wb-st { display: inline-flex; align-items: center; gap: 3px; }
@@ -1176,3 +1177,11 @@ body.wb-an { overflow: hidden; }
 .wb-pjz:hover { background: var(--panel-2); }
 .wb-pjz.sel { background: var(--wb-sel, var(--accent-soft)); box-shadow: inset 2px 0 0 var(--accent); }
 .wb-pjz .wb-n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Wie im Mock: Material als Marke neben dem Plattennamen, leere Felder und Hilfsknöpfe erst beim Darüberfahren sichtbar */
+.wb-ft .wb-auf { border-color: transparent; background: transparent; color: var(--ink-3); }
+.wb-ft tr:hover .wb-auf, .wb-ft .wb-auf:focus { border-color: var(--line); background: var(--bg); color: var(--ink); }
+.wb-ft tr.gr .wb-kp { opacity: 0; }
+.wb-ft tr.gr:hover .wb-kp, .wb-ft tr.gr .wb-kp:focus { opacity: 1; }
+.wb-ft tr.gr input { field-sizing: content; min-width: 4em; width: auto; }
+.wb-ft tr.gr input.wb-pn { font-size: 13px; }
