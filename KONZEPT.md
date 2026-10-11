@@ -479,6 +479,31 @@ gehört ins Projekt. Lose Teile dürfen in beiden liegen (heute geht das in Baug
 (Stückliste, Summen, Einkaufsliste, Platten) rechnen über den ganzen Baum ab Projekt bzw. Baugruppe — die Wahl ändert die Zahlen nicht.
 Kein Zwang zur Struktur: Projekt anlegen, fünf STLs hineinwerfen, auf zwei Platten verteilen; Baugruppen braucht man dafür nicht.
 
+**Grundmodell: vier Ebenen (entschieden 11.10.2026).** Material und Druckeinstellungen gehören nicht an das Modell, sondern an den Auftrag — geplant und ausgeführt.
+
+| Ebene | Was es ist | Material |
+|---|---|---|
+| **Modell** | die Datei: Geometrie, Bilder, Tags, Herkunft | keines — eine STL hat keins |
+| **Position** (im Projekt oder in der Baugruppe) | „ich brauche das Teil, N Stück“; dazu eine optionale **Vorgabe** (Material, Farbe, Füllung, Wandlinien, Schichthöhe: „das Zahnrad soll PC sein, 100 %“) | als Vorgabe, wiederverwendbar mit der Baugruppe |
+| **Platte** | der Plan der Ausführung: welche Teile in welcher Menge zusammen gedruckt werden | das Material der Platte; beim Verteilen entschieden |
+| **Druck** (`PRINT_JOB`, §4.6) | die Ausführung: Ergebnis, Datei, gemessene Werte | womit wirklich gedruckt wurde (`Filament`) |
+
+Der Vorgang geht von oben nach unten: eine Position verlangt, eine Platte plant, ein Druck führt aus. **Beispiel:** ein Halter einmal in PLA und einmal in TPU. Im Projekt steht
+**eine** Position „Halter, Menge 2“; Platte 1 (PLA) bekommt einen Halter, Platte 2 (TPU) einen; daraus entstehen zwei Drucke, jeder mit Material und Ergebnis. Am Modell hängen
+zwei ausgeführte Drucke mit Material.
+
+Folgen: (1) Der Bedarf wird **je Modell** gezählt, das Material kommt von der Platte — „verteilt“ braucht kein Material in der Rechnung. (2) Dasselbe Teil zweimal mit anderem
+Material in einem Behälter ist nicht nötig; **die Identität einer Position bleibt das Teil** (gleiche Teile ergeben Menge + 1), und es gibt **kein „Duplizieren“**. Wer dieselbe
+Datei in mehreren Materialien braucht, verteilt sie auf Platten verschiedenen Materials; als wiederverwendbare Spezifikation geht auch ein kleiner Baustein („Halter in TPU“) mit der
+Position und ihrer Vorgabe. (3) Widerspricht die Vorgabe der Position dem Material der Platte (Vorgabe PC, Platte PLA), ist das ein **Hinweis**, kein Fehler. (4) Eine Position in
+einem Projekt, die nirgends als Vorgabe etwas sagt, nimmt das Material der Platte; die Filament-Summe der Stückliste rechnet bis dahin mit der Vorgabe oder dem Standard (verfeinern:
+aus den Platten, sobald sie das Material festlegen — offen).
+
+**Material am Modell.** Es hat zwei Quellen: aus der Datei (Slicer-Daten einer 3MF — ein Fakt über die Projektdatei, nicht über das Teil) und von Hand („vorgesehen“,
+`INTENDED_MATERIAL`, aus dem 3MF Katalog übernommen). Beides ist ein **Hinweis**, keine Eigenschaft des Teils; der Katalog filtert damit. Es bleibt vorerst unverändert (Eingriff in
+den Kern). **Später:** der Materialfilter kann aus den tatsächlichen Drucken kommen („Modelle, die ich in TPU gedruckt habe“) — dann kann das Material am Modell ersatzlos
+entfallen. Die Oberfläche nennt es bis dahin „vorgesehen“ bzw. „üblich“.
+
 **Datenmodell (geplant).**
 
 ```

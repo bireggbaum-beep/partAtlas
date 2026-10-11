@@ -105,6 +105,11 @@ Baugruppe, Projekt „Voron Toolhead Umbau“; Auswahl Projekte/Bausteine; Ferti
 mit, „Wo verbaut“ mehrstufig bis zum Projekt. Im Browser geprüft (19/19, ein Fehler im Mock dabei gefunden und behoben). **Nächster Schritt:** Abnahme des Entwurfs, dann
 Backend `PROJECT` (Positionslogik verallgemeinern, Tests), dann Platten, dann die Werkbank-Oberfläche. **Offen:** „Zum Projekt machen“; Rückgängig je Projekt (im Mock sieht man den
 Grund: Schritte aus einem Projekt tauchen im anderen als „Rückgängig“ auf).
+**Grundmodell entschieden (Anwender, 11.10.2026):** vier Ebenen Modell (kein Material) → Position (Vorgabe) → Platte (Plan, Material) → Druck (Ausführung, Material); KONZEPT §4.5a.
+Folgen: Bedarf je Modell (der vorgeschlagene Umbau auf „Modell + Material“ entfällt, wäre falsch gewesen); Position = Teil, kein „Duplizieren“ (im Mock gestrichen); Material am Modell
+bleibt vorerst als Hinweis, kann später ersatzlos entfallen, wenn der Filter aus den Drucken kommt (offen: ob/wann). Offen aus der Lückenliste zum Backend (nach dieser Klärung):
+Druckparameter an der Position (Füllung, Wandlinien, Schichthöhe) als Vorgabe, Verschieben, Tauschen, Fork (+ Herkunftskante), Baum- und flache Stückliste als Endpunkte, „steckt in
+Projekt“, „Zum Projekt machen“, Status an Baugruppen (Mock zeigt ihn, Backend lehnt ab — entscheiden), Export mit Platten, Hinweis „Abweichung Vorgabe ↔ Platte“.
 **Rückgängig erledigt (0.58.0):** Änderungsliste im Baugruppen-Modul (siehe KONZEPT §4.5), `POST /api/baugruppen/rueckgaengig|wiederholen`, `verlauf` im Detail, Knöpfe ↶ ↷ und
 Strg+Z im Labor. test_baugruppen 72/72 (+12; Gegenproben: Positionen nicht wiederherstellen, Wiederholen-Liste nicht leeren, nur oberste Ebene merken, Entfernen nicht
 protokollieren — alle fallen), Oberfläche gezielt im Browser 10/10 (Gegenproben Labor-Sperre und Feld-Schutz fallen), nicht in test_ui. Beim Testen aufgefallen: eine Prüfung

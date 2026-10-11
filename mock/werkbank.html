@@ -329,10 +329,6 @@ function entfernen(kid) {
   const k = kante(kid); if (!k) return;
   aendern(`${D.teile[k.e.ziel].name} entfernen`, () => { D.kinder[k.asm] = D.kinder[k.asm].filter((e) => e.id !== kid); sel = []; });
 }
-function duplizieren(kid) {
-  const k = kante(kid); if (!k) return;
-  aendern(`${D.teile[k.e.ziel].name} duplizieren`, () => { const i = D.kinder[k.asm].indexOf(D.kinder[k.asm].find((e) => e.id === kid)); const neu = { ...kopie(k.e), id: "e" + D.nextE++ }; D.kinder[k.asm].splice(i + 1, 0, neu); });
-}
 function setzeFeld(kid, feld, wert) {
   const k = kante(kid); if (!k) return;
   aendern(`${D.teile[k.e.ziel].name}: ${feld}`, () => { k.e[feld] = wert; if (feld === "menge") k.e.menge = Math.max(1, Math.round(wert)); });
@@ -425,7 +421,6 @@ function baumMenue(x, y, kid) {
     { t: "Teil tauschen …", ic: ICON.undo, aus: t.typ === "baugr", f: () => waehler("Tauschen gegen …", Object.keys(D.teile).filter((id) => D.teile[id].typ === t.typ && id !== k.e.ziel && id !== wurzel), (id) => tauschen(kid, id), "Menge und Druckparameter bleiben erhalten.") },
     { t: "Fork dieser Baugruppe", ic: ICON.fork, aus: t.typ !== "baugr", f: forkWurzel },
     "-",
-    { t: "Duplizieren", ic: ICON.plus, k: "Strg+D", f: () => duplizieren(kid) },
     { t: "Entfernen", k: "Entf", f: () => entfernen(kid) },
   ]);
 }
@@ -775,7 +770,6 @@ document.addEventListener("keydown", (e) => {
   if (mod && e.key.toLowerCase() === "y" && !tippt) { e.preventDefault(); return vor(); }
   if (tippt || document.querySelector(".schleier")) return;
   const k = gewaehlt();
-  if (mod && e.key.toLowerCase() === "d" && k) { e.preventDefault(); return duplizieren(k.e.id); }
   if ((e.key === "Delete" || e.key === "Backspace") && k) return entfernen(k.e.id);
   if (["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) {
     const zeilen = [...document.querySelectorAll("#baum .z")]; const i = zeilen.findIndex((z) => z.classList.contains("sel"));
