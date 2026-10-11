@@ -87,7 +87,9 @@ Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkban
 1. Projekt-Backend (`PROJECT`, `REQUIRES`, Positionslogik verallgemeinert, Tests) — **erledigt (0.59.0)**: `/api/projekte[/{id}…]`, Kennung `p_…` wählt Knotenart und Kante, Status frei,
    Wo verbaut bis zum Projekt, Rückgängig gilt mit. test_baugruppen 83/83 (+11; fünf Gegenproben fallen: gleiche Kante, Wo verbaut ohne Projekte, Status überall, Projekt in Projekt,
    Rückgängig ohne Status). Noch offen daran: Löschvorschau/Inspektor kennen „steckt in Projekt“ nicht (Kern liest `CONTAINS`); `exemplare` zählt nur Baugruppen als Eltern.
-2. Rückgängig je Projekt statt einer Liste für alle (kleine Anpassung danach).
+2. Rückgängig je Projekt statt einer Liste für alle — **erledigt (0.59.1)**: je Kontext eine Liste (`?im=`), Konfliktprüfung (ein Schritt gilt nur, wenn die Knoten noch so aussehen, wie
+   er sie hinterlassen hat; sonst Meldung). Entstanden beim Testen: ein Schritt über mehrere Baugruppen hätte spätere Änderungen anderswo stillschweigend überschrieben. test_baugruppen
+   87/87 (+4; Gegenproben gemeinsame Liste und fehlende Konfliktprüfung fallen), Oberfläche gezielt 10/10 (Gegenprobe fällt).
 3. Platten (`PRINT_PLATE`, `PRINTS` mit Mengen, „verteilt“ aus dem Bedarf).
 4. Werkbank-Oberfläche (Baum, Inspektor, Reiter) hinter dem Labor-Schalter.
 5. **Eingereiht, noch nicht angefasst:** *Lebenslauf der Platte* (Datei G-Code/gesliceste 3MF jederzeit an der Platte ablegbar, Druck mit Ergebnis erst nach dem Druck,

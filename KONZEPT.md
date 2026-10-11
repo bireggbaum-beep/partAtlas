@@ -440,12 +440,15 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   an den mitgelieferten Normteilen). Der Link nur als `http(s)://` (er steht in der Oberfläche als Verweis). Erscheint in Einkaufsliste, Markdown,
   CSV (zwei Spalten hinten: Bezugsquelle, Artikelnr) und PDF. **Wo verbaut? über alle Ebenen** (`GET /api/verwendung?ziel=…`): je Verwendung der Weg von
   der obersten Baugruppe bis zum Teil, die Menge je Ebene und die Gesamtmenge; die Gesamtmengen aller Wege ergeben den Bedarf der Einkaufsliste.
-- **Rückgängig / Wiederholen** (0.58.0, Labor): eine Liste für alle Baugruppen, wie das Dokument eines Editors (höchstens 100 Schritte, nur im Speicher —
-  nach einem Neustart des Programms leer). Jeder Schritt hält den Zustand der betroffenen Baugruppen (Name, Beschreibung, Positionen mit allen Feldern und
+- **Rückgängig / Wiederholen** (0.58.0, je Projekt seit 0.59.1, Labor): je **Kontext** eine Liste, wie das Dokument eines Editors — Kontext ist das Projekt oder die
+  Baugruppe, die gerade bearbeitet wird (ohne Angabe der Behälter selbst; `?im=<Kennung>` an den Änderungen, `POST …/{kontext}/rueckgaengig|wiederholen`). Höchstens 100 Schritte,
+  nur im Speicher — nach einem Neustart leer. Jeder Schritt hält den Zustand der betroffenen Baugruppen/Projekte (Name, Beschreibung, Status, Positionen mit allen Feldern und
   Reihenfolge) und Kaufteile (Bezugsangaben) vorher und nachher; zurück setzt den Zustand vorher atomar wieder ein, ein Ziel, das es nicht mehr gibt, bleibt weg.
-  Erfasst: Position hinzufügen/ändern/entfernen, Reihenfolge, Name und Beschreibung, „Material für alle offenen Teile“ (über alle Ebenen als ein Schritt),
-  Bezugsquelle. **Nicht erfasst:** Baugruppe anlegen und löschen (das Löschen fragt vorher). Eine neue
-  Änderung leert die Wiederholen-Liste. `POST /api/baugruppen/rueckgaengig` und `/wiederholen`; Strg+Z / Strg+Umschalt+Z, nicht in Eingabefeldern.
+  **Konflikt:** ein Schritt gilt nur, wenn die betroffenen Knoten noch so aussehen, wie er sie hinterlassen hat. Steckt eine Baugruppe in mehreren Projekten und wurde
+  anderswo geändert, sagt Rückgängig „… wurde danach noch geändert, mach das zuerst rückgängig“, statt die Änderung stillschweigend zu überschreiben.
+  Erfasst: Position hinzufügen/ändern/entfernen, Reihenfolge, Name, Beschreibung, Status, „Material für alle offenen Teile“ (über alle Ebenen als ein Schritt), Bezugsquelle.
+  **Nicht erfasst:** Baugruppe/Projekt anlegen und löschen (das Löschen fragt vorher). Eine neue Änderung leert die Wiederholen-Liste des Kontexts. Strg+Z / Strg+Umschalt+Z,
+  nicht in Eingabefeldern.
 - „Fehlende in die Warteschlange“, Export als CSV und Markdown,
   „steckt in …“ an jedem Modell und in der Löschvorschau.
 

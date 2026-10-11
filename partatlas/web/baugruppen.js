@@ -472,10 +472,10 @@ document.addEventListener("input", (e) => {
   if (e.target.id === "mw-eigen") { mwWahl.farbe = e.target.value; document.querySelectorAll("[data-mw-farbe]").forEach((x) => x.classList.remove("aktiv")); }
 });
 
-// Rückgängig/Wiederholen gilt für alle Baugruppen zusammen (eine Liste, nur bis zum Neustart des Programms). Nur im Labor.
+// Rückgängig/Wiederholen gilt je Baugruppe bzw. Projekt (eine Liste je Kontext, nur bis zum Neustart des Programms). Nur im Labor.
 async function verlaufSchritt(art) {
   try {
-    const { text } = await api(`/api/baugruppen/${art}`, { method: "POST" });
+    const { text } = await api(`/api/baugruppen/${bid()}/${art}`, { method: "POST" });
     toast(`${art === "rueckgaengig" ? "Rückgängig" : "Wiederholt"}: ${text}`);
   } catch (e) { return toast(e.message); }
   await ladeBaugruppe();

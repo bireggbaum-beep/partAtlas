@@ -743,13 +743,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def baugruppen():
         return B().liste()
 
-    @app.post("/api/baugruppen/rueckgaengig")
-    def baugruppen_rueckgaengig():
-        return {"text": B().rueckgaengig()}
+    # Rückgängig/Wiederholen je Kontext: das Projekt oder die Baugruppe, die bearbeitet wird (Kennung, auch `?im=` an den Änderungen).
+    @app.post("/api/projekte/{kontext}/rueckgaengig")
+    @app.post("/api/baugruppen/{kontext}/rueckgaengig")
+    def baugruppen_rueckgaengig(kontext: str):
+        return {"text": B().rueckgaengig(kontext)}
 
-    @app.post("/api/baugruppen/wiederholen")
-    def baugruppen_wiederholen():
-        return {"text": B().wiederholen()}
+    @app.post("/api/projekte/{kontext}/wiederholen")
+    @app.post("/api/baugruppen/{kontext}/wiederholen")
+    def baugruppen_wiederholen(kontext: str):
+        return {"text": B().wiederholen(kontext)}
 
     @app.get("/api/baugruppen/vorschlaege")
     @am_stueck
@@ -776,13 +779,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     # Projekte teilen sich Detail, Positionen, Material, Export und Rückgängig mit den Baugruppen (dieselbe Logik, Kennung `p_…`).
     @app.get("/api/projekte/{bid}")
     @app.get("/api/baugruppen/{bid}")
-    def baugruppe(bid: str):
-        return B().detail(bid)
+    def baugruppe(bid: str, im: str = ""):
+        return B().detail(bid, im or None)
 
     @app.patch("/api/projekte/{bid}")
     @app.patch("/api/baugruppen/{bid}")
-    def baugruppe_aendern(bid: str, koerper: dict = Depends(json_koerper)):
-        B().aendern(bid, koerper)
+    def baugruppe_aendern(bid: str, koerper: dict = Depends(json_koerper), im: str = ""):
+        B().aendern(bid, koerper, im or None)
         return {"ok": True}
 
     @app.delete("/api/projekte/{bid}")
@@ -793,36 +796,36 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
 
     @app.post("/api/projekte/{bid}/positionen")
     @app.post("/api/baugruppen/{bid}/positionen")
-    def position_neu(bid: str, d: dict = Depends(json_koerper)):
+    def position_neu(bid: str, d: dict = Depends(json_koerper), im: str = ""):
         for ziel in d.get("refs") or [d.get("ref", "")]:
-            B().hinzufuegen(bid, ziel, d.get("menge", 1))
+            B().hinzufuegen(bid, ziel, d.get("menge", 1), im or None)
         return {"ok": True}
 
     @app.patch("/api/projekte/{bid}/positionen")
     @app.patch("/api/baugruppen/{bid}/positionen")
-    def position_aendern(bid: str, d: dict = Depends(json_koerper)):
+    def position_aendern(bid: str, d: dict = Depends(json_koerper), im: str = ""):
         ziel = d.pop("ref", "")
-        B().position_aendern(bid, ziel, d)
+        B().position_aendern(bid, ziel, d, im or None)
         return {"ok": True}
 
     @app.delete("/api/projekte/{bid}/positionen")
     @app.delete("/api/baugruppen/{bid}/positionen")
-    def position_weg(bid: str, ref: str):
-        B().position_entfernen(bid, ref)
+    def position_weg(bid: str, ref: str, im: str = ""):
+        B().position_entfernen(bid, ref, im or None)
         return {"ok": True}
 
     @app.put("/api/projekte/{bid}/reihenfolge")
     @app.put("/api/baugruppen/{bid}/reihenfolge")
-    def positionen_ordnen(bid: str, koerper: dict = Depends(json_koerper)):
-        B().ordnen(bid, koerper.get("refs", []))
+    def positionen_ordnen(bid: str, koerper: dict = Depends(json_koerper), im: str = ""):
+        B().ordnen(bid, koerper.get("refs", []), im or None)
         return {"ok": True}
 
     @app.post("/api/projekte/{bid}/material")
     @app.post("/api/baugruppen/{bid}/material")
-    def baugruppe_material(bid: str, d: dict = Depends(json_koerper)):
+    def baugruppe_material(bid: str, d: dict = Depends(json_koerper), im: str = ""):
         if d.get("farbe") and not re.fullmatch(r"#[0-9a-fA-F]{6}", d["farbe"]):
             raise KatalogFehler("Farbe als #RRGGBB angeben.")
-        B().material_fuer_offene(bid, (d.get("material") or "").strip()[:20] or "PLA", d.get("farbe"))
+        B().material_fuer_offene(bid, (d.get("material") or "").strip()[:20] or "PLA", d.get("farbe"), im or None)
         return {"ok": True}
 
     @app.post("/api/projekte/{bid}/warteschlange")
@@ -851,8 +854,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}
 
     @app.patch("/api/kaufteile/{kid}")
-    def kaufteil_aendern(kid: str, d: dict = Depends(json_koerper)):
-        B().kaufteil_aendern(kid, d)
+    def kaufteil_aendern(kid: str, d: dict = Depends(json_koerper), im: str = ""):
+        B().kaufteil_aendern(kid, d, im or None)
         return {"ok": True}
 
     @app.get("/api/verwendung")

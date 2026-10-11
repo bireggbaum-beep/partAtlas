@@ -68,10 +68,11 @@ class Baugruppen:
         # Der Kern kommt nur über Teilezugriff herein (Sidecar, siehe dort); `db` für die eigenen Knoten.
         self.teile = Teilezugriff(katalog)
         self.db = katalog.db
-        # Rückgängig/Wiederholen: eine Liste für alle Baugruppen (wie das Dokument eines Editors). Jeder Eintrag hält den Zustand der
-        # betroffenen Baugruppen und Kaufteile vor und nach der Änderung; zurück heisst: den Zustand vorher wieder einsetzen.
+        # Rückgängig/Wiederholen: je Kontext eine Liste — der Kontext ist das Projekt oder die Baugruppe, die gerade bearbeitet wird (wie das
+        # Dokument eines Editors); ohne Angabe der Behälter selbst. Jeder Eintrag hält den Zustand der betroffenen Baugruppen und Kaufteile
+        # vor und nach der Änderung; zurück heisst: den Zustand vorher wieder einsetzen.
         self._verlauf_sperre = threading.RLock()
-        self._zurueck, self._vor = [], []
+        self._verlaeufe = {}
         self._standardteile_anlegen()
 
     def _standardteile_anlegen(self):
@@ -133,41 +134,57 @@ class Baugruppen:
                 self._unterbaugruppen(kid, gesehen)
         return gesehen
 
+    def _liste(self, kontext):
+        return self._verlaeufe.setdefault(kontext, {"zurueck": [], "vor": []})
+
     @contextlib.contextmanager
-    def _protokolliert(self, text, knoten):
-        """Merkt sich, was `knoten` (Verweise) vor und nach dem Block waren. Ändert sich nichts oder scheitert der Block, kommt kein
-        Eintrag in die Liste."""
+    def _protokolliert(self, text, knoten, kontext):
+        """Merkt sich, was `knoten` (Verweise) vor und nach dem Block waren und legt es in der Liste von `kontext` ab. Ändert sich nichts
+        oder scheitert der Block, kommt kein Eintrag in die Liste."""
         vorher = {r: self._zustand(r) for r in knoten}
         yield
         nachher = {r: self._zustand(r) for r in knoten}
         if nachher == vorher:
             return
         with self._verlauf_sperre:
-            self._zurueck.append({"text": text, "vorher": vorher, "nachher": nachher})
-            del self._zurueck[:-VERLAUF_MAX]
-            self._vor.clear()                   # nach einer neuen Änderung gibt es nichts mehr zu wiederholen
+            liste = self._liste(kontext)
+            liste["zurueck"].append({"text": text, "vorher": vorher, "nachher": nachher})
+            del liste["zurueck"][:-VERLAUF_MAX]
+            liste["vor"].clear()                # nach einer neuen Änderung gibt es nichts mehr zu wiederholen
 
-    def _verlauf_schritt(self, von, nach, zustand_key, leer):
+    def _verlauf_schritt(self, von, nach, zustand_key, erwartet_key, leer):
+        """Nimmt den obersten Schritt von `von` und legt ihn auf `nach`. Er gilt nur, wenn die betroffenen Knoten noch so aussehen, wie
+        der Schritt sie hinterlassen hat (`erwartet_key`): hat ein anderer Kontext sie danach geändert (eine Baugruppe steckt in mehreren
+        Projekten), würde das Zurücksetzen diese Änderung stillschweigend überschreiben — dann gibt es eine Meldung statt Datenverlust."""
         with self._verlauf_sperre:
             if not von:
                 raise KatalogFehler(leer)
             eintrag = von[-1]
+            for r, erwartet in eintrag[erwartet_key].items():
+                jetzt = self._zustand(r)
+                if jetzt is not None and erwartet is not None and jetzt != erwartet:
+                    name = (self.db.get_node(r, readonly=True) or {}).get("name") or r
+                    raise KatalogFehler(f"„{name}“ wurde danach noch geändert (in einem anderen Projekt oder einer anderen Baugruppe). "
+                                        "Mach das zuerst rückgängig.")
             with self.db.transaction():
                 for r, z in eintrag[zustand_key].items():
                     self._herstellen(r, z)
             nach.append(von.pop())
             return eintrag["text"]
 
-    def rueckgaengig(self):
-        return self._verlauf_schritt(self._zurueck, self._vor, "vorher", "Nichts zum Rückgängigmachen.")
+    def rueckgaengig(self, kontext):
+        liste = self._liste(kontext)
+        return self._verlauf_schritt(liste["zurueck"], liste["vor"], "vorher", "nachher", "Nichts zum Rückgängigmachen.")
 
-    def wiederholen(self):
-        return self._verlauf_schritt(self._vor, self._zurueck, "nachher", "Nichts zu wiederholen.")
+    def wiederholen(self, kontext):
+        liste = self._liste(kontext)
+        return self._verlauf_schritt(liste["vor"], liste["zurueck"], "nachher", "vorher", "Nichts zu wiederholen.")
 
-    def verlauf(self):
+    def verlauf(self, kontext):
         with self._verlauf_sperre:
-            return {"zurueck": self._zurueck[-1]["text"] if self._zurueck else None, "vor": self._vor[-1]["text"] if self._vor else None,
-                    "schritte": len(self._zurueck)}
+            liste = self._liste(kontext)
+            return {"zurueck": liste["zurueck"][-1]["text"] if liste["zurueck"] else None,
+                    "vor": liste["vor"][-1]["text"] if liste["vor"] else None, "schritte": len(liste["zurueck"])}
 
     # ------------------------------------------------------------ Kaufteile
 
@@ -196,7 +213,7 @@ class Baugruppen:
                                             "einheit": einheit or "Stück", "standard": False})
         return kid
 
-    def kaufteil_aendern(self, kid, werte):
+    def kaufteil_aendern(self, kid, werte, kontext=None):
         """Bezugsquelle, Artikelnummer und Hinweis eines Kaufteils (auch der mitgelieferten Normteile). Der Link steht später als Verweis
         in der Oberfläche: nur http und https, sonst liesse sich dort Skript einschleusen."""
         if self.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True) is None:
@@ -212,7 +229,7 @@ class Baugruppen:
                 raise KatalogFehler("Der Link muss mit http:// oder https:// beginnen.")
             neu[k] = v
         if neu:
-            with self._protokolliert("Bezugsquelle ändern", [f"{KAUFTEIL}/{kid}"]):
+            with self._protokolliert("Bezugsquelle ändern", [f"{KAUFTEIL}/{kid}"], kontext or kid):
                 self.db.update_node(KAUFTEIL, kid, neu)
 
     # ------------------------------------------------------------ Baugruppen
@@ -250,7 +267,7 @@ class Baugruppen:
                 positionen.append((ref(MODELL, mid), menge_aus_namen(modellname)))
         return self.anlegen(name, positionen)
 
-    def aendern(self, bid, werte):
+    def aendern(self, bid, werte, kontext=None):
         b = self._pruefen(bid)
         neu = {}
         if "name" in werte:
@@ -267,13 +284,15 @@ class Baugruppen:
             neu["status"] = str(werte["status"] or "").strip()[:40]
         if neu:
             text = " und ".join(n for n, k in (("Name", "name"), ("Beschreibung", "beschreibung"), ("Status", "status")) if k in neu) + " ändern"
-            with self._protokolliert(f"{text} ({b['name']})", [self._b(bid)]):
+            with self._protokolliert(f"{text} ({b['name']})", [self._b(bid)], kontext or bid):
                 self.db.update_node(self._col(bid), bid, neu)
 
     def loeschen(self, bid):
         """Die Baugruppe geht; Modelle und Kaufteile bleiben."""
         self._pruefen(bid)
         self.db.soft_delete(self._col(bid), bid)
+        with self._verlauf_sperre:
+            self._verlaeufe.pop(bid, None)
 
     # ------------------------------------------------------------ Positionen
 
@@ -317,12 +336,12 @@ class Baugruppen:
         self.db.delete_edge(eid)
         self.db.create_edge(self._b(bid), ziel, self._rel(bid), meta=meta)
 
-    def hinzufuegen(self, bid, ziel, menge=1):
+    def hinzufuegen(self, bid, ziel, menge=1, kontext=None):
         b = self._pruefen(bid)
-        with self._protokolliert(f"Teil hinzufügen ({b['name']})", [self._b(bid)]), self.db.transaction():
+        with self._protokolliert(f"Teil hinzufügen ({b['name']})", [self._b(bid)], kontext or bid), self.db.transaction():
             self._hinzufuegen(bid, ziel, menge)
 
-    def position_aendern(self, bid, ziel, werte):
+    def position_aendern(self, bid, ziel, werte, kontext=None):
         b = self._pruefen(bid)
         p = next((p for p in self._positionen(bid) if p[1] == ziel), None)
         if p is None:
@@ -349,16 +368,16 @@ class Baugruppen:
                 v = str(v or "").strip()[:200] or None
             aenderung[k] = v
         text = " und ".join(FELDNAMEN[k] for k in aenderung) + " ändern"
-        with self._protokolliert(f"{text} ({b['name']})", [self._b(bid)]), self.db.transaction():
+        with self._protokolliert(f"{text} ({b['name']})", [self._b(bid)], kontext or bid), self.db.transaction():
             self._neu_legen(bid, p, aenderung)
 
-    def material_fuer_offene(self, bid, material, farbe=None):
+    def material_fuer_offene(self, bid, material, farbe=None, kontext=None):
         """Material (und Farbe) für alle Druckteile ohne Angabe, über alle
         Ebenen — so weit, wie die Filament-Übersicht zählt. Ein Klick statt
         zwanzig."""
         b = self._pruefen(bid)
         with self._protokolliert(f"Material für alle offenen Teile setzen ({b['name']})",
-                                 [self._b(x) for x in self._unterbaugruppen(bid)]), self.db.transaction():
+                                 [self._b(x) for x in self._unterbaugruppen(bid)], kontext or bid), self.db.transaction():
             self._material_setzen(bid, self.teile.material_knoten(material), farbe, set())
 
     def _material_setzen(self, bid, material, farbe, gesehen):
@@ -377,19 +396,19 @@ class Baugruppen:
                 aenderung["farbe"] = farbe
             self._neu_legen(bid, p, aenderung)
 
-    def position_entfernen(self, bid, ziel):
+    def position_entfernen(self, bid, ziel, kontext=None):
         b = self._pruefen(bid)
-        with self._protokolliert(f"Position entfernen ({b['name']})", [self._b(bid)]):
+        with self._protokolliert(f"Position entfernen ({b['name']})", [self._b(bid)], kontext or bid):
             for eid, r, _ in self._positionen(bid):
                 if r == ziel:
                     self.db.delete_edge(eid)
 
-    def ordnen(self, bid, ziele):
+    def ordnen(self, bid, ziele, kontext=None):
         b = self._pruefen(bid)
         alt = self._positionen(bid)
         reihe = [r for r in dict.fromkeys(ziele) if any(p[1] == r for p in alt)] + \
                 [p[1] for p in alt if p[1] not in ziele]
-        with self._protokolliert(f"Reihenfolge ändern ({b['name']})", [self._b(bid)]), self.db.transaction():
+        with self._protokolliert(f"Reihenfolge ändern ({b['name']})", [self._b(bid)], kontext or bid), self.db.transaction():
             for p in alt:
                 self._neu_legen(bid, p, {"position": reihe.index(p[1])})
 
@@ -512,7 +531,7 @@ class Baugruppen:
                 ergebnis.append({"id": e["source"].split("/", 1)[1], "name": b["name"], "menge": e.get("menge", 1)})
         return sorted(ergebnis, key=lambda x: x["name"].lower())
 
-    def detail(self, bid):
+    def detail(self, bid, kontext=None):
         b = self._pruefen(bid)
         exemplare = self.exemplare(bid)
         positionen = []
@@ -551,7 +570,7 @@ class Baugruppen:
                 "beschreibung": self.db.get_node_full(self._b(bid)).get("beschreibung", ""), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(self._b(bid)),
-                "materialien": self.teile.materialien(), "verlauf": self.verlauf()}
+                "materialien": self.teile.materialien(), "verlauf": self.verlauf(kontext or bid)}
 
     def summen(self, bid):
         """Was die ganze Baugruppe braucht, über alle Ebenen: Gewicht, Zeit,

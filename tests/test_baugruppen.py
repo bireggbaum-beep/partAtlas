@@ -226,22 +226,27 @@ if __name__ == "__main__":
         check("Wo verbaut: eine unbekannte Art von Teil wird abgelehnt",
               c.get("/api/verwendung", params={"ziel": "TAG/x"}).status_code == 400)
 
-        # -- Rückgängig und Wiederholen (eine Liste für alle Baugruppen)
+        # -- Rückgängig und Wiederholen (je Kontext eine Liste: das Projekt oder die Baugruppe, die bearbeitet wird)
         def pos(b_id):
             return {p["ref"]: p for p in c.get(f"/api/baugruppen/{b_id}").json()["positionen"]}
+        def zurueck(k):
+            return c.post(f"/api/baugruppen/{k}/rueckgaengig")
+
+        def wieder(k):
+            return c.post(f"/api/baugruppen/{k}/wiederholen")
         arm = f"MODEL_ASSET/{m['Arm_x4']}"
         menge0 = pos(modul)[arm]["menge"]
         c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": arm, "menge": menge0 + 5})
         v = c.get(f"/api/baugruppen/{modul}").json()["verlauf"]
         check("Verlauf nennt die letzte Änderung mit dem Namen der Baugruppe", v["zurueck"] == "Menge ändern (Arm-Modul)" and v["vor"] is None)
-        r = c.post("/api/baugruppen/rueckgaengig")
+        r = zurueck(modul)
         check("Rückgängig: die Menge ist wieder die alte", r.json()["text"] == "Menge ändern (Arm-Modul)" and pos(modul)[arm]["menge"] == menge0)
-        c.post("/api/baugruppen/wiederholen")
+        wieder(modul)
         check("Wiederholen: die Änderung gilt wieder", pos(modul)[arm]["menge"] == menge0 + 5)
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(modul)
         c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": arm, "menge": menge0 + 1})
-        check("Eine neue Änderung löscht die Wiederholen-Liste", c.post("/api/baugruppen/wiederholen").status_code == 400)
-        c.post("/api/baugruppen/rueckgaengig")
+        check("Eine neue Änderung löscht die Wiederholen-Liste", wieder(modul).status_code == 400)
+        zurueck(modul)
 
         halter_ref = f"MODEL_ASSET/{m['Halter']}"
         c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": halter_ref, "material": "PETG", "farbe": "#112233", "notiz": "mit Stützen"})
@@ -250,23 +255,27 @@ if __name__ == "__main__":
         reihe0 = [p["ref"] for p in c.get(f"/api/baugruppen/{modul}").json()["positionen"]]
         c.delete(f"/api/baugruppen/{modul}/positionen", params={"ref": halter_ref})
         check("Position entfernt", halter_ref not in pos(modul))
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(modul)
         nachher = pos(modul)
         check("Rückgängig bringt die entfernte Position mit Menge, Material, Farbe, Notiz und Platz in der Reihenfolge zurück",
               halter_ref in nachher and [nachher[halter_ref][k] for k in ("menge", "material", "farbe", "notiz")] == [vorher[halter_ref][k] for k in ("menge", "material", "farbe", "notiz")]
               and [p["ref"] for p in c.get(f"/api/baugruppen/{modul}").json()["positionen"]] == reihe0)
-        c.post("/api/baugruppen/rueckgaengig"); c.post("/api/baugruppen/rueckgaengig")        # Reihenfolge und Material/Farbe/Notiz wieder weg
+        zurueck(modul); zurueck(modul)        # Reihenfolge und Material/Farbe/Notiz wieder weg
 
         name0 = c.get(f"/api/baugruppen/{modul}").json()["name"]
         c.patch(f"/api/baugruppen/{modul}", json={"name": "Neuer Name"})
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(modul)
         check("Rückgängig nimmt eine Umbenennung zurück", c.get(f"/api/baugruppen/{modul}").json()["name"] == name0)
+        c.patch(f"/api/baugruppen/{modul}", json={"name": "Zwischen"})             # zwei neue Änderungen leeren die Wiederholen-Liste
+        c.patch(f"/api/baugruppen/{modul}", json={"name": name0})
 
         schr0 = next(t for t in c.get("/api/kaufteile", params={"q": "m3x10"}).json() if t["id"] == "din912-m3x10")["hinweis"]
         c.patch("/api/kaufteile/din912-m3x10", json={"hinweis": "geändert"})
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck('din912-m3x10')
         check("Rückgängig nimmt eine Änderung der Bezugsquelle zurück",
               next(t for t in c.get("/api/kaufteile", params={"q": "m3x10"}).json() if t["id"] == "din912-m3x10")["hinweis"] == schr0)
+        c.patch("/api/kaufteile/din912-m3x10", json={"hinweis": "zwischen"})       # zwei neue Änderungen leeren die Wiederholen-Liste
+        c.patch("/api/kaufteile/din912-m3x10", json={"hinweis": schr0})
 
         unter = c.post("/api/baugruppen", json={"name": "Unten", "modelle": [m["Einzelteil"]]}).json()["id"]
         oben = c.post("/api/baugruppen", json={"name": "Oben", "modelle": [m["Halter"]]}).json()["id"]
@@ -276,18 +285,35 @@ if __name__ == "__main__":
         gesetzt = [p["material"] for p in pos(unter).values()] + [pos(oben)[halter_ref]["material"]]
         check("Material für alle offenen Teile setzt es über zwei Ebenen und steht als ein Schritt im Verlauf",
               gesetzt == ["ABS", "ABS"] and c.get(f"/api/baugruppen/{oben}").json()["verlauf"]["zurueck"] == "Material für alle offenen Teile setzen (Oben)")
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(oben)
         check("Ein Rückgängig nimmt das Material auf beiden Ebenen zurück", (pos(unter), pos(oben)) == vor_mat)
+        wieder(oben)
+        einzel = f"MODEL_ASSET/{m['Einzelteil']}"
+        c.patch(f"/api/baugruppen/{unter}/positionen", json={"ref": einzel, "menge": 9})        # danach: die untere Baugruppe wird für sich geändert
+        r = zurueck(oben)
+        check("Konflikt: wurde eine Baugruppe danach woanders geändert, nimmt Rückgängig den Schritt nicht zurück, sondern sagt warum",
+              r.status_code == 400 and "Unten" in r.json()["fehler"] and pos(unter)[einzel]["menge"] == 9 and pos(unter)[einzel]["material"] == "ABS")
+        zurueck(unter)
+        check("Nach dem Rückgängig dort geht es auch im anderen Kontext", zurueck(oben).status_code == 200 and (pos(unter), pos(oben)) == vor_mat)
 
         stand = (pos(modul), pos(bid))
+        kontexte = [modul, bid, "din912-m3x10"]          # Bearbeitet wurden die beiden Baugruppen und ein Kaufteil, jedes mit eigener Liste
         n = 0
-        while c.post("/api/baugruppen/rueckgaengig").status_code == 200:
-            n += 1
+
+        def reihum(schritt):
+            """Jeder Kontext, solange sein oberster Schritt gilt; ein Schritt, der auf einen Schritt anderswo wartet, kommt in der nächsten Runde."""
+            zaehler, weiter = 0, True
+            while weiter:
+                weiter = False
+                for k in kontexte:
+                    if schritt(k).status_code == 200:
+                        zaehler, weiter = zaehler + 1, True
+            return zaehler
+        n = reihum(zurueck)
         leer = (pos(modul), pos(bid))
-        check("Alles zurücknehmen geht bis zum Anfang, dann kommt eine verständliche Meldung",
-              c.post("/api/baugruppen/rueckgaengig").status_code == 400 and n >= 5 and leer != stand)
-        while c.post("/api/baugruppen/wiederholen").status_code == 200:
-            pass
+        check("Alles zurücknehmen geht über alle Kontexte bis zum Anfang, dann kommt eine verständliche Meldung",
+              all(zurueck(k).status_code == 400 for k in kontexte) and n >= 5 and leer != stand)
+        reihum(wieder)
         check("Alles wiederholen führt genau zum Stand von vorher zurück", (pos(modul), pos(bid)) == stand)
         c.delete(f"/api/baugruppen/{oben}"); c.delete(f"/api/baugruppen/{unter}")      # Hilfs-Baugruppen dieses Abschnitts
 
@@ -316,17 +342,27 @@ if __name__ == "__main__":
         ueber_projekt = [w for w in wege if w["weg"][0]["name"] == "Halloween Deko"]
         check("Wo verbaut reicht bis zum Projekt: Halloween Deko › Arm-Modul, 2 × 2 = 4×",
               len(ueber_projekt) == 1 and [x["name"] for x in ueber_projekt[0]["weg"]] == ["Halloween Deko", "Arm-Modul"] and ueber_projekt[0]["gesamt"] == 4)
+        pid2 = c.post("/api/projekte", json={"name": "Zweites Projekt"}).json()["id"]
+        modul_vor = c.get(f"/api/baugruppen/{modul}").json()["verlauf"]["schritte"]
+        c.patch(f"/api/baugruppen/{modul}/positionen", params={"im": pid}, json={"ref": arm, "menge": menge0 + 7})
+        check("Eine Änderung an einer Baugruppe im Projekt-Kontext steht in der Liste des Projekts, nicht in der der Baugruppe oder eines anderen Projekts",
+              c.get(f"/api/projekte/{pid}").json()["verlauf"]["zurueck"] == "Menge ändern (Arm-Modul)"
+              and c.get(f"/api/baugruppen/{modul}").json()["verlauf"]["schritte"] == modul_vor
+              and c.get(f"/api/projekte/{pid2}").json()["verlauf"]["schritte"] == 0)
+        zurueck(pid)
+        check("Rückgängig im Projekt nimmt die Änderung an der Baugruppe zurück", pos(modul)[arm]["menge"] == menge0 and zurueck(pid2).status_code == 400)
+        c.delete(f"/api/projekte/{pid2}")
         c.patch(f"/api/projekte/{pid}", json={"status": "In Arbeit"})
         check("Projekt-Status ist frei wählbar; an einer Baugruppe gibt es keinen Status",
               c.get(f"/api/projekte/{pid}").json()["status"] == "In Arbeit"
               and c.patch(f"/api/baugruppen/{modul}", json={"status": "Fertig"}).status_code == 400)
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(pid)
         check("Rückgängig gilt auch für Projekte (Status zurück)", c.get(f"/api/projekte/{pid}").json()["status"] == "Entwurf")
         c.patch(f"/api/projekte/{pid}/positionen", json={"ref": f"MODEL_ASSET/{m['Einzelteil']}", "menge": 5})
         check("Position im Projekt ändern", {p["name"]: p["menge"] for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"] == 5)
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(pid)
         c.delete(f"/api/projekte/{pid}/positionen", params={"ref": f"MODEL_ASSET/{m['Einzelteil']}"})
-        c.post("/api/baugruppen/rueckgaengig")
+        zurueck(pid)
         check("Rückgängig bringt die Menge und eine entfernte Position im Projekt zurück",
               {p["name"]: p["menge"] for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"] == 3)
         check("Export des Projekts: CSV, Markdown und PDF",
