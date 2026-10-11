@@ -9,7 +9,8 @@
 // offen ist, führt die Liste fürs Rückgängig.
 
 const wb = { id: null, baum: null, flach: null, detail: null, sel: null, offen: new Set(), zurueck: [], index: {}, materialien: [], filter: "",
-  reiter: ["vorschau", "stueckliste", "fertigung"].includes(localStorageLesen("wb-reiter")) ? localStorageLesen("wb-reiter") : "stueckliste" };
+  reiter: ["stueckliste", "fertigung"].includes(localStorageLesen("wb-reiter")) ? localStorageLesen("wb-reiter") : "stueckliste",
+  kat: { tab: "teile", q: "", zu: localStorageLesen("wb-kat-zu") === "1", sel: null, liste: [] }, zug: null };
 
 const wbBasis = (id) => (id.startsWith("p_") ? "/api/projekte" : "/api/baugruppen");
 const wbIst = (typ) => (wb.id || "").startsWith(typ === "projekt" ? "p_" : "b_");
@@ -88,6 +89,7 @@ async function wbLaden({ inspektor = true } = {}) {
   wbIndex();
   if (wb.sel && !wb.index[wb.sel.p]) wb.sel = null;          // die Position gibt es nicht mehr
   wbZeichne(inspektor);
+  wbKatListe();
 }
 
 // Jede Zeile des Baums unter ihrem Pfad merken: Auswahl und Bearbeiten finden die Position darüber wieder.
@@ -114,13 +116,31 @@ function wbGeruest() {
       <section class="wb-spalte"><div class="wb-titel"><b>AUFBAU</b><span class="wb-luecke"></span>
         <button class="wb-kn" id="wb-auf" title="Alles aufklappen">⊞</button><button class="wb-kn" id="wb-zu" title="Alles zuklappen">⊟</button></div>
         <div class="wb-filter"><input id="wb-suche" placeholder="Im Baum suchen …" autocomplete="off"></div>
-        <div class="wb-baum" id="wb-baum" tabindex="0"></div></section>
+        <div class="wb-baum" id="wb-baum" tabindex="0"></div>
+        <div class="wb-griff-h" id="wb-griff-h"></div>
+        <div class="wb-schublade" id="wb-schublade" style="--wb-sh:${Number(localStorageLesen("wb-sh")) || 240}px"></div></section>
       <div class="wb-griff" data-g="l"></div>
       <section class="wb-spalte wb-mitte" id="wb-mitte"></section>
       <div class="wb-griff" data-g="r"></div>
       <section class="wb-spalte"><div class="wb-titel"><b>EIGENSCHAFTEN</b></div><div class="wb-insp" id="wb-insp"></div></section>
     </div>
     <div class="wb-stat" id="wb-stat"></div>`;
+  const gh = $("#wb-griff-h");           // Höhe der Schublade ziehen
+  gh.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    gh.classList.add("zieht");
+    const sch = $("#wb-schublade"), start = e.clientY, h0 = sch.getBoundingClientRect().height;
+    const bewegt = (m) => sch.style.setProperty("--wb-sh", Math.max(120, Math.min(innerHeight - 260, h0 - (m.clientY - start))) + "px");
+    const los = () => {
+      gh.classList.remove("zieht");
+      removeEventListener("mousemove", bewegt);
+      removeEventListener("mouseup", los);
+      localStorageSchreiben("wb-sh", parseInt(getComputedStyle(sch).getPropertyValue("--wb-sh")));
+    };
+    addEventListener("mousemove", bewegt);
+    addEventListener("mouseup", los);
+  });
+  wbKatGeruest();
   el.querySelectorAll(".wb-griff").forEach((g) => g.addEventListener("mousedown", (e) => {
     e.preventDefault();
     g.classList.add("zieht");
@@ -163,7 +183,7 @@ function wbKopf() {
     <button class="wb-kn" data-wb="rueck" ${v.zurueck ? "" : "disabled"} title="${v.zurueck ? "Rückgängig: " + esc(v.zurueck) + " (Strg+Z)" : "Nichts zum Rückgängigmachen"}">↶</button>
     <button class="wb-kn" data-wb="wieder" ${v.vor ? "" : "disabled"} title="${v.vor ? "Wiederholen: " + esc(v.vor) + " (Strg+Umschalt+Z)" : "Nichts zu wiederholen"}">↷</button>
     <span class="wb-trenner"></span>
-    <button class="wb-kn rand" data-wb="hinzu">＋ Teil hinzufügen</button>
+    <button class="wb-kn rand" data-wb="hinzu" title="Katalog-Schublade öffnen und suchen (Strg+I)">＋ Teil hinzufügen</button>
     <span class="wb-luecke"></span>
     <span class="wb-leise">${v.schritte ? `${v.schritte} ${v.schritte === 1 ? "Schritt" : "Schritte"}` : ""}</span>`);
 }
@@ -207,25 +227,14 @@ function wbBaum() {
 
 function wbMitte() {
   const f = wb.flach || { druck: [], kauf: [], eigene: [] };
-  const reiter = [["vorschau", "Vorschau", ""], ["stueckliste", "Stückliste", f.druck.length + f.kauf.length + f.eigene.length || ""],
-    ["fertigung", "Fertigung", ""]];
+  const reiter = [["stueckliste", "Stückliste", f.druck.length + f.kauf.length + f.eigene.length || ""], ["fertigung", "Fertigung", ""]];
   abgleichen($("#wb-mitte"), `
     <div class="wb-reiter">${reiter.map(([k, t, n]) => `<button data-wr-tab="${k}" class="${wb.reiter === k ? "an" : ""}">${t}${n ? `<span class="zahl">${n}</span>` : ""}</button>`).join("")}</div>
-    <div class="wb-flaeche">${wb.reiter === "vorschau" ? wbVorschau() : wb.reiter === "fertigung" ? wbFertigung() : wbStueckliste(f)}</div>`);
-}
-
-function wbVorschau() {
-  const sel = wb.sel ? wb.index[wb.sel.p]?.e : null;
-  if (sel?.art === "modell") {
-    const bild = bildUrl(sel);
-    return `<div class="wb-vorschau">${bild ? `<img src="${bild}" alt="">` : ""}<b>${esc(sel.name)}${esc(endung[sel.format] || "")}</b>
-      <span>${bild ? "Vorschau des gewählten Teils" : "Für dieses Teil gibt es noch kein Vorschaubild"}</span></div>`;
-  }
-  return `<div class="wb-vorschau"><span>Ein Druckteil im Baum wählen.</span></div>`;
+    <div class="wb-flaeche">${wb.reiter === "fertigung" ? wbFertigung() : wbStueckliste(f)}</div>`);
 }
 
 function wbFertigung() {
-  return `<div class="wb-vorschau"><b>Fertigung</b><span>Die Druckplatten kommen als Nächstes.</span></div>`;
+  return `<div class="wb-leer">Fertigung: die Druckplatten kommen als Nächstes.</div>`;
 }
 
 // Die Stückliste über alle Ebenen, flach: Druckteile je einmal mit Gesamtmenge, darunter die Kaufteile nach Kategorie. Eine Zeile anklicken
@@ -282,7 +291,8 @@ function wbInspektor() {
   const sel = wb.sel ? wb.index[wb.sel.p] : null;
   if (!sel) return wbInspektorWurzel(el);
   const e = sel.e, cont = sel.container, kopfName = esc(e.name);
-  let h = `<div class="wb-ititel"><b>${WB_ICON[e.art] || ""} ${kopfName}</b><div class="wb-leise">${wbArtName[e.art]} · in ${esc(wbName(cont))}</div></div>`;
+  const bild = e.art === "modell" ? bildUrl(e) : null;
+  let h = `<div class="wb-ititel">${bild ? `<img class="wb-thumb" src="${bild}" alt="">` : ""}<div><b>${WB_ICON[e.art] || ""} ${kopfName}</b><div class="wb-leise">${wbArtName[e.art]} · in ${esc(wbName(cont))}</div></div></div>`;
   h += `<div class="wb-gruppe">POSITION</div>`;
   h += wbFeld("Menge", `<div class="wb-stepper"><button data-wm="-1">−</button><input data-wf="menge" value="${e.menge}" inputmode="numeric"><button data-wm="1">＋</button></div>`);
   h += `<div class="wb-leise" style="padding:0 10px 4px">Gesamt ab oberster Ebene: <b>${e.gesamt}×</b></div>`;
@@ -320,14 +330,12 @@ function wbName(id) {
 }
 
 function wbInspektorWurzel(el) {
-  const b = wb.baum, d = wb.detail, projekt = b.art === "projekt", s = wb.flach?.summen || {};
+  const b = wb.baum, d = wb.detail, projekt = b.art === "projekt";
   let h = `<div class="wb-ititel"><b>${WB_ICON[projekt ? "projekt" : "baugruppe"]} ${esc(b.name)}</b><div class="wb-leise">${projekt ? "Projekt" : "Baugruppe (wiederverwendbarer Baustein)"}</div></div>`;
   h += `<div class="wb-gruppe">${projekt ? "PROJEKT" : "BAUGRUPPE"}</div>`;
   h += wbFeld("Name", `<input data-wr="name" value="${esc(b.name)}">`);
   if (projekt) h += wbFeld("Status", `<input data-wr="status" list="wb-status" value="${esc(b.status || "")}" placeholder="frei wählbar"><datalist id="wb-status"><option value="Entwurf"><option value="In Arbeit"><option value="Fertig"></datalist>`);
   h += wbFeld(projekt ? "Notizen" : "Beschreibung", `<textarea data-wr="beschreibung" rows="4" placeholder="Wofür, welche Version, Besonderheiten …">${esc(d?.beschreibung || "")}</textarea>`);
-  h += `<div class="wb-werte"><div><small>GEWICHT</small><b>${s.gewicht_g != null ? zahl(s.gewicht_g, 0) + " g" : "–"}</b></div><div><small>DRUCKZEIT</small><b>${s.zeit_s ? dauer(s.zeit_s) : "–"}</b></div>
-    <div><small>DRUCKTEILE</small><b>${s.druckteile ?? "–"}</b></div><div><small>KAUFTEILE</small><b>${s.kaufteile ?? "–"}</b></div></div>`;
   h += `<div class="wb-aktionen"><button class="wb-kn gefahr" data-wb="loeschen">${projekt ? "Projekt" : "Baugruppe"} löschen …</button></div>`;
   if (!projekt) h += `<div class="wb-gruppe">WO VERBAUT · IM GANZEN KATALOG</div><div class="wb-verw" id="wb-verw"><span class="wb-leise">…</span></div>`;
   el.innerHTML = h;
@@ -389,68 +397,84 @@ function wbZiel() {
   return s.e.art === "baugruppe" ? s.e.id : s.container;
 }
 
-async function wbWaehler() {
-  const d = $("#dialog");
-  d.classList.add("breit");
-  const ziel = wbZiel();
-  let tab = "teile";
-  const warten = dialog(`<h2>Teil hinzufügen</h2>
-    <p class="dim">Kommt in <b>${esc(wbName(ziel))}</b>. Das Fenster bleibt offen, du kannst mehrere nacheinander hinzufügen.</p>
-    <div class="kategorien"><button type="button" class="chip aktiv" data-wt="teile">Druckteile</button><button type="button" class="chip" data-wt="kaufteile">Kaufteile</button>
-      <button type="button" class="chip" data-wt="unter">Baugruppen</button></div>
-    <input type="text" id="wbw-suche" data-enter="" placeholder="Suchen …" autocomplete="off">
-    <div class="waehler" id="wbw-liste"></div>
-    <div class="knoepfe"><button class="knopf akzent" value="fertig">Fertig</button></div>`);
-  const laden = async () => {
-    const q = $("#wbw-suche").value.trim();
-    let zeilen = [];
-    try {
-      if (tab === "kaufteile") {
-        zeilen = (await api(`/api/kaufteile?q=${encodeURIComponent(q)}`)).map((t) => ({ ref: `PURCHASED_PART/${t.id}`, name: t.name, klein: [t.kategorie, t.norm].filter(Boolean).join(" · "), symbol: symbolFuer(t.kategorie) }));
-      } else if (tab === "unter") {
-        zeilen = (await api("/api/baugruppen")).filter((b) => b.id !== wb.id && b.name.toLowerCase().includes(q.toLowerCase()))
-          .map((b) => ({ ref: `ASSEMBLY/${b.id}`, name: b.name, klein: `${b.positionen} Positionen`, symbol: "🧩" }));
-      } else {
-        zeilen = (await api(`/api/modelle?q=${encodeURIComponent(q)}`)).slice(0, 120).map((m) => ({ ref: `MODEL_ASSET/${m.id}`, name: m.name + (endung[m.format] || ""),
-          klein: [m.ordner[0]?.split("/").slice(1).join("/"), masse(m.masse)].filter(Boolean).join(" · "), bild: bildUrl(m) }));
-      }
-    } catch (e) { zeilen = []; }
-    $("#wbw-liste").innerHTML = zeilen.map((z) => `<div class="w-zeile">
-      ${z.bild ? `<img loading="lazy" src="${z.bild}" alt="">` : `<div class="mini" style="display:grid;place-items:center">${z.symbol || ""}</div>`}
-      <div><b>${esc(z.name)}</b><small>${esc(z.klein || "")}</small></div>
-      <input type="number" min="1" value="1" data-enter="" data-wm-menge="${esc(z.ref)}">
-      <button type="button" class="plus" data-wp="${esc(z.ref)}" title="hinzufügen"><span class="a">＋</span><span class="b">＋</span></button></div>`).join("")
-      || '<div class="pos-leer">Nichts gefunden.</div>';
-  };
-  let zeit;
-  $("#wbw-suche").addEventListener("input", () => { clearTimeout(zeit); zeit = setTimeout(laden, 150); });
-  d.querySelector(".kategorien").addEventListener("click", (e) => {
-    const t = e.target.closest("[data-wt]");
-    if (!t) return;
-    tab = t.dataset.wt;
-    d.querySelectorAll("[data-wt]").forEach((x) => x.classList.toggle("aktiv", x === t));
-    $("#wbw-suche").value = "";           // ein Suchwort für Kaufteile würde sonst die Baugruppen leer filtern
-    laden();
-  });
-  $("#wbw-liste").addEventListener("click", async (e) => {
-    const plus = e.target.closest("[data-wp]");
-    if (!plus || plus.disabled) return;
-    const ref = plus.dataset.wp;
-    const menge = Number(document.querySelector(`[data-wm-menge="${CSS.escape(ref)}"]`)?.value || 1);
-    plus.disabled = true;
-    try {
-      await api(wbMit(`${wbBasis(ziel)}/${ziel}/positionen`), { method: "POST", body: { ref, menge } });
-      plus.classList.add("ok");
-      plus.querySelector(".a").textContent = "✓";
-      await wbLaden({ inspektor: false });
-    } catch (err) { toast(err.message); }
-    plus.disabled = false;
-  });
-  await laden();
-  $("#wbw-suche").focus();
-  await warten;
-  d.classList.remove("breit");
-  wbInspektor();
+// ---------------------------------------------------------------- Katalog-Schublade
+// Teile kommen nicht über ein Fenster hinein, sondern aus dem Katalog im Arbeitsbereich: ziehen (auf eine Baugruppe im Baum oder in die
+// Wurzel), Doppelklick, ＋ oder Enter fügen in die gewählte Baugruppe ein. Dichte Zeilen, kein Raster.
+
+function wbKatMengen() {
+  const m = {};
+  for (const x of Object.values(wb.index)) m[x.e.ref] = (m[x.e.ref] || 0) + x.e.gesamt;
+  return m;
+}
+
+function wbKatGeruest() {
+  const k = wb.kat, el = $("#wb-schublade");
+  el.classList.toggle("zu", k.zu);
+  el.innerHTML = `<div class="wb-titel wb-sk" data-wk="zu"><span class="wb-pf" style="width:auto">${k.zu ? "▸" : "▾"}</span><b>KATALOG</b><span class="wb-leise">ziehen oder Doppelklick</span></div>
+    ${k.zu ? "" : `<div class="wb-ktabs">${[["teile", "Druckteile"], ["kaufteile", "Kaufteile"], ["unter", "Baugruppen"]].map(([t, n]) =>
+        `<button data-wk-tab="${t}" class="${k.tab === t ? "an" : ""}">${n}</button>`).join("")}</div>
+      <div class="wb-filter"><input id="wb-ksuche" placeholder="Suchen …" autocomplete="off" value="${esc(k.q)}"></div>
+      <div class="wb-kat" id="wb-kat" tabindex="0"></div>`}`;
+  if (!k.zu) wbKatLaden();
+}
+
+async function wbKatLaden() {
+  const { tab, q } = wb.kat;
+  let zeilen = [], mehr = false;
+  try {
+    if (tab === "kaufteile") {
+      zeilen = (await api(`/api/kaufteile?q=${encodeURIComponent(q)}`)).map((t) => ({ ref: `PURCHASED_PART/${t.id}`, name: t.name, meta: t.norm || t.kategorie || "", symbol: symbolFuer(t.kategorie) }));
+    } else if (tab === "unter") {
+      zeilen = (await api("/api/baugruppen")).filter((b) => b.id !== wb.id && b.name.toLowerCase().includes(q.toLowerCase()))
+        .map((b) => ({ ref: `ASSEMBLY/${b.id}`, name: b.name, meta: `${b.positionen} Pos.`, symbol: "🧩" }));
+    } else {
+      const alle = await api(`/api/modelle?q=${encodeURIComponent(q)}`);
+      mehr = alle.length > 300;
+      zeilen = alle.slice(0, 300).map((m) => ({ ref: `MODEL_ASSET/${m.id}`, name: m.name + (endung[m.format] || ""), meta: masse(m.masse), bild: bildUrl(m) }));
+    }
+  } catch { zeilen = []; }
+  if (wb.kat.tab !== tab || wb.kat.q !== q) return;        // inzwischen etwas anderes gesucht
+  wb.kat.liste = zeilen;
+  wb.kat.mehr = mehr;
+  wbKatListe();
+}
+
+// Nur die Markierung umschalten: die Liste neu zu zeichnen, während man doppelklickt, verlöre den zweiten Klick.
+function wbKatMarkieren(ref) {
+  wb.kat.sel = ref;
+  document.querySelectorAll("#wb-kat .wb-k").forEach((z) => z.classList.toggle("sel", z.dataset.kref === ref));
+}
+
+function wbKatListe() {
+  const el = $("#wb-kat");
+  if (!el || !wb.baum) return;
+  const mengen = wbKatMengen(), k = wb.kat;
+  el.innerHTML = k.liste.map((z) => `<div class="wb-k ${k.sel === z.ref ? "sel" : ""}" draggable="true" data-kref="${esc(z.ref)}" title="${esc(z.name)}">
+      ${z.bild ? `<img loading="lazy" src="${z.bild}" alt="">` : `<span class="wb-ksym">${z.symbol || WB_ICON.modell}</span>`}
+      <span class="wb-n">${esc(z.name)}</span><span class="wb-kmeta">${esc(z.meta || "")}</span>
+      <span class="wb-kn2">${mengen[z.ref] ? mengen[z.ref] + "×" : ""}</span><button class="wb-kp" data-kplus="${esc(z.ref)}" title="In ${esc(wbName(wbZiel()))} einfügen">＋</button></div>`).join("")
+    + (k.mehr ? `<div class="wb-leise" style="padding:4px 10px">Mehr als 300 Treffer — Suche eingrenzen.</div>` : "")
+    || `<div class="wb-leer">Nichts gefunden.</div>`;
+}
+
+function wbKatFokus() {
+  wb.kat.zu = false;
+  localStorageSchreiben("wb-kat-zu", "0");
+  wbKatGeruest();
+  $("#wb-ksuche")?.focus();
+}
+
+// Einfügen: `ziel` ist die Baugruppe oder das Projekt, in das das Teil kommt.
+async function wbHinzu(ref, menge = 1, ziel = wbZiel()) {
+  try {
+    await api(wbMit(`${wbBasis(ziel)}/${ziel}/positionen`), { method: "POST", body: { ref, menge } });
+  } catch (e) { return toast(e.message); }
+  if (ziel !== wb.id) {                      // die Baugruppe, in die es kam, aufklappen
+    const f = Object.values(wb.index).find((x) => x.e.art === "baugruppe" && x.e.id === ziel);
+    if (f) wb.offen.add(f.p);
+  }
+  await wbLaden({ inspektor: false });
+  wbKatListe();
 }
 
 async function wbLoeschen() {
@@ -476,7 +500,7 @@ document.addEventListener("click", (e) => {
   if (aktion === "schliessen") return wbSchliessen();
   if (aktion === "rueck") return wbVerlauf("rueckgaengig");
   if (aktion === "wieder") return wbVerlauf("wiederholen");
-  if (aktion === "hinzu") return wbWaehler();
+  if (aktion === "hinzu") return wbKatFokus();
   if (aktion === "weg") return wbEntfernen();
   if (aktion === "loeschen") return wbLoeschen();
   if (aktion === "baustein") return wbOeffne(t.closest("[data-wb]").dataset.id, { zurueck: wb.id });
@@ -488,6 +512,13 @@ document.addEventListener("click", (e) => {
   if (pf) { const p = pf.dataset.t; wb.offen.has(p) ? wb.offen.delete(p) : wb.offen.add(p); return wbBaum(); }
   const z = t.closest(".wb-z[data-p]");
   if (z) { wb.sel = z.dataset.p ? { p: z.dataset.p } : null; wbBaum(); wbMitte(); wbStatus(); return wbInspektor(); }
+  if (t.closest("[data-wk=zu]")) { wb.kat.zu = !wb.kat.zu; localStorageSchreiben("wb-kat-zu", wb.kat.zu ? "1" : "0"); return wbKatGeruest(); }
+  const kt = t.closest("[data-wk-tab]");
+  if (kt) { wb.kat.tab = kt.dataset.wkTab; wb.kat.q = ""; wb.kat.sel = null; return wbKatGeruest(); }
+  const kp = t.closest("[data-kplus]");
+  if (kp) return wbHinzu(kp.dataset.kplus);
+  const kz = t.closest(".wb-k[data-kref]");
+  if (kz) return wbKatMarkieren(kz.dataset.kref);
   const tab = t.closest("[data-wr-tab]");
   if (tab) { wb.reiter = tab.dataset.wrTab; localStorageSchreiben("wb-reiter", wb.reiter); return wbMitte(); }
   const bz = t.closest("[data-bz]");
@@ -499,8 +530,59 @@ document.addEventListener("click", (e) => {
 });
 
 // Eingaben speichern beim Verlassen des Feldes (change); ein abgelehnter Wert stellt das Feld wieder auf den echten Stand.
+let wbKatZeit;
 document.addEventListener("input", (e) => {
   if (e.target.id === "wb-suche") { wb.filter = e.target.value; wbBaum(); }
+  if (e.target.id === "wb-ksuche") { wb.kat.q = e.target.value; clearTimeout(wbKatZeit); wbKatZeit = setTimeout(wbKatLaden, 150); }
+});
+
+document.addEventListener("dblclick", (e) => {
+  const kz = e.target.closest?.(".wb-k[data-kref]");
+  if (kz && e.target.closest("#werkbank")) wbHinzu(kz.dataset.kref);
+});
+
+// Ziehen: aus der Schublade auf eine Baugruppe im Baum (dort hinein), auf ein anderes Teil (in dessen Baugruppe) oder in die Wurzel.
+function wbZielVonZeile(zeile) {
+  if (!zeile || !zeile.dataset.p) return wb.id;
+  const x = wb.index[zeile.dataset.p];
+  return x.e.art === "baugruppe" ? x.e.id : x.container;
+}
+const wbDropWeg = () => document.querySelectorAll(".wb-drop").forEach((x) => x.classList.remove("wb-drop"));
+document.addEventListener("dragstart", (e) => {
+  const k = e.target.closest?.(".wb-k[data-kref]");
+  if (!k) return;
+  wb.zug = k.dataset.kref;
+  e.dataTransfer.setData("text/plain", wb.zug);
+  e.dataTransfer.effectAllowed = "copy";
+});
+document.addEventListener("dragend", () => { wb.zug = null; wbDropWeg(); });
+document.addEventListener("dragover", (e) => {
+  if (!wb.zug || !e.target.closest?.("#wb-baum")) return;
+  e.preventDefault();
+  wbDropWeg();
+  (e.target.closest(".wb-z") || $("#wb-baum .wb-z")).classList.add("wb-drop");       // ausserhalb der Zeilen: die Wurzel
+});
+document.addEventListener("drop", (e) => {
+  if (!wb.zug || !e.target.closest?.("#wb-baum")) return;
+  e.preventDefault();
+  const ref = wb.zug, ziel = wbZielVonZeile(e.target.closest(".wb-z"));
+  wb.zug = null;
+  wbDropWeg();
+  wbHinzu(ref, 1, ziel);
+});
+
+// Tastatur in der Schublade: Pfeile wählen, Enter fügt ein.
+document.addEventListener("keydown", (e) => {
+  if (!wb.id || $("#werkbank").hidden || document.querySelector("dialog[open]")) return;
+  const inKat = e.target.closest?.("#wb-kat, #wb-ksuche");
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "i") { e.preventDefault(); return wbKatFokus(); }
+  if (!inKat || !["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) return;
+  const refs = wb.kat.liste.map((z) => z.ref);
+  const i = refs.indexOf(wb.kat.sel);
+  if (e.key === "Enter") { e.preventDefault(); return wb.kat.sel && wbHinzu(wb.kat.sel); }
+  e.preventDefault();
+  wbKatMarkieren(refs[Math.max(0, Math.min(refs.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))] || null);
+  document.querySelector(".wb-k.sel")?.scrollIntoView({ block: "nearest" });
 });
 
 document.addEventListener("change", (e) => {
@@ -525,7 +607,7 @@ document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "z" && !tippt) { e.preventDefault(); return wbVerlauf(e.shiftKey ? "wiederholen" : "rueckgaengig"); }
   if (tippt) return;
   if (e.key === "Escape") return wbSchliessen();
-  if ((e.key === "Delete" || e.key === "Backspace") && wb.sel) { e.preventDefault(); return wbEntfernen(); }
+  if ((e.key === "Delete" || e.key === "Backspace") && wb.sel && !e.target.closest?.("#wb-kat")) { e.preventDefault(); return wbEntfernen(); }
   if (["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) {
     const zeilen = [...document.querySelectorAll("#wb-baum .wb-z")];
     const i = zeilen.findIndex((z) => z.classList.contains("sel"));

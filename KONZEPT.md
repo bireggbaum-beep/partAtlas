@@ -529,10 +529,15 @@ PRINT_PLATE    ─[PRINTS {menge}]──▶ MODEL_ASSET
 - **Wo verbaut?** endet bei einem Projekt oder einer obersten Baugruppe (mehrstufig, mit Gesamtmenge).
 - Speicherform: neue Sammlungen (`PROJECT`, `PRINT_PLATE`) wie seinerzeit `ASSEMBLY` — keine Änderung von `SPEICHERFORM`.
 
+**Gestaltungsregel der Werkbank (Anwender, 11.10.2026):** keine Cards, keine grossen Vorschaubilder im Raster, kein grosszügiges Card-Grid — Datendichte: Tabellen und dichte Listen,
+Zeilen 24–26 px, 13 px Schrift; Whitespace ist dort der Feind. Teile kommen **nicht über ein Fenster** hinein, sondern über die **Katalog-Schublade** im Arbeitsbereich (Ziehen oder Doppelklick).
+Auch die Fertigung ist eine gruppierte Tabelle (Kopfzeile je Platte, darunter ihre Teile), nicht ein Raster aus Platten-Karten — der Mock zeigt dort noch Karten und wird beim Bau
+von Paket 3 angepasst.
+
 **Oberfläche.** Die Werkbank öffnet ein Projekt oder eine Baugruppe als eigenen Baustein; der Reiter „Fertigung“ (Platten) gehört nur zum Projekt. Mock:
 `mock/werkbank.html`. **Gebaut (0.62.0, Labor):** Abschnitt „Projekte“ in der Seitenleiste (anlegen, öffnen), Werkbank als Vollbild (`web/werkbank.js`): Baum links mit Auf- und Zuklappen,
 Eigenschaften rechts (Menge, Druckvorgabe, Bezug, Name, Status, Notizen), „＋ Teil hinzufügen“ (Druckteile, Kaufteile, Baugruppen), Rückgängig/Wiederholen mit Strg+Z, „Als Baustein
-öffnen“ und „Wo verbaut“; in der Mitte Reiter Vorschau und Stückliste (flach, als dichte Tabelle), Statuszeile mit den Summen, Suche im Baum. Die Fertigung (Platten) folgt.
+öffnen“ und „Wo verbaut“; in der Mitte Reiter Vorschau und Stückliste (flach, als dichte Tabelle), Statuszeile mit den Summen, Suche im Baum. Die Fertigung (Platten) folgt. **Katalog-Schublade (0.62.1):** unter dem Baum, Reiter Druckteile · Kaufteile · Baugruppen, Suche, dichte Zeilen; Einfügen per Ziehen, Doppelklick, ＋ oder Enter.
 
 **Offen.** „Zum Projekt machen“ für bestehende oberste Baugruppen; Platte ↔ erzeugte 3MF-Datei und ↔ Drucke (§4.6); Rückgängig je Projekt statt eine Liste für
 alle; wie die Seitenleiste Modell, Baugruppe, Projekt und Sammlung auseinanderhält; Fortschritt über mehrere Projekte.

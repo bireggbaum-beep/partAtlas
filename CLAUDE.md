@@ -3,6 +3,9 @@
 - Führend ist `KONZEPT.md`. Alles auf Deutsch.
 - Stand, Entscheidungen und nächste Schritte: `OFFEN.md` — zu Beginn lesen,
   nach jeder erledigten Sache aktualisieren.
+- **Werkbank (Projekte, Baugruppen): Datendichte, keine Cards** (Vorgabe des Anwenders, 11.10.2026). Keine Cards, keine grossen Vorschaubilder im Raster, kein
+  grosszügiges Card-Grid; Tabellen und dichte Listen (Zeilen 24–26 px, 13 px Schrift), Whitespace ist dort der Feind. Teile werden **nicht über ein Fenster** hinzugefügt, sondern
+  über die Katalog-Schublade im Arbeitsbereich (Ziehen, Doppelklick). Dialoge nur für Benennen und Bestätigen. Vorbild: `mock/werkbank.html`.
 - **Tests sparsam:** nach einer Änderung nur die Suite, die sie prüft,
   und deren Gegenprobe. Alle Suiten nur ab und zu (vor einer Fassung).
   `tests/test_ui.py` nur, wenn sich die Oberfläche geändert hat — sie

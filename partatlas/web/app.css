@@ -1103,9 +1103,6 @@ body.wb-an { overflow: hidden; }
 .wb-tab a { color: var(--accent); text-decoration: none; }
 .wb-ab { font: 600 11px var(--mono); letter-spacing: 0.1em; color: var(--ink-3); margin: 14px 0 6px; }
 .wb-ab:first-child { margin-top: 0; }
-.wb-vorschau { height: 100%; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink-3); }
-.wb-vorschau img { max-width: min(420px, 80%); max-height: 60%; object-fit: contain; }
-.wb-vorschau b { color: var(--ink); }
 .wb-stat { display: flex; align-items: center; gap: 16px; padding: 0 10px; background: var(--panel); border-top: 1px solid var(--line); color: var(--ink-2); font-size: 12px; white-space: nowrap; overflow: hidden; }
 .wb-stat b { font: 500 12px var(--mono); color: var(--ink); }
 
@@ -1123,12 +1120,32 @@ body.wb-an { overflow: hidden; }
 .wb-einh { position: relative; } .wb-einh input { padding-right: 24px; text-align: right; font-family: var(--mono); }
 .wb-einh span { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 11px; pointer-events: none; }
 .wb-farbe { display: flex; align-items: center; gap: 8px; } .wb-farbe input[type=color] { width: 40px; height: 24px; padding: 0; }
-.wb-werte { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 6px 10px; }
-.wb-werte div { background: var(--panel); padding: 5px 8px; }
-.wb-werte small { display: block; font: 11px var(--mono); color: var(--ink-3); }
-.wb-werte b { font: 500 14px var(--mono); }
 .wb-aktionen { display: flex; flex-wrap: wrap; gap: 8px; padding: 13px 10px 0; }
 .wb-verw { padding: 2px 10px; }
 .wb-verw a { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 3px 4px; border-radius: var(--radius); cursor: pointer; }
 .wb-verw a:hover { background: var(--panel-2); }
 .wb-link { color: var(--accent); text-decoration: none; } .wb-link:hover { text-decoration: underline; }
+
+/* Katalog-Schublade unter dem Baum: dichte Liste statt Fenster */
+.wb-griff-h { height: 5px; background: var(--line); cursor: row-resize; flex: none; }
+.wb-griff-h:hover, .wb-griff-h.zieht { background: var(--accent); }
+.wb-schublade { height: var(--wb-sh, 240px); display: flex; flex-direction: column; flex: none; min-height: 0; }
+.wb-schublade.zu { height: 30px; }
+.wb-sk { cursor: pointer; }
+.wb-ktabs { display: flex; gap: 2px; padding: 4px 8px 0; border-bottom: 1px solid var(--line); flex: none; }
+.wb-ktabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 3px 9px; cursor: pointer; color: var(--ink-2); }
+.wb-ktabs button.an { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.wb-kat { flex: 1; overflow: auto; outline: none; }
+.wb-k { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; cursor: grab; border-left: 2px solid transparent; }
+.wb-k:hover { background: var(--panel-2); }
+.wb-k.sel { background: var(--wb-sel); border-left-color: var(--accent); }
+.wb-k img { width: 18px; height: 18px; object-fit: cover; border-radius: 2px; flex: none; }
+.wb-ksym { width: 18px; text-align: center; flex: none; font-size: 12px; } .wb-ksym .wb-ic { vertical-align: middle; }
+.wb-kmeta { font: 11px var(--mono); color: var(--ink-3); flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
+.wb-kn2 { font: 12px var(--mono); color: var(--accent); flex: none; min-width: 22px; text-align: right; }
+.wb-kp { width: 20px; height: 20px; padding: 0; line-height: 1; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); cursor: pointer; opacity: 0; flex: none; }
+.wb-k:hover .wb-kp, .wb-k.sel .wb-kp { opacity: 1; }
+.wb-kp:hover { border-color: var(--accent); color: var(--accent); }
+.wb-drop { outline: 1px dashed var(--accent); outline-offset: -1px; background: var(--accent-soft); }
+.wb-ititel { display: flex; gap: 10px; align-items: center; }
+.wb-thumb { width: 48px; height: 48px; object-fit: cover; border: 1px solid var(--line); border-radius: var(--radius); flex: none; }

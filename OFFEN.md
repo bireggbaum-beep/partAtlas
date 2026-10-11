@@ -107,7 +107,13 @@ Backend `PROJECT` (Positionslogik verallgemeinern, Tests), dann Platten, dann di
 Grund: Schritte aus einem Projekt tauchen im anderen als „Rückgängig“ auf).
 **Oberfläche Paket 2 erledigt (0.62.0, Labor):** Seitenleiste „Projekte“ + Werkbank-Vollbild (`web/werkbank.js`, Stile am Ende von `app.css`): Baum, Eigenschaften, Teile-Wähler, Rückgängig,
 Baustein öffnen. Mitte zeigt vorerst Kennzahlen und die Vorschau des gewählten Teils. Gezielt im Browser geprüft (19/19, zwei Gegenproben fallen), nicht in `test_ui`. Beim Prüfen
-aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen. **Nachgezogen auf den Stil des Mocks (Anwender: „wirkt wie der Viewer, nicht wie ein Werkzeug“):** Mitte mit Reitern (Vorschau · Stückliste · Fertigung) statt Kennzahlen-Karten, die flache
+aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen. **Regel und Schublade (Anwender, 11.10.2026):** Werkbank = Datendichte, **keine Cards, keine grossen Vorschaubilder im Raster, kein Card-Grid**; Teile nicht über ein Fenster hinzufügen (steht in
+`CLAUDE.md` und KONZEPT §4.5a). Umgesetzt (0.62.1): Katalog-Schublade unter dem Baum (Reiter Druckteile · Kaufteile · Baugruppen, Suche, 24-px-Zeilen mit 18-px-Bild, Menge schon im Projekt,
+Höhe ziehbar, einklappbar); Einfügen per Ziehen (auf eine Baugruppe, ein Teil oder die Wurzel), Doppelklick, ＋ oder Enter, Strg+I sucht; das Fenster ist weg. Die grosse Vorschau in der Mitte ist
+weg (Vorschaubild jetzt 48 px im Inspektor), ebenso die Kennzahl-Kästchen im Projekt-Inspektor (die Statuszeile zeigt die Summen). Gefunden und behoben: Einzelklick in der Schublade zeichnete die Liste
+neu und verlor den Doppelklick (jetzt nur Markierung umschalten); ein Aufruf vor dem Laden des Projekts warf einen Fehler. Browser-Durchgang 26/26 (3 Läufe). **Noch zu tun:** der Mock zeigt die Platten
+noch als Karten und das Raster „Kachel“ beim Baugruppen-Reiter — beim Bau der Fertigung (Paket 3) als gruppierte Tabelle umsetzen und den Mock anpassen.
+**Nachgezogen auf den Stil des Mocks (Anwender: „wirkt wie der Viewer, nicht wie ein Werkzeug“):** Mitte mit Reitern (Vorschau · Stückliste · Fertigung) statt Kennzahlen-Karten, die flache
 Stückliste als dichte Tabelle (Druckteile mit Menge, Material, Gewicht, Zeit; Kaufteile nach Kategorie mit Bezug), Statuszeile unten, Suche im Baum, 13 px und 24–26 px Zeilen; Bilder
 jetzt im hellen Thema (die App startet standardmässig dunkel). Neue Prüfungen 23/23 (Tabelle, Zeile wählt im Baum, Suche, Statuszeile; Gegenprobe Suche fällt). **Offen (Paket 3):** Reiter Fertigung
 mit den Platten; (Paket 4) Katalog-Schublade, Ziehen.
