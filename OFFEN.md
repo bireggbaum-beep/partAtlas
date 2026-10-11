@@ -83,6 +83,16 @@ je Teil + Druckplatten (erst Entwurf, Frage offen: Platte = erweiterte Sammlung 
 Befehlspalette (Strg+K), Rechtsklick (Wo verbaut, Tauschen, Fork). Entwurf: `mock/werkbank.html` (bedienbar, Daten im Skript; im Browser geprüft, 12 Bedienschritte,
 keine Konsolenfehler). **Offen/Entscheid:** 3D zeigt nur das Einzelteil (Gesamtansicht braucht Platzierungen aus 3MF/FreeCAD); Platte = Sammlung oder eigener Knoten;
 Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkbank nüchtern (die „freundlich“-Vorgabe galt dem Katalog).
+**Reihenfolge (Anwender, 11.10.2026: Ideen werden eingereiht, nicht sofort aufgegriffen):**
+1. Projekt-Backend (`PROJECT`, `REQUIRES`, Positionslogik verallgemeinert, Tests) — **jetzt**.
+2. Rückgängig je Projekt statt einer Liste für alle (kleine Anpassung danach).
+3. Platten (`PRINT_PLATE`, `PRINTS` mit Mengen, „verteilt“ aus dem Bedarf).
+4. Werkbank-Oberfläche (Baum, Inspektor, Reiter) hinter dem Labor-Schalter.
+5. **Eingereiht, noch nicht angefasst:** *Lebenslauf der Platte* (Datei G-Code/gesliceste 3MF jederzeit an der Platte ablegbar, Druck mit Ergebnis erst nach dem Druck,
+   mehrere Drucke je Platte, Fortschritt zählt nur gute; drei Genauigkeitsstufen Schätzung → Slicer-Wert → gemessen; Platte → „Im Slicer öffnen“ mit Zettel für Mengen und
+   Parameter; nutzt §4.6 Stufe b) und die **Slicer-Prüfmatrix** (alle erkannten Slicer × erkannt, eine Datei, mehrere Dateien in einem Fenster, dieselbe Datei mehrfach, gesliceste
+   3MF; Messskript in `messung/`; Anwender prüft Bambu Studio, Tester Anycubic Slicer Next, übrige nach Möglichkeit; Ungeprüftes bleibt im Konzept als „ungeprüft“ stehen).
+
 **Projekte (Idee des Anwenders, 11.10.2026) — Entwurf angenommen, noch nichts gebaut:** `KONZEPT.md` §4.5a (PROJECT/PRINT_PLATE, Kante `REQUIRES`, Platten mit Mengen am Projekt,
 Regel gegen Überschneidung; lose Teile dürfen auch in Baugruppen liegen). `mock/werkbank.html` ist auf Projekt umgebaut: Projekt „Halloween Deko 2026“ mit losen Teilen und einer
 Baugruppe, Projekt „Voron Toolhead Umbau“; Auswahl Projekte/Bausteine; Fertigung nur im Projekt, Teilmengen auf Platten (＋/−), Bedarf über Baugruppen hinweg, Fork nimmt Platten
