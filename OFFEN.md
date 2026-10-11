@@ -83,6 +83,12 @@ je Teil + Druckplatten (erst Entwurf, Frage offen: Platte = erweiterte Sammlung 
 Befehlspalette (Strg+K), Rechtsklick (Wo verbaut, Tauschen, Fork). Entwurf: `mock/werkbank.html` (bedienbar, Daten im Skript; im Browser geprüft, 12 Bedienschritte,
 keine Konsolenfehler). **Offen/Entscheid:** 3D zeigt nur das Einzelteil (Gesamtansicht braucht Platzierungen aus 3MF/FreeCAD); Platte = Sammlung oder eigener Knoten;
 Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkbank nüchtern (die „freundlich“-Vorgabe galt dem Katalog).
+**Projekte (Idee des Anwenders, 11.10.2026) — Entwurf angenommen, noch nichts gebaut:** `KONZEPT.md` §4.5a (PROJECT/PRINT_PLATE, Kante `REQUIRES`, Platten mit Mengen am Projekt,
+Regel gegen Überschneidung; lose Teile dürfen auch in Baugruppen liegen). `mock/werkbank.html` ist auf Projekt umgebaut: Projekt „Halloween Deko 2026“ mit losen Teilen und einer
+Baugruppe, Projekt „Voron Toolhead Umbau“; Auswahl Projekte/Bausteine; Fertigung nur im Projekt, Teilmengen auf Platten (＋/−), Bedarf über Baugruppen hinweg, Fork nimmt Platten
+mit, „Wo verbaut“ mehrstufig bis zum Projekt. Im Browser geprüft (19/19, ein Fehler im Mock dabei gefunden und behoben). **Nächster Schritt:** Abnahme des Entwurfs, dann
+Backend `PROJECT` (Positionslogik verallgemeinern, Tests), dann Platten, dann die Werkbank-Oberfläche. **Offen:** „Zum Projekt machen“; Rückgängig je Projekt (im Mock sieht man den
+Grund: Schritte aus einem Projekt tauchen im anderen als „Rückgängig“ auf).
 **Rückgängig erledigt (0.58.0):** Änderungsliste im Baugruppen-Modul (siehe KONZEPT §4.5), `POST /api/baugruppen/rueckgaengig|wiederholen`, `verlauf` im Detail, Knöpfe ↶ ↷ und
 Strg+Z im Labor. test_baugruppen 72/72 (+12; Gegenproben: Positionen nicht wiederherstellen, Wiederholen-Liste nicht leeren, nur oberste Ebene merken, Entfernen nicht
 protokollieren — alle fallen), Oberfläche gezielt im Browser 10/10 (Gegenproben Labor-Sperre und Feld-Schutz fallen), nicht in test_ui. Beim Testen aufgefallen: eine Prüfung

@@ -456,6 +456,47 @@ nachzubauen; `baugruppen.py`, `stueckliste.py` und alles Neue greifen nicht auf 
 Suche, Aufräumen und „steckt in“ kennen `CONTAINS`. Unfertiges erscheint erst im **Baugruppen-Labor** (Einstellungen › Ansicht oder `?labor=1`,
 je Browser gemerkt, Vorgabe aus; Elemente mit `data-labor`). Das Labor versteckt nur die Oberfläche, nicht Änderungen der Speicherform.
 
+### 4.5a Projekte (Entwurf vom 11.10.2026, noch nicht gebaut)
+
+*Idee des Anwenders. Entwurf, damit Datenmodell und Oberfläche nur einmal angefasst werden; gebaut wird erst nach Abnahme.*
+
+**Zwei Begriffe, zwei Aufgaben.** Eine **Baugruppe** ist ein wiederverwendbarer Baustein: Teile, die zusammengehören und verschraubt werden („Extruder“,
+„Skelett-Arm“); sie kann in anderen stecken. Ein **Projekt** ist die Klammer um einen konkreten Bau-Auftrag („Halloween-Deko 2026“): es hält lose Teile,
+Baugruppen und Kaufteile für einen Zweck zusammen, steckt nie in etwas anderem und trägt, was zum Auftrag gehört — Druckplatten, Fortschritt, Notizen.
+
+**Regel gegen Überschneidung.** Was man mehrfach oder anderswo wiederverwenden will, ist eine Baugruppe; was nur für diesen Auftrag zusammengestellt wird,
+gehört ins Projekt. Lose Teile dürfen in beiden liegen (heute geht das in Baugruppen; das Projekt ist der empfohlene Ort). Alle Auswertungen
+(Stückliste, Summen, Einkaufsliste, Platten) rechnen über den ganzen Baum ab Projekt bzw. Baugruppe — die Wahl ändert die Zahlen nicht.
+Kein Zwang zur Struktur: Projekt anlegen, fünf STLs hineinwerfen, auf zwei Platten verteilen; Baugruppen braucht man dafür nicht.
+
+**Datenmodell (geplant).**
+
+```
+PROJECT        Name, Beschreibung, Status (frei: Entwurf / In Arbeit / Fertig, ohne Wirkung), Notizen
+PRINT_PLATE    Name, Material; gehört zu genau einem Projekt
+PROJECT        ─[REQUIRES {menge, material, infill, waende, schicht, notiz, position}]▶ MODEL_ASSET | ASSEMBLY | PURCHASED_PART | CUSTOM_COMPONENT
+PROJECT        ─[HAS_PLATE]──▶ PRINT_PLATE
+PRINT_PLATE    ─[PRINTS {menge}]──▶ MODEL_ASSET
+```
+
+- **Eigene Kante `REQUIRES`** statt `CONTAINS`: Löschvorschau, Suche und Aufräumen kennen `CONTAINS` als „steckt in Baugruppe“ und bleiben unberührt (Sidecar,
+  §4.5). Die Positionslogik (Menge, Material, Reihenfolge, Rückgängig) wird verallgemeinert und für beide benutzt. Ein Projekt enthält keine Projekte;
+  keine Baugruppe enthält ein Projekt.
+- **Druckparameter** (Material, Füllung, Wandlinien, Schichthöhe) hängen an der Kante, also an der Position im Projekt bzw. in der Baugruppe, nicht am Modell:
+  dieselbe Datei kann an anderer Stelle anders gedruckt werden. Sie gelten für alle Exemplare dieser Position.
+- **Platten** sind ein eigener Knoten mit Mengen: acht Halter dürfen auf zwei Platten zu je vier liegen. „Verteilt“ heisst: Summe der `PRINTS`-Mengen aller Platten
+  eines Teils ≥ sein Bedarf aus der Projekt-Stückliste (über Baugruppen hinweg). Platten gibt es nur am Projekt.
+- **Fork eines Projekts** kopiert die Liste; die Baugruppen darin bleiben gemeinsam. Eine Variante einer Baugruppe entsteht erst, wenn man dort ein Teil
+  tauscht („überschreiben oder als Variante speichern?“).
+- **Wo verbaut?** endet bei einem Projekt oder einer obersten Baugruppe (mehrstufig, mit Gesamtmenge).
+- Speicherform: neue Sammlungen (`PROJECT`, `PRINT_PLATE`) wie seinerzeit `ASSEMBLY` — keine Änderung von `SPEICHERFORM`.
+
+**Oberfläche.** Die Werkbank öffnet ein Projekt oder eine Baugruppe als eigenen Baustein; der Reiter „Fertigung“ (Platten) gehört nur zum Projekt. Mock:
+`mock/werkbank.html`.
+
+**Offen.** „Zum Projekt machen“ für bestehende oberste Baugruppen; Platte ↔ erzeugte 3MF-Datei und ↔ Drucke (§4.6); Rückgängig je Projekt statt eine Liste für
+alle; wie die Seitenleiste Modell, Baugruppe, Projekt und Sammlung auseinanderhält; Fortschritt über mehrere Projekte.
+
 ### 4.6 Drucke in Phase 1 (Entwurf, ohne Drucker)
 
 *Entwurf vom 01.10.2026. Stufe a ist gebaut (0.19), Stufe b offen.*
