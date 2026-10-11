@@ -111,8 +111,7 @@ aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen
 `CLAUDE.md` und KONZEPT §4.5a). Umgesetzt (0.62.1): Katalog-Schublade unter dem Baum (Reiter Druckteile · Kaufteile · Baugruppen, Suche, 24-px-Zeilen mit 18-px-Bild, Menge schon im Projekt,
 Höhe ziehbar, einklappbar); Einfügen per Ziehen (auf eine Baugruppe, ein Teil oder die Wurzel), Doppelklick, ＋ oder Enter, Strg+I sucht; das Fenster ist weg. Die grosse Vorschau in der Mitte ist
 weg (Vorschaubild jetzt 48 px im Inspektor), ebenso die Kennzahl-Kästchen im Projekt-Inspektor (die Statuszeile zeigt die Summen). Gefunden und behoben: Einzelklick in der Schublade zeichnete die Liste
-neu und verlor den Doppelklick (jetzt nur Markierung umschalten); ein Aufruf vor dem Laden des Projekts warf einen Fehler. Browser-Durchgang 26/26 (3 Läufe). **Noch zu tun:** der Mock zeigt die Platten
-noch als Karten und das Raster „Kachel“ beim Baugruppen-Reiter — beim Bau der Fertigung (Paket 3) als gruppierte Tabelle umsetzen und den Mock anpassen.
+neu und verlor den Doppelklick (jetzt nur Markierung umschalten); ein Aufruf vor dem Laden des Projekts warf einen Fehler. Browser-Durchgang 26/26 (3 Läufe). **Mock nachgezogen (11.10.2026):** Kennzahlen als Zeilen, Fertigung als gruppierte Tabelle, Kachelraster als Liste (19/19).
 **Nachgezogen auf den Stil des Mocks (Anwender: „wirkt wie der Viewer, nicht wie ein Werkzeug“):** Mitte mit Reitern (Vorschau · Stückliste · Fertigung) statt Kennzahlen-Karten, die flache
 Stückliste als dichte Tabelle (Druckteile mit Menge, Material, Gewicht, Zeit; Kaufteile nach Kategorie mit Bezug), Statuszeile unten, Suche im Baum, 13 px und 24–26 px Zeilen; Bilder
 jetzt im hellen Thema (die App startet standardmässig dunkel). Neue Prüfungen 23/23 (Tabelle, Zeile wählt im Baum, Suche, Statuszeile; Gegenprobe Suche fällt). **Offen (Paket 3):** Reiter Fertigung

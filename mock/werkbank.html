@@ -112,22 +112,17 @@ h3.ab:first-child { margin-top: 0; }
 /* 3D-Reiter */
 .dreid { height: 100%; min-height: 260px; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); position: relative; }
 .dreid .hinweis { position: absolute; bottom: 10px; left: 12px; right: 12px; color: var(--ink-3); font-size: 12px; text-align: center; }
-.kachelraster { display: grid; grid-template-columns: repeat(auto-fill, 110px); gap: 8px; padding: 12px; width: 100%; align-self: start; }
-.kachel { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px; text-align: center; font-size: 11.5px; cursor: pointer; background: var(--bg); }
-.kachel:hover { border-color: var(--accent); }
 
-/* Fertigung */
+/* Fertigung: eine gruppierte Tabelle, kein Raster aus Karten */
+.ft tbody.ftg.dropp td { background: var(--accent-soft); }
+.ft tr.pos { cursor: grab; }
+.ft tr.pos:hover td { background: var(--panel-2); }
+.kv { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 10px; border-bottom: 1px solid var(--line); }
+.kv span { color: var(--ink-2); }
+.kv b { font: 500 12.5px var(--mono); }
 .stepper2 { display: inline-flex; align-items: center; gap: 3px; }
-.stepper2 button, .karte .pos .kn { width: 20px; height: 20px; padding: 0; justify-content: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; line-height: 1; }
+.stepper2 button, .ft .pos .kn { width: 20px; height: 20px; padding: 0; justify-content: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; line-height: 1; }
 .stepper2 span { min-width: 26px; text-align: center; }
-.platten { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; align-items: start; }
-.karte { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
-.karte.dropp { border-color: var(--accent); background: var(--accent-soft); }
-.karte header { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); font-weight: 600; }
-.karte header span.d { margin-left: auto; font: 500 12px var(--mono); color: var(--ink-2); }
-.karte .pos { display: flex; align-items: center; gap: 6px; padding: 3px 8px; height: 25px; cursor: grab; }
-.karte .pos:hover { background: var(--panel-2); }
-.karte .leerp { padding: 12px 8px; color: var(--ink-3); text-align: center; border: 1px dashed var(--line); margin: 8px; border-radius: var(--radius); }
 .fort { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 4px 0 10px; }
 .fort i { display: block; height: 100%; background: var(--good); }
 
@@ -145,10 +140,6 @@ h3.ab:first-child { margin-top: 0; }
 .feld .einh span { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 11px; pointer-events: none; }
 .feld .stepper { display: flex; gap: 3px; } .feld .stepper input { text-align: center; font-family: var(--mono); }
 .feld .stepper button { width: 26px; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; }
-.werte { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 6px 10px; }
-.werte div { background: var(--panel); padding: 5px 8px; }
-.werte small { display: block; font: 11px var(--mono); color: var(--ink-3); }
-.werte b { font: 500 14px var(--mono); }
 .verw { padding: 2px 10px; }
 .verw a { display: flex; gap: 6px; align-items: center; padding: 3px 4px; border-radius: var(--radius); cursor: pointer; color: var(--ink); text-decoration: none; }
 .verw a:hover { background: var(--panel-2); }
@@ -643,23 +634,29 @@ function zeigeDreiD() {
       <div class="hinweis">${esc(t.name)} · ${x} × ${y} × ${z} mm — im echten Programm der vorhandene 3D-Betrachter (WebGL oder ohne Grafikkarte)</div></div>`;
   }
   const kin = (D.kinder[gewaehltZiel()] || []).filter((e) => D.teile[e.ziel].typ === "druck");
-  return `<div class="dreid" style="align-items:start"><div class="kachelraster">${kin.map((e) => `<div class="kachel" data-z="${e.ziel}"><svg viewBox="0 0 40 40" width="46">${ICON.druck.replace('class="i ic-druck"', 'class="i ic-druck" stroke-width="1"')}</svg><div>${esc(D.teile[e.ziel].name)}</div></div>`).join("") || '<div class="leer">Ein Druckteil im Baum wählen.</div>'}</div>
-    <div class="hinweis">Eine zusammengesetzte Gesamtansicht braucht die Lage der Teile (Platzierungen aus 3MF/FreeCAD) — später. Bis dahin: Einzelteil wählen.</div></div>`;
+  return `<table class="tab"><thead><tr><th></th><th>Druckteil</th><th class="re">Menge</th><th class="re">Maße</th></tr></thead><tbody>${kin.map((e) => { const t = D.teile[e.ziel];
+      return `<tr class="zl" data-z="${e.ziel}"><td>${ICON.druck}</td><td>${esc(t.name)}</td><td class="re">${e.menge}×</td><td class="re dim">${t.abm.join(" × ")} mm</td></tr>`; }).join("")
+    || '<tr><td colspan="4" class="leer">Ein Druckteil im Baum wählen.</td></tr>'}</tbody></table>
+    <div class="legende">Eine zusammengesetzte Gesamtansicht braucht die Lage der Teile (Platzierungen aus 3MF/FreeCAD) — später. Bis dahin: Einzelteil im Baum wählen.</div>`;
 }
 function zeigeFertigung(v) {
   if (!istProjekt()) return `<div class="leer">Druckplatten gehören zu einem <b>Projekt</b>.<br>Öffne ein Projekt (Auswahl oben), um Teile auf Platten zu verteilen.</div>`;
   const bed = PLAN.bedarf, nichtVerteilt = Object.keys(bed).filter((z) => offen(z) > 0);
-  const zeile = (z, menge, von) => `<div class="pos" draggable="true" data-z="${z}" data-von="${von}">${ICON.druck}<span class="n" style="flex:1">${esc(D.teile[z].name)}</span>
-    ${von ? `<span class="stepper2"><button data-pm="-1" data-pl="${von}" data-pz="${z}" title="eins weniger">−</button><span class="mono">${menge}×</span><button data-pm="1" data-pl="${von}" data-pz="${z}" title="eins mehr">＋</button></span><button class="kn" data-px="${von}" data-pz="${z}" title="zurück nach „Nicht verteilt“">×</button>` : `<span class="mono dim">${menge}×</span>`}</div>`;
+  const zeile = (z, menge, von) => { const t = D.teile[z]; return `<tr class="pos" draggable="true" data-z="${z}" data-von="${von}"><td>${ICON.druck}</td><td>${esc(t.name)}</td>
+    <td class="re">${von ? `<span class="stepper2"><button data-pm="-1" data-pl="${von}" data-pz="${z}" title="eins weniger">−</button><span class="mono">${menge}×</span><button data-pm="1" data-pl="${von}" data-pz="${z}" title="eins mehr">＋</button></span>` : menge + "×"}</td>
+    <td class="re">${dauer(t.min * menge)}</td><td class="re">${zahl(t.g * menge, 1)} g</td><td>${von ? `<button class="kn" data-px="${von}" data-pz="${z}" title="zurück nach „Nicht verteilt“">×</button>` : ""}</td></tr>`; };
+  const gruppe = (id, titel, marke, posten, summe) => `<tbody class="ftg" data-platte="${id}"><tr class="gr"><td></td><td colspan="2">${titel}${marke ? ` <span class="marke">${esc(marke)}</span>` : ""}</td><td class="re" colspan="3">${summe}</td></tr>
+    ${posten.join("") || '<tr><td></td><td colspan="5" class="dim">Teile hierher ziehen</td></tr>'}</tbody>`;
+  const nv = nichtVerteilt.map((z) => zeile(z, offen(z), ""));
   return `<div style="display:flex;align-items:center;gap:10px"><b>${v.ver} von ${v.ges} Druckteilen verteilt</b><span class="dim">${v.ges - v.ver ? `${v.ges - v.ver} fehlen noch` : "alles verteilt"}</span><span class="luecke" style="flex:1"></span><button class="kn rand" id="pn">${ICON.plus}Druckplatte</button></div>
     <div class="fort"><i style="width:${v.ges ? (100 * v.ver / v.ges) : 0}%"></i></div>
-    <div class="platten">
-      <div class="karte" data-platte=""><header>Nicht verteilt<span class="d">${nichtVerteilt.reduce((a, z) => a + offen(z), 0)}</span></header>${nichtVerteilt.map((z) => zeile(z, offen(z), "")).join("") || '<div class="leerp">Alles verteilt.</div>'}</div>
-      ${meinePlatten().map((p) => { const min = p.posten.reduce((a, x) => a + D.teile[x.ziel].min * x.menge, 0), g = p.posten.reduce((a, x) => a + D.teile[x.ziel].g * x.menge, 0);
-        return `<div class="karte" data-platte="${p.id}"><header><span>${esc(p.name)}</span><span class="marke">${esc(p.material)}</span><span class="d">${dauer(min)} · ${zahl(g, 0)} g</span></header>${p.posten.map((x) => zeile(x.ziel, x.menge, p.id)).join("") || '<div class="leerp">Teile aus „Nicht verteilt“ hierher ziehen</div>'}</div>`; }).join("")}
-    </div>
+    <table class="tab ft"><thead><tr><th></th><th>Teil</th><th class="re">Menge</th><th class="re">Zeit</th><th class="re">Gewicht</th><th></th></tr></thead>
+    ${gruppe("", "Nicht verteilt", "", nv, nichtVerteilt.reduce((a, z) => a + offen(z), 0) + " Stück")}
+    ${meinePlatten().map((p) => { const min = p.posten.reduce((a, x) => a + D.teile[x.ziel].min * x.menge, 0), g = p.posten.reduce((a, x) => a + D.teile[x.ziel].g * x.menge, 0);
+      return gruppe(p.id, esc(p.name), p.material, p.posten.map((x) => zeile(x.ziel, x.menge, p.id)), `${dauer(min)} · ${zahl(g, 0)} g`); }).join("")}</table>
     <div class="legende">Ziehen legt, was von einem Teil noch fehlt, auf die Platte; ＋ und − verteilen die Menge (acht Halter dürfen auf zwei Platten zu je vier liegen). Im Baum: orange = noch nicht ganz verteilt.</div>`;
 }
+const kv = (l, v) => `<div class="kv"><span>${l}</span><b>${v}</b></div>`;
 function feld(l, inner) { return `<div class="feld"><label>${l}</label>${inner}</div>`; }
 function zeichneInsp() {
   const k = gewaehlt(), ziel = k ? k.e.ziel : wurzel, t = D.teile[ziel], vs = wo(ziel).filter((v) => !(k && v.e.id === k.e.id && false));
@@ -667,7 +664,7 @@ function zeichneInsp() {
   h += `<div class="titel"><b>${ICON[t.typ]} ${esc(t.name)}</b><div class="dim">${t.typ === "projekt" ? "Projekt" : t.typ === "baugr" ? "Baugruppe (wiederverwendbarer Baustein)" : t.typ === "druck" ? "Druckteil · " + t.fmt : "Zukaufteil · " + esc(t.kat)}${k ? ` · in ${esc(D.teile[k.asm].name)}` : ""}</div></div>`;
   if (t.typ === "baugr" || t.typ === "projekt") {
     const s = summen2(ziel);
-    h += `<div class="werte"><div><small>GEWICHT</small><b>${zahl(s.g, 0)} g</b></div><div><small>DRUCKZEIT</small><b>${dauer(s.min)}</b></div><div><small>DRUCKTEILE</small><b>${s.teile}</b></div><div><small>ZUKAUFTEILE</small><b>${s.kauf}</b></div></div>`;
+    h += `<div class="gruppe">KENNZAHLEN</div>${kv("Gewicht", zahl(s.g, 0) + " g")}${kv("Druckzeit", dauer(s.min))}${kv("Druckteile", s.teile + " Stück")}${kv("Zukaufteile", s.kauf + " Stück")}`;
     h += `<div class="gruppe">${t.typ === "projekt" ? "PROJEKT" : "BAUGRUPPE"}</div>`;
     h += feld("Name", `<input id="f-name" value="${esc(t.name)}">`);
     h += feld("Status", `<select id="f-status">${["Entwurf", "In Arbeit", "Fertig"].map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`).join("")}</select>`);
@@ -685,7 +682,7 @@ function zeichneInsp() {
       h += feld("Schichthöhe", `<div class="einh"><input id="f-schicht" value="${k.e.schicht ?? 0.2}"><span>mm</span></div>`);
       h += feld("Notiz", `<textarea id="f-pnotiz" rows="2" placeholder="z. B. Stützen nur auf Druckbett">${esc(k.e.notiz || "")}</textarea>`);
       h += `<div class="legende" style="padding:2px 10px">Gilt für diese Position und alle ihre Exemplare. Dieselbe Datei kann woanders anders gedruckt werden.</div>`;
-      h += `<div class="gruppe">MODELL</div><div class="werte"><div><small>GEWICHT JE STÜCK</small><b>${zahl(t.g, 1)} g</b></div><div><small>ZEIT JE STÜCK</small><b>${dauer(t.min)}</b></div></div>`;
+      h += `<div class="gruppe">MODELL</div>${kv("Gewicht je Stück", zahl(t.g, 1) + " g")}${kv("Zeit je Stück", dauer(t.min))}`;
     }
   }
   if (t.typ === "kauf") {
@@ -695,7 +692,7 @@ function zeichneInsp() {
     h += feld("Artikelnr.", `<input id="k-art" value="${esc(t.artnr)}">`);
     h += feld("Hinweis", `<textarea id="k-hin" rows="2" placeholder="z. B. mit Loctite sichern">${esc(t.hinweis)}</textarea>`);
     const g = summen().kauf.find((x) => x.ziel === ziel);
-    h += `<div class="werte"><div><small>BEDARF HIER</small><b>${g ? g.menge : 0}×</b></div><div><small>NORM</small><b>${esc(t.norm || "–")}</b></div></div>`;
+    h += `${kv("Bedarf hier", (g ? g.menge : 0) + "×")}${kv("Norm", esc(t.norm || "–"))}`;
   }
   const ww = wege(ziel);
   h += `<div class="gruppe">WO VERBAUT · IM GANZEN KATALOG</div><div class="verw">${ww.map((w) => `<a data-sp="${w.weg[w.weg.length - 1].kante}" data-top="${w.weg[0].id}">${ICON[D.teile[w.weg[0].id].typ]}<span>${w.weg.map((x) => esc(D.teile[x.id].name)).join(" › ")}</span><span class="m">${w.weg.map((x) => x.menge).join(" × ")} = ${w.gesamt}×</span></a>`).join("") || '<span class="dim">In keiner Baugruppe und keinem Projekt.</span>'}</div>`;
@@ -733,7 +730,7 @@ document.addEventListener("click", (e) => {
   const r = t.closest("[data-r]"); if (r) { reiter = r.dataset.r; return zeichneMitte(); }
   const tg = t.closest(".pf[data-t]"); if (tg) { const k = tg.dataset.t; ausgeklappt.has(k) ? ausgeklappt.delete(k) : ausgeklappt.add(k); return zeichneBaum(); }
   const z = t.closest(".z[data-p]"); if (z && !t.closest(".pf")) { sel = z.dataset.p ? z.dataset.p.split("/") : []; return alles(); }
-  const row = t.closest("tr[data-z], .kachel[data-z]"); if (row && row.closest("#flaeche")) { const g = gang().find((x) => x.e.ziel === row.dataset.z); if (g) { for (let i = 1; i < g.pfad.length; i++) ausgeklappt.add(pfadKey(g.pfad.slice(0, i))); sel = g.pfad; alles(); } return; }
+  const row = t.closest("tr.zl[data-z]"); if (row && row.closest("#flaeche")) { const g = gang().find((x) => x.e.ziel === row.dataset.z); if (g) { for (let i = 1; i < g.pfad.length; i++) ausgeklappt.add(pfadKey(g.pfad.slice(0, i))); sel = g.pfad; alles(); } return; }
   const sp = t.closest("[data-sp]"); if (sp) return springe(sp.dataset.sp, sp.dataset.top);
   if (t.closest("#sk")) { schubladeZu = !schubladeZu; return zeichneSchublade(); }
   if (t.closest("#pn")) return platteNeu();
@@ -790,13 +787,13 @@ document.addEventListener("dragstart", (e) => {
 document.addEventListener("dragover", (e) => {
   document.querySelectorAll(".dropp").forEach((x) => x.classList.remove("dropp"));
   if (!zug) return;
-  const z = e.target.closest(".z"), kt = e.target.closest(".karte[data-platte]");
+  const z = e.target.closest(".z"), kt = e.target.closest("tbody.ftg[data-platte]");
   if (z && zug.art !== "pos") { e.preventDefault(); z.classList.add("dropp"); } else if (kt && zug.art === "pos") { e.preventDefault(); kt.classList.add("dropp"); }
 });
 document.addEventListener("dragend", () => { zug = null; document.querySelectorAll(".dropp").forEach((x) => x.classList.remove("dropp")); });
 document.addEventListener("drop", (e) => {
   if (!zug) return; e.preventDefault();
-  const z = e.target.closest(".z"), kt = e.target.closest(".karte[data-platte]");
+  const z = e.target.closest(".z"), kt = e.target.closest("tbody.ftg[data-platte]");
   if (z && zug.art === "katalog") {
     const ke = z.dataset.e && kante(z.dataset.e), ziel = !ke ? wurzel : D.teile[ke.e.ziel].typ === "baugr" ? ke.e.ziel : ke.asm;
     hinzufuegen(ziel, zug.id);
