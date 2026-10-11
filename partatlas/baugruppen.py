@@ -614,7 +614,7 @@ class Baugruppen:
                      **{k: kante.get(k) for k in POSITIONSFELDER if k != "menge"}}
                 if art == "modell":
                     kurz, d = self._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
-                    e.update(name=kurz["name"], format=kurz["format"], hash=kurz["hash"], bild=kurz["bild"], fehlt=kurz["fehlt"],
+                    e.update(name=kurz["name"], format=kurz["format"], hash=kurz["hash"], vorschau=kurz["vorschau"], bild=kurz["bild"], fehlt=kurz["fehlt"],
                              entwurf=kurz["entwurf"], material_wirksam=d["material"], material_angenommen=d["material_angenommen"])
                 elif art == "baugruppe":
                     e["name"] = self.db.get_node(r, readonly=True)["name"]
@@ -639,7 +639,7 @@ class Baugruppen:
             if art == "modell":
                 kurz, d = self._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
                 z = druck.setdefault(kid, {"id": kid, "ref": ref(MODELL, kid), "name": kurz["name"], "format": kurz["format"], "hash": kurz["hash"],
-                                           "bild": kurz["bild"], "fehlt": kurz["fehlt"], "entwurf": kurz["entwurf"], "menge": 0, "materialien": {},
+                                           "vorschau": kurz["vorschau"], "bild": kurz["bild"], "fehlt": kurz["fehlt"], "entwurf": kurz["entwurf"], "menge": 0, "materialien": {},
                                            "gewicht_g": 0.0, "zeit_s": 0, "gewicht_geschaetzt": False, "ohne_daten": False})
                 z["menge"] += bedarf
                 z["materialien"][d["material"]] = z["materialien"].get(d["material"], 0) + bedarf

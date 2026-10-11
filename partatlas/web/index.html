@@ -71,6 +71,12 @@
         <div id="ordner"></div>
       </div>
     </section>
+    <section class="sektion" data-sektion="projekte" data-labor>
+      <h3><button class="sk-kopf" data-sk="projekte">Projekte</button><span class="sk-akt"><button id="projekt-neu" title="Neues Projekt">＋</button></span></h3>
+      <div class="sk-inhalt">
+        <div id="projekte"></div>
+      </div>
+    </section>
     <section class="sektion" data-sektion="baugruppen">
       <h3><button class="sk-kopf" data-sk="baugruppen">Baugruppen</button><span class="sk-akt"><button id="baugruppe-neu" title="Neue Baugruppe">＋</button></span></h3>
       <div class="sk-inhalt">
@@ -127,6 +133,7 @@
   <button class="insp-auf" id="insp-auf" hidden title="Details wieder einblenden">‹</button>
 </div>
 
+<div id="werkbank" class="wb" hidden></div>
 <dialog id="dialog"><form method="dialog" id="dialog-inhalt"></form></dialog>
 <!-- Einlesen mit Fortschritt (wie pDMS): eigenes Fenster, damit eine Rückfrage (#dialog) es nicht ersetzt. -->
 <!-- Was im Hintergrund läuft (Vorschaubilder, FreeCAD, Einlesen beim Start), klein beim Zahnrad. -->
@@ -139,6 +146,7 @@
 <input type="file" id="bild-wahl" hidden multiple accept="image/png,image/jpeg,image/webp">
 <script src="/web/app.js"></script>
 <script src="/web/baugruppen.js"></script>
+<script src="/web/werkbank.js"></script>
 <script src="/web/aufraeumen.js"></script>
 <script src="/web/zuordnen.js"></script>
 <script src="/web/eigene.js"></script>
