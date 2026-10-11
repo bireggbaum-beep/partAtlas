@@ -83,6 +83,11 @@ je Teil + Druckplatten (erst Entwurf, Frage offen: Platte = erweiterte Sammlung 
 Befehlspalette (Strg+K), Rechtsklick (Wo verbaut, Tauschen, Fork). Entwurf: `mock/werkbank.html` (bedienbar, Daten im Skript; im Browser geprüft, 12 Bedienschritte,
 keine Konsolenfehler). **Offen/Entscheid:** 3D zeigt nur das Einzelteil (Gesamtansicht braucht Platzierungen aus 3MF/FreeCAD); Platte = Sammlung oder eigener Knoten;
 Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkbank nüchtern (die „freundlich“-Vorgabe galt dem Katalog).
+**Paket A erledigt (0.57.0):** Bezugsquelle (Link/Artikelnr/Hinweis) am Kaufteil, `PATCH /api/kaufteile/{id}`, in Einkaufsliste, MD, CSV (hinten angehängt), PDF;
+`Baugruppen.verbaut_in` + `GET /api/verwendung` (mehrstufig, mit Gesamtmenge). Oberfläche im Labor: in der Stückliste je Zeile „Wo verbaut?“ (⛓) und bei Kaufteilen
+„Bezug“ (🛒), Link als Verweis unter dem Namen. test_baugruppen 60/60 (+11; Gegenproben: Link-Prüfung, Mengenmultiplikation, CSV-Link fallen), Oberfläche gezielt im Browser
+(5/5, Gegenprobe fällt), nicht in test_ui. Keine Änderung der Speicherform (optionale Felder). **Nicht gemacht:** „Wo verbaut“ im Inspektor-Reiter „Verwendet“ des Modells
+(zeigt weiter nur die direkten Baugruppen); Preis bewusst weggelassen.
 **Paket 0 erledigt (0.56.0):** `teilezugriff.py` (reines Verschieben, Verhalten gleich); Wächter-Prüfung in `test_baugruppen` (49/49, Gegenprobe
 fällt); Labor-Schalter (Einstellungen › Ansicht, `?labor=1`/`?labor=0`, `data-labor`) — gezielt im Browser geprüft (6/6, Gegenprobe fällt), nicht in
 `test_ui`. Suiten: baugruppen 49, eigene 17, api 86, aufraeumen 13, suche 28, verwalten 76. **Nächstes:** Paket A. UI-Wünsche des Anwenders folgen.

@@ -307,7 +307,9 @@ class Stueckliste:
                 t_node = self.bg.db.get_node(f"{KAUFTEIL}/{e['id']}", readonly=True) or {}
                 zeilen.append([str(e["bedarf"]), e["einheit"],
                                Paragraph(_esc(e["name"]) + (f" <font size='6.5' color='#888888'>{_esc(t_node.get('norm'))}</font>"
-                                                            if t_node.get("norm") else ""), S["zelle"]),
+                                                            if t_node.get("norm") else "")
+                                         + "".join(f"<br/><font size='6.5' color='#888888'>{_esc(x)}</font>"
+                                                   for x in (e.get("link"), f"Art.-Nr. {e['artikelnr']}" if e.get("artikelnr") else "", e.get("hinweis")) if x), S["zelle"]),
                                Paragraph(_esc(e.get("kategorie") or ""), S["zelle"]), self._ok(e["offen"] == 0)])
             t = Table(zeilen, colWidths=[15 * mm, 16 * mm, None, 35 * mm, 9 * mm], repeatRows=1)
             t.setStyle(TableStyle(tabellenstil + [("FONT", (0, 1), (0, -1), "Helvetica-Bold", 9), ("FONT", (1, 1), (1, -1), "Helvetica", 8),

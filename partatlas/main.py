@@ -28,7 +28,7 @@ import numpy as np
 
 from .eigene import Eigene
 from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung, zuordnen
-from .baugruppen import Baugruppen
+from .baugruppen import ARTEN, Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
@@ -821,6 +821,18 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.post("/api/kaufteile")
     def kaufteil_neu(d: dict = Depends(json_koerper)):
         return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}
+
+    @app.patch("/api/kaufteile/{kid}")
+    def kaufteil_aendern(kid: str, d: dict = Depends(json_koerper)):
+        B().kaufteil_aendern(kid, d)
+        return {"ok": True}
+
+    @app.get("/api/verwendung")
+    def verwendung(ziel: str):
+        """Wo steckt ein Teil — über alle Ebenen. `ziel` ist der Verweis (`MODEL_ASSET/m_000001`, `PURCHASED_PART/…`, `ASSEMBLY/b_0001`)."""
+        if ziel.partition("/")[0] not in ARTEN:
+            raise KatalogFehler("Unbekannte Art von Teil.")
+        return B().verbaut_in(ziel)
 
     # Eigene Komponenten
     @app.get("/api/eigene")

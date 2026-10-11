@@ -436,6 +436,10 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   anlegen; Mengen aus Dateinamen (`Arm_x4`, `4x_Arm`); Ordner, die wie
   Baugruppen aussehen, werden vorgeschlagen. Kacheln auf eine Baugruppe
   ziehen fügt sie hinzu.
+- **Bezugsquelle am Kaufteil** (0.57.0, Labor): Link, Artikelnummer und Hinweis (alles freiwillig, am Kaufteil, gilt in allen Baugruppen; auch
+  an den mitgelieferten Normteilen). Der Link nur als `http(s)://` (er steht in der Oberfläche als Verweis). Erscheint in Einkaufsliste, Markdown,
+  CSV (zwei Spalten hinten: Bezugsquelle, Artikelnr) und PDF. **Wo verbaut? über alle Ebenen** (`GET /api/verwendung?ziel=…`): je Verwendung der Weg von
+  der obersten Baugruppe bis zum Teil, die Menge je Ebene und die Gesamtmenge; die Gesamtmengen aller Wege ergeben den Bedarf der Einkaufsliste.
 - „Fehlende in die Warteschlange“, Export als CSV und Markdown,
   „steckt in …“ an jedem Modell und in der Löschvorschau.
 

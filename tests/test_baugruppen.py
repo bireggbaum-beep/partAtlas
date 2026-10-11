@@ -192,6 +192,40 @@ if __name__ == "__main__":
         check("Export Markdown mit Einkaufsliste über alle Ebenen", "18 Stück Zylinderkopfschraube M3×10" in md)
         check("Export CSV mit Semikolon (öffnet in deutschem Excel)", csv_text.splitlines()[0].startswith("Art;Menge;"))
 
+        # -- Bezugsquelle am Kaufteil (Paket A)
+        link = "https://www.aliexpress.com/item/1005001"
+        r = c.patch("/api/kaufteile/din912-m3x10", json={"link": link, "artikelnr": "M3x10-A2", "hinweis": "Mit Schraubensicherung"})
+        check("Kaufteil: Link, Artikelnummer und Hinweis speichern", r.status_code == 200
+              and next(t for t in c.get("/api/kaufteile", params={"q": "m3x10"}).json() if t["id"] == "din912-m3x10")["link"] == link)
+        schr = next(e for e in c.get(f"/api/baugruppen/{bid}").json()["summen"]["einkauf"] if e["id"] == "din912-m3x10")
+        check("Einkaufsliste trägt Link, Artikelnummer und Hinweis", (schr["link"], schr["artikelnr"], schr["hinweis"]) == (link, "M3x10-A2", "Mit Schraubensicherung"))
+        md = c.get(f"/api/baugruppen/{bid}/export", params={"format": "md"}).text
+        zeile = next(z for z in c.get(f"/api/baugruppen/{bid}/export").text.splitlines() if "M3×10" in z)
+        check("Markdown und CSV nennen die Bezugsquelle", f"{link} (M3x10-A2)" in md and zeile.endswith(f"{link};M3x10-A2"))
+        pdf = PdfReader(io.BytesIO(c.get(f"/api/baugruppen/{bid}/export", params={"format": "pdf"}).content))
+        check("PDF-Einkaufsliste nennt die Bezugsquelle", "aliexpress.com/item/1005001" in "".join(x.extract_text() for x in pdf.pages))
+        check("Link nur mit http(s): javascript: wird abgelehnt",
+              c.patch("/api/kaufteile/din912-m3x10", json={"link": "javascript:alert(1)"}).status_code == 400
+              and c.patch("/api/kaufteile/din912-m3x10", json={"link": 'https://x.de/"onclick=1'}).status_code == 400)
+        check("Unbekanntes Feld, zu langer Text und unbekanntes Kaufteil werden abgelehnt",
+              c.patch("/api/kaufteile/din912-m3x10", json={"preis": 1}).status_code == 400
+              and c.patch("/api/kaufteile/din912-m3x10", json={"hinweis": "x" * 201}).status_code == 400
+              and c.patch("/api/kaufteile/gibt-es-nicht", json={"link": link}).status_code == 400)
+        c.patch("/api/kaufteile/din912-m3x10", json={"link": ""})
+        check("Link leeren geht", next(t for t in c.get("/api/kaufteile", params={"q": "m3x10"}).json() if t["id"] == "din912-m3x10")["link"] == "")
+
+        # -- Wo verbaut über alle Ebenen (Paket A)
+        wege = c.get("/api/verwendung", params={"ziel": "PURCHASED_PART/din912-m3x10"}).json()
+        gesamt = sorted((w["gesamt"], [x["name"] for x in w["weg"]]) for w in wege)
+        check("Wo verbaut: M3×10 steckt direkt in der Drohne (2) und über das Arm-Modul darin (4×4 = 16)",
+              gesamt == [(2, ["Drohne V2"]), (16, ["Drohne V2", "Arm-Modul"])])
+        check("Die Gesamtmengen aller Wege ergeben den Bedarf der Einkaufsliste (18)", sum(w["gesamt"] for w in wege) == 18)
+        halter = c.get("/api/verwendung", params={"ziel": f"MODEL_ASSET/{m['Halter']}"}).json()
+        check("Wo verbaut: ein Halter steckt 2× im Arm-Modul, das 4× in der Drohne steckt (8)",
+              [(w["gesamt"], [(x["name"], x["menge"]) for x in w["weg"]]) for w in halter] == [(8, [("Drohne V2", 4), ("Arm-Modul", 2)])])
+        check("Wo verbaut: eine unbekannte Art von Teil wird abgelehnt",
+              c.get("/api/verwendung", params={"ziel": "TAG/x"}).status_code == 400)
+
         # -- Lange Beschreibung liegt in vault_text/ und kommt beim Lesen ganz zurück
         lang = ("Bauanleitung: " + "Teil an Teil schrauben, dann prüfen. " * 60).strip()
         kurz = "Kurz."

@@ -29,6 +29,8 @@ ENTHAELT = "CONTAINS"
 
 ARTEN = {MODELL: "modell", BAUGRUPPE: "baugruppe", KAUFTEIL: "kaufteil", EIGEN: "eigen"}
 POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
+# Wo man ein Kaufteil bekommt: ein Verweis, die Artikelnummer beim Händler, ein Hinweis („mit Schraubensicherung“). Alles freiwillig.
+BEZUGSFELDER = {"link": 500, "artikelnr": 60, "hinweis": 200}
 
 # Gewicht ohne Slicer-Daten, geschätzt wie ein Slicer mit Standardwerten
 # druckt: eine Hülle von 1,2 mm (2–3 Wände, Boden, Deckel) und 15 %
@@ -93,6 +95,24 @@ class Baugruppen:
         self.db.create_node(KAUFTEIL, kid, {"name": name, "kategorie": kategorie or "Eigene",
                                             "einheit": einheit or "Stück", "standard": False})
         return kid
+
+    def kaufteil_aendern(self, kid, werte):
+        """Bezugsquelle, Artikelnummer und Hinweis eines Kaufteils (auch der mitgelieferten Normteile). Der Link steht später als Verweis
+        in der Oberfläche: nur http und https, sonst liesse sich dort Skript einschleusen."""
+        if self.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True) is None:
+            raise KatalogFehler("Dieses Kaufteil gibt es nicht.")
+        neu = {}
+        for k, v in werte.items():
+            if k not in BEZUGSFELDER:
+                raise KatalogFehler(f"Feld {k!r} gibt es an einem Kaufteil nicht.")
+            v = str(v or "").strip()
+            if len(v) > BEZUGSFELDER[k]:
+                raise KatalogFehler(f"{k} ist zu lang (höchstens {BEZUGSFELDER[k]} Zeichen).")
+            if k == "link" and v and not re.fullmatch(r"https?://[^\s<>\"']+", v, re.I):
+                raise KatalogFehler("Der Link muss mit http:// oder https:// beginnen.")
+            neu[k] = v
+        if neu:
+            self.db.update_node(KAUFTEIL, kid, neu)
 
     # ------------------------------------------------------------ Baugruppen
 
@@ -322,6 +342,29 @@ class Baugruppen:
                              "verwendet_in": len(self.verwendet_in(ref(BAUGRUPPE, bid)))})
         return sorted(ergebnis, key=lambda x: x["name"].lower())
 
+    def verbaut_in(self, ziel):
+        """Wo steckt dieses Teil — über alle Ebenen bis zur obersten Baugruppe. Je Verwendung ein Weg von oben nach unten
+        („Drohne › Arm-Modul“) mit der Menge je Ebene und der Gesamtmenge. Gegenstück zu `verwendet_in`, das nur die Eltern nennt."""
+        wege = []
+
+        def hoch(knoten, weg, faktor, gesehen):
+            eltern = [(e["source"], e.get("menge", 1)) for _, e in
+                      self.db.get_connected_edges(knoten, direction="in", rel_type=ENTHAELT)]
+            for quelle, menge in sorted(eltern):
+                if quelle in gesehen:
+                    continue
+                b = self.db.get_node(quelle, readonly=True)
+                if b is None:
+                    continue
+                schritt = {"id": quelle.split("/", 1)[1], "name": b["name"], "menge": menge}
+                neu = [schritt] + weg
+                if self.db.get_connected_edges(quelle, direction="in", rel_type=ENTHAELT):
+                    hoch(quelle, neu, faktor * menge, gesehen | {quelle})
+                else:
+                    wege.append({"weg": neu, "gesamt": faktor * menge})
+        hoch(ziel, [], 1, {ziel})
+        return sorted(wege, key=lambda w: (w["weg"][0]["name"].lower(), [x["name"].lower() for x in w["weg"]]))
+
     def exemplare(self, bid, pfad=()):
         """Wie oft wird diese Baugruppe insgesamt gebraucht? Oben 1; als
         Unterbaugruppe die Mengen der Eltern, multipliziert bis nach oben.
@@ -364,7 +407,8 @@ class Baugruppen:
                 eintrag["farbe_angenommen"] = daten["farbe_angenommen"]
             elif art == "kaufteil":
                 t = self.db.get_node(r, readonly=True)
-                eintrag.update(name=t["name"], kategorie=t.get("kategorie"), einheit=t.get("einheit", "Stück"))
+                eintrag.update(name=t["name"], kategorie=t.get("kategorie"), einheit=t.get("einheit", "Stück"),
+                               link=t.get("link") or "", artikelnr=t.get("artikelnr") or "", hinweis=t.get("hinweis") or "")
             elif art == "eigen":
                 e = self.db.get_node(r, readonly=True)
                 eintrag.update(name=e["name"], eigen_art=e.get("art") or "", eigen_masse=e.get("masse") or "",
@@ -427,7 +471,8 @@ class Baugruppen:
                 kaufteile += bedarf
                 t = self.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
                 e = kauf.setdefault(kid, {"id": kid, "name": t["name"], "einheit": t.get("einheit", "Stück"),
-                                          "kategorie": t.get("kategorie"), "bedarf": 0, "offen": 0})
+                                          "kategorie": t.get("kategorie"), "bedarf": 0, "offen": 0,
+                                          "link": t.get("link") or "", "artikelnr": t.get("artikelnr") or "", "hinweis": t.get("hinweis") or ""})
                 e["bedarf"] += bedarf
                 e["offen"] += offen
         runden = lambda x: round(x, 1)
@@ -473,14 +518,17 @@ class Baugruppen:
 
     def export(self, bid, art="csv"):
         d = self.detail(bid)
-        zeilen = [("Art", "Menge", "Einheit", "Erledigt", "Name", "Material", "Farbe", "Notiz")]
+        zeilen = [("Art", "Menge", "Einheit", "Erledigt", "Name", "Material", "Farbe", "Notiz", "Bezugsquelle", "Artikelnr")]
+        bezug = {e["id"]: e for e in d["summen"]["einkauf"]}
         for p in d["positionen"]:
             notiz = p.get("notiz") or ""
             if p["art"] == "eigen":      # Art, Maße und Notiz des Teils stehen mit in der Zeile
                 notiz = ", ".join(x for x in (p.get("eigen_art"), p.get("eigen_masse"), p.get("eigen_notiz"), notiz) if x)
             zeilen.append(({"modell": "Druckteil", "kaufteil": "Kaufteil", "baugruppe": "Baugruppe", "eigen": "Eigene Komponente"}[p["art"]],
                            p["menge"], p.get("einheit") or "Stück", p["erledigt"], p["name"],
-                           p.get("material") or "", p.get("farbe") or "", notiz))
+                           p.get("material") or "", p.get("farbe") or "", notiz,
+                           bezug.get(p["id"], {}).get("link", "") if p["art"] == "kaufteil" else "",
+                           bezug.get(p["id"], {}).get("artikelnr", "") if p["art"] == "kaufteil" else ""))
         if art == "csv":
             puffer = io.StringIO()
             csv.writer(puffer, delimiter=";").writerows(zeilen)
@@ -490,7 +538,8 @@ class Baugruppen:
         md += ["| " + " | ".join(str(x).replace("|", "/") for x in z) + " |" for z in zeilen[1:]]
         s = d["summen"]
         if s["einkauf"]:
-            md += ["", "## Einkaufsliste (alle Ebenen)", ""] + [f"- {e['bedarf']} {e['einheit']} {e['name']}" for e in s["einkauf"]]
+            md += ["", "## Einkaufsliste (alle Ebenen)", ""] + [f"- {e['bedarf']} {e['einheit']} {e['name']}" + (f" — {e['link']}" if e["link"] else "") + (f" ({e['artikelnr']})" if e["artikelnr"] else "")
+                                                                  + (f" · {e['hinweis']}" if e["hinweis"] else "") for e in s["einkauf"]]
         if s["eigene"]:
             md += ["", "## Eigene Komponenten (alle Ebenen)", ""] + [
                 f"- {e['bedarf']}× {e['name']}" + (f" ({e['art']})" if e["art"] else "") for e in s["eigene"]]

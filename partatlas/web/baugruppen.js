@@ -256,7 +256,9 @@ function position(p, nr) {
   } else if (p.art === "kaufteil") {
     vorschau = symbolFuer(p.kategorie);
     name = esc(p.name);
-    unter = `${esc(p.kategorie || "")}${p.einheit && p.einheit !== "Stück" ? " · in " + esc(p.einheit) : ""}`;
+    unter = [esc(p.kategorie || "") + (p.einheit && p.einheit !== "Stück" ? " · in " + esc(p.einheit) : ""),
+             p.artikelnr ? "Art.-Nr. " + esc(p.artikelnr) : "", p.hinweis ? esc(p.hinweis) : ""].filter(Boolean).join(" · ")
+      + (/^https?:\/\//i.test(p.link || "") ? ` · <a class="bz-bezug" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer" title="${esc(p.link)}">${esc(new URL(p.link).hostname.replace(/^www\./, ""))} ↗</a>` : "");
   } else if (p.art === "eigen") {
     vorschau = p.eigen_bild ? `<img loading="lazy" src="/api/eigene/${esc(p.id)}/bild?t=1" alt="">` : "🔩";
     name = esc(p.name);
@@ -279,7 +281,7 @@ function position(p, nr) {
     <span class="stepper"><button data-bg-menge="-1" data-ref="${r}">−</button><span>${p.menge}×</span><button data-bg-menge="1" data-ref="${r}">＋</button></span>
     <div class="bz-mat">${material}</div>
     <span class="bz-gew mono">${gewicht}</span>
-    <div class="bz-akt">${p.art === "modell" ? hoverAktionen(p) : ""}<button class="hv-btn weg" data-bg-weg="${r}" title="aus der Baugruppe nehmen">×</button></div></div>`;
+    <div class="bz-akt">${p.art === "modell" ? hoverAktionen(p) : ""}${p.art === "kaufteil" ? `<button class="hv-btn" data-labor data-bg-bezug="${r}" title="Bezugsquelle, Artikelnummer, Hinweis">🛒</button>` : ""}<button class="hv-btn" data-labor data-bg-wo="${r}" title="Wo verbaut? (über alle Ebenen)">⛓</button><button class="hv-btn weg" data-bg-weg="${r}" title="aus der Baugruppe nehmen">×</button></div></div>`;
 }
 
 // ---------------------------------------------------------------- Ändern
@@ -301,6 +303,32 @@ async function positionAendern(ref, werte) {
 }
 
 function positionVon(ref) { return bgDaten?.positionen.find((p) => p.ref === ref); }
+
+// Wo verbaut? Über alle Ebenen bis zur obersten Baugruppe, mit der Menge je Ebene und der Gesamtmenge (Paket A, nur im Labor).
+async function woVerbaut(p) {
+  const wege = await api(`/api/verwendung?ziel=${encodeURIComponent(p.ref)}`);
+  const summe = wege.reduce((a, w) => a + w.gesamt, 0);
+  await dialog(`<h2>Wo verbaut: ${esc(p.name)}</h2>
+    <p class="dim">${wege.length ? `In ${wege.length} ${wege.length === 1 ? "Verwendung" : "Verwendungen"}, zusammen ${summe}× im ganzen Katalog.` : "In keiner Baugruppe."}</p>
+    <div class="wo-liste">${wege.map((w) => `<div class="wo-zeile"><button type="button" class="knopf" data-baugruppe="${esc(w.weg[0].id)}" value="zu">${w.weg.map((x) => esc(x.name)).join(" › ")}</button>
+      <span class="mono">${w.weg.map((x) => x.menge).join(" × ")} = <b>${w.gesamt}×</b></span></div>`).join("")}</div>
+    <div class="knoepfe"><button class="knopf" value="zu">Schliessen</button></div>`);
+}
+
+// Bezugsquelle eines Kaufteils: Link zum Nachbestellen, Artikelnummer beim Händler, Hinweis („mit Schraubensicherung“). Nur im Labor.
+async function bezugBearbeiten(p) {
+  const a = await dialog(`<h2>Bezugsquelle: ${esc(p.name)}</h2>
+    <label class="bz-feld">Link<input type="url" id="bz-link" data-enter="#bz-ok" placeholder="https://…" value="${esc(p.link || "")}" autocomplete="off"></label>
+    <label class="bz-feld">Artikelnummer<input type="text" id="bz-art" data-enter="#bz-ok" maxlength="60" value="${esc(p.artikelnr || "")}" autocomplete="off"></label>
+    <label class="bz-feld">Hinweis<input type="text" id="bz-hin" data-enter="#bz-ok" maxlength="200" placeholder="z. B. mit Schraubensicherung" value="${esc(p.hinweis || "")}" autocomplete="off"></label>
+    <p class="dim">Gilt für dieses Kaufteil in allen Baugruppen. Der Link erscheint in der Einkaufsliste und in den Exporten.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja" id="bz-ok">Speichern</button></div>`);
+  if (a !== "ja") return;
+  try {
+    await api(`/api/kaufteile/${encodeURIComponent(p.id)}`, { method: "PATCH", body: { link: $("#bz-link").value, artikelnr: $("#bz-art").value, hinweis: $("#bz-hin").value } });
+  } catch (e) { toast(e.message); }
+  ladeBaugruppe();
+}
 
 async function neueBaugruppe(modelle = []) {
   const vorschlaege = zustand.bgVorschlaege || [];
@@ -492,6 +520,11 @@ document.addEventListener("click", async (e) => {
   if (z) { const p = positionVon(z.dataset.ref); return positionAendern(p.ref, { erledigt: Math.max(0, Math.min(p.bedarf, p.erledigt + Number(z.dataset.bgZaehlen))) }); }
   const v = t.closest("[data-bg-voll]");
   if (v) { const p = positionVon(v.dataset.bgVoll); return positionAendern(p.ref, { erledigt: p.bedarf }); }
+  const wo = t.closest("[data-bg-wo]");
+  if (wo) { e.stopPropagation(); return woVerbaut(positionVon(wo.dataset.bgWo)); }
+  const bezug = t.closest("[data-bg-bezug]");
+  if (bezug) { e.stopPropagation(); return bezugBearbeiten(positionVon(bezug.dataset.bgBezug)); }
+  if (t.closest(".bz-bezug")) return;
   const w = t.closest("[data-bg-weg]");
   if (w) {
     await api(`/api/baugruppen/${bid()}/positionen?ref=${encodeURIComponent(w.dataset.bgWeg)}`, { method: "DELETE" });

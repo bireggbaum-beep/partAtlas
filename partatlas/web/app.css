@@ -1030,3 +1030,12 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 .pfeil { margin-right: 2px; }
 .pfeil.auf, .g-pfeil.auf { transform: rotate(90deg); }
 .eintrag:hover .pfeil:is(.auf, .zu), .gruppe:hover .g-pfeil:is(.auf, .zu) { background-color: var(--ink); }
+
+/* Baugruppen: Bezugsquelle unter dem Namen, „Wo verbaut?“ als Liste der Wege */
+.bz-bezug { color: var(--accent); text-decoration: none; }
+.bz-bezug:hover { text-decoration: underline; }
+.bz-feld { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: var(--s3); margin: var(--s2) 0; }
+.bz-feld input { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 8px; }
+.wo-liste { max-height: 50vh; overflow: auto; margin: var(--s3) 0; }
+.wo-zeile { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.wo-zeile .knopf { text-align: left; }
