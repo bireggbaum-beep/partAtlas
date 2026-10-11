@@ -444,7 +444,7 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   nach einem Neustart des Programms leer). Jeder Schritt hält den Zustand der betroffenen Baugruppen (Name, Beschreibung, Positionen mit allen Feldern und
   Reihenfolge) und Kaufteile (Bezugsangaben) vorher und nachher; zurück setzt den Zustand vorher atomar wieder ein, ein Ziel, das es nicht mehr gibt, bleibt weg.
   Erfasst: Position hinzufügen/ändern/entfernen, Reihenfolge, Name und Beschreibung, „Material für alle offenen Teile“ (über alle Ebenen als ein Schritt),
-  Bezugsquelle. **Nicht erfasst:** Baugruppe anlegen und löschen (das Löschen fragt vorher), Zähler „erledigt“ ausgenommen (zählt als Änderung). Eine neue
+  Bezugsquelle. **Nicht erfasst:** Baugruppe anlegen und löschen (das Löschen fragt vorher). Eine neue
   Änderung leert die Wiederholen-Liste. `POST /api/baugruppen/rueckgaengig` und `/wiederholen`; Strg+Z / Strg+Umschalt+Z, nicht in Eingabefeldern.
 - „Fehlende in die Warteschlange“, Export als CSV und Markdown,
   „steckt in …“ an jedem Modell und in der Löschvorschau.
