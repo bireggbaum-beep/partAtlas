@@ -1149,3 +1149,23 @@ body.wb-an { overflow: hidden; }
 .wb-drop { outline: 1px dashed var(--accent); outline-offset: -1px; background: var(--accent-soft); }
 .wb-ititel { display: flex; gap: 10px; align-items: center; }
 .wb-thumb { width: 48px; height: 48px; object-fit: cover; border: 1px solid var(--line); border-radius: var(--radius); flex: none; }
+
+/* Fertigung in der Werkbank: gruppierte Tabelle */
+.wb-ftkopf { display: flex; align-items: center; gap: 10px; }
+.wb-fort { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 5px 0 10px; }
+.wb-fort i { display: block; height: 100%; background: var(--good); }
+.wb-ft tbody.wb-ftg.wb-drop td { background: var(--accent-soft); outline: none; }
+.wb-ft tr.wb-pos { cursor: grab; }
+.wb-ft input { background: transparent; border: 1px solid transparent; border-radius: var(--radius); padding: 1px 5px; font-weight: 600; width: 10em; }
+.wb-ft input.wb-pmat { font-weight: 400; width: 9em; padding: 1px 4px; font: 400 11px var(--mono); border-color: var(--line-strong); }
+.wb-ft input:hover, .wb-ft input:focus { border-color: var(--accent); outline: none; background: var(--bg); }
+.wb-ft .wb-auf { font-size: 12px; padding: 1px 3px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); max-width: 9em; }
+.wb-st { display: inline-flex; align-items: center; gap: 3px; }
+.wb-st span { min-width: 28px; text-align: center; font-family: var(--mono); }
+.wb-st button, .wb-ft .wb-kp { width: 20px; height: 20px; padding: 0; line-height: 1; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); cursor: pointer; opacity: 1; }
+.wb-st button:disabled { opacity: 0.35; cursor: default; }
+.wb-st button:hover:not(:disabled), .wb-ft .wb-kp:hover { border-color: var(--accent); color: var(--accent); }
+.wb-warn { margin-top: 6px; padding: 4px 8px; border: 1px solid var(--warn); border-radius: var(--radius); color: var(--ink); font-size: 12px; }
+.wb-punkt { font-size: 9px; flex: none; } .wb-punkt.offen { color: var(--warn); } .wb-punkt.ok { color: var(--good); }
+.wb-chip { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 1px 9px; cursor: pointer; color: var(--ink-2); font-size: 12px; }
+.wb-chip.an { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }

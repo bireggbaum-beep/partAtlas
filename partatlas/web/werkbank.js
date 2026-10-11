@@ -8,7 +8,7 @@
 // ihrer Baugruppe (und damit überall, wo diese Baugruppe verwendet wird). Alle Änderungen tragen `?im=<Kennung>` — das Projekt, das gerade
 // offen ist, führt die Liste fürs Rückgängig.
 
-const wb = { id: null, baum: null, flach: null, detail: null, sel: null, offen: new Set(), zurueck: [], index: {}, materialien: [], filter: "",
+const wb = { platten: null, fehlt: false, zugPos: null, id: null, baum: null, flach: null, detail: null, sel: null, offen: new Set(), zurueck: [], index: {}, materialien: [], filter: "",
   reiter: ["stueckliste", "fertigung"].includes(localStorageLesen("wb-reiter")) ? localStorageLesen("wb-reiter") : "stueckliste",
   kat: { tab: "teile", q: "", zu: localStorageLesen("wb-kat-zu") === "1", sel: null, liste: [] }, zug: null };
 
@@ -53,7 +53,7 @@ async function neuesProjekt() {
 
 async function wbOeffne(id, { zurueck = null } = {}) {
   if (zurueck) wb.zurueck.push(zurueck);
-  Object.assign(wb, { id, sel: null, baum: null, flach: null, detail: null, offen: new Set(), filter: "" });
+  Object.assign(wb, { id, sel: null, baum: null, flach: null, detail: null, platten: null, offen: new Set(), filter: "", fehlt: false });
   if ($("#wb-suche")) $("#wb-suche").value = "";
   if (!wb.materialien.length) api("/api/materialien").then((m) => { wb.materialien = m; }).catch(() => {});
   const el = $("#werkbank");
@@ -78,9 +78,10 @@ async function wbLaden({ inspektor = true } = {}) {
   const id = wb.id;
   if (!id) return;
   try {
-    const [baum, flach, detail] = await Promise.all([api(`${wbBasis(id)}/${id}/baum`), api(`${wbBasis(id)}/${id}/stueckliste`), api(`${wbBasis(id)}/${id}`)]);
+    const [baum, flach, detail, platten] = await Promise.all([api(`${wbBasis(id)}/${id}/baum`), api(`${wbBasis(id)}/${id}/stueckliste`), api(`${wbBasis(id)}/${id}`),
+      id.startsWith("p_") ? api(`/api/projekte/${id}/platten`) : null]);
     if (wb.id !== id) return;
-    Object.assign(wb, { baum, flach, detail });
+    Object.assign(wb, { baum, flach, detail, platten });
   } catch (e) {
     toast(e.message);
     wb.zurueck = [];
@@ -91,6 +92,8 @@ async function wbLaden({ inspektor = true } = {}) {
   wbZeichne(inspektor);
   wbKatListe();
 }
+
+const wbOffenVon = (mid) => (wb.platten?.verteilung.offen[mid]) || 0;
 
 // Jede Zeile des Baums unter ihrem Pfad merken: Auswahl und Bearbeiten finden die Position darüber wieder.
 function wbIndex() {
@@ -115,7 +118,7 @@ function wbGeruest() {
     <div class="wb-raum" id="wb-raum" style="--wb-l:${Number(localStorageLesen("wb-l")) || 300}px;--wb-r:${Number(localStorageLesen("wb-r")) || 330}px">
       <section class="wb-spalte"><div class="wb-titel"><b>AUFBAU</b><span class="wb-luecke"></span>
         <button class="wb-kn" id="wb-auf" title="Alles aufklappen">⊞</button><button class="wb-kn" id="wb-zu" title="Alles zuklappen">⊟</button></div>
-        <div class="wb-filter"><input id="wb-suche" placeholder="Im Baum suchen …" autocomplete="off"></div>
+        <div class="wb-filter"><input id="wb-suche" placeholder="Im Baum suchen …" autocomplete="off"><button class="wb-chip" id="wb-fehlt" title="Nur Teile, die noch nicht ganz auf Druckplatten verteilt sind">fehlt</button></div>
         <div class="wb-baum" id="wb-baum" tabindex="0"></div>
         <div class="wb-griff-h" id="wb-griff-h"></div>
         <div class="wb-schublade" id="wb-schublade" style="--wb-sh:${Number(localStorageLesen("wb-sh")) || 240}px"></div></section>
@@ -194,17 +197,20 @@ function wbZeile(e, container, tief, pfad) {
   const unter = baug ? (e.positionen || []).length : 0;
   const tags = [e.material ? `<span class="wb-tag">${esc(e.material)}</span>` : "", e.entwurf ? '<span class="wb-tag" title="Entwurf">✎</span>' : "",
     e.fehlt ? '<span class="wb-tag warn" title="Datei fehlt">!</span>' : ""].join("");
+  const rest = e.art === "modell" && wb.platten ? wbOffenVon(e.id) : 0;
+  const punkt = e.art === "modell" && wb.platten ? `<span class="wb-punkt ${rest ? "offen" : "ok"}" title="${rest ? `${rest} von ${wb.platten.verteilung.bedarf[e.id]} noch auf keiner Druckplatte` : "Vollständig auf Druckplatten verteilt"}">●</span>` : "";
   return `<div class="wb-z ${wb.sel?.p === p ? "sel" : ""}" data-p="${esc(p)}" style="padding-left:${8 + tief * 16}px">
     <span class="wb-pf" data-t="${esc(p)}">${baug ? (auf ? "▾" : "▸") : ""}</span>${WB_ICON[e.art] || ""}
     <span class="wb-n" title="${esc(e.name)}">${esc(e.name)}${e.art === "modell" && e.format ? `<span class="wb-endung">${esc(endung[e.format] || "")}</span>` : ""}</span>
-    ${tags}${baug ? `<span class="wb-sub">${unter}</span>` : ""}<span class="wb-m">${e.menge}×</span></div>`;
+    ${tags}${punkt}${baug ? `<span class="wb-sub">${unter}</span>` : ""}<span class="wb-m">${e.menge}×</span></div>`;
 }
 
 // Suche im Baum: eine Zeile bleibt, wenn sie selbst passt oder etwas darunter; Zweige mit Treffern klappen dabei auf.
 function wbTrifft(e) {
   const q = wb.filter.trim().toLowerCase();
-  if (!q) return true;
-  return e.name.toLowerCase().includes(q) || (e.art === "baugruppe" && (e.positionen || []).some(wbTrifft));
+  if (!q && !wb.fehlt) return true;
+  const selbst = (!q || e.name.toLowerCase().includes(q)) && (!wb.fehlt || (e.art === "modell" && wbOffenVon(e.id) > 0));
+  return selbst || (e.art === "baugruppe" && (e.positionen || []).some(wbTrifft));
 }
 
 function wbZeilen(positionen, container, tief, pfad, aus) {
@@ -212,7 +218,7 @@ function wbZeilen(positionen, container, tief, pfad, aus) {
     if (!wbTrifft(e)) continue;
     aus.push(wbZeile(e, container, tief, pfad));
     const p = [...pfad, e.ref].join("|");
-    if (e.art === "baugruppe" && (wb.offen.has(p) || wb.filter.trim())) wbZeilen(e.positionen || [], e.id, tief + 1, [...pfad, e.ref], aus);
+    if (e.art === "baugruppe" && (wb.offen.has(p) || wb.filter.trim() || wb.fehlt)) wbZeilen(e.positionen || [], e.id, tief + 1, [...pfad, e.ref], aus);
   }
 }
 
@@ -227,14 +233,45 @@ function wbBaum() {
 
 function wbMitte() {
   const f = wb.flach || { druck: [], kauf: [], eigene: [] };
-  const reiter = [["stueckliste", "Stückliste", f.druck.length + f.kauf.length + f.eigene.length || ""], ["fertigung", "Fertigung", ""]];
+  const v = wb.platten?.verteilung;
+  const reiter = [["stueckliste", "Stückliste", f.druck.length + f.kauf.length + f.eigene.length || ""], ["fertigung", "Fertigung", v ? `${v.ver}/${v.ges}` : ""]];
   abgleichen($("#wb-mitte"), `
     <div class="wb-reiter">${reiter.map(([k, t, n]) => `<button data-wr-tab="${k}" class="${wb.reiter === k ? "an" : ""}">${t}${n ? `<span class="zahl">${n}</span>` : ""}</button>`).join("")}</div>
     <div class="wb-flaeche">${wb.reiter === "fertigung" ? wbFertigung() : wbStueckliste(f)}</div>`);
 }
 
+// Fertigung: welche Teile in welcher Menge auf welche Druckplatte — eine gruppierte Tabelle (Kopfzeile je Platte, ihre Teile darunter), kein Raster.
+// Verteilt wird per Auswahl in der Zeile oder per Ziehen; ＋ und − ändern die Menge auf der Platte, × gibt das Teil zurück.
 function wbFertigung() {
-  return `<div class="wb-leer">Fertigung: die Druckplatten kommen als Nächstes.</div>`;
+  if (!wb.platten) return `<div class="wb-leer">Druckplatten gehören zu einem <b>Projekt</b>.<br>Öffne ein Projekt, um Teile auf Platten zu verteilen.</div>`;
+  const { platten, verteilung: v } = wb.platten;
+  const flach = Object.fromEntries((wb.flach?.druck || []).map((d) => [d.id, d]));
+  const je = (id) => { const d = flach[id]; return { g: d && !d.ohne_daten && d.menge ? d.gewicht_g / d.menge : null, s: d && d.menge ? d.zeit_s / d.menge : 0 }; };
+  const zelle = (g, s) => `<td class="re">${s ? dauer(s) : "–"}</td><td class="re">${g != null ? zahl(g, 1) + " g" : "–"}</td>`;
+  const offen = Object.entries(v.offen);
+  const nv = offen.map(([id, n]) => { const d = flach[id], x = je(id);
+    return `<tr class="wb-pos zl" draggable="true" data-ref="MODEL_ASSET/${esc(id)}" data-von="" data-bz="MODEL_ASSET/${esc(id)}"><td>${WB_ICON.modell}</td><td class="n">${esc(d?.name || id)}${esc(endung[d?.format] || "")}</td>
+      <td class="re">${n}×</td>${zelle(x.g != null ? x.g * n : null, x.s * n)}<td><select class="wb-auf" data-pauf="MODEL_ASSET/${esc(id)}" ${platten.length ? "" : "disabled"} title="Auf eine Druckplatte legen">
+      <option value="">${platten.length ? "auf Platte …" : "erst eine Platte anlegen"}</option>${platten.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></td></tr>`; }).join("");
+  const kopfNv = `<tbody class="wb-ftg" data-platte=""><tr class="gr"><td></td><td colspan="2">Nicht verteilt</td><td class="re" colspan="3">${offen.reduce((a, [, n]) => a + n, 0)} Stück</td></tr>
+    ${nv || '<tr><td></td><td colspan="5" class="wb-leise">Alles verteilt.</td></tr>'}</tbody>`;
+  const gruppen = platten.map((p) => `<tbody class="wb-ftg" data-platte="${esc(p.id)}"><tr class="gr"><td></td>
+      <td colspan="2"><input class="wb-pn" data-pn="${esc(p.id)}" value="${esc(p.name)}" title="Name der Platte"> <input class="wb-pmat" data-pmat="${esc(p.id)}" list="wb-pmatliste" value="${esc(p.material || "")}" placeholder="Material" title="Material der Platte"></td>
+      <td class="re" colspan="2">${p.zeit_s ? dauer(p.zeit_s) : "–"} · ${zahl(p.gewicht_g, 0)} g${p.gewicht_geschaetzt ? " *" : ""}</td>
+      <td><button class="wb-kp" data-pdel="${esc(p.id)}" title="Platte löschen (die Teile gelten dann wieder als nicht verteilt)">×</button></td></tr>
+    ${p.posten.map((x) => { const j = je(x.id);
+      return `<tr class="wb-pos zl" draggable="true" data-ref="${esc(x.ref)}" data-von="${esc(p.id)}" data-bz="${esc(x.ref)}"><td>${WB_ICON.modell}</td><td class="n">${esc(x.name)}${esc(endung[x.format] || "")}</td>
+        <td class="re"><span class="wb-st"><button data-pm="-1" data-pl="${esc(p.id)}" data-pref="${esc(x.ref)}" ${x.menge <= 1 ? "disabled" : ""} title="eins weniger">−</button><span>${x.menge}×</span><button data-pm="1" data-pl="${esc(p.id)}" data-pref="${esc(x.ref)}" title="eins mehr">＋</button></span></td>
+        ${zelle(j.g != null ? j.g * x.menge : null, j.s * x.menge)}<td><button class="wb-kp" data-px="${esc(p.id)}" data-pref="${esc(x.ref)}" title="Zurück nach „Nicht verteilt“">×</button></td></tr>`; }).join("")
+      || '<tr><td></td><td colspan="5" class="wb-leise">Teile hierher ziehen oder in „Nicht verteilt“ auswählen.</td></tr>'}</tbody>`).join("");
+  const zuViel = Object.entries(v.zu_viel);
+  return `<div class="wb-ftkopf"><b>${v.ver} von ${v.ges} Druckteilen verteilt</b><span class="wb-leise">${v.ges - v.ver ? `${v.ges - v.ver} fehlen noch` : "alles verteilt"}</span>
+      <span class="wb-luecke"></span><button class="wb-kn rand" data-pneu="1">＋ Druckplatte</button></div>
+    <div class="wb-fort"><i style="width:${v.ges ? 100 * v.ver / v.ges : 0}%"></i></div>
+    <datalist id="wb-pmatliste">${wb.materialien.map((m) => `<option value="${esc(m)}">`).join("")}</datalist>
+    <table class="wb-tab wb-ft"><thead><tr><th></th><th>Teil</th><th class="re">Menge</th><th class="re">Zeit</th><th class="re">Gewicht</th><th></th></tr></thead>${kopfNv}${gruppen}</table>
+    ${zuViel.length ? `<div class="wb-warn">Mehr verteilt als nötig (Reserve): ${zuViel.map(([id, n]) => `${esc(flach[id]?.name || id)} +${n}`).join(", ")}</div>` : ""}
+    <div class="wb-leise" style="padding-top:6px">Auswählen, ziehen oder ＋/− verteilt die Menge; × gibt ein Teil zurück. Im Baum: orange Punkt = noch nicht ganz verteilt.</div>`;
 }
 
 // Die Stückliste über alle Ebenen, flach: Druckteile je einmal mit Gesamtmenge, darunter die Kaufteile nach Kategorie. Eine Zeile anklicken
@@ -270,7 +307,7 @@ function wbStatus() {
   const s = wb.flach?.summen || {}, sel = wb.sel ? wb.index[wb.sel.p] : null;
   abgleichen($("#wb-stat"), `<span>Druckteile <b>${s.druckteile ?? "–"}</b></span><span>Zukaufteile <b>${s.kaufteile ?? "–"}</b></span>
     <span>Gewicht <b>${s.gewicht_g != null ? zahl(s.gewicht_g, 0) + " g" + (s.gewicht_geschaetzt ? " *" : "") : "–"}</b></span><span>Druckzeit <b>${s.zeit_s ? dauer(s.zeit_s) : "–"}</b></span>
-    <span class="wb-luecke"></span><span>Auswahl: <b>${sel ? esc(sel.pfad.map((r, i) => wb.index[sel.pfad.slice(0, i + 1).join("|")]?.e.name || "").join(" › ")) : "–"}</b></span>`);
+    ${wb.platten ? `<span>Platten <b>${wb.platten.verteilung.ver}/${wb.platten.verteilung.ges}</b> verteilt</span>` : ""}<span class="wb-luecke"></span><span>Auswahl: <b>${sel ? esc(sel.pfad.map((r, i) => wb.index[sel.pfad.slice(0, i + 1).join("|")]?.e.name || "").join(" › ")) : "–"}</b></span>`);
 }
 
 // Aus der Stückliste: das erste Vorkommen im Baum wählen und seine Äste aufklappen.
@@ -388,6 +425,20 @@ async function wbVerlauf(art) {
     toast(`${art === "rueckgaengig" ? "Rückgängig" : "Wiederholt"}: ${text}`);
   } catch (e) { return toast(e.message); }
   await wbLaden();
+}
+
+// Fertigung: alle Änderungen mit ?im=<Projekt>, damit Rückgängig sie zurücknimmt.
+async function wbFert(methode, url, body) {
+  try { await api(wbMit(url), { method: methode, ...(body ? { body } : {}) }); }
+  catch (e) { toast(e.message); }
+  return wbLaden({ inspektor: false });
+}
+const wbPlatteMenge = (pl, ref) => wb.platten.platten.find((x) => x.id === pl)?.posten.find((x) => x.ref === ref)?.menge || 0;
+async function wbPlatteLoeschen(pl) {
+  const p = wb.platten.platten.find((x) => x.id === pl);
+  const a = await dialog(`<h2>„${esc(p.name)}“ löschen?</h2><p>${p.stueck} ${p.stueck === 1 ? "Teil gilt" : "Teile gelten"} danach wieder als nicht verteilt. Die Modelle bleiben.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Löschen</button></div>`);
+  if (a === "ja") await wbFert("DELETE", `/api/platten/${pl}`);
 }
 
 // Wohin ein neues Teil kommt: in die gewählte Baugruppe; ist ein anderes Teil gewählt, in dessen Baugruppe; sonst in die Wurzel.
@@ -519,6 +570,15 @@ document.addEventListener("click", (e) => {
   if (kp) return wbHinzu(kp.dataset.kplus);
   const kz = t.closest(".wb-k[data-kref]");
   if (kz) return wbKatMarkieren(kz.dataset.kref);
+  if (t.closest("#wb-fehlt")) { wb.fehlt = !wb.fehlt; t.closest("#wb-fehlt").classList.toggle("an", wb.fehlt); return wbBaum(); }
+  if (t.closest("[data-pneu]")) return wbFert("POST", `/api/projekte/${wb.id}/platten`, {});
+  const pm = t.closest("[data-pm]");
+  if (pm) return wbFert("PUT", `/api/platten/${pm.dataset.pl}/posten`, { ref: pm.dataset.pref, menge: wbPlatteMenge(pm.dataset.pl, pm.dataset.pref) + Number(pm.dataset.pm) });
+  const px = t.closest("[data-px]");
+  if (px) return wbFert("POST", `/api/projekte/${wb.id}/verteilen`, { ref: px.dataset.pref, von: px.dataset.px, nach: "" });
+  const pdel = t.closest("[data-pdel]");
+  if (pdel) return wbPlatteLoeschen(pdel.dataset.pdel);
+  if (t.closest("select, input, .wb-st")) return;           // Bedienelemente in den Zeilen wählen nichts im Baum
   const tab = t.closest("[data-wr-tab]");
   if (tab) { wb.reiter = tab.dataset.wrTab; localStorageSchreiben("wb-reiter", wb.reiter); return wbMitte(); }
   const bz = t.closest("[data-bz]");
@@ -555,7 +615,32 @@ document.addEventListener("dragstart", (e) => {
   e.dataTransfer.setData("text/plain", wb.zug);
   e.dataTransfer.effectAllowed = "copy";
 });
-document.addEventListener("dragend", () => { wb.zug = null; wbDropWeg(); });
+document.addEventListener("dragend", () => { wb.zug = null; wb.zugPos = null; wbDropWeg(); });
+document.addEventListener("dragstart", (e) => {              // eine Zeile der Fertigung auf eine andere Platte ziehen
+  const z = e.target.closest?.("tr.wb-pos[data-ref]");
+  if (!z) return;
+  wb.zugPos = { ref: z.dataset.ref, von: z.dataset.von };
+  e.dataTransfer.setData("text/plain", z.dataset.ref);
+  e.dataTransfer.effectAllowed = "move";
+});
+document.addEventListener("dragover", (e) => {
+  if (!wb.zugPos) return;
+  const g = e.target.closest?.("tbody.wb-ftg");
+  if (!g) return;
+  e.preventDefault();
+  wbDropWeg();
+  g.classList.add("wb-drop");
+});
+document.addEventListener("drop", (e) => {
+  if (!wb.zugPos) return;
+  const g = e.target.closest?.("tbody.wb-ftg");
+  if (!g) return;
+  e.preventDefault();
+  const z = wb.zugPos;
+  wb.zugPos = null;
+  wbDropWeg();
+  if (z.von !== g.dataset.platte) wbFert("POST", `/api/projekte/${wb.id}/verteilen`, { ref: z.ref, von: z.von, nach: g.dataset.platte });
+});
 document.addEventListener("dragover", (e) => {
   if (!wb.zug || !e.target.closest?.("#wb-baum")) return;
   e.preventDefault();
@@ -589,6 +674,9 @@ document.addEventListener("change", (e) => {
   if (e.target.id === "ein-labor") return ladeProjekteLeiste();
   if (!e.target.closest?.("#werkbank")) return;
   const i = e.target;
+  if (i.dataset.pauf !== undefined) { if (i.value) wbFert("POST", `/api/platten/${i.value}/rest`, { ref: i.dataset.pauf }); return; }
+  if (i.dataset.pn) return wbFert("PATCH", `/api/platten/${i.dataset.pn}`, { name: i.value });
+  if (i.dataset.pmat !== undefined && i.dataset.pmat) return wbFert("PATCH", `/api/platten/${i.dataset.pmat}`, { material: i.value });
   if (i.dataset.wf) return wbPosition(i.dataset.wf, i.value);
   if (i.dataset.wr) {
     // Ein neuer Name steht auch in der Überschrift des Inspektors; bei den anderen Feldern bleibt der Fokus, wo er ist.
