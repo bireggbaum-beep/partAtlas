@@ -743,6 +743,14 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def baugruppen():
         return B().liste()
 
+    @app.post("/api/baugruppen/rueckgaengig")
+    def baugruppen_rueckgaengig():
+        return {"text": B().rueckgaengig()}
+
+    @app.post("/api/baugruppen/wiederholen")
+    def baugruppen_wiederholen():
+        return {"text": B().wiederholen()}
+
     @app.get("/api/baugruppen/vorschlaege")
     @am_stueck
     def baugruppen_vorschlaege():

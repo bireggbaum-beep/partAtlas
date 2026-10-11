@@ -218,6 +218,8 @@ function stuecklisteTafel(d, leer, offenDruck) {
     <button class="knopf" data-bg-aktion="eigene">＋ Eigene Komponente</button>
     <button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button>
     <span class="bg-luecke"></span>
+    <button class="knopf" data-labor data-bg-aktion="rueck" ${d.verlauf?.zurueck ? "" : "disabled"} title="${d.verlauf?.zurueck ? "Rückgängig: " + esc(d.verlauf.zurueck) + " (Strg+Z)" : "Nichts zum Rückgängigmachen"}">↶</button>
+    <button class="knopf" data-labor data-bg-aktion="wieder" ${d.verlauf?.vor ? "" : "disabled"} title="${d.verlauf?.vor ? "Wiederholen: " + esc(d.verlauf.vor) + " (Strg+Umschalt+Z)" : "Nichts zu wiederholen"}">↷</button>
     <button class="knopf" data-ab-phase="2" data-bg-aktion="warteschlange" ${offenDruck ? "" : "disabled"}>☰ Fehlende in die Warteschlange</button>
     <button class="knopf gefahr" data-bg-aktion="loeschen">Baugruppe löschen</button>
   </div>
@@ -470,12 +472,29 @@ document.addEventListener("input", (e) => {
   if (e.target.id === "mw-eigen") { mwWahl.farbe = e.target.value; document.querySelectorAll("[data-mw-farbe]").forEach((x) => x.classList.remove("aktiv")); }
 });
 
+// Rückgängig/Wiederholen gilt für alle Baugruppen zusammen (eine Liste, nur bis zum Neustart des Programms). Nur im Labor.
+async function verlaufSchritt(art) {
+  try {
+    const { text } = await api(`/api/baugruppen/${art}`, { method: "POST" });
+    toast(`${art === "rueckgaengig" ? "Rückgängig" : "Wiederholt"}: ${text}`);
+  } catch (e) { return toast(e.message); }
+  await ladeBaugruppe();
+  ladeBaugruppenLeiste();
+}
+document.addEventListener("keydown", (e) => {
+  if (!zustand.baugruppe || !laborAn() || !(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "z") return;
+  if (e.target.closest?.("input, textarea, select, [contenteditable]") || document.querySelector("dialog[open]")) return;   // dort gilt das Rückgängig des Feldes
+  e.preventDefault();
+  verlaufSchritt(e.shiftKey ? "wiederholen" : "rueckgaengig");
+});
+
 async function bgAktion(aktion) {
   const d = bgDaten;
   switch (aktion) {
     case "teile": case "kaufteile": case "unter": return waehler(aktion);
     case "eigene": return eigeneWaehlen();      // siehe eigene.js
 
+    case "rueck": case "wieder": return verlaufSchritt(aktion === "rueck" ? "rueckgaengig" : "wiederholen");
     case "warteschlange": {
       const { eingereiht } = await api(`/api/baugruppen/${bid()}/warteschlange`, { method: "POST" });
       return toast(`${eingereiht} fehlende Druckteile in der Warteschlange.`);

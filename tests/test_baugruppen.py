@@ -226,6 +226,71 @@ if __name__ == "__main__":
         check("Wo verbaut: eine unbekannte Art von Teil wird abgelehnt",
               c.get("/api/verwendung", params={"ziel": "TAG/x"}).status_code == 400)
 
+        # -- Rückgängig und Wiederholen (eine Liste für alle Baugruppen)
+        def pos(b_id):
+            return {p["ref"]: p for p in c.get(f"/api/baugruppen/{b_id}").json()["positionen"]}
+        arm = f"MODEL_ASSET/{m['Arm_x4']}"
+        menge0 = pos(modul)[arm]["menge"]
+        c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": arm, "menge": menge0 + 5})
+        v = c.get(f"/api/baugruppen/{modul}").json()["verlauf"]
+        check("Verlauf nennt die letzte Änderung mit dem Namen der Baugruppe", v["zurueck"] == "Menge ändern (Arm-Modul)" and v["vor"] is None)
+        r = c.post("/api/baugruppen/rueckgaengig")
+        check("Rückgängig: die Menge ist wieder die alte", r.json()["text"] == "Menge ändern (Arm-Modul)" and pos(modul)[arm]["menge"] == menge0)
+        c.post("/api/baugruppen/wiederholen")
+        check("Wiederholen: die Änderung gilt wieder", pos(modul)[arm]["menge"] == menge0 + 5)
+        c.post("/api/baugruppen/rueckgaengig")
+        c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": arm, "menge": menge0 + 1})
+        check("Eine neue Änderung löscht die Wiederholen-Liste", c.post("/api/baugruppen/wiederholen").status_code == 400)
+        c.post("/api/baugruppen/rueckgaengig")
+
+        halter_ref = f"MODEL_ASSET/{m['Halter']}"
+        c.patch(f"/api/baugruppen/{modul}/positionen", json={"ref": halter_ref, "material": "PETG", "farbe": "#112233", "notiz": "mit Stützen"})
+        c.put(f"/api/baugruppen/{modul}/reihenfolge", json={"refs": [halter_ref, arm]})
+        vorher = pos(modul)
+        reihe0 = [p["ref"] for p in c.get(f"/api/baugruppen/{modul}").json()["positionen"]]
+        c.delete(f"/api/baugruppen/{modul}/positionen", params={"ref": halter_ref})
+        check("Position entfernt", halter_ref not in pos(modul))
+        c.post("/api/baugruppen/rueckgaengig")
+        nachher = pos(modul)
+        check("Rückgängig bringt die entfernte Position mit Menge, Material, Farbe, Notiz und Platz in der Reihenfolge zurück",
+              halter_ref in nachher and [nachher[halter_ref][k] for k in ("menge", "material", "farbe", "notiz")] == [vorher[halter_ref][k] for k in ("menge", "material", "farbe", "notiz")]
+              and [p["ref"] for p in c.get(f"/api/baugruppen/{modul}").json()["positionen"]] == reihe0)
+        c.post("/api/baugruppen/rueckgaengig"); c.post("/api/baugruppen/rueckgaengig")        # Reihenfolge und Material/Farbe/Notiz wieder weg
+
+        name0 = c.get(f"/api/baugruppen/{modul}").json()["name"]
+        c.patch(f"/api/baugruppen/{modul}", json={"name": "Neuer Name"})
+        c.post("/api/baugruppen/rueckgaengig")
+        check("Rückgängig nimmt eine Umbenennung zurück", c.get(f"/api/baugruppen/{modul}").json()["name"] == name0)
+
+        schr0 = next(t for t in c.get("/api/kaufteile", params={"q": "m3x10"}).json() if t["id"] == "din912-m3x10")["hinweis"]
+        c.patch("/api/kaufteile/din912-m3x10", json={"hinweis": "geändert"})
+        c.post("/api/baugruppen/rueckgaengig")
+        check("Rückgängig nimmt eine Änderung der Bezugsquelle zurück",
+              next(t for t in c.get("/api/kaufteile", params={"q": "m3x10"}).json() if t["id"] == "din912-m3x10")["hinweis"] == schr0)
+
+        unter = c.post("/api/baugruppen", json={"name": "Unten", "modelle": [m["Einzelteil"]]}).json()["id"]
+        oben = c.post("/api/baugruppen", json={"name": "Oben", "modelle": [m["Halter"]]}).json()["id"]
+        c.post(f"/api/baugruppen/{oben}/positionen", json={"ref": f"ASSEMBLY/{unter}", "menge": 2})
+        vor_mat = (pos(unter), pos(oben))
+        c.post(f"/api/baugruppen/{oben}/material", json={"material": "ABS"})
+        gesetzt = [p["material"] for p in pos(unter).values()] + [pos(oben)[halter_ref]["material"]]
+        check("Material für alle offenen Teile setzt es über zwei Ebenen und steht als ein Schritt im Verlauf",
+              gesetzt == ["ABS", "ABS"] and c.get(f"/api/baugruppen/{oben}").json()["verlauf"]["zurueck"] == "Material für alle offenen Teile setzen (Oben)")
+        c.post("/api/baugruppen/rueckgaengig")
+        check("Ein Rückgängig nimmt das Material auf beiden Ebenen zurück", (pos(unter), pos(oben)) == vor_mat)
+
+        stand = (pos(modul), pos(bid))
+        n = 0
+        while c.post("/api/baugruppen/rueckgaengig").status_code == 200:
+            n += 1
+        leer = (pos(modul), pos(bid))
+        check("Alles zurücknehmen geht bis zum Anfang, dann kommt eine verständliche Meldung",
+              c.post("/api/baugruppen/rueckgaengig").status_code == 400 and n >= 5 and leer != stand)
+        while c.post("/api/baugruppen/wiederholen").status_code == 200:
+            pass
+        check("Alles wiederholen führt genau zum Stand von vorher zurück", (pos(modul), pos(bid)) == stand)
+        c.delete(f"/api/baugruppen/{oben}"); c.delete(f"/api/baugruppen/{unter}")      # Hilfs-Baugruppen dieses Abschnitts
+
         # -- Lange Beschreibung liegt in vault_text/ und kommt beim Lesen ganz zurück
         lang = ("Bauanleitung: " + "Teil an Teil schrauben, dann prüfen. " * 60).strip()
         kurz = "Kurz."

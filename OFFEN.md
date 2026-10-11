@@ -83,6 +83,11 @@ je Teil + Druckplatten (erst Entwurf, Frage offen: Platte = erweiterte Sammlung 
 Befehlspalette (Strg+K), Rechtsklick (Wo verbaut, Tauschen, Fork). Entwurf: `mock/werkbank.html` (bedienbar, Daten im Skript; im Browser geprüft, 12 Bedienschritte,
 keine Konsolenfehler). **Offen/Entscheid:** 3D zeigt nur das Einzelteil (Gesamtansicht braucht Platzierungen aus 3MF/FreeCAD); Platte = Sammlung oder eigener Knoten;
 Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkbank nüchtern (die „freundlich“-Vorgabe galt dem Katalog).
+**Rückgängig erledigt (0.58.0):** Änderungsliste im Baugruppen-Modul (siehe KONZEPT §4.5), `POST /api/baugruppen/rueckgaengig|wiederholen`, `verlauf` im Detail, Knöpfe ↶ ↷ und
+Strg+Z im Labor. test_baugruppen 72/72 (+12; Gegenproben: Positionen nicht wiederherstellen, Wiederholen-Liste nicht leeren, nur oberste Ebene merken, Entfernen nicht
+protokollieren — alle fallen), Oberfläche gezielt im Browser 10/10 (Gegenproben Labor-Sperre und Feld-Schutz fallen), nicht in test_ui. Beim Testen aufgefallen: eine Prüfung
+„Material über zwei Ebenen“ hatte nichts geändert und deshalb nichts geprüft — durch ein frisches Szenario ersetzt. **Offen:** Anlegen/Löschen von Baugruppen nicht im Verlauf;
+bei „Projekten“ (Frage des Anwenders, 11.10.) wäre eine Liste je Projekt statt einer für alle sinnvoll.
 **Paket A erledigt (0.57.0):** Bezugsquelle (Link/Artikelnr/Hinweis) am Kaufteil, `PATCH /api/kaufteile/{id}`, in Einkaufsliste, MD, CSV (hinten angehängt), PDF;
 `Baugruppen.verbaut_in` + `GET /api/verwendung` (mehrstufig, mit Gesamtmenge). Oberfläche im Labor: in der Stückliste je Zeile „Wo verbaut?“ (⛓) und bei Kaufteilen
 „Bezug“ (🛒), Link als Verweis unter dem Namen. test_baugruppen 60/60 (+11; Gegenproben: Link-Prüfung, Mengenmultiplikation, CSV-Link fallen), Oberfläche gezielt im Browser

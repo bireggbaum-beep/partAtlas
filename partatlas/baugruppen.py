@@ -13,9 +13,11 @@ denen sie gebraucht wird (4 Module → „8 von 8 gedruckt“).
 flatgraph ändert Kanten nicht an Ort und Stelle; eine Position ändern
 heisst ihre Kante in einer Transaktion neu legen (wie in den Sammlungen).
 """
+import contextlib
 import csv
 import io
 import re
+import threading
 
 from . import standardteile
 from .bestand import MATERIALIEN, MODELL  # noqa: F401 — MATERIALIEN für main
@@ -31,6 +33,8 @@ ARTEN = {MODELL: "modell", BAUGRUPPE: "baugruppe", KAUFTEIL: "kaufteil", EIGEN: 
 POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
 # Wo man ein Kaufteil bekommt: ein Verweis, die Artikelnummer beim Händler, ein Hinweis („mit Schraubensicherung“). Alles freiwillig.
 BEZUGSFELDER = {"link": 500, "artikelnr": 60, "hinweis": 200}
+VERLAUF_MAX = 100          # so viele Änderungen lassen sich zurücknehmen (nur im Speicher, bis zum Neustart)
+FELDNAMEN = {"menge": "Menge", "erledigt": "Zähler", "material": "Material", "farbe": "Farbe", "notiz": "Notiz"}
 
 # Gewicht ohne Slicer-Daten, geschätzt wie ein Slicer mit Standardwerten
 # druckt: eine Hülle von 1,2 mm (2–3 Wände, Boden, Deckel) und 15 %
@@ -59,6 +63,10 @@ class Baugruppen:
         # Der Kern kommt nur über Teilezugriff herein (Sidecar, siehe dort); `db` für die eigenen Knoten.
         self.teile = Teilezugriff(katalog)
         self.db = katalog.db
+        # Rückgängig/Wiederholen: eine Liste für alle Baugruppen (wie das Dokument eines Editors). Jeder Eintrag hält den Zustand der
+        # betroffenen Baugruppen und Kaufteile vor und nach der Änderung; zurück heisst: den Zustand vorher wieder einsetzen.
+        self._verlauf_sperre = threading.RLock()
+        self._zurueck, self._vor = [], []
         self._standardteile_anlegen()
 
     def _standardteile_anlegen(self):
@@ -68,6 +76,80 @@ class Baugruppen:
             with self.db.transaction():
                 for k, v in neu.items():
                     self.db.create_node(KAUFTEIL, k, v)
+
+    # ------------------------------------------------------------ Rückgängig
+
+    def _zustand(self, r):
+        """Was an einem Knoten änderbar ist: bei einer Baugruppe Name, Beschreibung und Positionen (mit allen ihren Feldern und der
+        Reihenfolge), bei einem Kaufteil die Bezugsangaben. None, wenn es den Knoten nicht mehr gibt."""
+        col, _, kid = r.partition("/")
+        if col == BAUGRUPPE:
+            n = self.db.get_node_full(r)
+            if n is None:
+                return None
+            return {"name": n["name"], "beschreibung": n.get("beschreibung", ""),
+                    "kanten": [(ziel, {k: v for k, v in kante.items() if k in (*POSITIONSFELDER, "position")})
+                               for _, ziel, kante in self._positionen(kid)]}
+        n = self.db.get_node(r, readonly=True)
+        return None if n is None else {k: n.get(k) or "" for k in BEZUGSFELDER}
+
+    def _herstellen(self, r, z):
+        col, _, kid = r.partition("/")
+        if z is None or self._zustand(r) is None:
+            return                              # inzwischen gelöscht: nichts wiederherzustellen
+        if col != BAUGRUPPE:
+            return self.db.update_node(KAUFTEIL, kid, z)
+        self.db.update_node(BAUGRUPPE, kid, {"name": z["name"], "beschreibung": z["beschreibung"]})
+        for eid, _, _ in self._positionen(kid):
+            self.db.delete_edge(eid)
+        for ziel, meta in z["kanten"]:
+            if self.teile.existiert(ziel):      # ein Ziel, das es nicht mehr gibt, bleibt weg
+                self.db.create_edge(ref(BAUGRUPPE, kid), ziel, ENTHAELT, meta=dict(meta))
+
+    def _unterbaugruppen(self, bid, gesehen=None):
+        gesehen = gesehen if gesehen is not None else set()
+        gesehen.add(bid)
+        for _, r, _ in self._positionen(bid):
+            col, _, kid = r.partition("/")
+            if col == BAUGRUPPE and kid not in gesehen:
+                self._unterbaugruppen(kid, gesehen)
+        return gesehen
+
+    @contextlib.contextmanager
+    def _protokolliert(self, text, knoten):
+        """Merkt sich, was `knoten` (Verweise) vor und nach dem Block waren. Ändert sich nichts oder scheitert der Block, kommt kein
+        Eintrag in die Liste."""
+        vorher = {r: self._zustand(r) for r in knoten}
+        yield
+        nachher = {r: self._zustand(r) for r in knoten}
+        if nachher == vorher:
+            return
+        with self._verlauf_sperre:
+            self._zurueck.append({"text": text, "vorher": vorher, "nachher": nachher})
+            del self._zurueck[:-VERLAUF_MAX]
+            self._vor.clear()                   # nach einer neuen Änderung gibt es nichts mehr zu wiederholen
+
+    def _verlauf_schritt(self, von, nach, zustand_key, leer):
+        with self._verlauf_sperre:
+            if not von:
+                raise KatalogFehler(leer)
+            eintrag = von[-1]
+            with self.db.transaction():
+                for r, z in eintrag[zustand_key].items():
+                    self._herstellen(r, z)
+            nach.append(von.pop())
+            return eintrag["text"]
+
+    def rueckgaengig(self):
+        return self._verlauf_schritt(self._zurueck, self._vor, "vorher", "Nichts zum Rückgängigmachen.")
+
+    def wiederholen(self):
+        return self._verlauf_schritt(self._vor, self._zurueck, "nachher", "Nichts zu wiederholen.")
+
+    def verlauf(self):
+        with self._verlauf_sperre:
+            return {"zurueck": self._zurueck[-1]["text"] if self._zurueck else None, "vor": self._vor[-1]["text"] if self._vor else None,
+                    "schritte": len(self._zurueck)}
 
     # ------------------------------------------------------------ Kaufteile
 
@@ -112,7 +194,8 @@ class Baugruppen:
                 raise KatalogFehler("Der Link muss mit http:// oder https:// beginnen.")
             neu[k] = v
         if neu:
-            self.db.update_node(KAUFTEIL, kid, neu)
+            with self._protokolliert("Bezugsquelle ändern", [f"{KAUFTEIL}/{kid}"]):
+                self.db.update_node(KAUFTEIL, kid, neu)
 
     # ------------------------------------------------------------ Baugruppen
 
@@ -144,7 +227,7 @@ class Baugruppen:
         return self.anlegen(name, positionen)
 
     def aendern(self, bid, werte):
-        self._pruefen(bid)
+        b = self._pruefen(bid)
         neu = {}
         if "name" in werte:
             name = (werte["name"] or "").strip()
@@ -154,7 +237,9 @@ class Baugruppen:
         if "beschreibung" in werte:
             neu["beschreibung"] = str(werte["beschreibung"] or "")[:4000]
         if neu:
-            self.db.update_node(BAUGRUPPE, bid, neu)
+            text = "Name ändern" if "name" in neu and "beschreibung" not in neu else "Beschreibung ändern" if "name" not in neu else "Name und Beschreibung ändern"
+            with self._protokolliert(f"{text} ({b['name']})", [ref(BAUGRUPPE, bid)]):
+                self.db.update_node(BAUGRUPPE, bid, neu)
 
     def loeschen(self, bid):
         """Die Baugruppe geht; Modelle und Kaufteile bleiben."""
@@ -204,12 +289,12 @@ class Baugruppen:
         self.db.create_edge(ref(BAUGRUPPE, bid), ziel, ENTHAELT, meta=meta)
 
     def hinzufuegen(self, bid, ziel, menge=1):
-        self._pruefen(bid)
-        with self.db.transaction():
+        b = self._pruefen(bid)
+        with self._protokolliert(f"Teil hinzufügen ({b['name']})", [ref(BAUGRUPPE, bid)]), self.db.transaction():
             self._hinzufuegen(bid, ziel, menge)
 
     def position_aendern(self, bid, ziel, werte):
-        self._pruefen(bid)
+        b = self._pruefen(bid)
         p = next((p for p in self._positionen(bid) if p[1] == ziel), None)
         if p is None:
             raise KatalogFehler("Diese Position gibt es nicht.")
@@ -234,14 +319,17 @@ class Baugruppen:
             else:
                 v = str(v or "").strip()[:200] or None
             aenderung[k] = v
-        with self.db.transaction():
+        text = " und ".join(FELDNAMEN[k] for k in aenderung) + " ändern"
+        with self._protokolliert(f"{text} ({b['name']})", [ref(BAUGRUPPE, bid)]), self.db.transaction():
             self._neu_legen(bid, p, aenderung)
 
     def material_fuer_offene(self, bid, material, farbe=None):
         """Material (und Farbe) für alle Druckteile ohne Angabe, über alle
         Ebenen — so weit, wie die Filament-Übersicht zählt. Ein Klick statt
         zwanzig."""
-        with self.db.transaction():
+        b = self._pruefen(bid)
+        with self._protokolliert(f"Material für alle offenen Teile setzen ({b['name']})",
+                                 [ref(BAUGRUPPE, x) for x in self._unterbaugruppen(bid)]), self.db.transaction():
             self._material_setzen(bid, self.teile.material_knoten(material), farbe, set())
 
     def _material_setzen(self, bid, material, farbe, gesehen):
@@ -261,15 +349,18 @@ class Baugruppen:
             self._neu_legen(bid, p, aenderung)
 
     def position_entfernen(self, bid, ziel):
-        for eid, r, _ in self._positionen(bid):
-            if r == ziel:
-                self.db.delete_edge(eid)
+        b = self._pruefen(bid)
+        with self._protokolliert(f"Position entfernen ({b['name']})", [ref(BAUGRUPPE, bid)]):
+            for eid, r, _ in self._positionen(bid):
+                if r == ziel:
+                    self.db.delete_edge(eid)
 
     def ordnen(self, bid, ziele):
+        b = self._pruefen(bid)
         alt = self._positionen(bid)
         reihe = [r for r in dict.fromkeys(ziele) if any(p[1] == r for p in alt)] + \
                 [p[1] for p in alt if p[1] not in ziele]
-        with self.db.transaction():
+        with self._protokolliert(f"Reihenfolge ändern ({b['name']})", [ref(BAUGRUPPE, bid)]), self.db.transaction():
             for p in alt:
                 self._neu_legen(bid, p, {"position": reihe.index(p[1])})
 
@@ -423,7 +514,7 @@ class Baugruppen:
         return {"id": bid, "name": b["name"], "beschreibung": self.db.get_node_full(ref(BAUGRUPPE, bid)).get("beschreibung", ""), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(ref(BAUGRUPPE, bid)),
-                "materialien": self.teile.materialien()}
+                "materialien": self.teile.materialien(), "verlauf": self.verlauf()}
 
     def summen(self, bid):
         """Was die ganze Baugruppe braucht, über alle Ebenen: Gewicht, Zeit,
