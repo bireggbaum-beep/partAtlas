@@ -78,6 +78,11 @@ Zielgruppe: Voron-/CNC-/Robotik-Bauer — Kontrolle, Wiederverwendung, tiefe Str
 nur über ID, Kern nur über `teilezugriff.py`. Entwickelt auf dem Branch, auf `main` hinter dem **Baugruppen-Labor** (Schalter je Browser).
 Reihenfolge: **A** Bezugsquelle (Link) am Kaufteil + Where-Used mehrstufig; **B** Teil tauschen, dann Fork (neue Kante, Vertrag); **C** Druckparameter
 je Teil + Druckplatten (erst Entwurf, Frage offen: Platte = erweiterte Sammlung oder eigener Knoten?).
+**UI-Richtung (Anwender, 11.10.2026): Werkbank statt Viewer, professionell/dicht** — eigener Modus, volle Breite, drei ziehbare Spalten: Baum links
+(Auswahl = Pfad/Kante, nicht Teil), Reiter 3D · Stückliste · Fertigung in der Mitte, Inspektor rechts (Parameter an der Kante), Katalog-Schublade, Rückgängig,
+Befehlspalette (Strg+K), Rechtsklick (Wo verbaut, Tauschen, Fork). Entwurf: `mock/werkbank.html` (bedienbar, Daten im Skript; im Browser geprüft, 12 Bedienschritte,
+keine Konsolenfehler). **Offen/Entscheid:** 3D zeigt nur das Einzelteil (Gesamtansicht braucht Platzierungen aus 3MF/FreeCAD); Platte = Sammlung oder eigener Knoten;
+Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkbank nüchtern (die „freundlich“-Vorgabe galt dem Katalog).
 **Paket 0 erledigt (0.56.0):** `teilezugriff.py` (reines Verschieben, Verhalten gleich); Wächter-Prüfung in `test_baugruppen` (49/49, Gegenprobe
 fällt); Labor-Schalter (Einstellungen › Ansicht, `?labor=1`/`?labor=0`, `data-labor`) — gezielt im Browser geprüft (6/6, Gegenprobe fällt), nicht in
 `test_ui`. Suiten: baugruppen 49, eigene 17, api 86, aufraeumen 13, suche 28, verwalten 76. **Nächstes:** Paket A. UI-Wünsche des Anwenders folgen.
