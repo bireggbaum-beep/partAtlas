@@ -72,6 +72,16 @@ aktualisieren.
    (1) Reiter mit automatischer Sicherung (nur Datenbank), Liste und Zurückholen, 5 / 30 Tage; (2) Backup als ZIP, einstellbar;
    (3) Erinnerung nach 30 Tagen.
 
+## Baugruppen neu denken (11.10.2026, Anwender)
+
+Zielgruppe: Voron-/CNC-/Robotik-Bauer — Kontrolle, Wiederverwendung, tiefe Struktur, ohne Freigabe-Bürokratie. **Sidecar** (KONZEPT §4.5): Teile
+nur über ID, Kern nur über `teilezugriff.py`. Entwickelt auf dem Branch, auf `main` hinter dem **Baugruppen-Labor** (Schalter je Browser).
+Reihenfolge: **A** Bezugsquelle (Link) am Kaufteil + Where-Used mehrstufig; **B** Teil tauschen, dann Fork (neue Kante, Vertrag); **C** Druckparameter
+je Teil + Druckplatten (erst Entwurf, Frage offen: Platte = erweiterte Sammlung oder eigener Knoten?).
+**Paket 0 erledigt (0.56.0):** `teilezugriff.py` (reines Verschieben, Verhalten gleich); Wächter-Prüfung in `test_baugruppen` (49/49, Gegenprobe
+fällt); Labor-Schalter (Einstellungen › Ansicht, `?labor=1`/`?labor=0`, `data-labor`) — gezielt im Browser geprüft (6/6, Gegenprobe fällt), nicht in
+`test_ui`. Suiten: baugruppen 49, eigene 17, api 86, aufraeumen 13, suche 28, verwalten 76. **Nächstes:** Paket A. UI-Wünsche des Anwenders folgen.
+
 ## 3D-Ansicht ohne funktionierendes WebGL (9.10.2026, Linux-Tester)
 
 Tester: GeForce 9 (nv96), nouveau, X11 (wegen Anycubic Slicer Next). WebGL 2 zeigt ein Bild und verliert dann den Kontext;

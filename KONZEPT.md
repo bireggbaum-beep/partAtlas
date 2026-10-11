@@ -439,6 +439,13 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
 - „Fehlende in die Warteschlange“, Export als CSV und Markdown,
   „steckt in …“ an jedem Modell und in der Löschvorschau.
 
+**Baugruppen als eigener Bereich (Sidecar, seit 11.10.2026).** Eine Baugruppe kennt ein Einzelteil nur über seine ID. Was die Oberfläche
+über das Teil zeigt (Name, Bild, Gewicht, Zeit), fragt sie über `partatlas/teilezugriff.py` beim Kern ab, statt Teileverwaltung
+nachzubauen; `baugruppen.py`, `stueckliste.py` und alles Neue greifen nicht auf `_kurz`, `PART_GEOMETRY` oder Modellknoten zu (Wächter in
+`test_baugruppen`). Neue Knotenarten (Fork-Herkunft, Druckplatten) zeigen per ID auf Teile. Noch nicht aufgelöst: die Rückrichtung — Löschvorschau,
+Suche, Aufräumen und „steckt in“ kennen `CONTAINS`. Unfertiges erscheint erst im **Baugruppen-Labor** (Einstellungen › Ansicht oder `?labor=1`,
+je Browser gemerkt, Vorgabe aus; Elemente mit `data-labor`). Das Labor versteckt nur die Oberfläche, nicht Änderungen der Speicherform.
+
 ### 4.6 Drucke in Phase 1 (Entwurf, ohne Drucker)
 
 *Entwurf vom 01.10.2026. Stufe a ist gebaut (0.19), Stufe b offen.*

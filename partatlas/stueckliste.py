@@ -128,12 +128,10 @@ class Stueckliste:
     def __init__(self, baugruppen, optionen=None):
         self.opt = {**PDF_STANDARD, **{k: bool(v) for k, v in (optionen or {}).items() if k in PDF_STANDARD}}
         self.bg = baugruppen
-        self.k = baugruppen.k
-        self.b = baugruppen.k.b
 
     def eigene_bild(self, eid):
-        b = (self.k.db.get_node(f"{EIGEN}/{eid}", readonly=True) or {}).get("bild")
-        return self.b.pfad(*b["datei"].split("/")) if b else None
+        b = (self.bg.db.get_node(f"{EIGEN}/{eid}", readonly=True) or {}).get("bild")
+        return self.bg.teile.bild_pfad(*b["datei"].split("/")) if b else None
 
     def _ok(self, gefuellt=False):
         return _kaestchen(gefuellt) if self.opt["kaestchen"] else ""
@@ -145,9 +143,9 @@ class Stueckliste:
         if pfad:
             pass
         elif kurz.get("bild"):
-            pfad = self.k.bild_pfad(kurz["id"])
+            pfad = self.bg.teile.bild_datei(kurz["id"])
         elif kurz.get("hash"):
-            pfad = self.k.vorschau_datei(kurz["hash"])
+            pfad = self.bg.teile.vorschau_datei(kurz["hash"])
         if pfad and os.path.exists(pfad):
             # reportlab liest das Bild erst beim Zusammenbauen — ein kaputtes
             # eingebettetes Vorschaubild liesse dann das ganze PDF scheitern.
@@ -176,7 +174,7 @@ class Stueckliste:
             zeile = len(zeilen)
             if art == "modell":
                 kurz, d = self.bg._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
-                ort = next(iter((self.k.db.get_node(f"PART_GEOMETRY/{kurz['hash']}", readonly=True) or {}).get("orte", [])), None)
+                ort = self.bg.teile.ort(kurz['hash'])
                 pfadzeile = (f"<br/>{einzug}<font size='6.5' color='#888888'>{_esc(ort['pfad'] if ort else 'Datei fehlt')}</font>"
                              if self.opt["pfade"] else "")
                 name = Paragraph(f"{einzug}{_esc(kurz['name'])}{pfadzeile}", S["zelle"])
@@ -186,19 +184,19 @@ class Stueckliste:
                                Paragraph(_dauer((d["zeit_s"] or 0) * gesamt) if d["zeit_s"] else "–", S["rechts"]),
                                self._ok(kante.get("erledigt", 0) >= gesamt)])
             elif art == "kaufteil":
-                t = self.k.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
+                t = self.bg.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
                 zeilen.append([nr, "", Paragraph(f"{einzug}{_esc(t['name'])}<br/>{einzug}<font size='6.5' color='#888888'>"
                                                  f"Kaufteil{' · ' + _esc(t['norm']) if t.get('norm') else ''}</font>", S["zelle"]),
                                str(menge), f"{gesamt}" + ("" if t.get("einheit", "Stück") == "Stück" else f" {t['einheit']}"), "", "", "",
                                self._ok(kante.get("erledigt", 0) >= gesamt)])
             elif art == "eigen":
-                e = self.k.db.get_node(f"{EIGEN}/{kid}", readonly=True)
+                e = self.bg.db.get_node(f"{EIGEN}/{kid}", readonly=True)
                 detail = " · ".join(x for x in ("Eigene Komponente", e.get("art"), e.get("masse")) if x)
                 zeilen.append([nr, self._bild({"id": kid, "pfad": self.eigene_bild(kid)}, 9 * mm),
                                Paragraph(f"{einzug}{_esc(e['name'])}<br/>{einzug}<font size='6.5' color='#888888'>{_esc(detail)}</font>", S["zelle"]),
                                str(menge), str(gesamt), "", "", "", self._ok(kante.get("erledigt", 0) >= gesamt)])
             else:
-                u = self.k.db.get_node(ziel, readonly=True)
+                u = self.bg.db.get_node(ziel, readonly=True)
                 zeilen.append([nr, "", Paragraph(f"{einzug}<b>{_esc(u['name'])}</b> <font size='6.5' color='#888888'>Baugruppe</font>",
                                                  S["zelle"]), str(menge), str(gesamt), "", "", "", ""])
                 stil.append(("BACKGROUND", (0, zeile), (-1, zeile), HELL))
@@ -306,7 +304,7 @@ class Stueckliste:
         if s["einkauf"] and self.opt["einkauf"]:
             zeilen = [["MENGE", "EINHEIT", "BENENNUNG", "KATEGORIE", ok]]
             for e in s["einkauf"]:
-                t_node = self.k.db.get_node(f"{KAUFTEIL}/{e['id']}", readonly=True) or {}
+                t_node = self.bg.db.get_node(f"{KAUFTEIL}/{e['id']}", readonly=True) or {}
                 zeilen.append([str(e["bedarf"]), e["einheit"],
                                Paragraph(_esc(e["name"]) + (f" <font size='6.5' color='#888888'>{_esc(t_node.get('norm'))}</font>"
                                                             if t_node.get("norm") else ""), S["zelle"]),

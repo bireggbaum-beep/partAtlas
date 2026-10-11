@@ -525,6 +525,7 @@ body.bg-offen .nur-katalog { display: none; }
 .gal-etikett:empty { display: none; }
 .gal-aktionen:empty { display: none; }
 html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
+html[data-labor="0"] [data-labor] { display: none !important; }
 
 /* Inspektor mit Reitern: Vorschau, Name, Öffnen und Reiterleiste bleiben oben stehen */
 .i-fix .i-haupt { margin-top: 8px; }

@@ -20,6 +20,7 @@ import re
 from . import standardteile
 from .bestand import MATERIALIEN, MODELL  # noqa: F401 — MATERIALIEN für main
 from .katalog import KatalogFehler, jetzt, ref
+from .teilezugriff import Teilezugriff
 
 BAUGRUPPE = "ASSEMBLY"
 KAUFTEIL = "PURCHASED_PART"
@@ -53,7 +54,8 @@ def menge_aus_namen(name):
 
 class Baugruppen:
     def __init__(self, katalog):
-        self.k = katalog
+        # Der Kern kommt nur über Teilezugriff herein (Sidecar, siehe dort); `db` für die eigenen Knoten.
+        self.teile = Teilezugriff(katalog)
         self.db = katalog.db
         self._standardteile_anlegen()
 
@@ -116,9 +118,9 @@ class Baugruppen:
         korrigiert, statt alles einzutippen."""
         positionen = []
         for mid in modelle:
-            m = self.db.get_node(ref(MODELL, mid), readonly=True)
-            if m is not None:
-                positionen.append((ref(MODELL, mid), menge_aus_namen(m.get("name"))))
+            modellname = self.teile.modell_name(mid)
+            if modellname is not None:
+                positionen.append((ref(MODELL, mid), menge_aus_namen(modellname)))
         return self.anlegen(name, positionen)
 
     def aendern(self, bid, werte):
@@ -161,7 +163,7 @@ class Baugruppen:
 
     def _hinzufuegen(self, bid, ziel, menge=1):
         col, _, kid = ziel.partition("/")
-        if col not in ARTEN or self.db.get_node(ziel, readonly=True) is None:
+        if col not in ARTEN or not self.teile.existiert(ziel):
             raise KatalogFehler(f"{ziel} lässt sich nicht hinzufügen.")
         if col == BAUGRUPPE and self._enthaelt(kid, bid):
             raise KatalogFehler("Eine Baugruppe kann sich nicht selbst enthalten.")
@@ -208,7 +210,7 @@ class Baugruppen:
                     raise KatalogFehler("Farbe als #RRGGBB angeben.")
             elif k == "material":
                 # Die Position nennt den Material-Knoten beim Namen; es gibt ihn danach.
-                v = self.k.material_knoten(v) if str(v or "").strip() else None
+                v = self.teile.material_knoten(v) if str(v or "").strip() else None
             else:
                 v = str(v or "").strip()[:200] or None
             aenderung[k] = v
@@ -220,7 +222,7 @@ class Baugruppen:
         Ebenen — so weit, wie die Filament-Übersicht zählt. Ein Klick statt
         zwanzig."""
         with self.db.transaction():
-            self._material_setzen(bid, self.k.material_knoten(material), farbe, set())
+            self._material_setzen(bid, self.teile.material_knoten(material), farbe, set())
 
     def _material_setzen(self, bid, material, farbe, gesehen):
         if bid in gesehen:
@@ -256,17 +258,13 @@ class Baugruppen:
     def standard(self):
         """Was gilt, wo nichts angegeben ist — aus den Einstellungen (wie in
         pDMS). Wer nur PLA+ druckt, soll nicht jedes Teil anfassen müssen."""
-        e = self.k.b.einstellungen()
+        e = self.teile.einstellungen()
         return {"material": (e.get("standard_material") or "PLA").upper(),
                 "farbe": e.get("standard_farbe") or None,
                 "rolle_g": int(e.get("rolle_g") or ROLLE_G)}
 
     def _modell_daten(self, mid, material=None, farbe=None, standard=None):
-        m = self.db.get_node(ref(MODELL, mid), readonly=True)
-        kurz = self.k._kurz(mid, m)
-        h = kurz["hash"]
-        d = self.db.get_node(f"PART_GEOMETRY/{h}", readonly=True) if h else None
-        d = d or {}
+        kurz, d = self.teile.modell(mid)
         platten = d.get("platten") or []
         fil = next((f for p in platten for f in p.get("filamente", [])), {})
         gewicht, geschaetzt = kurz["gewicht_g"], False
@@ -381,7 +379,7 @@ class Baugruppen:
         return {"id": bid, "name": b["name"], "beschreibung": self.db.get_node_full(ref(BAUGRUPPE, bid)).get("beschreibung", ""), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(ref(BAUGRUPPE, bid)),
-                "materialien": self.k.materialien()}
+                "materialien": self.teile.materialien()}
 
     def summen(self, bid):
         """Was die ganze Baugruppe braucht, über alle Ebenen: Gewicht, Zeit,
@@ -469,7 +467,7 @@ class Baugruppen:
         n = 0
         for art, kid, kante, bedarf in self._aufloesen(bid):
             if art == "modell" and kante.get("erledigt", 0) < bedarf:
-                self.k.in_warteschlange(kid)
+                self.teile.in_warteschlange(kid)
                 n += 1
         return n
 
@@ -505,15 +503,15 @@ class Baugruppen:
         s = self.db.get_node(f"COLLECTION/{sid}", readonly=True)
         if s is None:
             raise KatalogFehler("Sammlung gibt es nicht.")
-        return self.aus_modellen(s["name"], [x["id"] for x in self.k.modelle(sammlung=sid)])
+        return self.aus_modellen(s["name"], [x["id"] for x in self.teile.modelle(sammlung=sid)])
 
     def aus_ordner(self, ordner_id):
         # Entwürfe nicht: der Ordner eines Projekts hält oft viele Konstruktionsstände, die Stückliste braucht den einen.
-        alle = self.k.modelle(ordner=ordner_id)
+        alle = self.teile.modelle(ordner=ordner_id)
         modelle = [m for m in alle if not m["entwurf"]]
         if not modelle:
             raise KatalogFehler("Im Ordner liegen nur Entwürfe." if alle else "Im Ordner liegen keine Modelle.")
-        name = ordner_id.rstrip("/").split("/")[-1] if "/" in ordner_id else (self.k.wurzeln().get(ordner_id, {}).get("name") or ordner_id)
+        name = ordner_id.rstrip("/").split("/")[-1] if "/" in ordner_id else (self.teile.ordner_name(ordner_id) or ordner_id)
         return self.aus_modellen(name, [m["id"] for m in modelle])
 
     def vorschlaege(self, mindestens=3):
@@ -523,7 +521,7 @@ class Baugruppen:
         # Die Namen aus den Kacheln (zwischengespeichert), nicht je Modell aus der Datenbank: das waren bei 8 600 Modellen 3,3–3,9 s je
         # Aufruf, solange eingelesen wurde (jeder Zugriff wartete auf die Schreibsperre).
         je_ordner = {}                      # Ordner -> Namen der Modelle darin
-        for m in self.k.modelle():
+        for m in self.teile.modelle():
             if m["entwurf"]:
                 continue
             for o in m["ordner"]:

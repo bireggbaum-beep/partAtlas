@@ -596,6 +596,9 @@ async function einstellungen() {
         `<label><input type="radio" name="ein-kachelgroesse" value="${k}" ${zustand.kachelGroesse === k ? "checked" : ""}> ${t}</label>`).join("")}</div>
       <label><input type="checkbox" id="ein-format-etikett" ${zustand.formatEtikett ? "checked" : ""}> Dateiformat auf dem Vorschaubild zeigen</label>
       <p class="dim">Unten links auf jeder Kachel, etwa STL, 3MF, STEP — in der Farbe des Formats.</p>
+      <div class="i-titel">BAUGRUPPEN-LABOR</div>
+      <label><input type="checkbox" id="ein-labor" ${laborAn() ? "checked" : ""}> Neue Baugruppen-Funktionen zeigen</label>
+      <p class="dim">Unfertiges, das noch ausprobiert wird. Gilt für diesen Browser und wirkt sofort.</p>
       <div class="i-titel">UNTER DEM NAMEN</div>
       ${Object.entries(KACHEL_ZEILEN).map(([k, z]) => `<label><input type="checkbox" data-kachel-zeile="${k}" ${zustand.kachelZeilen.includes(k) ? "checked" : ""}> ${z.titel}</label>`).join("")}
       <p class="dim">Mehr Zeilen machen die Kachel etwas höher. Gilt für diesen Browser und wirkt sofort.</p>

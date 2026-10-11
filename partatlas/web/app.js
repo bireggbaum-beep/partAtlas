@@ -9,6 +9,13 @@
 // Seitenleiste, Filter bei den Menüs. In Phase 2 genügt PHASE = 2.
 const PHASE = Number(new URLSearchParams(location.search).get("phase")) || 1;   // ?phase=2: zum Testen und Vorzeigen
 document.documentElement.dataset.phase = PHASE;
+// Baugruppen-Labor: neue Baugruppen-Funktionen, die der Tester noch nicht sehen soll. Aus, bis man sie einschaltet — Einstellungen ›
+// Ansicht oder einmal `?labor=1` (`?labor=0` schaltet aus); gemerkt je Browser. Was nur im Labor erscheint, trägt `data-labor`.
+// Das versteckt nur die Oberfläche: Änderungen an der Speicherform gelten für alle (VERTRAG).
+const laborAdresse = new URLSearchParams(location.search).get("labor");
+if (laborAdresse === "0" || laborAdresse === "1") localStorageSchreiben("labor", laborAdresse);
+const laborAn = () => localStorageLesen("labor") === "1";
+document.documentElement.dataset.labor = laborAn() ? "1" : "0";
 const ab2 = (k) => PHASE >= 2 || !["ws", "warteschlange"].includes(k);
 
 // Fehler in der Oberfläche kommen ins Protokoll des Servers (partatlas.log): im Browser sieht sie sonst nur, wer die Konsole offen hat.
@@ -2190,6 +2197,11 @@ document.addEventListener("change", async (e) => {
     return raster.neu();
   }
   if (e.target.name === "ein-kachelgroesse") return kachelGroesseSetzen(e.target.value);   // Einstellungen › Ansicht, sofort
+  if (e.target.id === "ein-labor") {                   // wirkt sofort
+    localStorageSchreiben("labor", e.target.checked ? "1" : "0");
+    document.documentElement.dataset.labor = e.target.checked ? "1" : "0";
+    return;
+  }
   if (e.target.id === "ein-format-etikett") {          // wirkt sofort, auch ohne „Speichern“
     zustand.formatEtikett = e.target.checked;
     localStorageSchreiben("formatEtikett", e.target.checked ? "1" : "0");

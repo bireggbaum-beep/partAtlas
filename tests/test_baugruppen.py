@@ -9,7 +9,20 @@ from fastapi.testclient import TestClient
 from partatlas.baugruppen import menge_aus_namen
 from partatlas.main import erstelle_app
 
+# Sidecar: Baugruppen sprechen den Kern nur über Teilezugriff an (siehe partatlas/teilezugriff.py).
+VERBOTEN = ("_kurz(", "PART_GEOMETRY", ".k.", "katalog.k", "get_node(ref(MODELL", "MODEL_ASSET/")
+
+
+def kern_zugriffe(datei):
+    quelle = os.path.join(os.path.dirname(__file__), "..", "partatlas", datei)
+    with open(quelle, encoding="utf-8") as f:
+        zeilen = [z for z in f if not z.lstrip().startswith("#")]
+    return [v for v in VERBOTEN for z in zeilen if v in z.split("#")[0]]
+
+
 if __name__ == "__main__":
+    check("Baugruppen greifen nur über Teilezugriff in den Kern (keine Kachel-, Geometrie- oder Modellknoten-Zugriffe)",
+          kern_zugriffe("baugruppen.py") == [] and kern_zugriffe("stueckliste.py") == [])
     check("Menge aus dem Namen: Arm_x4 → 4, 2x_Halter → 2, Box → 1, Box_v2 → 1",
           [menge_aus_namen(n) for n in ["Arm_x4", "2x_Halter", "Box", "Box_v2", "Motorhalter x 4"]] == [4, 2, 1, 1, 1])
 
