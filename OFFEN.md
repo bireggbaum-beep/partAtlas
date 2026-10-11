@@ -107,7 +107,15 @@ Backend `PROJECT` (Positionslogik verallgemeinern, Tests), dann Platten, dann di
 Grund: Schritte aus einem Projekt tauchen im anderen als „Rückgängig“ auf).
 **Oberfläche Paket 2 erledigt (0.62.0, Labor):** Seitenleiste „Projekte“ + Werkbank-Vollbild (`web/werkbank.js`, Stile am Ende von `app.css`): Baum, Eigenschaften, Teile-Wähler, Rückgängig,
 Baustein öffnen. Mitte zeigt vorerst Kennzahlen und die Vorschau des gewählten Teils. Gezielt im Browser geprüft (19/19, zwei Gegenproben fallen), nicht in `test_ui`. Beim Prüfen
-aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen. **Regel und Schublade (Anwender, 11.10.2026):** Werkbank = Datendichte, **keine Cards, keine grossen Vorschaubilder im Raster, kein Card-Grid**; Teile nicht über ein Fenster hinzufügen (steht in
+aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen. **Eingereicht beim Ausprobieren (Anwender, 11.10.2026, erster Test der Werkbank auf dem Branch; läuft ohne grosse Probleme) — eingereiht, nicht begonnen:**
+- **a) Projekte in der Seitenleiste einklappbar.** Der Abschnitt „Projekte“ klappt schon wie die anderen (`.sk-kopf`). *Rückfrage:* gemeint ist vermutlich, dass **jedes Projekt** darunter aufklappt
+  (wie der Ordnerbaum: Baugruppen, Teile). Dann: Pfeil je Projekt, Kinder aus `GET /api/projekte/{id}/baum`, Klick öffnet die Werkbank.
+- **b) Drei-Punkte-Menü (⋮) je Zeile** (Baum, Stückliste, Schublade) zum Entfernen aus der Liste und für weitere Aktionen; später dasselbe als **Rechtsklick-Menü**. Die App hat schon ein
+  Rechtsklick-Menü für Kacheln (`app.js`, „Rechtsklick-Menü“) — Muster dort ansehen.
+- **c) Linke Seitenleiste (Katalog, Projekte, Baugruppen, Sammlungen) braucht später ein Rechtsklick-Menü** (Entfernen/Löschen, Umbenennen, Öffnen …).
+Reihenfolge danach: Paket 3 (Fertigung) → a) → b) → c).
+
+**Regel und Schublade (Anwender, 11.10.2026):** Werkbank = Datendichte, **keine Cards, keine grossen Vorschaubilder im Raster, kein Card-Grid**; Teile nicht über ein Fenster hinzufügen (steht in
 `CLAUDE.md` und KONZEPT §4.5a). Umgesetzt (0.62.1): Katalog-Schublade unter dem Baum (Reiter Druckteile · Kaufteile · Baugruppen, Suche, 24-px-Zeilen mit 18-px-Bild, Menge schon im Projekt,
 Höhe ziehbar, einklappbar); Einfügen per Ziehen (auf eine Baugruppe, ein Teil oder die Wurzel), Doppelklick, ＋ oder Enter, Strg+I sucht; das Fenster ist weg. Die grosse Vorschau in der Mitte ist
 weg (Vorschaubild jetzt 48 px im Inspektor), ebenso die Kennzahl-Kästchen im Projekt-Inspektor (die Statuszeile zeigt die Summen). Gefunden und behoben: Einzelklick in der Schublade zeichnete die Liste
