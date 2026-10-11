@@ -459,11 +459,16 @@ nachzubauen; `baugruppen.py`, `stueckliste.py` und alles Neue greifen nicht auf 
 Suche, Aufräumen und „steckt in“ kennen `CONTAINS`. Unfertiges erscheint erst im **Baugruppen-Labor** (Einstellungen › Ansicht oder `?labor=1`,
 je Browser gemerkt, Vorgabe aus; Elemente mit `data-labor`). Das Labor versteckt nur die Oberfläche, nicht Änderungen der Speicherform.
 
-### 4.5a Projekte (Entwurf vom 11.10.2026; Backend gebaut in 0.59.0, Platten und Oberfläche folgen)
+### 4.5a Projekte (Entwurf vom 11.10.2026; Backend und Platten gebaut in 0.59.0/0.60.0, Oberfläche folgt)
 
 *Idee des Anwenders. Entwurf, damit Datenmodell und Oberfläche nur einmal angefasst werden. **Gebaut (0.59.0):** `PROJECT` und `REQUIRES` mit derselben Positionslogik wie die
 Baugruppen (Kennung `p_…` wählt Knotenart und Kante, siehe `Baugruppen._col`), `GET/POST /api/projekte`, `/api/projekte/{id}` mit Positionen, Material, Export und Rückgängig;
-Wo verbaut reicht bis zum Projekt. **Noch nicht:** Platten, Oberfläche, „Zum Projekt machen“, „steckt in Projekt“ in Löschvorschau und Modell-Inspektor (der Kern liest `CONTAINS`).*
+Wo verbaut reicht bis zum Projekt. **Platten (0.60.0):** `partatlas/platten.py`, `/api/projekte/{id}/platten` (Liste mit Teilen, Stück, Gewicht, Zeit und `verteilung`), `/api/projekte/{id}/verteilen`
+(Zeile von Platte zu Platte oder „nicht verteilt“, ein Schritt im Verlauf), `/api/platten/{id}` (ändern, löschen), `…/posten` (Menge setzen, 0 nimmt herunter), `…/rest` (was
+fehlt, auf diese Platte). „Verteilt“: Summe der `PRINTS`-Mengen ≥ Bedarf aus der Projekt-Stückliste über alle Baugruppen. **Überschuss** (Reserve) ist erlaubt, wird als `zu_viel`
+gemeldet und zählt nicht als mehr verteilt — kein stilles Kürzen, wenn sich der Bedarf später ändert. Nur Modelle kommen auf Platten; ein aus dem Katalog genommenes Modell
+verschwindet aus Bedarf und Platte; mit dem Projekt gehen die Platten (`soft_delete`). Rückgängig im Kontext des Projekts. Gewicht und Zeit der Platte wie in der Stückliste
+(Slicer-Wert, sonst Schätzung, gekennzeichnet). **Noch nicht:** Oberfläche, „Zum Projekt machen“, „steckt in Projekt“ in Löschvorschau und Modell-Inspektor (der Kern liest `CONTAINS`).*
 
 **Zwei Begriffe, zwei Aufgaben.** Eine **Baugruppe** ist ein wiederverwendbarer Baustein: Teile, die zusammengehören und verschraubt werden („Extruder“,
 „Skelett-Arm“); sie kann in anderen stecken. Ein **Projekt** ist die Klammer um einen konkreten Bau-Auftrag („Halloween-Deko 2026“): es hält lose Teile,
@@ -630,6 +635,7 @@ Sammlungs- und Kantennamen folgen der flatgraph-Namensregel (VERTRAG §7).
 | `PRINT_JOB` | `next_id`, nie wiederverwendet | Datum, Dauer, Gewicht, Filament, Ergebnis, Notiz, Bilder, Herkunft (`hand`/`datei`); ab Phase 2 TSDB-Stream + Zeitraum (§4.6) | `print_log`, `printer_jobs` |
 | `ASSEMBLY` | fortlaufend | Baugruppe: Name, Beschreibung | — |
 | `PROJECT` | fortlaufend (`p_0001`) | Projekt: Name, Beschreibung, Status (frei, ohne Wirkung) — seit 0.59.0, siehe §4.5a | — |
+| `PRINT_PLATE` | fortlaufend (`pl_0001`) | Druckplatte: Name, Material; gehört zu genau einem Projekt — seit 0.60.0, siehe §4.5a | — |
 | `PURCHASED_PART` | sprechend (`din912-m3x10`) | Kaufteil: Name, Kategorie, Norm, Einheit | — |
 | `PRINTER_DEVICE` | fortlaufend | Name, Anschluss, Adresse, Bett, Düse | `printers`, `printer_connections` |
 | `AMS_SLOT` | fortlaufend | Fach einer Einheit | `material_units` |
@@ -662,6 +668,8 @@ AMS_SLOT       ─[LOADED_WITH]───────▶ MATERIAL_SPOOL
 MATERIAL_SPOOL ─[IS_TYPE_OF]────────▶ MATERIAL_MASTER
 ASSEMBLY       ─[CONTAINS]──────────▶ MODEL_ASSET | ASSEMBLY | PURCHASED_PART
 PROJECT        ─[REQUIRES]──────────▶ MODEL_ASSET | ASSEMBLY | PURCHASED_PART | CUSTOM_COMPONENT   Menge, Material, Farbe, Notiz, Reihenfolge (0.59.0)
+PROJECT        ─[HAS_PLATE]─────────▶ PRINT_PLATE                                                (0.60.0)
+PRINT_PLATE    ─[PRINTS]────────────▶ MODEL_ASSET                                                Menge, Reihenfolge (0.60.0)
                                                         meta: menge, erledigt, material, farbe, notiz, position
 MODEL_ASSET    ─[REMIX_OF]──────────▶ MODEL_ASSET
 MODEL_ASSET    ─[SPARE_PART_FOR]────▶ MODEL_ASSET

@@ -73,6 +73,9 @@ class Baugruppen:
         # vor und nach der Änderung; zurück heisst: den Zustand vorher wieder einsetzen.
         self._verlauf_sperre = threading.RLock()
         self._verlaeufe = {}
+        # Erweiterungspunkte für Module, die an Projekten hängen (Platten): wie ihr Zustand ins Rückgängig kommt und was beim Löschen mitgeht.
+        self._behandler = {}            # Art des Knotens -> (zustand(kennung), herstellen(kennung, zustand))
+        self._loesch_haken = []         # Aufrufe mit der Kennung eines gelöschten Behälters
         self._standardteile_anlegen()
 
     def _standardteile_anlegen(self):
@@ -102,6 +105,8 @@ class Baugruppen:
         """Was an einem Knoten änderbar ist: bei einer Baugruppe Name, Beschreibung und Positionen (mit allen ihren Feldern und der
         Reihenfolge), bei einem Kaufteil die Bezugsangaben. None, wenn es den Knoten nicht mehr gibt."""
         col, _, kid = r.partition("/")
+        if col in self._behandler:
+            return self._behandler[col][0](kid)
         if col in BEHAELTER:
             n = self.db.get_node_full(r)
             if n is None:
@@ -116,6 +121,8 @@ class Baugruppen:
         col, _, kid = r.partition("/")
         if z is None or self._zustand(r) is None:
             return                              # inzwischen gelöscht: nichts wiederherzustellen
+        if col in self._behandler:
+            return self._behandler[col][1](kid, z)
         if col not in BEHAELTER:
             return self.db.update_node(KAUFTEIL, kid, z)
         self.db.update_node(col, kid, {k: v for k, v in z.items() if k != "kanten"})
@@ -291,6 +298,8 @@ class Baugruppen:
         """Die Baugruppe geht; Modelle und Kaufteile bleiben."""
         self._pruefen(bid)
         self.db.soft_delete(self._col(bid), bid)
+        for haken in self._loesch_haken:
+            haken(bid)
         with self._verlauf_sperre:
             self._verlaeufe.pop(bid, None)
 

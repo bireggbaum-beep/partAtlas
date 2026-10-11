@@ -90,7 +90,9 @@ Rückgängig als Änderungsliste (Aufwand 3); Ton der Oberfläche in der Werkban
 2. Rückgängig je Projekt statt einer Liste für alle — **erledigt (0.59.1)**: je Kontext eine Liste (`?im=`), Konfliktprüfung (ein Schritt gilt nur, wenn die Knoten noch so aussehen, wie
    er sie hinterlassen hat; sonst Meldung). Entstanden beim Testen: ein Schritt über mehrere Baugruppen hätte spätere Änderungen anderswo stillschweigend überschrieben. test_baugruppen
    87/87 (+4; Gegenproben gemeinsame Liste und fehlende Konfliktprüfung fallen), Oberfläche gezielt 10/10 (Gegenprobe fällt).
-3. Platten (`PRINT_PLATE`, `PRINTS` mit Mengen, „verteilt“ aus dem Bedarf).
+3. Platten (`PRINT_PLATE`, `PRINTS` mit Mengen, „verteilt“ aus dem Bedarf) — **erledigt (0.60.0)**: `platten.py`, neue Suite `test_platten` 24/24 (sechs Gegenproben fallen: Überschuss
+   zählt mit, Bedarf nur direkt, fremde Platte, Platten beim Löschen des Projekts, jede Knotenart auf der Platte, Rückgängig ohne Posten). Entscheidung: Überschuss erlaubt und gemeldet
+   statt still gekürzt. Noch offen daran: nichts am Backend; Platten ändern den Bedarf nicht (kein „Fortschritt aus Drucken“ — das gehört zum eingereihten Lebenslauf der Platte).
 4. Werkbank-Oberfläche (Baum, Inspektor, Reiter) hinter dem Labor-Schalter.
 5. **Eingereiht, noch nicht angefasst:** *Lebenslauf der Platte* (Datei G-Code/gesliceste 3MF jederzeit an der Platte ablegbar, Druck mit Ergebnis erst nach dem Druck,
    mehrere Drucke je Platte, Fortschritt zählt nur gute; drei Genauigkeitsstufen Schätzung → Slicer-Wert → gemessen; Platte → „Im Slicer öffnen“ mit Zettel für Mengen und

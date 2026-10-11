@@ -29,6 +29,7 @@ import numpy as np
 from .eigene import Eigene
 from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import ARTEN, Baugruppen
+from .platten import Platten
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
 from .live import Verteiler
@@ -99,7 +100,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         k = Katalog(b)
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
-        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))
+        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, platten=Platten(bg), eigene=Eigene(k, bg))
         s.schleifenprobe = verteiler.antwortzeit
         _startinfo(b, k, s)
         # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
@@ -175,6 +176,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
 
     def E():
         return zustand["eigene"]
+
+    def P():
+        return zustand["platten"]
 
     # -- Wache: schreibende Anfragen nur von der eigenen Oberfläche. Ein
     # fremder Tab im selben Browser könnte sonst Dateien umbenennen oder
@@ -777,6 +781,41 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         return {"id": B().projekt_anlegen(d.get("name", ""))}
 
     # Projekte teilen sich Detail, Positionen, Material, Export und Rückgängig mit den Baugruppen (dieselbe Logik, Kennung `p_…`).
+    # Druckplatten (KONZEPT §4.5a): gehören zu einem Projekt, halten Modelle mit Mengen.
+    @app.get("/api/projekte/{pid}/platten")
+    @am_stueck
+    def platten_liste(pid: str):
+        return P().liste(pid)
+
+    @app.post("/api/projekte/{pid}/platten")
+    def platte_neu(pid: str, d: dict = Depends(json_koerper)):
+        return {"id": P().anlegen(pid, d.get("name"), d.get("material"))}
+
+    @app.post("/api/projekte/{pid}/verteilen")
+    def platten_verteilen(pid: str, d: dict = Depends(json_koerper), im: str = ""):
+        P().verteilen(pid, d.get("ref", ""), d.get("von"), d.get("nach"), im or None)
+        return {"ok": True}
+
+    @app.patch("/api/platten/{plid}")
+    def platte_aendern(plid: str, d: dict = Depends(json_koerper), im: str = ""):
+        P().aendern(plid, d, im or None)
+        return {"ok": True}
+
+    @app.delete("/api/platten/{plid}")
+    def platte_loeschen(plid: str):
+        P().loeschen(plid)
+        return {"ok": True}
+
+    @app.put("/api/platten/{plid}/posten")
+    def platte_posten(plid: str, d: dict = Depends(json_koerper), im: str = ""):
+        P().posten_setzen(plid, d.get("ref", ""), d.get("menge", 0), im or None)
+        return {"ok": True}
+
+    @app.post("/api/platten/{plid}/rest")
+    def platte_rest(plid: str, d: dict = Depends(json_koerper), im: str = ""):
+        P().rest_auflegen(plid, d.get("ref", ""), im or None)
+        return {"ok": True}
+
     @app.get("/api/projekte/{bid}")
     @app.get("/api/baugruppen/{bid}")
     def baugruppe(bid: str, im: str = ""):
