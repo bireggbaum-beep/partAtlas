@@ -114,7 +114,8 @@ aufgefallen und behoben: im Wähler blieb der Suchtext beim Reiterwechsel stehen
   Rechtsklick-Menü für Kacheln (`app.js`, „Rechtsklick-Menü“) — Muster dort ansehen.
 - **c) Linke Seitenleiste (Katalog, Projekte, Baugruppen, Sammlungen) braucht später ein Rechtsklick-Menü** (Entfernen/Löschen, Umbenennen, Öffnen …).
 **Paket 3 erledigt (0.63.0, 11.10.2026):** Reiter Fertigung in der echten Werkbank als gruppierte Tabelle (keine Karten): „Nicht verteilt“ mit Auswahl „auf Platte …“, je Platte Name, Material, Zeit/Gewicht, ＋/−, × zurück, Ziehen zwischen Platten, Platte löschen; Fortschrittsbalken, Reiter „Fertigung ver/ges“, Statuszeile, Punkt im Baum (orange/grün), Filter „fehlt“. Alle Änderungen laufen im Projekt-Verlauf (↶ ↷). Browser-Durchgang 11/11 (hell); Gegenproben: Ziehen und Filter entfernt → fällt. Alte Probe 26/26.
-Reihenfolge danach: a) → b) → c).
+**a) erledigt (0.63.1, 11.10.2026):** Projekte in der Seitenleiste klappen mit Pfeil auf wie der Ordnerbaum (Positionen, darin Baugruppen eine Ebene tiefer); Klick auf eine Position öffnet das Projekt und wählt sie; Zustand bleibt im Browser; offene Projekte aktualisieren sich bei Änderungen in der Werkbank. Browser-Durchgang 7/7, Gegenprobe (Pfeil ohne Wirkung) fällt.
+Reihenfolge danach: b) → c).
 
 **Regel und Schublade (Anwender, 11.10.2026):** Werkbank = Datendichte, **keine Cards, keine grossen Vorschaubilder im Raster, kein Card-Grid**; Teile nicht über ein Fenster hinzufügen (steht in
 `CLAUDE.md` und KONZEPT §4.5a). Umgesetzt (0.62.1): Katalog-Schublade unter dem Baum (Reiter Druckteile · Kaufteile · Baugruppen, Suche, 24-px-Zeilen mit 18-px-Bild, Menge schon im Projekt,

@@ -26,14 +26,36 @@ const wbArtName = { modell: "Druckteil", baugruppe: "Baugruppe", kaufteil: "Kauf
 
 // ---------------------------------------------------------------- Seitenleiste: Projekte
 
+// Pfeil je Projekt (und je Baugruppe darin) klappt die Positionen auf, wie beim Ordnerbaum. Die Kinder kommen aus /baum und werden beim Aufklappen
+// und bei jedem Neuladen der offenen Projekte frisch geholt. Der Zustand der Pfeile bleibt im Browser.
+const wbLeiste = { offen: new Set(), baeume: {} };
+try { JSON.parse(localStorage.getItem("partatlas.wbleiste") || "[]").forEach((k) => wbLeiste.offen.add(k)); } catch { /* ohne Speicher: alles zu */ }
+const wbLeisteMerken = () => { try { localStorage.setItem("partatlas.wbleiste", JSON.stringify([...wbLeiste.offen])); } catch { /* egal */ } };
+
+function wbLeisteKinder(pos, pid, pfad, tiefe) {
+  return pos.map((e) => {
+    const p = [...pfad, e.ref].join("|"), kinder = e.art === "baugruppe" && (e.positionen || []).length, offen = wbLeiste.offen.has(pid + "|" + p);
+    return `<button class="eintrag" style="--tiefe:${tiefe}" data-projekt="${esc(pid)}" data-pref="${esc(e.ref)}" title="${esc(e.name)}">
+      <span><span class="pfeil ${kinder ? (offen ? "auf" : "zu") : ""}" ${kinder ? `data-pklappe="${esc(pid + "|" + p)}"` : ""}></span>${WB_ICON[e.art] || ""} ${esc(e.name)}</span><em>${e.menge}×</em></button>`
+      + (kinder && offen ? wbLeisteKinder(e.positionen, pid, [...pfad, e.ref], tiefe + 1) : "");
+  }).join("");
+}
+
 async function ladeProjekteLeiste() {
   const ziel = $("#projekte");
   if (!ziel) return;
   let liste;
   try { liste = await api("/api/projekte"); } catch { return; }
-  abgleichen(ziel, liste.map((p) => `<button class="eintrag ${wb.id === p.id ? "aktiv" : ""}" data-projekt="${esc(p.id)}" title="${esc(p.status || "")}">
-      <span>${esc(p.name)}</span><em title="Positionen">${p.positionen}</em></button>`).join("")
-    + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="projekt-neu-2">＋ Neues Projekt</button>`));
+  await Promise.all(liste.map(async (p) => {
+    if (!wbLeiste.offen.has(p.id)) { delete wbLeiste.baeume[p.id]; return; }
+    try { wbLeiste.baeume[p.id] = (await api(`/api/projekte/${p.id}/baum`)).positionen; } catch { wbLeiste.baeume[p.id] = []; }
+  }));
+  abgleichen(ziel, `<div class="baum">` + liste.map((p) => {
+    const offen = wbLeiste.offen.has(p.id);
+    return `<button class="eintrag ${wb.id === p.id && !wb.zurueck.length ? "aktiv" : ""}" style="--tiefe:0" data-projekt="${esc(p.id)}" title="${esc(p.status || "")}">
+      <span><span class="pfeil ${p.positionen ? (offen ? "auf" : "zu") : ""}" ${p.positionen ? `data-pklappe="${esc(p.id)}"` : ""}></span>${esc(p.name)}</span><em title="Positionen">${p.positionen}</em></button>`
+      + (offen ? wbLeisteKinder(wbLeiste.baeume[p.id] || [], p.id, [], 1) : "");
+  }).join("") + (liste.length ? "" : `<button class="eintrag leer-eintrag" id="projekt-neu-2">＋ Neues Projekt</button>`) + `</div>`);
 }
 
 async function neuesProjekt() {
@@ -91,6 +113,7 @@ async function wbLaden({ inspektor = true } = {}) {
   if (wb.sel && !wb.index[wb.sel.p]) wb.sel = null;          // die Position gibt es nicht mehr
   wbZeichne(inspektor);
   wbKatListe();
+  if (wbLeiste.offen.has(id)) ladeProjekteLeiste();       // die aufgeklappten Positionen links bleiben aktuell
 }
 
 const wbOffenVon = (mid) => (wb.platten?.verteilung.offen[mid]) || 0;
@@ -544,8 +567,19 @@ async function wbLoeschen() {
 document.addEventListener("click", (e) => {
   const t = e.target;
   if (t.closest("#projekt-neu, #projekt-neu-2")) return neuesProjekt();
+  const kl = t.closest("[data-pklappe]");
+  if (kl) {
+    const k = kl.dataset.pklappe;
+    wbLeiste.offen.has(k) ? wbLeiste.offen.delete(k) : wbLeiste.offen.add(k);
+    wbLeisteMerken();
+    return ladeProjekteLeiste();
+  }
   const pr = t.closest("[data-projekt]");
-  if (pr) return wbOeffne(pr.dataset.projekt);
+  if (pr) {
+    const ref = pr.dataset.pref;
+    if (wb.id === pr.dataset.projekt && !wb.zurueck.length) { if (ref) wbWaehleRef(ref); return; }
+    return wbOeffne(pr.dataset.projekt).then(() => { if (ref) wbWaehleRef(ref); });
+  }
   if (!t.closest("#werkbank")) return;
   const aktion = t.closest("[data-wb]")?.dataset.wb;
   if (aktion === "schliessen") return wbSchliessen();
