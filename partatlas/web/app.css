@@ -1169,3 +1169,10 @@ body.wb-an { overflow: hidden; }
 .wb-punkt { font-size: 9px; flex: none; } .wb-punkt.offen { color: var(--warn); } .wb-punkt.ok { color: var(--good); }
 .wb-chip { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 1px 9px; cursor: pointer; color: var(--ink-2); font-size: 12px; }
 .wb-chip.an { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* Projektleiste oben in der Werkbank: eine Zeile je Projekt, wechseln ohne Umweg über den Katalog */
+.wb-pj { flex: none; max-height: 132px; overflow: auto; border-bottom: 1px solid var(--line); }
+.wb-pjz { display: flex; align-items: center; gap: 6px; width: 100%; height: 24px; padding: 0 8px 0 10px; background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink); text-align: left; cursor: pointer; }
+.wb-pjz:hover { background: var(--panel-2); }
+.wb-pjz.sel { background: var(--wb-sel, var(--accent-soft)); box-shadow: inset 2px 0 0 var(--accent); }
+.wb-pjz .wb-n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

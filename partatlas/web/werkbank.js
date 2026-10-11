@@ -100,10 +100,10 @@ async function wbLaden({ inspektor = true } = {}) {
   const id = wb.id;
   if (!id) return;
   try {
-    const [baum, flach, detail, platten] = await Promise.all([api(`${wbBasis(id)}/${id}/baum`), api(`${wbBasis(id)}/${id}/stueckliste`), api(`${wbBasis(id)}/${id}`),
-      id.startsWith("p_") ? api(`/api/projekte/${id}/platten`) : null]);
+    const [baum, flach, detail, platten, projekte] = await Promise.all([api(`${wbBasis(id)}/${id}/baum`), api(`${wbBasis(id)}/${id}/stueckliste`), api(`${wbBasis(id)}/${id}`),
+      id.startsWith("p_") ? api(`/api/projekte/${id}/platten`) : null, api("/api/projekte")]);
     if (wb.id !== id) return;
-    Object.assign(wb, { baum, flach, detail, platten });
+    Object.assign(wb, { baum, flach, detail, platten, projekte });
   } catch (e) {
     toast(e.message);
     wb.zurueck = [];
@@ -139,7 +139,9 @@ function wbGeruest() {
   el.innerHTML = `
     <div class="wb-kopf" id="wb-kopf"></div>
     <div class="wb-raum" id="wb-raum" style="--wb-l:${Number(localStorageLesen("wb-l")) || 300}px;--wb-r:${Number(localStorageLesen("wb-r")) || 330}px">
-      <section class="wb-spalte"><div class="wb-titel"><b>AUFBAU</b><span class="wb-luecke"></span>
+      <section class="wb-spalte"><div class="wb-titel"><b>PROJEKTE</b><span class="wb-luecke"></span><button class="wb-kn" data-wb="neuprojekt" title="Neues Projekt">＋</button></div>
+        <div class="wb-pj" id="wb-pj"></div>
+        <div class="wb-titel"><b>AUFBAU</b><span class="wb-luecke"></span>
         <button class="wb-kn" id="wb-auf" title="Alles aufklappen">⊞</button><button class="wb-kn" id="wb-zu" title="Alles zuklappen">⊟</button></div>
         <div class="wb-filter"><input id="wb-suche" placeholder="Im Baum suchen …" autocomplete="off"><button class="wb-chip" id="wb-fehlt" title="Nur Teile, die noch nicht ganz auf Druckplatten verteilt sind">fehlt</button></div>
         <div class="wb-baum" id="wb-baum" tabindex="0"></div>
@@ -191,10 +193,20 @@ function wbGeruest() {
 
 function wbZeichne(inspektor = true) {
   wbKopf();
+  wbProjekte();
   wbBaum();
   wbMitte();
   wbStatus();
   if (inspektor) wbInspektor();
+}
+
+// Alle Projekte stehen in der Werkbank selbst: wechseln heisst anklicken, der Umweg über den Katalog entfällt. Ein offener Baustein gehört zum
+// Projekt, aus dem er geöffnet wurde; dessen Zeile bleibt deshalb markiert.
+function wbProjekte() {
+  const wurzel = wb.zurueck.length ? wb.zurueck[0] : wb.id;
+  abgleichen($("#wb-pj"), (wb.projekte || []).map((p) => `<button class="wb-pjz ${p.id === wurzel ? "sel" : ""}" data-wpj="${esc(p.id)}" title="${esc(p.status || "")}">
+    ${WB_ICON.projekt}<span class="wb-n">${esc(p.name)}</span><span class="wb-sub">${p.positionen}</span></button>`).join("")
+    || `<div class="wb-leer">Noch kein Projekt.</div>`);
 }
 
 function wbKopf() {
@@ -583,6 +595,9 @@ document.addEventListener("click", (e) => {
   if (!t.closest("#werkbank")) return;
   const aktion = t.closest("[data-wb]")?.dataset.wb;
   if (aktion === "schliessen") return wbSchliessen();
+  if (aktion === "neuprojekt") return neuesProjekt();
+  const pj = t.closest("[data-wpj]");
+  if (pj) { if (pj.dataset.wpj === wb.id) return; wb.zurueck = []; return wbOeffne(pj.dataset.wpj); }
   if (aktion === "rueck") return wbVerlauf("rueckgaengig");
   if (aktion === "wieder") return wbVerlauf("wiederholen");
   if (aktion === "hinzu") return wbKatFokus();
