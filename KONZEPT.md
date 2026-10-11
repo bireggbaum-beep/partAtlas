@@ -542,6 +542,44 @@ Eigenschaften rechts (Menge, Druckvorgabe, Bezug, Name, Status, Notizen), „＋
 **Offen.** „Zum Projekt machen“ für bestehende oberste Baugruppen; Platte ↔ erzeugte 3MF-Datei und ↔ Drucke (§4.6); Rückgängig je Projekt statt eine Liste für
 alle; wie die Seitenleiste Modell, Baugruppe, Projekt und Sammlung auseinanderhält; Fortschritt über mehrere Projekte.
 
+### 4.5b Werkbank: Aufbau und Bedienung (entschieden 11.10.2026, ersetzt den ersten Entwurf)
+
+*Anlass: Im ersten Entwurf zeigten Baum links und Stückliste in der Mitte dasselbe zweimal, und eine Auswahl auf der einen Seite verschob die andere
+(„wie von Geisterhand“). Vorbilder: Stücklisten- und PLM-Werkzeuge (Onshape-BOM, OpenBOM, Arena), wo Struktur und Stückliste **eine** Baum-Tabelle
+sind; CAD (Fusion, SolidWorks), wo nur zwei *verschiedene* Darstellungen (Liste und 3D) eine Auswahl teilen.*
+
+**Grundsatz: jeder Bereich hat genau eine Rolle; ausgewählt wird nur dort, wo der Inhalt lebt; nichts wählt etwas anderswo mit.**
+
+| Bereich | Rolle | zeigt | wählt aus? |
+|---|---|---|---|
+| Links: Navigator | *woran* arbeite ich, *woher* kommen Teile | Projekte · Bausteine (Baugruppen) · Katalog (Suche, Druckteile/Kaufteile/Baugruppen) | nein — ein Klick öffnet (Projekt, Baustein); Katalog ist Quelle zum Ziehen/Doppelklicken |
+| Mitte: Dokument | *was* — das offene Projekt bzw. der Baustein | Reiter: **Aufbau** · **Summiert** · **Fertigung** (später **3D**) | ja, die einzige Stelle |
+| Rechts: Eigenschaften | *wie* — Eigenschaften der Auswahl im aktiven Reiter | ohne Auswahl: das Projekt selbst | nie |
+| Kopf / Statuszeile | Befehle (↶ ↷, Fork, Befehle) / Summen und Auswahl | — | — |
+
+**Die drei Reiter sind Sichten desselben Dokuments, jede mit eigener Auswahl:**
+
+- **Aufbau** (Standard): Baum-Tabelle — Struktur und Stückliste in einem. Spalten: Benennung (eingerückt, ▸ klappt Baugruppen), Menge (auf
+  dieser Ebene), Gesamt (× Mengen darüber), Material, Gewicht, Zeit, Platte (● offen / ✓). Auswahl = eine **Position**. Hier wird gebaut:
+  Ziehen aus dem Katalog auf eine Baugruppe (hinein) oder ins Leere (oberste Ebene), Doppelklick im Katalog legt in die gewählte Baugruppe,
+  Zeilen auf eine Baugruppe ziehen verschiebt, ⋮ am Zeilenende und Rechtsklick öffnen dasselbe Menü (Wo verbaut, Tauschen, Fork, Als Baustein
+  öffnen, Entfernen), Entf entfernt, Pfeiltasten bewegen und klappen, Suche und Filter („fehlt“, „Entwurf“) über der Tabelle.
+- **Summiert**: dieselben Teile flach, je Teil einmal mit Gesamtmenge — Druckteile, darunter Zukaufteile nach Kategorie mit Bezug. Zum Lesen
+  und Einkaufen. Auswahl = ein **Teil** (nicht eine Position): rechts Bedarf, Daten, Bezug und die Liste **„Vorkommen“**; erst ein Klick dort
+  springt in den Aufbau und wählt die Position — ausdrücklich, nie von selbst.
+- **Fertigung** (nur Projekt): gruppierte Tabelle — „Nicht verteilt“, darunter je Platte Kopfzeile (Name, Material als Marke, Zeit · Gewicht)
+  und ihre Teile mit ＋/−. Auswahl = eine **Platte** (rechts: Name, Material, Summen, Löschen; später Datei und Drucke) oder ein **Teil auf/vor
+  einer Platte** (rechts: Menge, „Auf Platte … legen“, „Zurück“, Hinweis, wenn das Material der Vorgabe nicht zur Platte passt). Verteilen:
+  Ziehen zwischen den Gruppen, ＋/−, oder die Knöpfe rechts. Keine Eingabefelder in der Tabelle.
+
+**Auswahl:** Jeder Reiter merkt sich seine eigene; der Wechsel des Reiters stellt sie wieder her, nimmt aber nichts mit. Esc hebt sie auf. Ohne
+Auswahl zeigt rechts das Projekt (Name, Status, Notizen, Kennzahlen als Zeilen).
+
+**Hinzufügen:** nur über den Katalog links (Ziehen, Doppelklick, Enter); „＋ Teil“ im Kopf und Strg+I setzen nur den Cursor in die Katalogsuche.
+Kein Fenster.
+
+**Später:** Reiter **3D** — die zweite Darstellung, die die Auswahl des Aufbaus teilt (wie im CAD; erst dann ist Mitwählen richtig).
+
 ### 4.6 Drucke in Phase 1 (Entwurf, ohne Drucker)
 
 *Entwurf vom 01.10.2026. Stufe a ist gebaut (0.19), Stufe b offen.*

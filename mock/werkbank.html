@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mock: Baugruppen-Werkbank</title>
 <style>
-/* MOCK, nicht Teil der Anwendung. Zeigt die Werkbank für Baugruppen (Entwurf 11.10.2026): Baum links, Arbeitsfläche mit Reitern,
-   Inspektor rechts, Katalog-Schublade, Rückgängig, Befehlspalette. Alles darin ist bedienbar, die Daten stehen im Skript unten.
-   Farben und Masse wie app.css; Datei im Browser öffnen.
-   Vorbilder: VS Code (Baum, Befehlspalette), PrusaSlicer (Objektliste mit Parametern je Objekt), Onshape/KiCad (Stückliste, Auswahl springt). */
+/* MOCK, nicht Teil der Anwendung. Werkbank nach KONZEPT §4.5b (11.10.2026): links Navigator (Projekte, Bausteine, Katalog als Quelle),
+   Mitte das Dokument mit den Reitern Aufbau (Baum-Tabelle) · Summiert · Fertigung — die einzige Stelle mit Auswahl, jeder Reiter mit seiner
+   eigenen —, rechts die Eigenschaften der Auswahl. Nichts wählt anderswo mit. Alles bedienbar, Daten im Skript unten; Datei im Browser öffnen.
+   Vorbilder: Onshape-BOM, OpenBOM, Arena (Struktur und Stückliste als eine Baum-Tabelle), VS Code (Befehlspalette). */
 :root {
   --s1: 3px; --s2: 5px; --s3: 8px; --s4: 13px; --s5: 21px; --radius: 4px;
   --bg: oklch(0.965 0.004 60); --panel: oklch(1 0 0); --panel-2: oklch(0.985 0.003 60);
@@ -53,7 +53,7 @@ kbd { font: 11px var(--mono); background: var(--panel-2); border: 1px solid var(
 .marke { font: 11px var(--mono); padding: 1px 6px; border-radius: 3px; border: 1px solid var(--line-strong); color: var(--ink-2); }
 .marke.fork { color: var(--accent); border-color: var(--accent); }
 
-.raum { display: grid; grid-template-columns: var(--bl, 300px) 5px 1fr 5px var(--br, 330px); min-height: 0; }
+.raum { display: grid; grid-template-columns: var(--bl, 260px) 5px 1fr 5px var(--br, 330px); min-height: 0; }
 .spalte { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); }
 .mitte { background: var(--bg); }
 .griff { cursor: col-resize; background: var(--line); }
@@ -167,6 +167,37 @@ h3.ab:first-child { margin-top: 0; }
 .banner b { font-weight: 600; }
 .toast { position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 6px 14px; border-radius: 6px; z-index: 80; font-size: 12.5px; box-shadow: var(--shadow); }
 .legende { color: var(--ink-3); font-size: 12px; padding: 6px 0 0; }
+
+/* ---------- Navigator links (KONZEPT §4.5b): öffnen und Quelle, keine Auswahl im Dokument ---------- */
+.nav .nliste { flex: none; max-height: 170px; overflow: auto; padding: 2px 0; }
+.nav .e { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; cursor: pointer; white-space: nowrap; }
+.nav .e:hover { background: var(--panel-2); }
+.nav .e.offen { background: var(--sel); box-shadow: inset 2px 0 0 var(--accent); font-weight: 600; }
+.nav .e .n, .kat .k .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav .e .m { font: 11px var(--mono); }
+.kreiter { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); flex: none; }
+.kreiter button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 5px 7px; cursor: pointer; color: var(--ink-2); }
+.kreiter button.an { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.k.mark { background: var(--sel); }
+/* ---------- Aufbau: Baum-Tabelle ---------- */
+.werkz { background: var(--panel); }
+.reiter button:disabled { opacity: 0.4; cursor: default; }
+.flaeche:focus { outline: none; }
+.tt td.n { padding-left: calc(4px + var(--t, 0) * 16px); white-space: nowrap; }
+.tt td.n > * { vertical-align: middle; }
+.tt .pf { display: inline-block; width: 14px; text-align: center; color: var(--ink-3); cursor: pointer; font-size: 10px; }
+.tt .nn { margin-left: 4px; }
+.tt tr.zl.sel td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+.tt td.mehr { width: 28px; padding: 0 2px; }
+.tt td.mehr .kn { opacity: 0; padding: 0 6px; }
+.tt tr:hover td.mehr .kn, .tt tr.sel td.mehr .kn { opacity: 1; }
+.tt tr.dropp td { background: var(--accent-soft); }
+.pl.offen { color: var(--warn); } .pl.ok { color: var(--good); }
+.ablage { margin-top: 6px; padding: 5px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--ink-3); text-align: center; font-size: 12px; }
+.ablage.dropp { border-color: var(--accent); background: var(--accent-soft); }
+.ft tr.gr[data-fp] { cursor: pointer; }
+.ft tr.gr.sel td { background: var(--sel); }
+.verw .marke { margin-left: auto; }
 </style>
 </head>
 <body>
@@ -241,11 +272,12 @@ const DATEN = () => ({
 });
 let D = DATEN();
 let wurzel = "toolhead";
-let ausgeklappt = new Set(["toolhead", "toolhead/e1"]);   // Pfade als "e1/e6"
-let sel = [];             // Pfad: Kanten-IDs von der Wurzel; [] = Wurzel
-let reiter = "stueckliste";
+let ausgeklappt = new Set(["e1"]);   // Pfade als "e1/e6"
+let sel = [];             // Auswahl im Reiter Aufbau: Pfad aus Kanten-IDs von der Wurzel; [] = nichts gewählt
+let selS = null;          // Auswahl im Reiter Summiert: ein Teil
+let selF = null;          // Auswahl im Reiter Fertigung: { platte, ziel } — Platte allein, oder ein Teil auf/vor einer Platte
+let reiter = "aufbau";
 let filter = { text: "", fehlt: false, entwurf: false };
-let schubladeZu = false;
 const hist = { zurueck: [], vor: [] };
 
 /* ============================================================== Hilfen */
@@ -410,6 +442,7 @@ function baumMenue(x, y, kid) {
   menuAn(x, y, [
     { t: "Wo verbaut? (Where-Used)", ic: ICON.link, f: () => woDialog(k.e.ziel) },
     { t: "Teil tauschen …", ic: ICON.undo, aus: t.typ === "baugr", f: () => waehler("Tauschen gegen …", Object.keys(D.teile).filter((id) => D.teile[id].typ === t.typ && id !== k.e.ziel && id !== wurzel), (id) => tauschen(kid, id), "Menge und Druckparameter bleiben erhalten.") },
+    { t: "Als Baustein öffnen", ic: ICON.baugr, aus: t.typ !== "baugr", f: () => oeffne(k.e.ziel) },
     { t: "Fork dieser Baugruppe", ic: ICON.fork, aus: t.typ !== "baugr", f: forkWurzel },
     "-",
     { t: "Entfernen", k: "Entf", f: () => entfernen(kid) },
@@ -423,7 +456,8 @@ function woDialog(ziel) {
   s.addEventListener("click", (e) => { const p = e.target.closest(".p"); if (!p) return; s._zu("ok"); springe(p.dataset.e, p.dataset.top); });
 }
 function springe(kid, top) {
-  if (top && top !== wurzel) { wurzel = top; sel = []; ausgeklappt = new Set([top]); }
+  reiter = "aufbau";
+  if (top && top !== wurzel) { wurzel = top; sel = []; selS = null; selF = null; ausgeklappt = new Set(); }
   const p = pfadZu(null, kid);
   if (!p) return meldung("Diese Verwendung liegt nicht im geöffneten Projekt.");
   for (let i = 1; i < p.length; i++) ausgeklappt.add(pfadKey(p.slice(0, i))); sel = p; alles();
@@ -431,8 +465,8 @@ function springe(kid, top) {
 const BEFEHLE = () => [
   { t: "Rückgängig", k: "Strg+Z", f: zurueck }, { t: "Wiederholen", k: "Strg+Umschalt+Z", f: vor },
   { t: "Fork anlegen (Projekt oder Baugruppe)", f: forkWurzel }, { t: "Druckplatte anlegen", f: platteNeu },
-  { t: "Teil hinzufügen …", k: "Strg+I", f: () => waehler("Teil hinzufügen", kandidaten(), (id) => hinzufuegen(gewaehltAsm(), id)) },
-  { t: "Ansicht: Stückliste", f: () => { reiter = "stueckliste"; alles(); } }, { t: "Ansicht: Fertigung", f: () => { reiter = "fertigung"; alles(); } }, { t: "Ansicht: 3D", f: () => { reiter = "dreid"; alles(); } },
+  { t: "Teil hinzufügen (Katalogsuche)", k: "Strg+I", f: katalogFokus }, { t: "Neues Projekt", f: projektNeu },
+  { t: "Ansicht: Aufbau", f: () => { reiter = "aufbau"; alles(); } }, { t: "Ansicht: Summiert", f: () => { reiter = "summiert"; alles(); } }, { t: "Ansicht: Fertigung", f: () => { if (istProjekt()) { reiter = "fertigung"; alles(); } } },
   { t: "Nur was fehlt (Filter)", f: () => { filter.fehlt = !filter.fehlt; alles(); } },
   { t: "Alles aufklappen", f: () => { gang().forEach((x) => D.teile[x.e.ziel].typ === "baugr" && ausgeklappt.add(pfadKey(x.pfad))); alles(); } },
   { t: "Alles zuklappen", f: () => { ausgeklappt = new Set([]); alles(); } },
@@ -513,193 +547,234 @@ function postenMenge(platte, ziel, delta) {
   aendern(`${D.teile[ziel].name}: ${neu}× auf ${pp.name}`, () => { x.menge = neu; });
 }
 
-/* ============================================================== Zeichnen */
-function alles() { PLAN = null; zeichneLeiste(); zeichneBaum(); zeichneMitte(); zeichneInsp(); zeichneStatus(); }
+/* ============================================================== Zeichnen
+   Rollen (KONZEPT §4.5b): links Navigator (öffnen, Quelle), Mitte das Dokument (einzige Auswahl), rechts Eigenschaften der Auswahl. */
+function alles() { PLAN = null; zeichneLeiste(); zeichneNav(); zeichneMitte(); zeichneInsp(); zeichneStatus(); }
 function gerueest() {
   $("#wb").innerHTML = `
     <div class="leiste" id="leiste"></div>
     <div class="raum" id="raum">
-      <section class="spalte" id="links">
-        <div class="kopf"><b>AUFBAU</b><span class="luecke"></span>
-          <button class="kn" id="auf" title="Alles aufklappen">⊞</button><button class="kn" id="zu" title="Alles zuklappen">⊟</button></div>
-        <div class="filter"><input id="fx" placeholder="Im Baum suchen …"><button class="chip" id="cf">fehlt</button><button class="chip" id="ce">Entwurf</button></div>
-        <div class="baum" id="baum" tabindex="0"></div>
-        <div class="schublade" id="schublade"></div>
-      </section>
+      <section class="spalte nav" id="links"></section>
       <div class="griff" data-g="bl"></div>
       <section class="spalte mitte" id="mitte"></section>
       <div class="griff" data-g="br"></div>
       <section class="spalte" id="rechts"></section>
     </div>
     <div class="stat" id="stat"></div>`;
-  $("#auf").onclick = () => { gang().forEach((x) => D.teile[x.e.ziel].typ === "baugr" && ausgeklappt.add(pfadKey(x.pfad))); alles(); };
-  $("#zu").onclick = () => { ausgeklappt = new Set(); alles(); };
-  $("#fx").oninput = (e) => { filter.text = e.target.value; zeichneBaum(); };
-  $("#cf").onclick = () => { filter.fehlt = !filter.fehlt; alles(); };
-  $("#ce").onclick = () => { filter.entwurf = !filter.entwurf; alles(); };
   griffe();
 }
 function zeichneLeiste() {
   const w = D.teile[wurzel];
-  const gruppe = (typ) => Object.keys(D.teile).filter((id) => D.teile[id].typ === typ);
   $("#leiste").innerHTML = `
-    <button class="kn" title="Zurück in den Katalog">${ICON.pfeil}Katalog</button><div class="trenner"></div>
+    <button class="kn" title="Zurück in den Katalog (die Ansicht der Modelle)">${ICON.pfeil}Katalog</button><div class="trenner"></div>
     <span class="titel">${ICON[w.typ]} ${esc(w.name)} <span class="marke">${w.typ === "projekt" ? "Projekt" : "Baustein"}</span>${w.fork ? ` <span class="marke fork">Fork von ${esc(D.teile[w.fork].name)}</span>` : ""}</span>
-    <select class="wahl" id="projekt" title="Projekt oder Baustein öffnen">${["projekt", "baugr"].map((typ) => `<optgroup label="${typ === "projekt" ? "Projekte" : "Bausteine (Baugruppen)"}">${gruppe(typ).map((id) => `<option value="${id}" ${id === wurzel ? "selected" : ""}>${esc(D.teile[id].name)}</option>`).join("")}</optgroup>`).join("")}</select>
     <div class="trenner"></div>
-    <button class="kn" id="bu" ${hist.zurueck.length ? "" : "disabled"} title="${hist.zurueck.length ? "Rückgängig: " + esc(hist.zurueck[hist.zurueck.length - 1].b) : "Nichts zum Rückgängigmachen"}">${ICON.undo}</button>
+    <button class="kn" id="bu" ${hist.zurueck.length ? "" : "disabled"} title="${hist.zurueck.length ? "Rückgängig: " + esc(hist.zurueck[hist.zurueck.length - 1].b) + " (Strg+Z)" : "Nichts zum Rückgängigmachen"}">${ICON.undo}</button>
     <button class="kn" id="br" ${hist.vor.length ? "" : "disabled"} title="${hist.vor.length ? "Wiederholen: " + esc(hist.vor[hist.vor.length - 1].b) : "Nichts zu wiederholen"}">${ICON.redo}</button>
     <span class="dim">${hist.zurueck.length ? hist.zurueck.length + " Schritte" : ""}</span>
     <div class="trenner"></div>
+    <button class="kn rand" id="bh" title="Cursor in die Katalogsuche links">${ICON.plus}Teil<kbd>Strg+I</kbd></button>
     <button class="kn rand" id="bf">${ICON.fork}Fork</button>
-    <button class="kn rand" id="bh">${ICON.plus}Teil hinzufügen<kbd>Strg+I</kbd></button>
     <span class="luecke"></span>
     <button class="kn rand" id="bp">Befehle<kbd>Strg+K</kbd></button>
     <button class="kn" id="bt" title="Hell / Dunkel">${ICON.mond}</button>`;
   $("#bu").onclick = zurueck; $("#br").onclick = vor; $("#bf").onclick = forkWurzel; $("#bp").onclick = palette; $("#bt").onclick = thema;
-  $("#bh").onclick = () => waehler("Teil hinzufügen", kandidaten(), (id) => hinzufuegen(gewaehltAsm(), id), "Kommt in die gewählte Baugruppe — oder ziehe Teile aus der Schublade in den Baum.");
-  $("#projekt").onchange = (e) => { wurzel = e.target.value; sel = []; ausgeklappt = new Set([wurzel]); alles(); };
+  $("#bh").onclick = katalogFokus;
 }
-function zeigeZeile(e, pfad, tief) {
-  const t = D.teile[e.ziel], k = pfadKey(pfad), off = ausgeklappt.has(k), baug = t.typ === "baugr";
-  const fehltPlatte = istProjekt() && t.typ === "druck" && offen(e.ziel) > 0;
-  const sub = baug ? `${gang(e.ziel).length}` : t.typ === "druck" ? (e.material || "") : "";
-  return `<div class="z ${pfadKey(sel) === k ? "sel" : ""}" data-p="${k}" data-e="${e.id}" draggable="true" style="padding-left:${6 + tief * 16}px">
-    <span class="pf" data-t="${k}">${baug ? (off ? "▾" : "▸") : ""}</span>${ICON[t.typ]}
-    <span class="n" title="${esc(t.name)}">${esc(t.name)}</span>
-    ${t.entwurf ? '<span class="sub" title="Entwurf">✎</span>' : ""}
-    ${istProjekt() && t.typ === "druck" ? `<span class="punkt" style="background:${fehltPlatte ? "var(--warn)" : "var(--good)"}" title="${fehltPlatte ? offen(e.ziel) + " von " + PLAN.bedarf[e.ziel] + " noch auf keiner Druckplatte" : "Vollständig auf Druckplatten verteilt"}"></span>` : ""}
-    <span class="sub">${esc(sub)}</span><span class="m">${e.menge}×</span></div>`;
+
+/* ---------- Links: Navigator. Öffnet, wählt nichts in der Mitte aus. */
+let kat = { reiter: "druck", q: "", markiert: null };
+function oeffne(id) { if (id === wurzel) return; wurzel = id; sel = []; selS = null; selF = null; ausgeklappt = new Set(); if (!istProjekt() && reiter === "fertigung") reiter = "aufbau"; alles(); }
+function zeichneNav() {
+  const liste = (typ) => Object.keys(D.teile).filter((id) => D.teile[id].typ === typ);
+  const zeile = (id) => `<div class="e ${id === wurzel ? "offen" : ""}" data-oeffne="${id}" title="Öffnen">${ICON[D.teile[id].typ]}<span class="n">${esc(D.teile[id].name)}</span><span class="m dim">${(D.kinder[id] || []).length}</span></div>`;
+  const imDok = new Set(gang().map((x) => x.e.ziel));
+  const ids = Object.keys(D.teile).filter((id) => D.teile[id].typ === kat.reiter && id !== wurzel && D.teile[id].name.toLowerCase().includes(kat.q.toLowerCase()));
+  const vorher = $("#kq") === document.activeElement;
+  $("#links").innerHTML = `
+    <div class="kopf"><b>PROJEKTE</b><span class="luecke"></span><button class="kn" id="pneu" title="Neues Projekt">${ICON.plus}</button></div>
+    <div class="nliste">${liste("projekt").map(zeile).join("")}</div>
+    <div class="kopf"><b>BAUSTEINE</b><span class="dim" style="font-size:11px">Baugruppen</span></div>
+    <div class="nliste">${liste("baugr").map(zeile).join("")}</div>
+    <div class="kopf"><b>KATALOG</b><span class="dim" style="font-size:11px">ziehen oder Doppelklick</span></div>
+    <div class="kreiter">${[["druck", "Druckteile"], ["kauf", "Kaufteile"], ["baugr", "Baugruppen"]].map(([k, t]) => `<button data-kr="${k}" class="${kat.reiter === k ? "an" : ""}">${t}</button>`).join("")}</div>
+    <div class="filter"><input id="kq" placeholder="Suchen … (Enter fügt ein)" value="${esc(kat.q)}"></div>
+    <div class="kat">${ids.map((id) => `<div class="k ${kat.markiert === id ? "mark" : ""}" draggable="true" data-k="${id}">${ICON[D.teile[id].typ]}<span class="n">${esc(D.teile[id].name)}</span>${imDok.has(id) ? `<span class="dim mono" title="Schon im Dokument">${summen0(id)}×</span>` : ""}</div>`).join("") || '<div class="leer">Nichts gefunden.</div>'}</div>`;
+  if (vorher) { const i = $("#kq"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
 }
-function baumZeilen(asm, pfad, tief, aus) {
-  for (const e of D.kinder[asm] || []) {
-    const p = [...pfad, e.id], t = D.teile[e.ziel];
-    const passt = (!filter.text || t.name.toLowerCase().includes(filter.text.toLowerCase())) && (!filter.entwurf || t.entwurf) &&
-      (!filter.fehlt || (t.typ === "druck" && offen(e.ziel) > 0));
-    const kindTreffer = t.typ === "baugr" && (filter.text || filter.fehlt || filter.entwurf) && gang(e.ziel).some((x) => {
-      const tt = D.teile[x.e.ziel]; return (!filter.text || tt.name.toLowerCase().includes(filter.text.toLowerCase())) && (!filter.entwurf || tt.entwurf) && (!filter.fehlt || (tt.typ === "druck" && offen(x.e.ziel) > 0)); });
-    if (passt || kindTreffer) aus.push(zeigeZeile(e, p, tief));
-    if (t.typ === "baugr" && (ausgeklappt.has(pfadKey(p)) || kindTreffer && (filter.text || filter.fehlt || filter.entwurf))) baumZeilen(e.ziel, p, tief + 1, aus);
-  }
+const summen0 = (id) => gang().filter((x) => x.e.ziel === id).reduce((a, x) => a + x.faktor, 0);
+function katalogFokus() { const i = $("#kq"); i.focus(); i.select(); }
+function projektNeu() {
+  const s = dialog(`<h2>Neues Projekt</h2><p>Die Klammer um einen Bau-Auftrag.</p><input class="suche" id="pname" placeholder="z. B. Voron Toolhead Umbau"><div class="fuss"><button class="kn rand" data-d="abbruch">Abbrechen</button><button class="kn akzent" data-d="ok">Anlegen</button></div>`, (a) => {
+    if (a !== "ok") return;
+    const name = s.querySelector("#pname").value.trim() || "Neues Projekt", id = "proj" + D.nextB++;
+    aendern("Projekt anlegen", () => { D.teile[id] = { typ: "projekt", name, status: "Entwurf", notiz: "" }; D.kinder[id] = []; });
+    oeffne(id);
+  });
+  setTimeout(() => s.querySelector("#pname").focus());
 }
-function zeichneBaum() {
-  PLAN = null;
-  const aus = [], w = D.teile[wurzel];
-  aus.push(`<div class="z ${sel.length === 0 ? "sel" : ""}" data-p="" data-wurzel="1" style="padding-left:6px"><span class="pf"></span>${ICON[w.typ]}<span class="n"><b>${esc(w.name)}</b></span><span class="sub">${gang().length} Positionen</span></div>`);
-  baumZeilen(wurzel, [], 1, aus);
-  $("#baum").innerHTML = aus.join("");
-  $("#cf").classList.toggle("an", filter.fehlt); $("#ce").classList.toggle("an", filter.entwurf);
-  zeichneSchublade();
-}
-function zeichneSchublade() {
-  const imBaum = new Set(Object.values(D.kinder).flat().map((e) => e.ziel));
-  const ids = Object.keys(D.teile).filter((id) => id !== wurzel && D.teile[id].typ !== "projekt" && !(D.teile[id].typ === "baugr" && D.teile[id].fork));
-  $("#schublade").className = "schublade" + (schubladeZu ? " zu" : "");
-  $("#schublade").innerHTML = `<div class="kopf" id="sk"><span class="pf">${schubladeZu ? "▸" : "▾"}</span><b>KATALOG</b><span class="dim">ziehen oder Doppelklick</span></div>
-    ${schubladeZu ? "" : `<div class="kat">${ids.map((id) => `<div class="k" draggable="true" data-k="${id}">${ICON[D.teile[id].typ]}<span class="n">${esc(D.teile[id].name)}</span>${imBaum.has(id) ? "" : '<span class="dim mono" title="In keiner Baugruppe">neu</span>'}<span class="hin dim">${ICON.plus}</span></div>`).join("")}</div>`}`;
-}
+/* Wohin ein Teil aus dem Katalog kommt: in die gewählte Baugruppe, sonst neben die gewählte Position, sonst oberste Ebene. */
+const einfuegeZiel = () => gewaehltAsm();
+
+/* ---------- Mitte: das Dokument */
 function zeichneMitte() {
   const s = summen(), v = verteilung();
-  const nTeile = s.druck.length + s.kauf.length;
+  const reiterListe = [["aufbau", "Aufbau", gang().length], ["summiert", "Summiert", s.druck.length + s.kauf.length], ["fertigung", "Fertigung", istProjekt() ? `${v.ver}/${v.ges}` : "nur Projekt"]];
   $("#mitte").innerHTML = `
-    <div class="reiter">${[["dreid", "3D"], ["stueckliste", "Stückliste"], ["fertigung", "Fertigung"]].map(([k, t]) =>
-      `<button data-r="${k}" class="${reiter === k ? "an" : ""}">${t}${k === "stueckliste" ? `<span class="zahl">${nTeile}</span>` : k === "fertigung" ? (istProjekt() ? `<span class="zahl">${v.ver}/${v.ges}</span>` : `<span class="zahl">nur Projekt</span>`) : ""}</button>`).join("")}</div>
-    <div class="flaeche" id="flaeche">${reiter === "dreid" ? zeigeDreiD() : reiter === "fertigung" ? zeigeFertigung(v) : zeigeBom(s)}</div>`;
-}
-function zeigeBom(s) {
-  const gesel = (id) => (gewaehltZiel() === id ? "sel" : "");
-  const matTxt = (d) => [...d.mats].join(" · ");
-  return `
-    <h3 class="ab">DRUCKTEILE · ${s.druck.length} Sorten, ${s.druck.reduce((a, d) => a + d.menge, 0)} Stück</h3>
-    <table class="tab"><thead><tr><th></th><th>Benennung</th><th class="re">Menge</th><th>Material</th><th class="re">Gewicht</th><th class="re">Zeit</th><th>Platte</th></tr></thead><tbody>
-    ${s.druck.map((d) => { const t = D.teile[d.ziel]; const pl = istProjekt() ? meinePlatten().map((pp) => { const x = pp.posten.find((q) => q.ziel === d.ziel); return x ? `${pp.name} (${x.menge})` : null; }).filter(Boolean) : []; const of = istProjekt() ? offen(d.ziel) : 0;
-      return `<tr class="zl ${gesel(d.ziel)}" data-z="${d.ziel}"><td>${ICON.druck}</td><td>${esc(t.name)}${t.entwurf ? ' <span class="dim">✎</span>' : ""}</td><td class="re">${d.menge}×</td><td>${esc(matTxt(d))}</td><td class="re">${zahl(t.g * d.menge, 1)} g</td><td class="re">${dauer(t.min * d.menge)}</td><td>${!istProjekt() ? '<span class="dim">–</span>' : esc(pl.join(", ")) + (of ? `${pl.length ? " " : ""}<span style="color:var(--warn)">● ${of} offen</span>` : "")}</td></tr>`; }).join("")}
-    <tr class="gr"><td></td><td>Summe</td><td class="re">${s.teile}×</td><td></td><td class="re">${zahl(s.g, 1)} g</td><td class="re">${dauer(s.min)}</td><td></td></tr></tbody></table>
-    <h3 class="ab">ZUKAUFTEILE · ${s.kauf.length} Sorten</h3>
-    <table class="tab"><thead><tr><th></th><th>Benennung</th><th>Kategorie</th><th class="re">Menge</th><th>Bezugsquelle</th></tr></thead><tbody>
-    ${Object.entries(s.kauf.reduce((g, k) => ((g[D.teile[k.ziel].kat] ||= []).push(k), g), {})).map(([kat, l]) =>
-      `<tr class="gr"><td></td><td colspan="2">${esc(kat)}</td><td class="re">${l.reduce((a, k) => a + k.menge, 0)}×</td><td></td></tr>` + l.map((k) => { const t = D.teile[k.ziel];
-        return `<tr class="zl ${gesel(k.ziel)}" data-z="${k.ziel}"><td>${ICON.kauf}</td><td>${esc(t.name)}</td><td class="dim">${esc(t.norm)}</td><td class="re">${k.menge}×</td><td>${t.link ? `<a href="#" onclick="return false" style="color:var(--accent)">${esc(t.link.replace(/^https?:\/\/(www\.)?/, "").split("/")[0])}</a>` : '<span class="dim">–</span>'}</td></tr>`; }).join("")).join("")}
-    </tbody></table>
-    <div class="legende">Summen über alle Ebenen: 4 Lüfter-Halter und 8 Schrauben je Extruder werden mit den Mengen der Ebenen darüber multipliziert. Zeile anklicken wählt das Teil im Baum.</div>`;
-}
-function zeigeDreiD() {
-  const k = gewaehlt(), t = k ? D.teile[k.e.ziel] : null;
-  if (t && t.typ === "druck") {
-    const [x, y, z] = t.abm, sk = 3.2, a = x * sk, b = y * sk, h = z * sk, c = 0.866;
-    const P = (px, py, pz) => [(px - py) * c + 150, -(px + py) * 0.5 + pz + 130];
-    const pt = (q) => q.map((v) => v.map((n) => n.toFixed(1)).join(",")).join(" ");
-    const top = [P(0, 0, h), P(a, 0, h), P(a, b, h), P(0, b, h)], l = [P(0, b, h), P(a, b, h), P(a, b, 0), P(0, b, 0)], r = [P(a, 0, h), P(a, b, h), P(a, b, 0), P(a, 0, 0)];
-    return `<div class="dreid"><svg viewBox="0 0 300 260" width="320"><polygon points="${pt(top)}" fill="var(--accent-soft)" stroke="var(--accent)"/><polygon points="${pt(l)}" fill="var(--panel-2)" stroke="var(--accent)"/><polygon points="${pt(r)}" fill="var(--line)" stroke="var(--accent)"/></svg>
-      <div class="hinweis">${esc(t.name)} · ${x} × ${y} × ${z} mm — im echten Programm der vorhandene 3D-Betrachter (WebGL oder ohne Grafikkarte)</div></div>`;
+    <div class="reiter">${reiterListe.map(([k, t, n]) => `<button data-r="${k}" class="${reiter === k ? "an" : ""}" ${k === "fertigung" && !istProjekt() ? "disabled" : ""}>${t}<span class="zahl">${n}</span></button>`).join("")}</div>
+    ${reiter === "aufbau" ? `<div class="filter werkz"><input id="fx" placeholder="Im Aufbau suchen …" value="${esc(filter.text)}"><button class="chip ${filter.fehlt ? "an" : ""}" id="cf" ${istProjekt() ? "" : "hidden"}>fehlt</button><button class="chip ${filter.entwurf ? "an" : ""}" id="ce">Entwurf</button><span class="luecke"></span><button class="kn" id="auf" title="Alles aufklappen">⊞</button><button class="kn" id="zu" title="Alles zuklappen">⊟</button></div>` : ""}
+    <div class="flaeche" id="flaeche" tabindex="0">${reiter === "fertigung" ? zeigeFertigung(v) : reiter === "summiert" ? zeigeSummiert(s) : zeigeAufbau()}</div>`;
+  if (reiter === "aufbau") {
+    $("#fx").oninput = (e) => { filter.text = e.target.value; $("#flaeche").innerHTML = zeigeAufbau(); };
+    $("#cf").onclick = () => { filter.fehlt = !filter.fehlt; zeichneMitte(); };
+    $("#ce").onclick = () => { filter.entwurf = !filter.entwurf; zeichneMitte(); };
+    $("#auf").onclick = () => { gang().forEach((x) => D.teile[x.e.ziel].typ === "baugr" && ausgeklappt.add(pfadKey(x.pfad))); zeichneMitte(); };
+    $("#zu").onclick = () => { ausgeklappt = new Set(); zeichneMitte(); };
   }
-  const kin = (D.kinder[gewaehltZiel()] || []).filter((e) => D.teile[e.ziel].typ === "druck");
-  return `<table class="tab"><thead><tr><th></th><th>Druckteil</th><th class="re">Menge</th><th class="re">Maße</th></tr></thead><tbody>${kin.map((e) => { const t = D.teile[e.ziel];
-      return `<tr class="zl" data-z="${e.ziel}"><td>${ICON.druck}</td><td>${esc(t.name)}</td><td class="re">${e.menge}×</td><td class="re dim">${t.abm.join(" × ")} mm</td></tr>`; }).join("")
-    || '<tr><td colspan="4" class="leer">Ein Druckteil im Baum wählen.</td></tr>'}</tbody></table>
-    <div class="legende">Eine zusammengesetzte Gesamtansicht braucht die Lage der Teile (Platzierungen aus 3MF/FreeCAD) — später. Bis dahin: Einzelteil im Baum wählen.</div>`;
+}
+const passt = (t, ziel) => (!filter.text || t.name.toLowerCase().includes(filter.text.toLowerCase())) && (!filter.entwurf || t.entwurf) && (!filter.fehlt || (t.typ === "druck" && offen(ziel) > 0));
+const filterAn = () => filter.text || filter.fehlt || filter.entwurf;
+function aufbauZeilen(asm, pfad, tief, faktor, aus) {
+  for (const e of D.kinder[asm] || []) {
+    const p = [...pfad, e.id], t = D.teile[e.ziel], f = faktor * e.menge, baug = t.typ === "baugr";
+    const kindTreffer = baug && filterAn() && gang(e.ziel).some((x) => passt(D.teile[x.e.ziel], x.e.ziel));
+    if (!passt(t, e.ziel) && !kindTreffer) continue;
+    const k = pfadKey(p), off = ausgeklappt.has(k) || (kindTreffer && filterAn());
+    const sub = baug ? summen2(e.ziel) : null;
+    const g = baug ? sub.g * e.menge * faktor : t.typ === "druck" ? t.g * f : null, min = baug ? sub.min * e.menge * faktor : t.typ === "druck" ? t.min * f : null;
+    const of = istProjekt() && t.typ === "druck" ? offen(e.ziel) : null;
+    aus.push(`<tr class="zl ${pfadKey(sel) === k ? "sel" : ""}" data-p="${k}" data-e="${e.id}" draggable="true">
+      <td class="n" style="--t:${tief}"><span class="pf" ${baug ? `data-t="${k}"` : ""}>${baug ? (off ? "▾" : "▸") : ""}</span>${ICON[t.typ]}<span class="nn">${esc(t.name)}</span>${t.entwurf ? ' <span class="dim" title="Entwurf">✎</span>' : ""}</td>
+      <td class="re">${e.menge}×</td><td class="re dim">${f}×</td><td>${t.typ === "druck" ? esc(e.material || "") : ""}</td>
+      <td class="re">${g != null ? zahl(g, 1) + " g" : ""}</td><td class="re">${min != null ? dauer(min) : ""}</td>
+      <td>${of == null ? "" : of ? `<span class="pl offen" title="${of} von ${PLAN.bedarf[e.ziel]} noch auf keiner Platte">● ${of} offen</span>` : '<span class="pl ok" title="Vollständig auf Platten verteilt">✓</span>'}</td>
+      <td class="mehr"><button class="kn" data-mehr="${e.id}" title="Aktionen (auch Rechtsklick)">⋮</button></td></tr>`);
+    if (baug && off) aufbauZeilen(e.ziel, p, tief + 1, f, aus);
+  }
+}
+function zeigeAufbau() {
+  const aus = []; aufbauZeilen(wurzel, [], 0, 1, aus);
+  return `<table class="tab tt" id="tt"><thead><tr><th>Benennung</th><th class="re">Menge</th><th class="re">Gesamt</th><th>Material</th><th class="re">Gewicht</th><th class="re">Zeit</th><th>${istProjekt() ? "Platte" : ""}</th><th></th></tr></thead>
+    <tbody>${aus.join("") || `<tr><td colspan="8" class="leer">${filterAn() ? "Kein Treffer." : "Noch leer. Teile aus dem Katalog links hierher ziehen oder doppelklicken."}</td></tr>`}</tbody></table>
+    <div class="ablage" data-ablage="1">Hierher ziehen: oberste Ebene von „${esc(D.teile[wurzel].name)}“</div>`;
+}
+function zeigeSummiert(s) {
+  const gs = (id) => (selS === id ? "sel" : "");
+  return `<h3 class="ab">DRUCKTEILE · ${s.druck.length} Sorten, ${s.teile} Stück</h3>
+    <table class="tab"><thead><tr><th></th><th>Benennung</th><th class="re">Menge</th><th>Material</th><th class="re">Gewicht</th><th class="re">Zeit</th>${istProjekt() ? "<th>Platte</th>" : ""}</tr></thead><tbody>
+    ${s.druck.map((d) => { const t = D.teile[d.ziel], of = istProjekt() ? offen(d.ziel) : 0;
+      return `<tr class="zl ${gs(d.ziel)}" data-s="${d.ziel}"><td>${ICON.druck}</td><td>${esc(t.name)}</td><td class="re">${d.menge}×</td><td>${esc([...d.mats].join(" · "))}</td><td class="re">${zahl(t.g * d.menge, 1)} g</td><td class="re">${dauer(t.min * d.menge)}</td>${istProjekt() ? `<td>${of ? `<span class="pl offen">● ${of} offen</span>` : '<span class="pl ok">✓</span>'}</td>` : ""}</tr>`; }).join("")}
+    <tr class="gr"><td></td><td>Summe</td><td class="re">${s.teile}×</td><td></td><td class="re">${zahl(s.g, 1)} g</td><td class="re">${dauer(s.min)}</td>${istProjekt() ? "<td></td>" : ""}</tr></tbody></table>
+    <h3 class="ab">ZUKAUFTEILE · ${s.kauf.length} Sorten</h3>
+    <table class="tab"><thead><tr><th></th><th>Benennung</th><th>Norm</th><th class="re">Menge</th><th>Bezugsquelle</th></tr></thead><tbody>
+    ${Object.entries(s.kauf.reduce((g, k) => ((g[D.teile[k.ziel].kat] ||= []).push(k), g), {})).map(([kat2, l]) =>
+      `<tr class="gr"><td></td><td colspan="2">${esc(kat2)}</td><td class="re">${l.reduce((a, k) => a + k.menge, 0)}×</td><td></td></tr>` + l.map((k) => { const t = D.teile[k.ziel];
+        return `<tr class="zl ${gs(k.ziel)}" data-s="${k.ziel}"><td>${ICON.kauf}</td><td>${esc(t.name)}</td><td class="dim">${esc(t.norm)}</td><td class="re">${k.menge}×</td><td>${t.link ? `<span style="color:var(--accent)">${esc(t.link.replace(/^https?:\/\/(www\.)?/, "").split("/")[0])} ↗</span>` : '<span class="dim">–</span>'}</td></tr>`; }).join("")).join("")}
+    </tbody></table>
+    <div class="legende">Je Teil einmal, Mengen über alle Ebenen multipliziert. Zum Lesen und Einkaufen — gebaut wird im Aufbau. Rechts unter „Vorkommen“ führt ein Klick zur Position.</div>`;
 }
 function zeigeFertigung(v) {
-  if (!istProjekt()) return `<div class="leer">Druckplatten gehören zu einem <b>Projekt</b>.<br>Öffne ein Projekt (Auswahl oben), um Teile auf Platten zu verteilen.</div>`;
-  const bed = PLAN.bedarf, nichtVerteilt = Object.keys(bed).filter((z) => offen(z) > 0);
-  const zeile = (z, menge, von) => { const t = D.teile[z]; return `<tr class="pos" draggable="true" data-z="${z}" data-von="${von}"><td>${ICON.druck}</td><td>${esc(t.name)}</td>
+  if (!istProjekt()) return `<div class="leer">Druckplatten gehören zu einem <b>Projekt</b>.</div>`;
+  const nichtVerteilt = Object.keys(PLAN.bedarf).filter((z) => offen(z) > 0);
+  const istSel = (pl, z) => selF && selF.platte === pl && selF.ziel === z;
+  const zeile = (z, menge, von) => { const t = D.teile[z]; return `<tr class="pos zl ${istSel(von, z) ? "sel" : ""}" draggable="true" data-fz="${z}" data-von="${von}"><td>${ICON.druck}</td><td>${esc(t.name)}</td>
     <td class="re">${von ? `<span class="stepper2"><button data-pm="-1" data-pl="${von}" data-pz="${z}" title="eins weniger">−</button><span class="mono">${menge}×</span><button data-pm="1" data-pl="${von}" data-pz="${z}" title="eins mehr">＋</button></span>` : menge + "×"}</td>
-    <td class="re">${dauer(t.min * menge)}</td><td class="re">${zahl(t.g * menge, 1)} g</td><td>${von ? `<button class="kn" data-px="${von}" data-pz="${z}" title="zurück nach „Nicht verteilt“">×</button>` : ""}</td></tr>`; };
-  const gruppe = (id, titel, marke, posten, summe) => `<tbody class="ftg" data-platte="${id}"><tr class="gr"><td></td><td colspan="2">${titel}${marke ? ` <span class="marke">${esc(marke)}</span>` : ""}</td><td class="re" colspan="3">${summe}</td></tr>
-    ${posten.join("") || '<tr><td></td><td colspan="5" class="dim">Teile hierher ziehen</td></tr>'}</tbody>`;
-  const nv = nichtVerteilt.map((z) => zeile(z, offen(z), ""));
+    <td class="re">${dauer(t.min * menge)}</td><td class="re">${zahl(t.g * menge, 1)} g</td></tr>`; };
+  const gruppe = (id, titel, marke, posten, summe) => `<tbody class="ftg" data-platte="${id}"><tr class="gr ${id && istSel(id, null) ? "sel" : ""}" ${id ? `data-fp="${id}"` : ""}><td></td><td colspan="2">${titel}${marke ? ` <span class="marke">${esc(marke)}</span>` : ""}</td><td class="re" colspan="2">${summe}</td></tr>
+    ${posten.join("") || `<tr><td></td><td colspan="4" class="dim">${id ? "Teile hierher ziehen" : "Alles verteilt."}</td></tr>`}</tbody>`;
   return `<div style="display:flex;align-items:center;gap:10px"><b>${v.ver} von ${v.ges} Druckteilen verteilt</b><span class="dim">${v.ges - v.ver ? `${v.ges - v.ver} fehlen noch` : "alles verteilt"}</span><span class="luecke" style="flex:1"></span><button class="kn rand" id="pn">${ICON.plus}Druckplatte</button></div>
     <div class="fort"><i style="width:${v.ges ? (100 * v.ver / v.ges) : 0}%"></i></div>
-    <table class="tab ft"><thead><tr><th></th><th>Teil</th><th class="re">Menge</th><th class="re">Zeit</th><th class="re">Gewicht</th><th></th></tr></thead>
-    ${gruppe("", "Nicht verteilt", "", nv, nichtVerteilt.reduce((a, z) => a + offen(z), 0) + " Stück")}
+    <table class="tab ft"><thead><tr><th></th><th>Teil</th><th class="re">Menge</th><th class="re">Zeit</th><th class="re">Gewicht</th></tr></thead>
+    ${gruppe("", "Nicht verteilt", "", nichtVerteilt.map((z) => zeile(z, offen(z), "")), nichtVerteilt.reduce((a, z) => a + offen(z), 0) + " Stück")}
     ${meinePlatten().map((p) => { const min = p.posten.reduce((a, x) => a + D.teile[x.ziel].min * x.menge, 0), g = p.posten.reduce((a, x) => a + D.teile[x.ziel].g * x.menge, 0);
       return gruppe(p.id, esc(p.name), p.material, p.posten.map((x) => zeile(x.ziel, x.menge, p.id)), `${dauer(min)} · ${zahl(g, 0)} g`); }).join("")}</table>
-    <div class="legende">Ziehen legt, was von einem Teil noch fehlt, auf die Platte; ＋ und − verteilen die Menge (acht Halter dürfen auf zwei Platten zu je vier liegen). Im Baum: orange = noch nicht ganz verteilt.</div>`;
+    <div class="legende">Platte oder Teil anklicken: rechts stehen Name, Material, Menge und „Auf Platte legen“. Ziehen zwischen den Gruppen verteilt den Rest eines Teils.</div>`;
 }
+
+/* ---------- Rechts: Eigenschaften der Auswahl im aktiven Reiter */
 const kv = (l, v) => `<div class="kv"><span>${l}</span><b>${v}</b></div>`;
 function feld(l, inner) { return `<div class="feld"><label>${l}</label>${inner}</div>`; }
-function zeichneInsp() {
-  const k = gewaehlt(), ziel = k ? k.e.ziel : wurzel, t = D.teile[ziel], vs = wo(ziel).filter((v) => !(k && v.e.id === k.e.id && false));
-  let h = `<div class="kopf"><b>EIGENSCHAFTEN</b></div><div class="insp">`;
-  h += `<div class="titel"><b>${ICON[t.typ]} ${esc(t.name)}</b><div class="dim">${t.typ === "projekt" ? "Projekt" : t.typ === "baugr" ? "Baugruppe (wiederverwendbarer Baustein)" : t.typ === "druck" ? "Druckteil · " + t.fmt : "Zukaufteil · " + esc(t.kat)}${k ? ` · in ${esc(D.teile[k.asm].name)}` : ""}</div></div>`;
-  if (t.typ === "baugr" || t.typ === "projekt") {
-    const s = summen2(ziel);
-    h += `<div class="gruppe">KENNZAHLEN</div>${kv("Gewicht", zahl(s.g, 0) + " g")}${kv("Druckzeit", dauer(s.min))}${kv("Druckteile", s.teile + " Stück")}${kv("Zukaufteile", s.kauf + " Stück")}`;
-    h += `<div class="gruppe">${t.typ === "projekt" ? "PROJEKT" : "BAUGRUPPE"}</div>`;
-    h += feld("Name", `<input id="f-name" value="${esc(t.name)}">`);
-    h += feld("Status", `<select id="f-status">${["Entwurf", "In Arbeit", "Fertig"].map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`).join("")}</select>`);
-    h += feld(t.typ === "projekt" ? "Notizen" : "Beschreibung", `<textarea id="f-notiz" rows="3" placeholder="Wofür, welche Version, Besonderheiten …">${esc(t.notiz)}</textarea>`);
-    if (t.fork) h += `<div class="warn">Variante von „${esc(D.teile[t.fork].name)}“. Änderungen hier lassen die Vorlage unberührt.</div>`;
-  }
-  if (k) {
-    h += `<div class="gruppe">POSITION IN „${esc(D.teile[k.asm].name).toUpperCase()}“</div>`;
-    h += feld("Menge", `<div class="stepper"><button data-m="-1">−</button><input id="f-menge" value="${k.e.menge}" inputmode="numeric"><button data-m="1">＋</button></div>`);
-    if (t.typ === "druck") {
-      h += `<div class="gruppe">DRUCKPARAMETER</div>`;
-      h += feld("Material", `<select id="f-material">${["PLA", "PETG", "ABS", "ASA", "TPU", "PC", "PA-CF"].map((x) => `<option ${x === (k.e.material || "PETG") ? "selected" : ""}>${x}</option>`).join("")}</select>`);
-      h += feld("Füllung", `<div class="einh"><input id="f-infill" value="${k.e.infill ?? 20}"><span>%</span></div>`);
-      h += feld("Wandlinien", `<div class="einh"><input id="f-waende" value="${k.e.waende ?? 3}"><span>×</span></div>`);
-      h += feld("Schichthöhe", `<div class="einh"><input id="f-schicht" value="${k.e.schicht ?? 0.2}"><span>mm</span></div>`);
-      h += feld("Notiz", `<textarea id="f-pnotiz" rows="2" placeholder="z. B. Stützen nur auf Druckbett">${esc(k.e.notiz || "")}</textarea>`);
-      h += `<div class="legende" style="padding:2px 10px">Gilt für diese Position und alle ihre Exemplare. Dieselbe Datei kann woanders anders gedruckt werden.</div>`;
-      h += `<div class="gruppe">MODELL</div>${kv("Gewicht je Stück", zahl(t.g, 1) + " g")}${kv("Zeit je Stück", dauer(t.min))}`;
-    }
-  }
-  if (t.typ === "kauf") {
-    h += `<div class="gruppe">BEZUG</div>`;
-    h += feld("Bezugsquelle", `<input id="k-link" value="${esc(t.link)}" placeholder="https://…">`);
-    if (t.link) h += feld("", `<a href="#" onclick="return false" style="color:var(--accent);display:inline-flex;gap:5px;align-items:center">${ICON.link} Öffnen / nachbestellen</a>`);
-    h += feld("Artikelnr.", `<input id="k-art" value="${esc(t.artnr)}">`);
-    h += feld("Hinweis", `<textarea id="k-hin" rows="2" placeholder="z. B. mit Loctite sichern">${esc(t.hinweis)}</textarea>`);
-    const g = summen().kauf.find((x) => x.ziel === ziel);
-    h += `${kv("Bedarf hier", (g ? g.menge : 0) + "×")}${kv("Norm", esc(t.norm || "–"))}`;
-  }
-  const ww = wege(ziel);
-  h += `<div class="gruppe">WO VERBAUT · IM GANZEN KATALOG</div><div class="verw">${ww.map((w) => `<a data-sp="${w.weg[w.weg.length - 1].kante}" data-top="${w.weg[0].id}">${ICON[D.teile[w.weg[0].id].typ]}<span>${w.weg.map((x) => esc(D.teile[x.id].name)).join(" › ")}</span><span class="m">${w.weg.map((x) => x.menge).join(" × ")} = ${w.gesamt}×</span></a>`).join("") || '<span class="dim">In keiner Baugruppe und keinem Projekt.</span>'}</div>`;
-  h += `</div>`;
-  $("#rechts").innerHTML = h;
+const kopfInsp = (t, unter) => `<div class="kopf"><b>EIGENSCHAFTEN</b></div><div class="insp"><div class="titel"><b>${ICON[t.typ]} ${esc(t.name)}</b><div class="dim">${unter}</div></div>`;
+function inspWurzel() {
+  const t = D.teile[wurzel], s = summen2(wurzel);
+  let h = kopfInsp(t, t.typ === "projekt" ? "Projekt — nichts gewählt" : "Baustein (Baugruppe) — nichts gewählt");
+  h += `<div class="gruppe">KENNZAHLEN</div>${kv("Gewicht", zahl(s.g, 0) + " g")}${kv("Druckzeit", dauer(s.min))}${kv("Druckteile", s.teile + " Stück")}${kv("Zukaufteile", s.kauf + " Stück")}`;
+  if (istProjekt()) { const v = verteilung(); h += kv("Auf Platten", `${v.ver} / ${v.ges}`); }
+  h += `<div class="gruppe">${t.typ === "projekt" ? "PROJEKT" : "BAUGRUPPE"}</div>`;
+  h += feld("Name", `<input id="f-name" value="${esc(t.name)}">`);
+  h += feld("Status", `<select id="f-status">${["Entwurf", "In Arbeit", "Fertig"].map((x) => `<option ${x === t.status ? "selected" : ""}>${x}</option>`).join("")}</select>`);
+  h += feld(t.typ === "projekt" ? "Notizen" : "Beschreibung", `<textarea id="f-notiz" rows="3" placeholder="Wofür, welche Version, Besonderheiten …">${esc(t.notiz)}</textarea>`);
+  if (t.fork) h += `<div class="warn">Variante von „${esc(D.teile[t.fork].name)}“. Änderungen hier lassen die Vorlage unberührt.</div>`;
+  return h + "</div>";
 }
-/* Wo verbaut über alle Ebenen: je Verwendung der Weg von oben (Projekt oder oberste Baugruppe) bis zum Teil, mit Menge je Ebene und Gesamtmenge. */
+function inspAufbau() {
+  const k = gewaehlt(); if (!k) return inspWurzel();
+  const t = D.teile[k.e.ziel], f = gang().find((x) => x.e.id === k.e.id)?.faktor || k.e.menge;
+  let h = kopfInsp(t, `${t.typ === "baugr" ? "Baugruppe" : t.typ === "druck" ? "Druckteil · " + t.fmt : "Zukaufteil · " + esc(t.kat)} · in ${esc(D.teile[k.asm].name)}`);
+  h += `<div class="gruppe">POSITION</div>`;
+  h += feld("Menge", `<div class="stepper"><button data-m="-1">−</button><input id="f-menge" value="${k.e.menge}" inputmode="numeric"><button data-m="1">＋</button></div>`);
+  h += kv("Gesamt im Dokument", f + "×");
+  if (t.typ === "druck") {
+    h += `<div class="gruppe">DRUCKVORGABE</div>`;
+    h += feld("Material", `<select id="f-material">${["PLA", "PETG", "ABS", "ASA", "TPU", "PC", "PA-CF"].map((x) => `<option ${x === (k.e.material || "PETG") ? "selected" : ""}>${x}</option>`).join("")}</select>`);
+    h += feld("Füllung", `<div class="einh"><input id="f-infill" value="${k.e.infill ?? 20}"><span>%</span></div>`);
+    h += feld("Wandlinien", `<div class="einh"><input id="f-waende" value="${k.e.waende ?? 3}"><span>×</span></div>`);
+    h += feld("Schichthöhe", `<div class="einh"><input id="f-schicht" value="${k.e.schicht ?? 0.2}"><span>mm</span></div>`);
+    h += feld("Notiz", `<textarea id="f-pnotiz" rows="2" placeholder="z. B. Stützen nur auf Druckbett">${esc(k.e.notiz || "")}</textarea>`);
+    h += `<div class="gruppe">MODELL</div>${kv("Gewicht je Stück", zahl(t.g, 1) + " g")}${kv("Zeit je Stück", dauer(t.min))}${kv("Masse", t.abm.join(" × ") + " mm")}`;
+  }
+  if (t.typ === "baugr") { const s = summen2(k.e.ziel); h += `<div class="gruppe">INHALT JE STÜCK</div>${kv("Gewicht", zahl(s.g, 0) + " g")}${kv("Druckzeit", dauer(s.min))}${kv("Druckteile", s.teile)}${kv("Zukaufteile", s.kauf)}<div class="feld"><label></label><button class="kn rand" data-oeffne="${k.e.ziel}">Als Baustein öffnen</button></div>`; }
+  if (t.typ === "kauf") h += inspBezug(k.e.ziel);
+  return h + inspWo(k.e.ziel) + "</div>";
+}
+function inspBezug(ziel) {
+  const t = D.teile[ziel];
+  return `<div class="gruppe">BEZUG</div>${feld("Bezugsquelle", `<input id="k-link" value="${esc(t.link)}" placeholder="https://…">`)}${feld("Artikelnr.", `<input id="k-art" value="${esc(t.artnr)}">`)}${feld("Hinweis", `<textarea id="k-hin" rows="2" placeholder="z. B. mit Loctite sichern">${esc(t.hinweis)}</textarea>`)}${kv("Norm", esc(t.norm || "–"))}`;
+}
+function inspWo(ziel) {
+  const ww = wege(ziel);
+  return `<div class="gruppe">WO VERBAUT · IM GANZEN KATALOG</div><div class="verw">${ww.map((w) => `<a data-sp="${w.weg[w.weg.length - 1].kante}" data-top="${w.weg[0].id}">${ICON[D.teile[w.weg[0].id].typ]}<span>${w.weg.map((x) => esc(D.teile[x.id].name)).join(" › ")}</span><span class="m">${w.gesamt}×</span></a>`).join("") || '<span class="dim">Nirgends.</span>'}</div>`;
+}
+function inspSummiert() {
+  if (!selS || !D.teile[selS]) return inspWurzel();
+  const t = D.teile[selS], vork = gang().filter((x) => x.e.ziel === selS), menge = vork.reduce((a, x) => a + x.faktor, 0);
+  let h = kopfInsp(t, t.typ === "druck" ? "Druckteil · " + t.fmt : "Zukaufteil · " + esc(t.kat));
+  h += `<div class="gruppe">BEDARF IM DOKUMENT</div>${kv("Menge gesamt", menge + "×")}`;
+  if (t.typ === "druck") { h += `${kv("Gewicht", zahl(t.g * menge, 1) + " g")}${kv("Druckzeit", dauer(t.min * menge))}`; if (istProjekt()) h += kv("Auf Platten", `${menge - offen(selS)} / ${menge}`); }
+  if (t.typ === "kauf") h += inspBezug(selS);
+  h += `<div class="gruppe">VORKOMMEN · ${vork.length}</div><div class="verw">${vork.map((x) => `<a data-auf="${pfadKey(x.pfad)}" title="Im Aufbau zeigen">${ICON[D.teile[x.eltern].typ]}<span>${esc(D.teile[x.eltern].name)}</span><span class="m">${x.e.menge}× → ${x.faktor}×</span></a>`).join("")}</div>`;
+  return h + "</div>";
+}
+function inspFertigung() {
+  if (!selF) return inspWurzel();
+  const pl = selF.platte && D.platten.find((p) => p.id === selF.platte);
+  if (!selF.ziel && pl) {
+    const min = pl.posten.reduce((a, x) => a + D.teile[x.ziel].min * x.menge, 0), g = pl.posten.reduce((a, x) => a + D.teile[x.ziel].g * x.menge, 0);
+    let h = `<div class="kopf"><b>EIGENSCHAFTEN</b></div><div class="insp"><div class="titel"><b>▭ ${esc(pl.name)}</b><div class="dim">Druckplatte · ${esc(D.teile[wurzel].name)}</div></div>`;
+    h += `<div class="gruppe">PLATTE</div>${feld("Name", `<input id="p-name" value="${esc(pl.name)}">`)}${feld("Material", `<select id="p-mat">${["PLA", "PETG", "ABS", "ASA", "TPU", "PC", "PA-CF"].map((x) => `<option ${x === pl.material ? "selected" : ""}>${x}</option>`).join("")}</select>`)}`;
+    h += `<div class="gruppe">INHALT</div>${kv("Teile", pl.posten.reduce((a, x) => a + x.menge, 0) + " Stück")}${kv("Druckzeit", dauer(min))}${kv("Gewicht", zahl(g, 0) + " g")}`;
+    const abw = pl.posten.filter((x) => gang().some((y) => y.e.ziel === x.ziel && y.e.material && y.e.material !== pl.material));
+    if (abw.length) h += `<div class="warn">Vorgabe weicht ab: ${abw.map((x) => esc(D.teile[x.ziel].name)).join(", ")} ${abw.length === 1 ? "ist" : "sind"} nicht für ${esc(pl.material)} vorgesehen.</div>`;
+    h += `<div class="gruppe">SPÄTER</div><div class="dim" style="padding:0 10px">Slicer-Datei (3MF/G-Code) anhängen, Drucke dieser Platte.</div>`;
+    h += `<div class="feld"><label></label><button class="kn rand" id="p-del" style="color:var(--crit)">Platte löschen</button></div>`;
+    return h + "</div>";
+  }
+  const t = D.teile[selF.ziel]; if (!t) return inspWurzel();
+  const x = pl && pl.posten.find((q) => q.ziel === selF.ziel), vorgabe = [...new Set(gang().filter((y) => y.e.ziel === selF.ziel).map((y) => y.e.material).filter(Boolean))];
+  let h = kopfInsp(t, pl ? `auf ${esc(pl.name)}` : "noch nicht verteilt");
+  h += `<div class="gruppe">VERTEILUNG</div>${kv("Bedarf im Projekt", PLAN.bedarf[selF.ziel] + "×")}${kv("Noch offen", offen(selF.ziel) + "×")}${kv("Vorgabe Material", esc(vorgabe.join(" · ") || "–"))}`;
+  if (x) {
+    h += feld("Auf dieser Platte", `<div class="stepper"><button data-pm="-1" data-pl="${pl.id}" data-pz="${x.ziel}">−</button><input value="${x.menge}" readonly><button data-pm="1" data-pl="${pl.id}" data-pz="${x.ziel}">＋</button></div>`);
+    if (vorgabe.length && !vorgabe.includes(pl.material)) h += `<div class="warn">Vorgabe ${esc(vorgabe.join(" · "))}, die Platte ist ${esc(pl.material)}.</div>`;
+    h += `<div class="feld"><label></label><button class="kn rand" data-px="${pl.id}" data-pz="${x.ziel}">Zurück nach „Nicht verteilt“</button></div>`;
+  }
+  const andere = meinePlatten().filter((p) => p.id !== selF.platte);
+  if (offen(selF.ziel) || x) h += `<div class="gruppe">${x ? "VERSCHIEBEN AUF" : "AUF PLATTE LEGEN"}</div><div class="verw">${andere.map((p) => `<a data-nach="${p.id}">▭ <span>${esc(p.name)}</span><span class="marke">${esc(p.material)}</span></a>`).join("") || '<span class="dim">Erst eine Druckplatte anlegen.</span>'}</div>`;
+  return h + "</div>";
+}
+function zeichneInsp() { $("#rechts").innerHTML = reiter === "fertigung" ? inspFertigung() : reiter === "summiert" ? inspSummiert() : inspAufbau(); }
+
+/* Wo verbaut über alle Ebenen: je Verwendung der Weg von oben bis zum Teil, mit Menge je Ebene und Gesamtmenge. */
 function wege(ziel) {
   const aus = [];
   const hoch = (id, weg, faktor, gesehen) => {
@@ -720,97 +795,123 @@ function summen2(asm) {
 }
 function zeichneStatus() {
   const s = summen(), v = verteilung();
-  $("#stat").innerHTML = `<span>Druckteile <b>${s.teile}</b></span><span>Zukaufteile <b>${s.kauf.reduce((a, k) => a + k.menge, 0)}</b></span><span>Gewicht <b>${zahl(s.g, 0)} g</b></span><span>Druckzeit <b>${dauer(s.min)}</b></span>${istProjekt() ? `<span>Platten <b>${v.ver}/${v.ges}</b> verteilt</span>` : ""}<span class="luecke" style="flex:1"></span><span>Auswahl: <b>${sel.length ? esc(sel.map((id) => D.teile[kante(id).e.ziel].name).join(" › ")) : "–"}</b></span>`;
+  const auswahl = reiter === "aufbau" ? (sel.length ? sel.map((id) => D.teile[kante(id).e.ziel].name).join(" › ") : "")
+    : reiter === "summiert" ? (selS ? D.teile[selS].name : "") : selF ? [selF.platte ? D.platten.find((p) => p.id === selF.platte)?.name : "Nicht verteilt", selF.ziel ? D.teile[selF.ziel].name : ""].filter(Boolean).join(" › ") : "";
+  $("#stat").innerHTML = `<span>Druckteile <b>${s.teile}</b></span><span>Zukaufteile <b>${s.kauf.reduce((a, k) => a + k.menge, 0)}</b></span><span>Gewicht <b>${zahl(s.g, 0)} g</b></span><span>Druckzeit <b>${dauer(s.min)}</b></span>${istProjekt() ? `<span>Platten <b>${v.ver}/${v.ges}</b> verteilt</span>` : ""}<span class="luecke" style="flex:1"></span><span>Auswahl: <b>${esc(auswahl || "–")}</b></span>`;
 }
 
 /* ============================================================== Eingaben */
+function waehleAufbau(p) { sel = p; zeichneMitte(); zeichneInsp(); zeichneStatus(); }
 document.addEventListener("click", (e) => {
   schliesseMenue();
   const t = e.target;
-  const r = t.closest("[data-r]"); if (r) { reiter = r.dataset.r; return zeichneMitte(); }
-  const tg = t.closest(".pf[data-t]"); if (tg) { const k = tg.dataset.t; ausgeklappt.has(k) ? ausgeklappt.delete(k) : ausgeklappt.add(k); return zeichneBaum(); }
-  const z = t.closest(".z[data-p]"); if (z && !t.closest(".pf")) { sel = z.dataset.p ? z.dataset.p.split("/") : []; return alles(); }
-  const row = t.closest("tr.zl[data-z]"); if (row && row.closest("#flaeche")) { const g = gang().find((x) => x.e.ziel === row.dataset.z); if (g) { for (let i = 1; i < g.pfad.length; i++) ausgeklappt.add(pfadKey(g.pfad.slice(0, i))); sel = g.pfad; alles(); } return; }
+  const r = t.closest("[data-r]"); if (r && !r.disabled) { reiter = r.dataset.r; zeichneMitte(); zeichneInsp(); zeichneStatus(); return; }
+  const o = t.closest("[data-oeffne]"); if (o) return oeffne(o.dataset.oeffne);
+  if (t.closest("#pneu")) return projektNeu();
+  const kr = t.closest("[data-kr]"); if (kr) { kat.reiter = kr.dataset.kr; kat.markiert = null; return zeichneNav(); }
+  const kk = t.closest(".k[data-k]"); if (kk) { document.querySelectorAll(".k.mark").forEach((x) => x.classList.remove("mark")); kk.classList.add("mark"); kat.markiert = kk.dataset.k; return; }
+  const me = t.closest("[data-mehr]"); if (me) { const z = me.closest("tr"); sel = z.dataset.p.split("/"); zeichneMitte(); zeichneInsp(); zeichneStatus(); const b = me.getBoundingClientRect(); return baumMenue(b.left, b.bottom + 2, me.dataset.mehr); }
+  const tg = t.closest(".pf[data-t]"); if (tg) { const k = tg.dataset.t; ausgeklappt.has(k) ? ausgeklappt.delete(k) : ausgeklappt.add(k); return zeichneMitte(); }
   const sp = t.closest("[data-sp]"); if (sp) return springe(sp.dataset.sp, sp.dataset.top);
-  if (t.closest("#sk")) { schubladeZu = !schubladeZu; return zeichneSchublade(); }
+  const au = t.closest("[data-auf]"); if (au) { const p = au.dataset.auf.split("/"); reiter = "aufbau"; for (let i = 1; i < p.length; i++) ausgeklappt.add(pfadKey(p.slice(0, i))); sel = p; return alles(); }
   if (t.closest("#pn")) return platteNeu();
+  if (t.closest("#p-del")) { const pl = selF.platte; aendern("Druckplatte löschen", () => { D.platten = D.platten.filter((p) => p.id !== pl); }); selF = null; return alles(); }
   const pm = t.closest("[data-pm]"); if (pm) return postenMenge(pm.dataset.pl, pm.dataset.pz, Number(pm.dataset.pm));
-  const px = t.closest("[data-px]"); if (px) return verteile(px.dataset.pz, px.dataset.px, "");
+  const px = t.closest("[data-px]"); if (px) { verteile(px.dataset.pz, px.dataset.px, ""); selF = { platte: "", ziel: px.dataset.pz }; return alles(); }
+  const na = t.closest("[data-nach]"); if (na) { verteile(selF.ziel, selF.platte || "", na.dataset.nach); selF = { platte: na.dataset.nach, ziel: selF.ziel }; return alles(); }
   const m = t.closest("[data-m]"); if (m && gewaehlt()) { setzeFeld(sel[sel.length - 1], "menge", gewaehlt().e.menge + Number(m.dataset.m)); return; }
+  // Auswahl: nur in der Mitte, jeder Reiter für sich
+  const za = t.closest("#tt tr.zl[data-p]"); if (za) return waehleAufbau(za.dataset.p.split("/"));
+  const zs = t.closest("tr.zl[data-s]"); if (zs) { selS = zs.dataset.s; zeichneMitte(); zeichneInsp(); zeichneStatus(); return; }
+  const fp = t.closest("tr[data-fp]"); if (fp) { selF = { platte: fp.dataset.fp, ziel: null }; zeichneMitte(); zeichneInsp(); zeichneStatus(); return; }
+  const fz = t.closest("tr[data-fz]"); if (fz) { selF = { platte: fz.dataset.von, ziel: fz.dataset.fz }; zeichneMitte(); zeichneInsp(); zeichneStatus(); return; }
+  // Klick ins Leere der Fläche hebt die Auswahl dieses Reiters auf
+  if (t.closest("#flaeche") && !t.closest("tr, button, input")) { if (reiter === "aufbau") sel = []; else if (reiter === "summiert") selS = null; else selF = null; zeichneMitte(); zeichneInsp(); zeichneStatus(); }
 });
-document.addEventListener("dblclick", (e) => { const k = e.target.closest(".k[data-k]"); if (k) hinzufuegen(gewaehltAsm(), k.dataset.k); });
+document.addEventListener("input", (e) => { if (e.target.id === "kq") { kat.q = e.target.value; kat.markiert = null; zeichneNav(); } });
+document.addEventListener("dblclick", (e) => { const k = e.target.closest(".k[data-k]"); if (k) hinzufuegen(einfuegeZiel(), k.dataset.k); });
 document.addEventListener("contextmenu", (e) => {
-  const z = e.target.closest(".z[data-e]"); if (!z) return; e.preventDefault();
-  sel = z.dataset.p.split("/"); zeichneBaum(); zeichneInsp(); zeichneMitte(); zeichneStatus(); baumMenue(e.clientX, e.clientY, z.dataset.e);
+  const z = e.target.closest("#tt tr[data-e]"); if (!z) return; e.preventDefault();
+  sel = z.dataset.p.split("/"); zeichneMitte(); zeichneInsp(); zeichneStatus(); baumMenue(e.clientX, e.clientY, z.dataset.e);
 });
 document.addEventListener("change", (e) => {
   const i = e.target, k = gewaehlt(); if (!i.id) return;
   const zahlWert = (v, min, max) => Math.max(min, Math.min(max, parseFloat(String(v).replace(",", ".")) || min));
-  if (i.id === "f-name") { const id = gewaehltZiel(); aendern("Name", () => { D.teile[id].name = i.value.trim() || D.teile[id].name; }); }
-  else if (i.id === "f-status") { const id = gewaehltZiel(); aendern("Status", () => { D.teile[id].status = i.value; }); }
-  else if (i.id === "f-notiz") { const id = gewaehltZiel(); aendern("Beschreibung", () => { D.teile[id].notiz = i.value; }); }
+  const ziel = reiter === "summiert" && selS ? selS : k ? k.e.ziel : wurzel;
+  if (i.id === "f-name") aendern("Name", () => { D.teile[wurzel].name = i.value.trim() || D.teile[wurzel].name; });
+  else if (i.id === "f-status") aendern("Status", () => { D.teile[wurzel].status = i.value; });
+  else if (i.id === "f-notiz") aendern("Notizen", () => { D.teile[wurzel].notiz = i.value; });
   else if (k && i.id === "f-menge") setzeFeld(k.e.id, "menge", zahlWert(i.value, 1, 10000));
   else if (k && i.id === "f-material") setzeFeld(k.e.id, "material", i.value);
   else if (k && i.id === "f-infill") setzeFeld(k.e.id, "infill", zahlWert(i.value, 0, 100));
   else if (k && i.id === "f-waende") setzeFeld(k.e.id, "waende", Math.round(zahlWert(i.value, 1, 20)));
   else if (k && i.id === "f-schicht") setzeFeld(k.e.id, "schicht", zahlWert(i.value, 0.04, 1));
   else if (k && i.id === "f-pnotiz") setzeFeld(k.e.id, "notiz", i.value);
-  else if (i.id === "k-link") aendern("Bezugsquelle", () => { D.teile[gewaehltZiel()].link = i.value.trim(); });
-  else if (i.id === "k-art") aendern("Artikelnummer", () => { D.teile[gewaehltZiel()].artnr = i.value.trim(); });
-  else if (i.id === "k-hin") aendern("Hinweis", () => { D.teile[gewaehltZiel()].hinweis = i.value; });
+  else if (i.id === "k-link") aendern("Bezugsquelle", () => { D.teile[ziel].link = i.value.trim(); });
+  else if (i.id === "k-art") aendern("Artikelnummer", () => { D.teile[ziel].artnr = i.value.trim(); });
+  else if (i.id === "k-hin") aendern("Hinweis", () => { D.teile[ziel].hinweis = i.value; });
+  else if (i.id === "p-name" || i.id === "p-mat") { const pl = D.platten.find((p) => p.id === selF.platte); aendern("Platte ändern", () => { if (i.id === "p-name") pl.name = i.value.trim() || pl.name; else pl.material = i.value; }); }
 });
 document.addEventListener("keydown", (e) => {
   const mod = e.ctrlKey || e.metaKey, tippt = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
   if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); return palette(); }
-  if (mod && e.key.toLowerCase() === "i") { e.preventDefault(); return $("#bh").click(); }
+  if (mod && e.key.toLowerCase() === "i") { e.preventDefault(); return katalogFokus(); }
   if (mod && e.key.toLowerCase() === "z" && !tippt) { e.preventDefault(); return e.shiftKey ? vor() : zurueck(); }
   if (mod && e.key.toLowerCase() === "y" && !tippt) { e.preventDefault(); return vor(); }
+  if (e.target.id === "kq") {
+    const ks = [...document.querySelectorAll(".k[data-k]")].map((x) => x.dataset.k);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const i = ks.indexOf(kat.markiert); kat.markiert = ks[Math.max(0, Math.min(ks.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))] || null; zeichneNav(); }
+    if (e.key === "Enter") { const id = kat.markiert || ks[0]; if (id) hinzufuegen(einfuegeZiel(), id); }
+    if (e.key === "Escape") e.target.blur();
+    return;
+  }
   if (tippt || document.querySelector(".schleier")) return;
+  if (e.key === "Escape") { if (reiter === "aufbau") sel = []; else if (reiter === "summiert") selS = null; else selF = null; return alles(); }
+  if (reiter !== "aufbau") return;
   const k = gewaehlt();
   if ((e.key === "Delete" || e.key === "Backspace") && k) return entfernen(k.e.id);
   if (["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) {
-    const zeilen = [...document.querySelectorAll("#baum .z")]; const i = zeilen.findIndex((z) => z.classList.contains("sel"));
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") { const n = zeilen[i + (e.key === "ArrowDown" ? 1 : -1)]; if (n) { sel = n.dataset.p ? n.dataset.p.split("/") : []; alles(); } }
-    if (e.key === "ArrowRight" && k && D.teile[k.e.ziel].typ === "baugr") { ausgeklappt.add(pfadKey(sel)); alles(); }
-    if (e.key === "ArrowLeft" && k) { if (ausgeklappt.has(pfadKey(sel))) { ausgeklappt.delete(pfadKey(sel)); alles(); } else { sel = sel.slice(0, -1); alles(); } }
+    const zeilen = [...document.querySelectorAll("#tt tr.zl")]; const i = zeilen.findIndex((z) => z.classList.contains("sel"));
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { const n = zeilen[i < 0 ? 0 : i + (e.key === "ArrowDown" ? 1 : -1)]; if (n) waehleAufbau(n.dataset.p.split("/")); }
+    if (e.key === "ArrowRight" && k && D.teile[k.e.ziel].typ === "baugr") { ausgeklappt.add(pfadKey(sel)); zeichneMitte(); }
+    if (e.key === "ArrowLeft" && k) { if (ausgeklappt.has(pfadKey(sel))) { ausgeklappt.delete(pfadKey(sel)); zeichneMitte(); } else waehleAufbau(sel.slice(0, -1)); }
     e.preventDefault();
   }
 });
 
-/* Ziehen: Katalog -> Baum (in die Baugruppe), Baum -> Baugruppe (verschieben), Fertigung: Teil <-> Platte */
+/* Ziehen: Katalog -> Aufbau (in die Baugruppe oder oberste Ebene), Aufbau -> Baugruppe (verschieben), Fertigung: Teil <-> Platte */
 let zug = null;
+const baugZiel = (z) => { const ke = z && z.dataset.e && kante(z.dataset.e); return !ke ? wurzel : D.teile[ke.e.ziel].typ === "baugr" ? ke.e.ziel : ke.asm; };
 document.addEventListener("dragstart", (e) => {
-  const k = e.target.closest?.(".k[data-k]"), z = e.target.closest?.(".z[data-e]"), p = e.target.closest?.(".pos[data-z]");
-  zug = k ? { art: "katalog", id: k.dataset.k } : z ? { art: "baum", id: z.dataset.e } : p ? { art: "pos", id: p.dataset.z, ziel: p.dataset.z, von: p.dataset.von } : null;
-  if (zug) e.dataTransfer.setData("text/plain", zug.id);
+  const k = e.target.closest?.(".k[data-k]"), z = e.target.closest?.("#tt tr[data-e]"), p = e.target.closest?.("tr.pos[data-fz]");
+  zug = k ? { art: "katalog", id: k.dataset.k } : z ? { art: "baum", id: z.dataset.e } : p ? { art: "pos", ziel: p.dataset.fz, von: p.dataset.von } : null;
+  if (zug) e.dataTransfer.setData("text/plain", "x");
 });
+const dropZiel = (e) => zug && (zug.art === "pos" ? e.target.closest("tbody.ftg[data-platte]") : e.target.closest("#tt tr[data-e], [data-ablage], #tt"));
 document.addEventListener("dragover", (e) => {
   document.querySelectorAll(".dropp").forEach((x) => x.classList.remove("dropp"));
-  if (!zug) return;
-  const z = e.target.closest(".z"), kt = e.target.closest("tbody.ftg[data-platte]");
-  if (z && zug.art !== "pos") { e.preventDefault(); z.classList.add("dropp"); } else if (kt && zug.art === "pos") { e.preventDefault(); kt.classList.add("dropp"); }
+  const d = dropZiel(e); if (d) { e.preventDefault(); d.classList.add("dropp"); }
 });
 document.addEventListener("dragend", () => { zug = null; document.querySelectorAll(".dropp").forEach((x) => x.classList.remove("dropp")); });
 document.addEventListener("drop", (e) => {
-  if (!zug) return; e.preventDefault();
-  const z = e.target.closest(".z"), kt = e.target.closest("tbody.ftg[data-platte]");
-  if (z && zug.art === "katalog") {
-    const ke = z.dataset.e && kante(z.dataset.e), ziel = !ke ? wurzel : D.teile[ke.e.ziel].typ === "baugr" ? ke.e.ziel : ke.asm;
-    hinzufuegen(ziel, zug.id);
-  } else if (z && zug.art === "baum") {
-    const q = kante(zug.id), ke = z.dataset.e && kante(z.dataset.e), ziel = !ke ? wurzel : D.teile[ke.e.ziel].typ === "baugr" ? ke.e.ziel : ke.asm;
-    if (!q || ziel === q.asm) return;
-    if (D.teile[q.e.ziel].typ === "baugr" && (ziel === q.e.ziel || gang(q.e.ziel).some((x) => x.e.ziel === ziel))) return meldung("Eine Baugruppe kann sich nicht selbst enthalten.");
-    aendern(`${D.teile[q.e.ziel].name} verschieben`, () => { D.kinder[q.asm] = D.kinder[q.asm].filter((x) => x.id !== q.e.id); D.kinder[ziel].push(q.e); sel = []; });
-  } else if (kt && zug.art === "pos") verteile(zug.ziel, zug.von, kt.dataset.platte || "");
+  const d = dropZiel(e); if (!d) return; e.preventDefault();
+  const z = d.matches("tr[data-e]") ? d : null;
+  if (zug.art === "katalog") hinzufuegen(baugZiel(z), zug.id);
+  else if (zug.art === "baum") {
+    const q = kante(zug.id), ziel = baugZiel(z);
+    if (q && ziel !== q.asm) {
+      if (D.teile[q.e.ziel].typ === "baugr" && (ziel === q.e.ziel || gang(q.e.ziel).some((x) => x.e.ziel === ziel))) meldung("Eine Baugruppe kann sich nicht selbst enthalten.");
+      else aendern(`${D.teile[q.e.ziel].name} verschieben`, () => { D.kinder[q.asm] = D.kinder[q.asm].filter((x) => x.id !== q.e.id); D.kinder[ziel].push(q.e); sel = []; });
+    }
+  } else if (zug.art === "pos") verteile(zug.ziel, zug.von, d.dataset.platte || "");
   zug = null;
 });
 
-/* Spalten ziehen (wie die Seitenleisten in partAtlas) */
+/* Spalten ziehen */
 function griffe() {
   document.querySelectorAll(".griff").forEach((g) => g.addEventListener("mousedown", (e) => {
     e.preventDefault(); g.classList.add("zieht"); const r = $("#raum"), start = e.clientX, was = g.dataset.g;
-    const bl = parseInt(getComputedStyle(r).getPropertyValue("--bl")) || 300, br = parseInt(getComputedStyle(r).getPropertyValue("--br")) || 330;
+    const bl = parseInt(getComputedStyle(r).getPropertyValue("--bl")) || 260, br = parseInt(getComputedStyle(r).getPropertyValue("--br")) || 330;
     const bewegt = (m) => { const d = m.clientX - start; if (was === "bl") r.style.setProperty("--bl", Math.max(200, Math.min(600, bl + d)) + "px"); else r.style.setProperty("--br", Math.max(240, Math.min(560, br - d)) + "px"); };
     const los = () => { g.classList.remove("zieht"); removeEventListener("mousemove", bewegt); removeEventListener("mouseup", los); };
     addEventListener("mousemove", bewegt); addEventListener("mouseup", los);
