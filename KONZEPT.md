@@ -468,7 +468,10 @@ Wo verbaut reicht bis zum Projekt. **Platten (0.60.0):** `partatlas/platten.py`,
 fehlt, auf diese Platte). „Verteilt“: Summe der `PRINTS`-Mengen ≥ Bedarf aus der Projekt-Stückliste über alle Baugruppen. **Überschuss** (Reserve) ist erlaubt, wird als `zu_viel`
 gemeldet und zählt nicht als mehr verteilt — kein stilles Kürzen, wenn sich der Bedarf später ändert. Nur Modelle kommen auf Platten; ein aus dem Katalog genommenes Modell
 verschwindet aus Bedarf und Platte; mit dem Projekt gehen die Platten (`soft_delete`). Rückgängig im Kontext des Projekts. Gewicht und Zeit der Platte wie in der Stückliste
-(Slicer-Wert, sonst Schätzung, gekennzeichnet). **Noch nicht:** Oberfläche, „Zum Projekt machen“, „steckt in Projekt“ in Löschvorschau und Modell-Inspektor (der Kern liest `CONTAINS`).*
+(Slicer-Wert, sonst Schätzung, gekennzeichnet). **Für die Oberfläche (0.61.0):** `GET /api/projekte/{id}/baum` (der ganze Baum in einer Antwort: je Position Menge, Gesamtmenge ab der Wurzel, Vorgabe, bei Baugruppen die
+Positionen darunter; auch unter `/api/baugruppen/{id}/baum`), `GET …/stueckliste` (flach: Druckteile je einmal mit Gesamtmenge, Materialien mit Mengen, Gewicht, Zeit; Kaufteile mit Gesamtmenge
+und Bezug; Summen wie in der Baugruppenansicht). **Druckeinstellungen** als Vorgabe an der Position (`infill` 0–100 %, `waende` 1–20, `schicht` 0,04–1 mm; nur an Druckteilen; leer nimmt sie weg;
+wirken im Rückgängig mit). **Noch nicht:** Oberfläche, „Zum Projekt machen“, „steckt in Projekt“ in Löschvorschau und Modell-Inspektor (der Kern liest `CONTAINS`).*
 
 **Zwei Begriffe, zwei Aufgaben.** Eine **Baugruppe** ist ein wiederverwendbarer Baustein: Teile, die zusammengehören und verschraubt werden („Extruder“,
 „Skelett-Arm“); sie kann in anderen stecken. Ein **Projekt** ist die Klammer um einen konkreten Bau-Auftrag („Halloween-Deko 2026“): es hält lose Teile,

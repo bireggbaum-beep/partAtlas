@@ -365,6 +365,52 @@ if __name__ == "__main__":
         zurueck(pid)
         check("Rückgängig bringt die Menge und eine entfernte Position im Projekt zurück",
               {p["name"]: p["menge"] for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"] == 3)
+        # -- Druckeinstellungen als Vorgabe an der Position
+        einz = f"MODEL_ASSET/{m['Einzelteil']}"
+        c.patch(f"/api/projekte/{pid}/positionen", json={"ref": einz, "infill": 40, "waende": "4", "schicht": "0,2"})
+        pe = {p["name"]: p for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"]
+        check("Druckeinstellungen: Füllung, Wandlinien, Schichthöhe (auch mit Komma) werden als Zahlen gespeichert",
+              (pe["infill"], pe["waende"], pe["schicht"]) == (40, 4, 0.2))
+        check("Druckeinstellungen: Werte ausserhalb, keine Zahl oder an einem Kaufteil werden abgelehnt",
+              all(c.patch(f"/api/projekte/{pid}/positionen", json={"ref": ref_, **w}).status_code == 400
+                  for ref_, w in ((einz, {"infill": 101}), (einz, {"waende": 0}), (einz, {"schicht": "dick"}), (einz, {"schicht": 2}),
+                                  ("PURCHASED_PART/din912-m3x10", {"infill": 20}))))
+        check("Ungültiger Wert ändert nichts", {p["name"]: p for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"]["infill"] == 40)
+        check("Rückgängig nimmt alle drei Einstellungen in einem Schritt zurück und der Verlauf nennt sie",
+              c.get(f"/api/projekte/{pid}").json()["verlauf"]["zurueck"] == "Füllung und Wandlinien und Schichthöhe ändern (Halloween Deko)"
+              and zurueck(pid).status_code == 200
+              and {p["name"]: p for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"]["infill"] is None)
+        wieder(pid)
+        c.patch(f"/api/projekte/{pid}/positionen", json={"ref": einz, "infill": ""})
+        check("Leeren nimmt die Vorgabe wieder weg", {p["name"]: p for p in c.get(f"/api/projekte/{pid}").json()["positionen"]}["Einzelteil"]["infill"] is None)
+        c.patch(f"/api/projekte/{pid}/positionen", json={"ref": einz, "infill": 40})
+
+        # -- Der ganze Baum in einer Antwort
+        baum = c.get(f"/api/projekte/{pid}/baum").json()
+        zweige = {e["name"]: e for e in baum["positionen"]}
+        halter_im_modul = next(e for e in zweige["Arm-Modul"]["positionen"] if e["name"] == "Halter")
+        check("Baum: Projekt, darunter Baugruppe mit ihren Positionen und lose Teile, mit Gesamtmenge ab der Wurzel (2 Module × 2 Halter = 4)",
+              baum["art"] == "projekt" and set(zweige) == {"Arm-Modul", "Einzelteil", "Zylinderkopfschraube M3×10"}
+              and zweige["Arm-Modul"]["art"] == "baugruppe" and halter_im_modul["menge"] == 2 and halter_im_modul["gesamt"] == 4
+              and zweige["Einzelteil"]["gesamt"] == 3 and zweige["Einzelteil"]["infill"] == 40 and "positionen" not in zweige["Einzelteil"])
+        check("Baum: auch für eine Baugruppe allein, und ein Baustein kennt seine Ebene darunter",
+              [e["name"] for e in c.get(f"/api/baugruppen/{modul}/baum").json()["positionen"]].count("Halter") == 1
+              and c.get(f"/api/baugruppen/{modul}/baum").json()["art"] == "baugruppe")
+
+        # -- Flache Stückliste
+        flach = c.get(f"/api/projekte/{pid}/stueckliste").json()
+        dp = c.get(f"/api/projekte/{pid}").json()
+        druck = {z["name"]: z for z in flach["druck"]}
+        kauf = {k["name"]: k for k in flach["kauf"]}
+        check("Flache Stückliste: jedes Druckteil einmal mit Gesamtmenge über die Ebenen (Halter 4, Einzelteil 3), Materialien mit Mengen",
+              druck["Halter"]["menge"] == 4 and druck["Einzelteil"]["menge"] == 3
+              and sum(x["menge"] for x in druck["Halter"]["materialien"]) == 4 and all(x["material"] for x in druck["Halter"]["materialien"]))
+        check("Flache Stückliste: Kaufteile mit Gesamtmenge und Bezug (M3×10: 2×4 + 1 = 9)",
+              kauf["Zylinderkopfschraube M3×10"]["menge"] == 9 and "link" in kauf["Zylinderkopfschraube M3×10"])
+        check("Flache Stückliste: die Summen stimmen mit denen der Baugruppenansicht überein (Druckteile, Gewicht, Zeit)",
+              flach["summen"]["druckteile"] == dp["summen"]["druckteile"] and flach["summen"]["gewicht_g"] == dp["summen"]["gewicht_g"]
+              and flach["summen"]["zeit_s"] == dp["summen"]["zeit_s"])
+
         check("Export des Projekts: CSV, Markdown und PDF",
               all(c.get(f"/api/projekte/{pid}/export", params={"format": f}).status_code == 200 for f in ("csv", "md", "pdf"))
               and "Einzelteil" in c.get(f"/api/projekte/{pid}/export").text)

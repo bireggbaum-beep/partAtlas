@@ -105,6 +105,10 @@ Baugruppe, Projekt „Voron Toolhead Umbau“; Auswahl Projekte/Bausteine; Ferti
 mit, „Wo verbaut“ mehrstufig bis zum Projekt. Im Browser geprüft (19/19, ein Fehler im Mock dabei gefunden und behoben). **Nächster Schritt:** Abnahme des Entwurfs, dann
 Backend `PROJECT` (Positionslogik verallgemeinern, Tests), dann Platten, dann die Werkbank-Oberfläche. **Offen:** „Zum Projekt machen“; Rückgängig je Projekt (im Mock sieht man den
 Grund: Schritte aus einem Projekt tauchen im anderen als „Rückgängig“ auf).
+**Reihenfolge geändert (Anwender, 11.10.2026): erst das Backend so weit, dass man in der Oberfläche ein Projekt anlegen, Dinge zuordnen und auf Platten verteilen kann (zum Ausprobieren, ob das die
+richtige Art ist), dann die Oberfläche.** Paket 1 erledigt (0.61.0): Druckeinstellungen an der Position, Baum- und flache Stückliste-Endpunkte; test_baugruppen 97/97 (+10, vier Gegenproben fallen).
+Exporte (CSV/MD/PDF) zeigen die Druckeinstellungen noch nicht. **Oberfläche in Paketen:** (2) Projektliste in der Seitenleiste + Werkbank-Gerüst mit Baum und Inspektor, (3) Reiter Stückliste und
+Fertigung, (4) Katalog-Schublade zum Hineinziehen. Danach die Liste der übrigen Backend-Lücken (Verschieben, Tauschen, Fork, „steckt in Projekt“ …).
 **Grundmodell entschieden (Anwender, 11.10.2026):** vier Ebenen Modell (kein Material) → Position (Vorgabe) → Platte (Plan, Material) → Druck (Ausführung, Material); KONZEPT §4.5a.
 Folgen: Bedarf je Modell (der vorgeschlagene Umbau auf „Modell + Material“ entfällt, wäre falsch gewesen); Position = Teil, kein „Duplizieren“ (im Mock gestrichen); Material am Modell
 bleibt vorerst als Hinweis, kann später ersatzlos entfallen, wenn der Filter aus den Drucken kommt (offen: ob/wann). Offen aus der Lückenliste zum Backend (nach dieser Klärung):

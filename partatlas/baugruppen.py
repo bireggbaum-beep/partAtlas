@@ -35,11 +35,14 @@ BENOETIGT = "REQUIRES"
 BEHAELTER = {BAUGRUPPE: ENTHAELT, PROJEKT: BENOETIGT}       # Art des Behälters -> Kante zu seinen Positionen
 
 ARTEN = {MODELL: "modell", BAUGRUPPE: "baugruppe", KAUFTEIL: "kaufteil", EIGEN: "eigen"}
-POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz")
+# Druckeinstellungen sind eine **Vorgabe** an der Position (KONZEPT §4.5a): sie reisen mit der Baugruppe; was wirklich gedruckt wird, steht an Platte und Druck.
+POSITIONSFELDER = ("menge", "erledigt", "material", "farbe", "notiz", "infill", "waende", "schicht")
+DRUCKFELDER = {"infill": (0, 100), "waende": (1, 20), "schicht": (0.04, 1.0)}
 # Wo man ein Kaufteil bekommt: ein Verweis, die Artikelnummer beim Händler, ein Hinweis („mit Schraubensicherung“). Alles freiwillig.
 BEZUGSFELDER = {"link": 500, "artikelnr": 60, "hinweis": 200}
 VERLAUF_MAX = 100          # so viele Änderungen lassen sich zurücknehmen (nur im Speicher, bis zum Neustart)
-FELDNAMEN = {"menge": "Menge", "erledigt": "Zähler", "material": "Material", "farbe": "Farbe", "notiz": "Notiz"}
+FELDNAMEN = {"menge": "Menge", "erledigt": "Zähler", "material": "Material", "farbe": "Farbe", "notiz": "Notiz",
+            "infill": "Füllung", "waende": "Wandlinien", "schicht": "Schichthöhe"}
 
 # Gewicht ohne Slicer-Daten, geschätzt wie ein Slicer mit Standardwerten
 # druckt: eine Hülle von 1,2 mm (2–3 Wände, Boden, Deckel) und 15 %
@@ -373,6 +376,20 @@ class Baugruppen:
             elif k == "material":
                 # Die Position nennt den Material-Knoten beim Namen; es gibt ihn danach.
                 v = self.teile.material_knoten(v) if str(v or "").strip() else None
+            elif k in DRUCKFELDER:
+                if not ziel.startswith(f"{MODELL}/"):
+                    raise KatalogFehler("Druckeinstellungen gibt es nur an Druckteilen.")
+                if str(v if v is not None else "").strip() == "":
+                    v = None
+                else:
+                    try:
+                        zahl = float(str(v).replace(",", "."))
+                    except ValueError:
+                        raise KatalogFehler(f"{FELDNAMEN[k]} muss eine Zahl sein.")
+                    unten, oben = DRUCKFELDER[k]
+                    if not unten <= zahl <= oben:
+                        raise KatalogFehler(f"{FELDNAMEN[k]} muss zwischen {unten} und {oben} liegen.")
+                    v = round(zahl, 2) if k == "schicht" else int(round(zahl))
             else:
                 v = str(v or "").strip()[:200] or None
             aenderung[k] = v
@@ -580,6 +597,76 @@ class Baugruppen:
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(self._b(bid)),
                 "materialien": self.teile.materialien(), "verlauf": self.verlauf(kontext or bid)}
+
+    def baum(self, bid):
+        """Der ganze Baum eines Projekts oder einer Baugruppe in einer Antwort: je Position Menge, Gesamtmenge ab der Wurzel, Vorgabe und,
+        bei einer Baugruppe, ihre Positionen darunter. Für die Oberfläche, die sonst je Ebene eine Anfrage bräuchte."""
+        b = self._pruefen(bid)
+        standard = self.standard()
+
+        def zweig(kennung, faktor, besucht):
+            aus = []
+            for _, r, kante in self._positionen(kennung):
+                col, _, kid = r.partition("/")
+                art = ARTEN[col]
+                menge = kante.get("menge", 1)
+                e = {"ref": r, "art": art, "id": kid, "menge": menge, "gesamt": menge * faktor,
+                     **{k: kante.get(k) for k in POSITIONSFELDER if k != "menge"}}
+                if art == "modell":
+                    kurz, d = self._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
+                    e.update(name=kurz["name"], format=kurz["format"], hash=kurz["hash"], bild=kurz["bild"], fehlt=kurz["fehlt"],
+                             entwurf=kurz["entwurf"], material_wirksam=d["material"], material_angenommen=d["material_angenommen"])
+                elif art == "baugruppe":
+                    e["name"] = self.db.get_node(r, readonly=True)["name"]
+                    e["positionen"] = [] if kid in besucht else zweig(kid, faktor * menge, besucht | {kid})
+                else:
+                    n = self.db.get_node(r, readonly=True)
+                    e["name"] = n["name"]
+                    if art == "kaufteil":
+                        e.update(kategorie=n.get("kategorie"), einheit=n.get("einheit", "Stück"))
+                aus.append(e)
+            return aus
+        return {"id": bid, "art": "projekt" if self._col(bid) == PROJEKT else "baugruppe", "name": b["name"], "status": b.get("status", ""),
+                "positionen": zweig(bid, 1, {bid})}
+
+    def stueckliste_flach(self, bid):
+        """Die Stückliste über alle Ebenen, flach: jedes Druckteil einmal mit Gesamtmenge und den Materialien, in denen es verlangt ist; die
+        Kaufteile einmal mit Gesamtmenge und Bezug. Zahlen wie in `summen`."""
+        self._pruefen(bid)
+        standard = self.standard()
+        druck, kauf, eigene = {}, {}, {}
+        for art, kid, kante, bedarf in self._aufloesen(bid):
+            if art == "modell":
+                kurz, d = self._modell_daten(kid, kante.get("material"), kante.get("farbe"), standard)
+                z = druck.setdefault(kid, {"id": kid, "ref": ref(MODELL, kid), "name": kurz["name"], "format": kurz["format"], "hash": kurz["hash"],
+                                           "bild": kurz["bild"], "fehlt": kurz["fehlt"], "entwurf": kurz["entwurf"], "menge": 0, "materialien": {},
+                                           "gewicht_g": 0.0, "zeit_s": 0, "gewicht_geschaetzt": False, "ohne_daten": False})
+                z["menge"] += bedarf
+                z["materialien"][d["material"]] = z["materialien"].get(d["material"], 0) + bedarf
+                if d["gewicht_g"] is None:
+                    z["ohne_daten"] = True
+                else:
+                    z["gewicht_g"] += d["gewicht_g"] * bedarf
+                    z["gewicht_geschaetzt"] |= d["geschaetzt"]
+                z["zeit_s"] += (d["zeit_s"] or 0) * bedarf
+            elif art == "kaufteil":
+                n = self.db.get_node(f"{KAUFTEIL}/{kid}", readonly=True)
+                k = kauf.setdefault(kid, {"id": kid, "ref": f"{KAUFTEIL}/{kid}", "name": n["name"], "kategorie": n.get("kategorie"), "norm": n.get("norm") or "",
+                                          "einheit": n.get("einheit", "Stück"), "link": n.get("link") or "", "artikelnr": n.get("artikelnr") or "",
+                                          "hinweis": n.get("hinweis") or "", "menge": 0})
+                k["menge"] += bedarf
+            else:
+                n = self.db.get_node(f"{EIGEN}/{kid}", readonly=True)
+                eigene.setdefault(kid, {"id": kid, "ref": f"{EIGEN}/{kid}", "name": n["name"], "art": n.get("art") or "", "menge": 0})["menge"] += bedarf
+        for z in druck.values():
+            z["materialien"] = sorted(({"material": m, "menge": n} for m, n in z["materialien"].items()), key=lambda x: -x["menge"])
+            z["gewicht_g"] = round(z["gewicht_g"], 1)
+        reihenfolge = lambda t: (standardteile.KATEGORIEN.index(t["kategorie"]) if t.get("kategorie") in standardteile.KATEGORIEN else 99, t["name"].lower())
+        return {"druck": sorted(druck.values(), key=lambda x: x["name"].lower()), "kauf": sorted(kauf.values(), key=reihenfolge),
+                "eigene": sorted(eigene.values(), key=lambda x: x["name"].lower()),
+                "summen": {"druckteile": sum(z["menge"] for z in druck.values()), "kaufteile": sum(k["menge"] for k in kauf.values()),
+                           "gewicht_g": round(sum(z["gewicht_g"] for z in druck.values()), 1), "zeit_s": int(sum(z["zeit_s"] for z in druck.values())),
+                           "gewicht_geschaetzt": any(z["gewicht_geschaetzt"] for z in druck.values())}}
 
     def summen(self, bid):
         """Was die ganze Baugruppe braucht, über alle Ebenen: Gewicht, Zeit,

@@ -816,6 +816,18 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         P().rest_auflegen(plid, d.get("ref", ""), im or None)
         return {"ok": True}
 
+    @app.get("/api/projekte/{bid}/baum")
+    @app.get("/api/baugruppen/{bid}/baum")
+    @am_stueck
+    def baugruppe_baum(bid: str):
+        return B().baum(bid)
+
+    @app.get("/api/projekte/{bid}/stueckliste")
+    @app.get("/api/baugruppen/{bid}/stueckliste")
+    @am_stueck
+    def baugruppe_stueckliste(bid: str):
+        return B().stueckliste_flach(bid)
+
     @app.get("/api/projekte/{bid}")
     @app.get("/api/baugruppen/{bid}")
     def baugruppe(bid: str, im: str = ""):
