@@ -699,7 +699,7 @@ if __name__ == "__main__":
     # Viele löschen: eine Transaktion je Gruppe, nicht je Modell (einzeln dauerte „alle 8 600 löschen“ unter Windows Minuten)
     so_ids = [m["id"] for m in so_k.modelle()]
     so_k._sichern_vor("entfernen")
-    _sichern, so_k._sichern_vor = so_k._sichern_vor, lambda was: None     # gesichert ist schon: gezählt wird nur das Löschen
+    _sichern, so_k._sichern_vor = so_k._sichern_vor, lambda was, anlass=None: None     # gesichert ist schon: gezählt wird nur das Löschen
     schreibvorgaenge, _flush = [], so_k.db._flush_pending_writes
     so_k.db._flush_pending_writes = lambda *a, **kw: (schreibvorgaenge.append(1), _flush(*a, **kw))[1]
     so_fortschritt = []

@@ -57,8 +57,12 @@ gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operation
   öffnen; währenddessen 503 wie beim Start; die Seite lädt danach neu. Gemessen hier: 0,14 s bei 300 Modellen. Anlass in Worten
   (`info.json` je Sicherung, mit Grösse — die Liste zählt keine Dateien mehr: das war der Punkt „Sicherungen öffnet in 5–7 s“ der
   Performance-Liste). Dabei gefunden: mit kleiner Aufbewahrung räumte die Sicherung „vor dem Zurückholen“ genau die zurückzuholende weg —
-  jetzt räumt sie erst danach auf. test_schutz 28/28 (+4; Aufbewahrung je Tag, Einstellung, Anlass, Zurückholen in der Oberfläche),
+  jetzt räumt sie erst danach auf. Eine Attrappe in test_scan an die neue Signatur angepasst. test_schutz 28/28 (+4; Aufbewahrung je Tag, Einstellung, Anlass, Zurückholen in der Oberfläche),
   drei Gegenproben fallen. Nicht gebaut: harte Verweise statt Kopien (§3.3a, Vorschlag, vorher prüfen).
+
+**Iteration 1 abgeschlossen (12.10.2026, 0.56–0.60):** alle Suiten ausser test_ui grün — api 86, aufraeumen 13, baugruppen 48, cad 14,
+drucke 28, eigene 17, formate 25, papierkorb 11 (neu), sammlungen 18, scan 110, schutz 28, suche 28, tags 15 (neu), verwalten 76,
+vorschau 8 (neu), zuordnen 12. test_ui nur gezielt (Auswahl 1 neu, Mehrfachauswahl 3/3); komplett vor `main` am Schluss.
 
 ## Als Nächstes (8.10.2026, Anwender)
 
