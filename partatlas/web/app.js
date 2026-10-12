@@ -302,6 +302,7 @@ async function ladeSeite() {
                                                               api("/api/wurzeln/entfernt").catch(() => [])]);   // ein älterer Server kennt den Endpunkt nicht: die Seite muss trotzdem aufgehen
   if (nr !== ladeSeite.nr) return;
   zustand.entfernteWurzeln = entfernt;
+  if (zustand.ansicht === "papierkorb") ladeKorbWeitere();
   // Der Willkommensschirm gehört in einen wirklich leeren Katalog. Sind alle Ordner entfernt, die Modelle aber noch da (als „Datei fehlt“),
   // wäre er falsch: er versteckt Bereinigen und lässt aussehen, als sei alles weg.
   zustand.katalogLeer = !((z.alle || 0) + (z.papierkorb || 0) + entfernt.length);
@@ -449,7 +450,8 @@ function zeichneLeer() {
         Modelle erscheinen gruppenweise (je 100); Vorschauen werden anschliessend gerendert.</p>
       <div class="lauf"><i></i></div></div>`;
   } else {
-    leer.textContent = zustand.ansicht === "papierkorb" ? "Der Papierkorb ist leer."
+    leer.textContent = zustand.ansicht === "papierkorb"
+      ? (Object.values(zustand.korbWeitere || {}).some((l) => l.length) ? "Keine Modelle im Papierkorb." : "Der Papierkorb ist leer.")
       : (zustand.filterTeile ? "Keine Treffer." : "Noch keine Modelle in diesem Ordner.");
   }
 }
@@ -987,12 +989,59 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl], anker = null
 // mit Modellen im Katalog: was los ist und wie es zurückgeht. Einen „Papierkorb leeren“ gibt es bewusst nicht: er räumte per Müllsammler alles
 // Gelöschte auf einmal ab (auch entfernte Ordner, Baugruppen, Drucke) und liesse sich nicht rückgängig machen. Endgültig entfernt wird nur
 // einzeln (endgueltigEntfernen).
+// Was ausser Modellen im Papierkorb liegt (papierkorb.py): je Art eine aufklappbare Gruppe. Zu, solange man sie nicht öffnet — bei
+// hunderten gelöschten Tags verdrängte die Liste sonst die Modelle.
+const KORB_ARTEN = [["sammlung", "▤", "Sammlungen"], ["baugruppe", "🧩", "Baugruppen"], ["druck", "🖨", "Drucke"], ["tag", "＃", "Tags"],
+                    ["kaufteil", "⚙", "Eigene Kaufteile"]];
+async function ladeKorbWeitere() {
+  const nr = ladeKorbWeitere.nr = (ladeKorbWeitere.nr || 0) + 1;
+  let d = null;
+  try { d = await api("/api/papierkorb/weitere"); } catch { /* älterer Server: nur Modelle */ }
+  if (nr !== ladeKorbWeitere.nr) return;
+  zustand.korbWeitere = d;
+  if (zustand.ansicht === "papierkorb") { zeichneHinweisLeiste(); zeichneLeer(); }
+}
+function korbWeitereZeilen() {
+  const d = zustand.korbWeitere || {};
+  zustand.korbOffen ||= new Set();
+  const wann = (iso) => iso ? new Date(iso).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" }) : "";
+  return KORB_ARTEN.filter(([art]) => d[art]?.length).map(([art, sym, titel]) => {
+    const l = d[art];
+    return `<details class="pk-gruppe" data-korb-gruppe="${art}" ${zustand.korbOffen.has(art) ? "open" : ""}>
+      <summary><span>${sym} ${titel} <em>${l.length}</em></span>${l.length > 1 ? `<button class="knopf klein" data-korb-alle="${art}">Alle wiederherstellen</button>` : ""}</summary>
+      ${l.slice(0, 200).map((x) => `<div class="pk-eintrag"><span class="pk-name" title="${esc(x.name || "")}">${esc(x.name || "–")}</span>
+        <span class="dim">${esc(x.info || "")}</span><span class="dim">gelöscht ${wann(x.geloescht)}</span>
+        <button class="knopf klein" data-korb-zurueck="${art}" data-id="${esc(x.id)}">Wiederherstellen</button></div>`).join("")}
+      ${l.length > 200 ? `<div class="dim pk-eintrag">… und ${l.length - 200} weitere</div>` : ""}
+    </details>`;
+  });
+}
+document.addEventListener("toggle", (e) => {
+  const g = e.target.closest?.("[data-korb-gruppe]");
+  if (g) g.open ? zustand.korbOffen.add(g.dataset.korbGruppe) : zustand.korbOffen.delete(g.dataset.korbGruppe);
+}, true);
+document.addEventListener("click", async (e) => {
+  const eins = e.target.closest?.("[data-korb-zurueck]"), alle = e.target.closest?.("[data-korb-alle]");
+  if (!eins && !alle) return;
+  e.preventDefault();
+  const art = (eins || alle).dataset.korbZurueck || alle.dataset.korbAlle;
+  const ids = eins ? [eins.dataset.id] : (zustand.korbWeitere?.[art] || []).map((x) => x.id);
+  let n = 0;
+  for (const id of ids) {
+    try { await api("/api/papierkorb/wiederherstellen", { method: "POST", body: { art, id } }); n++; } catch (err) { toast(err.message); break; }
+  }
+  if (n) toast(n === 1 ? "Wiederhergestellt." : `${n} wiederhergestellt.`);
+  await ladeSeite();
+  if (typeof ladeBaugruppenLeiste === "function") ladeBaugruppenLeiste();
+});
+
 function zeichneHinweisLeiste() {
   const entf = zustand.entfernteWurzeln || [];
   const zeilen = [];
   if (zustand.ansicht === "papierkorb") {
     const n = zustand.modelle.length;
     zeilen.push(`<div class="pk-zeile"><span>🗑 ${n ? `${n.toLocaleString("de-DE")} ${n === 1 ? "Modell" : "Modelle"}` : "Keine Modelle"} im Papierkorb. Er wird nie von selbst geleert; „Wiederherstellen“ holt ein Modell zurück, „Endgültig entfernen“ nimmt eines für immer heraus.</span></div>`);
+    zeilen.push(...korbWeitereZeilen());
     for (const w of entf) {
       zeilen.push(`<div class="pk-zeile"><span>📁 Entfernter Ordner <b>${esc(w.name || "")}</b> <code>${esc(w.pfad || "")}</code>${w.modelle ? ` · ${w.modelle.toLocaleString("de-DE")} Modelle` : ""}${w.vorhanden ? "" : " · liegt dort nicht mehr"}</span>
         ${w.vorhanden ? `<button class="knopf klein" data-wurzel-zurueck="${esc(w.id)}">Wieder hinzufügen</button>` : ""}</div>`);

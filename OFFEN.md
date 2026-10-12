@@ -25,6 +25,12 @@ gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operation
   (Einstellungen, im Fenster aufhebbar) und kommen beim Einlesen nicht wieder; an einem Modell entfernte stehen in `tags_ab` am Modell.
   Ein von Hand neu gesetzter Tag, der im Papierkorb liegt, kommt ohne seine alten Zuordnungen zurück. Neue Suite `test_tags.py` 15/15,
   drei Gegenproben fallen (Sperre, alte Kanten, eigene als automatisch).
+- **Papierkorb für alles (0.57.0):** Bereinigen › Papierkorb zeigt über den Modellen je Art eine aufklappbare Gruppe — Sammlungen,
+  Baugruppen, Drucke, Tags, eigene Kaufteile — mit Angabe (Modelle, Positionen, Datum/Ergebnis), Löschdatum, „Wiederherstellen“ und
+  „Alle wiederherstellen“. Server `papierkorb.py` (`/api/papierkorb/weitere`, `/wiederherstellen`). Ein gelöschter Druck behält jetzt
+  seine Fotos im Vault (bis 0.55 gingen sie nach `vault_archive/`; beim Zurückholen alter Drucke kommen sie von dort zurück, Wächter
+  `ERLAUBT` ergänzt). Ein zurückgeholter Tag wird wieder vorgeschlagen. Neue Suite `test_papierkorb.py` 11/11; Gegenproben (Fotos
+  archiviert, kein Nachziehen der Zähler, leere Drucke gezeigt) fallen; zwei Filter ohne fallende Gegenprobe entfernt.
 
 ## Als Nächstes (8.10.2026, Anwender)
 

@@ -170,12 +170,12 @@ class Drucke:
             self.nachziehen(self._modelle_von(did))
 
     def loeschen(self, did):
-        d = self._druck(did)
+        self._druck(did)
         modelle = self._modelle_von(did)
+        # Die Fotos bleiben im Vault: der Druck liegt im Papierkorb und kommt mit ihnen zurück (papierkorb.py). Bis 0.55 gingen sie
+        # gleich nach vault_archive/ — ein zurückgeholter Druck hätte keine Fotos mehr gehabt.
         with self.db.transaction():
             self.db.soft_delete(DRUCK, did)
-            for b in d.get("bilder") or []:
-                self.k._archivieren(b["datei"])
             self.nachziehen(modelle)
 
     def referenz(self, did, mid, an=True):

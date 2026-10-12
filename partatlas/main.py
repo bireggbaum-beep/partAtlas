@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
-from . import aufraeumen, dateidialog, durchsuchen, formate, programme, sicherung, zuordnen
+from . import aufraeumen, dateidialog, papierkorb, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -299,6 +299,15 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             raise KatalogFehler(f"Kein Ordner: {pfad}")
         modelle, vollstaendig, je_format = durchsuchen.zaehlen_je_format(pfad)
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig, "je_format": je_format}
+
+    @app.get("/api/papierkorb/weitere")
+    @am_stueck
+    def papierkorb_weitere():
+        return papierkorb.weitere(K())
+
+    @app.post("/api/papierkorb/wiederherstellen")
+    def papierkorb_zurueck(d: dict = Depends(json_koerper)):
+        return papierkorb.zurueckholen(K(), d.get("art") or "", d.get("id") or "")
 
     @app.get("/api/wurzeln/entfernt")
     @am_stueck

@@ -229,9 +229,9 @@ einen Mechanismus, der sie erzwingt, und eine Prüfung in `tests/test_schutz.py`
 | **Ein nicht erreichbarer Ordner ist nicht leer.** Fehlt ein Wurzelordner oder liefert er keine einzige Datei, obwohl der Katalog welche kennt, bleiben seine Orte stehen. | `Scanner.lauf` (`nicht_erreichbar`). |
 | **Ohne Ordner ist der Katalog nicht leer.** Der Willkommensschirm erscheint nur, wenn wirklich nichts da ist. | `zustand.katalogLeer` in `app.js`. |
 
-Was davon nicht abgedeckt ist: Sammlungen, Baugruppen, Drucke und Tags lassen sich in der Oberfläche löschen (`soft_delete`, also im
-Graph und in den Sicherungen noch da), aber nicht in der Oberfläche zurückholen; das Zurückholen einer Sicherung geht nur über die
-Kommandozeile.
+Sammlungen, Baugruppen, Drucke, Tags und eigene Kaufteile gehen beim Löschen ebenfalls in den Papierkorb (`soft_delete`) und lassen
+sich seit 0.57 unter Bereinigen › Papierkorb einzeln oder je Art zurückholen (`papierkorb.py`, `tests/test_papierkorb.py`); die Fotos
+eines Drucks bleiben dabei im Vault. Nicht gezeigt werden Tags ohne Zuordnung und leere Drucke vom Haken „gedruckt“.
 
 ### 3.3a Backup & Wiederherstellung — Zielbild (8.10.2026, vom Anwender entschieden, noch nicht gebaut)
 

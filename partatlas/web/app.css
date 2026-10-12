@@ -1063,3 +1063,15 @@ body:has(#zuordnen:not([hidden])) .toast { bottom: 18px; }
 .tv-gesperrt .chip { cursor: pointer; }
 dialog.tv-frage { width: min(440px, 92vw); }
 dialog.tv-frage label input[type=text] { flex: 1; }
+
+/* Papierkorb: weitere Arten (Sammlungen, Baugruppen, Drucke, Tags, Kaufteile) als aufklappbare Gruppen über den Modellen. */
+.pk-gruppe { border-top: 1px solid var(--line); padding-top: var(--s2); }
+.pk-gruppe summary { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); cursor: pointer; min-height: 26px; list-style: none; }
+.pk-gruppe summary::-webkit-details-marker { display: none; }
+.pk-gruppe summary > span::before { content: "▸"; display: inline-block; width: 13px; color: var(--ink-3); }
+.pk-gruppe[open] summary > span::before { content: "▾"; }
+.pk-gruppe summary em { font-style: normal; font-family: var(--mono); font-size: var(--fs-meta); color: var(--ink-3); margin-left: var(--s2); }
+.pk-gruppe[open] { max-height: 40vh; overflow: auto; }
+.pk-eintrag { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: var(--s4); align-items: center; min-height: 26px;
+              padding-left: var(--s4); }
+.pk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
