@@ -1079,3 +1079,5 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 /* Rahmen aufziehen (Auswahl wie im Explorer) */
 .auswahl-rahmen { position: absolute; z-index: 5; pointer-events: none; border: 1px solid var(--accent);
                   background: color-mix(in oklch, var(--accent) 12%, transparent); border-radius: 2px; }
+.bild-knopf.zweiter { right: 42px; display: grid; place-items: center; }
+.bild-knopf svg { pointer-events: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }

@@ -280,5 +280,6 @@ export function zeige(behaelter, puffer, farbe) {
       neuZeichnen();
     },
     drehen(an) { kam.dreht = an; if (an) neuZeichnen(); else { bewegt = false; neuZeichnen(); } },
+    bild() { bewegt = false; zeichnen(); return leinwand.toDataURL("image/png"); },       // die feine Stufe, wie sie gerade steht
   };
 }

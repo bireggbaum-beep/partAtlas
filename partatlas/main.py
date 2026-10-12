@@ -713,6 +713,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
                 raise KatalogFehler("Farbe als #RRGGBB angeben.")
             werte["vorschau_farbe"] = f
+        if "vorschau_berechnen" in d:
+            if d["vorschau_berechnen"] not in ("ohne_bild", "immer"):
+                raise KatalogFehler("Vorschaubilder: ohne_bild oder immer.")
+            werte["vorschau_berechnen"] = d["vorschau_berechnen"]
         if "auto_tags" in d:
             werte["auto_tags"] = bool(d["auto_tags"])
         if "scan_beim_start" in d:
@@ -962,6 +966,13 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.post("/api/ordner/loeschen")
     def ordner_loeschen(d: dict = Depends(json_koerper)):
         return K().ordner_loeschen(d.get("id", ""), d.get("tags") or (), d.get("sammlungen") or ())
+
+    @app.post("/api/modelle/{mid}/vorschau/berechnen")
+    def vorschau_berechnen(mid: str):
+        with zustand["bestand"].db.transaction():
+            weg = K().vorschau_anfordern(mid)
+        zustand["scanner"].starten(nur_cad=True)
+        return {"weg": weg}
 
     @app.post("/api/cad/erneut")
     def cad_erneut():

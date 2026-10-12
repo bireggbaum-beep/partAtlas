@@ -285,17 +285,45 @@ class Katalog:
                 self.db.update_node(MODELL, mid, {"name": stamm})
 
     def vorschau_setzen(self, h, status):
-        if self.db.get_node(ref(DATEI, h), readonly=True) is not None:
-            self.db.update_node(DATEI, h, {"vorschau": status,
+        d = self.db.get_node(ref(DATEI, h), readonly=True)
+        if d is not None:
+            wunsch = d.get("vorschau_wunsch")       # vorher lesen: `readonly` ist der lebende Knoten, update_node ändert ihn mit
+            self.db.update_node(DATEI, h, {"vorschau": status, "vorschau_wunsch": None,
                                            **({"vorschau_berechnet": self.b.vorschau_rel(h, "berechnet")} if status == "gerendert" else {})})
+            if wunsch and status == "gerendert":
+                self._wunsch_als_titel(h)
+
+    def _wunsch_als_titel(self, h):
+        """Von Hand angefordert (`vorschau_anfordern`): das neue Bild wird Vorschaubild der Kachel — dafür hat man es bestellt."""
+        mid = self.modell_von(h)
+        if mid and self.db.get_node(ref(MODELL, mid), readonly=True) is not None:
+            self.db.update_node(MODELL, mid, {"vorschau_art": "berechnet"})
+
+    def vorschau_immer(self):
+        """Einstellungen › Einlesen › Vorschaubilder: auch berechnen, wenn die Datei schon ein Bild mitbringt (Vorgabe: nein)."""
+        return self.b.einstellungen().get("vorschau_berechnen") == "immer"
 
     def vorschauen(self, d):
-        """Die Vorschaubilder einer Datei: [(art, Pfad im Vault)], aus der Datei zuerst."""
-        arten = VORSCHAU_ARTEN
-        if (d or {}).get("format") in formate.OHNE_NETZ:
-            # CAD-Datei: das Bild aus der Datei ist ein kleines Thumbnail; das berechnete aus dem Netz ist schärfer.
-            arten = tuple(reversed(arten))
+        """Die Vorschaubilder einer Datei: [(art, Pfad im Vault)]. Das Bild aus der Datei zuerst — auch bei FreeCAD-Dateien, deren
+        Thumbnail klein ist: der Anwender hat es so gespeichert (Capacities „Vorschaubilder: Präferenz für bereits vorhandene Bilder“).
+        Wer „immer berechnen“ eingestellt hat, will das einheitliche berechnete Bild vorn."""
+        arten = tuple(reversed(VORSCHAU_ARTEN)) if self.vorschau_immer() else VORSCHAU_ARTEN
         return [(art, d[f"vorschau_{art}"]) for art in arten if (d or {}).get(f"vorschau_{art}")]
+
+    def vorschau_anfordern(self, mid):
+        """Ein Vorschaubild für dieses Modell berechnen lassen, auch wenn die Datei eins mitbringt (Rechtsklick im Inspektor). Netzformate
+        und CAD-Dateien mit Netz rechnet der Worker gleich; CAD-Dateien ohne Netz gehen zuerst durch FreeCAD. Gibt zurück, welcher Weg."""
+        h = self.datei_von(mid)
+        d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+        if d is None or not d.get("orte"):
+            raise KatalogFehler("Die Datei ist nicht da — ohne sie lässt sich kein Bild berechnen.")
+        if d.get("format") not in formate.OHNE_NETZ or (d.get("cad") == "ok" and os.path.exists(self.b.netz_pfad(h))):
+            self.db.update_node(DATEI, h, {"vorschau": "ausstehend", "vorschau_wunsch": True})
+            return "rechnen"
+        if d.get("format") == "fcstd" and self.b.einstellungen().get("fcstd_freecad") != "ja":
+            raise KatalogFehler("FreeCAD-Dokumente liest partAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).")
+        self.db.update_node(DATEI, h, {"cad": "ausstehend", "cad_fehler": None, "vorschau_wunsch": True})
+        return "freecad"
 
     def vorschau_datei(self, h):
         """Bestes Vorschaubild als Pfad: aus der Datei vor berechnet."""
@@ -316,8 +344,18 @@ class Katalog:
             return
         if vorschau == "fehler":
             return self.cad_fehler(h, fehler or "Vorschau nicht möglich")
-        self.db.update_node(DATEI, h, {**felder, "cad": "ok", "cad_fehler": None, "vorschau": vorschau,
+        d = self.db.get_node(ref(DATEI, h), readonly=True)
+        wunsch, bisher = d.get("vorschau_wunsch"), d.get("vorschau")     # vor dem Schreiben: `readonly` ist der lebende Knoten
+        # Ohne neues Bild (die Datei hat eins, „berechnen“ war nicht gewünscht) bleibt der Vorschau-Status, wie er war.
+        self.db.update_node(DATEI, h, {**felder, "cad": "ok", "cad_fehler": None, "vorschau_wunsch": None,
+                                       "vorschau": vorschau if vorschau != "uebersprungen" else bisher,
                                        **({"vorschau_berechnet": self.b.vorschau_rel(h, "berechnet")} if vorschau == "gerendert" else {})})
+        if wunsch and vorschau == "gerendert":
+            self._wunsch_als_titel(h)
+
+    def cad_bild_noetig(self, d):
+        """Rechnet FreeCAD für diese Datei auch das Vorschaubild? Nur, wenn sie keins mitbringt, es gewünscht ist oder „immer“ gilt."""
+        return not d.get("vorschau_extrahiert") or bool(d.get("vorschau_wunsch")) or self.vorschau_immer()
 
     def cad_erneut(self):
         """Gescheiterte CAD-Umwandlungen wieder auf „ausstehend“ — etwa nach einer Reparatur oder wenn FreeCAD gefehlt hat."""
@@ -349,8 +387,10 @@ class Katalog:
         d = self.db.get_node(ref(DATEI, h), readonly=True)
         if d is None:
             return
-        self.db.update_node(DATEI, h, {**felder, "auslesen": None, "vorschau": vorschau, "fehler": fehler,
-                                       "vorschau_extrahiert": self.b.vorschau_rel(h, "extrahiert") if vorschau == "eingebettet" else None})
+        extrahiert = self.b.vorschau_rel(h, "extrahiert") if vorschau == "eingebettet" else None
+        if extrahiert and self.vorschau_immer() and felder.get("format") not in formate.OHNE_NETZ:
+            vorschau = "ausstehend"          # das Bild aus der Datei bleibt; der Worker rechnet zusätzlich eins
+        self.db.update_node(DATEI, h, {**felder, "auslesen": None, "vorschau": vorschau, "fehler": fehler, "vorschau_extrahiert": extrahiert})
         self._datei_materialien(h, felder)
         mid = self.modell_von(h)
         m = self.db.get_node(ref(MODELL, mid), readonly=True) if mid else None

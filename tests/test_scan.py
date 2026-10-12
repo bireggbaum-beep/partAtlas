@@ -631,9 +631,9 @@ if __name__ == "__main__":
           fz_s.worker.status["phase"] == "fertig" and "Neu" not in {m["name"] for m in fz_k.modelle()})
     fz_s.lauf()
     d = fz_k.db.get_node(f"PART_GEOMETRY/{fz()['hash']}", readonly=True)
-    check("FCStd mit „Ja“: Netz, Maße und berechnetes Vorschaubild; das schärfere Bild steht vor dem Thumbnail aus der Datei",
+    check("FCStd mit „Ja“: Netz und Maße; das Thumbnail aus der Datei bleibt das Vorschaubild, nichts zusätzlich berechnet (0.59)",
           fz()["cad"] == "ok" and fz()["masse"] is not None and os.path.exists(fz_b.netz_pfad(fz()["hash"]))
-          and [a for a, _ in fz_k.vorschauen(d)] == ["berechnet", "extrahiert"])
+          and [a for a, _ in fz_k.vorschauen(d)] == ["extrahiert"])
     fz_b.schliessen()
 
     # -- STEP und FCStd im selben Ordner (gemeldet 03.10.): die Frage kommt, bevor FreeCAD überhaupt startet — nicht erst nach der

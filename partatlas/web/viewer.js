@@ -127,5 +127,14 @@ export function zeige(behaelter, puffer, farbe, beiAbbruch = () => {}) {
       steuerung.autoRotate = true;
     },
     drehen(an) { steuerung.autoRotate = an; },
+    // Die Ansicht, wie sie gerade steht, als PNG — ohne das Raster am Boden. Gleich nach dem Zeichnen gelesen: ohne
+    // preserveDrawingBuffer ist der Puffer nur bis zum nächsten Bild gültig.
+    bild() {
+      raster.visible = false;
+      renderer.render(szene, kamera);
+      const url = renderer.domElement.toDataURL("image/png");
+      raster.visible = true;
+      return url;
+    },
   };
 }

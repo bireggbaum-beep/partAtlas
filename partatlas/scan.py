@@ -103,11 +103,14 @@ def _rendern(pfad, vorschau_ziel, farbe=None):
     return "gerendert", None
 
 
-def _cad_bild(stl, vorschau_ziel):
-    """Aus dem Netz, das FreeCAD geschrieben hat: Maße (wie bei einer STL) und das berechnete Vorschaubild."""
+def _cad_bild(stl, vorschau_ziel, bild=True):
+    """Aus dem Netz, das FreeCAD geschrieben hat: Maße (wie bei einer STL) und — wenn `bild` — das berechnete Vorschaubild. Ohne
+    Bild „uebersprungen“: die Datei bringt eins mit (Katalog.cad_bild_noetig)."""
     try:
         a = formate.analysiere(stl, mit_netz=True)
         felder = {k: v for k, v in a.als_felder().items() if k in ("masse_mm", "volumen_cm3", "flaeche_cm2", "dreiecke")}
+        if not bild:
+            return felder, "uebersprungen", None
         png = vorschau.rendere(a.netz)
     except (formate.FormatFehler, MemoryError) as e:
         return {}, "fehler", str(e)
@@ -482,6 +485,9 @@ class Worker(_Bahn):
         for h, d in offen:
             ort = next(iter(d.get("orte", [])), None)
             pfad = self.k.absoluter_pfad(ort) if ort else None
+            if d.get("format") in formate.OHNE_NETZ:
+                # STEP/FCStd: gerechnet wird aus dem Netz, das FreeCAD geschrieben hat (nur auf Wunsch, Katalog.vorschau_anfordern).
+                pfad = self.b.netz_pfad(h) if os.path.exists(self.b.netz_pfad(h)) else None
             # In der Farbe des ersten Filaments, wenn der Slicer eine kennt —
             # so sieht die Kachel aus wie der Druck.
             farbe = next((f.get("farbe") for p in d.get("platten") or [] for f in p.get("filamente", [])
@@ -540,6 +546,7 @@ class Worker(_Bahn):
             pfad = self.k.absoluter_pfad(ort) if ort else None
             if pfad and os.path.exists(pfad):
                 aufgaben.append((h, pfad, self.b.pfad("arbeit", "cad", f"{h}.stl")))
+        mit_bild = {h: self.k.cad_bild_noetig(d) for h, d in offen}
         # Kleine zuerst: die ersten Bilder erscheinen früh, die Schätzung der Restzeit wird nicht von einer frühen Riesenbaugruppe verzerrt,
         # und was hängen könnte (die grossen Dateien), kommt ans Ende.
         aufgaben.sort(key=lambda a: os.path.getsize(a[1]))
@@ -561,7 +568,7 @@ class Worker(_Bahn):
                 os.makedirs(os.path.dirname(ziel), exist_ok=True)
                 os.replace(self.b.pfad("arbeit", "cad", f"{h}.stl"), ziel)
                 felder, status, fehler = {}, "fehler", "Vorschau nicht berechnet"
-                for _, erg, ausnahme in self._verteilen([(h, (ziel, self.b.vorschau_pfad(h, "berechnet")))], _cad_bild):
+                for _, erg, ausnahme in self._verteilen([(h, (ziel, self.b.vorschau_pfad(h, "berechnet"), mit_bild.get(h, True)))], _cad_bild):
                     felder, status, fehler = ({}, "fehler", ausnahme) if ausnahme else erg
                 if self._stopp.is_set():
                     break                  # abgebrochen: die Datei bleibt ausstehend, das Netz liegt schon da

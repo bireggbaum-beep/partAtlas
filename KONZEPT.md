@@ -185,6 +185,10 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   der Datei. Die eigenen hängen am Modell wie ein PDF am Dokument in pDMS:
   eine Liste `bilder` mit Verweisen, kein Knoten je Bild; das erste ist
   das Titelbild.
+- **Welches Bild vorn steht (0.59):** das aus der Datei — auch das kleine Thumbnail eines FreeCAD-Dokuments; der Ersteller hat es so
+  gespeichert. Berechnet wird nur, wenn die Datei keins mitbringt (FreeCAD liefert dann trotzdem Maße und 3D-Ansicht), es sei denn,
+  Einstellungen › Einlesen › Vorschaubilder steht auf „immer“ (dann steht das berechnete vorn). Für ein Modell einzeln: „Vorschaubild
+  berechnen“ (Rechtsklick auf Kachel oder Bild) — das neue wird Vorschaubild; oder die 3D-Ansicht drehen und als eigenes Bild speichern.
 - **Endgültig löschen:** Vorschauen gehen mit der Datei weg (abgeleitet).
   Eigene Bilder gehen nach `vault_archive/`, auch beim Entfernen eines
   einzelnen Bilds — was der Anwender hineingetan hat, verschwindet nie.

@@ -39,6 +39,16 @@ gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operation
   Zeilenlagen des virtuellen Rasters (`raster.imRechteck`), rollt am Rand mit; Strg/Umschalt nimmt dazu; Klick auf freie Fläche hebt
   auf. test_ui +1 (gezielt mit `ui_gezielt.py` im Scratchpad: Abschnitt aus `oberflaeche()` mit gleichem Aufbau), drei Gegenproben
   fallen; der folgende Mehrfachauswahl-Block gezielt 3/3. **test_ui komplett steht aus** (vor `main`).
+- **Vorschaubilder (0.59.0, Capacities „Präferenz für vorhandene Bilder“ und „Handling einzeln“):** das Bild aus der Datei steht immer vorn
+  (vorher bei STEP/FCStd das berechnete). Berechnet wird nur ohne Bild in der Datei; FreeCAD rechnet für ein FCStd mit Thumbnail nur Netz
+  und Maße (`Katalog.cad_bild_noetig`, `_cad_bild(bild=False)` → „uebersprungen“). Einstellungen › Einlesen › Vorschaubilder: „nur ohne
+  Bild“ (Vorgabe) / „immer“ (`vorschau_berechnen`; dann rechnet der Worker auch für 3MF mit Bild, und das berechnete steht vorn).
+  Einzeln: Rechtsklick auf Kachel oder Bild › „Vorschaubild berechnen“ (`POST /api/modelle/{id}/vorschau/berechnen`; Netzformate und
+  CAD mit Netz gleich, CAD ohne Netz über FreeCAD, FCStd nur mit Zusage) — das neue wird Vorschaubild (`vorschau_wunsch` an der Datei).
+  3D-Ansicht: Kamera-Knopf speichert die gedrehte Ansicht quadratisch als eigenes Bild und setzt es als Vorschaubild (WebGL und ohne
+  GPU). Dabei gefunden: `get_node(readonly=True)` ist der lebende Knoten — nach `update_node` war der Wunsch schon gelöscht.
+  Neue Suite `test_vorschau.py` 8/8, vier Gegenproben fallen; test_scan: eine Prüfung beschrieb das alte Verhalten (berechnet vor
+  Thumbnail), auf das neue umgestellt. Der Kamera-Knopf nur im Browser geprüft (WebGL über SwiftShader), kein test_ui.
 
 ## Als Nächstes (8.10.2026, Anwender)
 

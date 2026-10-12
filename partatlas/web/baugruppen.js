@@ -609,6 +609,12 @@ async function einstellungen() {
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
       <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben; umbenennen, zusammenführen, löschen oder alle automatischen
         auf einmal entfernen: <button type="button" class="knopf-text" data-tags-verwalten>Tags verwalten …</button></p>
+      <div class="i-titel">VORSCHAUBILDER</div>
+      <label><input type="radio" name="ein-vorschau" value="ohne_bild" ${e.vorschau_berechnen !== "immer" ? "checked" : ""}> Nur berechnen, wenn die Datei kein Bild mitbringt</label>
+      <label><input type="radio" name="ein-vorschau" value="immer" ${e.vorschau_berechnen === "immer" ? "checked" : ""}> Immer berechnen — das berechnete wird Vorschaubild</label>
+      <p class="dim">Ein Bild in der Datei (3MF, FreeCAD-Thumbnail) hat der Ersteller gespeichert; es steht vorn. „Immer“ gibt allen Kacheln dasselbe
+        Aussehen und kostet Rechenzeit. Für ein einzelnes Modell: Rechtsklick auf Kachel oder Bild › „Vorschaubild berechnen“,
+        oder in der 3D-Ansicht drehen und mit dem Kamera-Knopf als Vorschaubild speichern.</p>
       <div class="i-titel">EINLESEN</div>
       <label><input type="checkbox" id="ein-start" ${e.scan_beim_start ? "checked" : ""}> Beim Start einlesen</label>
       <p class="dim">Aus (Vorgabe): partAtlas liest nur ein, wenn du es auslöst — mit ⟳ neben „Bibliothek“. Bei einer grossen Bibliothek auf einer langsamen
@@ -656,6 +662,7 @@ async function einstellungen() {
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe, vorschau_farbe: vfWahl.farbe,
                                                           rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked, scan_beim_start: $("#ein-start").checked,
+                                                          vorschau_berechnen: document.querySelector("[name=ein-vorschau]:checked")?.value || "ohne_bild",
                                                           fcstd_freecad: $("#ein-fcstd").value || null,
                                                           programm: progWahl.geaendert,
                                                           pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });

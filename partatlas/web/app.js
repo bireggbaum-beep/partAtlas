@@ -1662,7 +1662,9 @@ function galerieZeigen(i) {
 const hauptHtml = (m, f, darf) => !f
   ? `<div class="gal-leer"><span>${nurCad(m) ? nurCadText(m) : "Keine Vorschau"}</span>
       ${darf ? `<button class="knopf" data-gal-plus>＋ Eigenes Bild hinzufügen</button>` : ""}</div>`
-  : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>`
+  : f.art === "3d" ? `<span class="laden">3D wird geladen …</span><button class="bild-knopf" id="ansicht-zurueck" title="Ansicht zurücksetzen">⟲</button>
+      ${darf ? `<button class="bild-knopf zweiter" id="ansicht-als-bild" title="Diese Ansicht als Vorschaubild speichern — vorher drehen und zoomen, wie es auf der Kachel aussehen soll">
+        <svg viewBox="0 0 16 16"><path d="M2.5 5.5h2.2l1.2-1.8h4.2l1.2 1.8h2.2v7h-11z"/><circle cx="8" cy="9" r="2.3"/></svg></button>` : ""}`
   : `<img src="${esc(f.url)}" alt="${esc(f.titel)}" draggable="false">`;
 
 const aktionenHtml = (f, darf) => f && f.art === "eigen" && darf
@@ -1778,6 +1780,37 @@ document.addEventListener("click", async (e) => {
 });
 
 // „eigen:<k>“ = eigenes Bild, sonst die Art (extrahiert, berechnet).
+// Die 3D-Ansicht, so gedreht, wie man das Modell auf der Kachel sehen will, als eigenes Bild (Capacities „Vorschaubilder: Handling
+// Einzeln“, Weg über den Browser). Quadratisch aus der Mitte geschnitten — die Kachel ist quadratisch. Es ist ein eigenes Bild des
+// Anwenders: es kommt ins Backup und lässt sich wie jedes andere entfernen.
+async function ansichtAlsBild() {
+  const m = galerie.m;
+  if (!viewer?.bild || !m) return;
+  const quelle = new Image();
+  quelle.src = viewer.bild();
+  await quelle.decode();
+  const seite = Math.min(quelle.width, quelle.height);
+  const c = document.createElement("canvas");
+  c.width = c.height = Math.min(seite, 1024);
+  c.getContext("2d").drawImage(quelle, (quelle.width - seite) / 2, (quelle.height - seite) / 2, seite, seite, 0, 0, c.width, c.height);
+  const blob = await new Promise((ok) => c.toBlob(ok, "image/png"));
+  try {
+    const r = await fetch(`/api/modelle/${m.id}/bilder`, { method: "POST", body: blob });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.fehler || d.detail || "Bild nicht gespeichert");
+    await api(`/api/modelle/${m.id}/bilder/${d.k}/titel`, { method: "POST" });
+    toast("Ansicht als Vorschaubild gespeichert.");
+  } catch (e) { toast(e.message); }
+}
+
+// Ein Vorschaubild berechnen lassen, auch wenn die Datei eins mitbringt: der Hintergrund rechnet, die Kachel wechselt, sobald es da ist.
+async function vorschauBerechnen(id) {
+  try {
+    const r = await api(`/api/modelle/${id}/vorschau/berechnen`, { method: "POST" });
+    toast(r.weg === "freecad" ? "FreeCAD wandelt die Datei um, danach wird das Bild berechnet …" : "Vorschaubild wird berechnet …");
+  } catch (e) { toast(e.message); }
+}
+
 async function vorschauSetzen(wahl) {
   const m = galerie.m;
   const eigen = wahl.startsWith("eigen:");
@@ -1827,6 +1860,7 @@ document.addEventListener("contextmenu", (e) => {
   if (!f.ist_vorschaubild) eintraege.push(["gal-titel", "★ Als Vorschaubild festlegen"]);
   if (f.art === "eigen") eintraege.push(["gal-weg", "Bild entfernen …", "gefahr"]);
   eintraege.push(["gal-plus", "Eigenes Bild hinzufügen …"]);
+  if (!galerie.m.fehlt) eintraege.push(["gal-berechnen", galerie.m.ansichten?.some((a) => a.art === "berechnet") ? "Vorschaubild neu berechnen" : "Vorschaubild berechnen"]);
   const menu = $("#kontext");
   menu.innerHTML = eintraege.map(([k, t, kl]) => `<button type="button" data-km="${k}" class="${kl || ""}">${t}</button>`).join("");
   kontextMenu.ziel = { galerie: f };
@@ -2290,6 +2324,7 @@ $("#gruppierung").value = zustand.gruppierung;
       return;
     }
     case "ansicht-zurueck": viewer?.zuruecksetzen(); return;
+    case "ansicht-als-bild": return ansichtAlsBild();
     case "ws-knopf": {
       const m = await api(`/api/modelle/${id}`);
       if (m.warteschlange != null) await api(`/api/warteschlange/${id}`, { method: "DELETE" });
@@ -2330,6 +2365,7 @@ $("#gruppierung").value = zustand.gruppierung;
     case "prog-einstellen": $("#mehr-menu").hidden = true; localStorageSchreiben("einstellungen-abschnitt", "programme"); return einstellungen();
     case "mehr-knopf": $("#mehr-menu").hidden = !$("#mehr-menu").hidden; return;
     case "gal-plus-menu": $("#mehr-menu").hidden = true; return $("#bild-wahl").click();
+    case "vorschau-berechnen": return vorschauBerechnen(id);
     case "umbenennen": return umbenennen(id);
     case "loeschen": return loeschen(id);
     case "wiederherstellen":
@@ -2967,6 +3003,7 @@ async function kontextMenu(e, id) {
       ["favorit1", m.favorit ? "♡ Kein Favorit mehr" : "♥ Favorit"],
       ["entwurf1", m.entwurf ? "✎ Kein Entwurf mehr" : "✎ Als Entwurf markieren"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
+      ...(da ? [["vorschau-berechnen", "Vorschaubild berechnen"]] : []),
       ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
   }
@@ -3114,6 +3151,7 @@ async function kontextAktion(k, knopf) {
     if (k === "gal-titel") return vorschauSetzen(f.art === "eigen" ? `eigen:${f.k}` : f.art);
     if (k === "gal-weg") return bildEntfernen(f.k);
     if (k === "gal-plus") return $("#bild-wahl").click();
+    if (k === "gal-berechnen") return vorschauBerechnen(galerie.m.id);
     return;
   }
   const { id, modelle, m } = kontextMenu.ziel;
@@ -3132,6 +3170,7 @@ async function kontextAktion(k, knopf) {
     case "gedruckt1": return aendern(id, { gedruckt: !m.gedruckt });
     case "favorit1": return aendern(id, { favorit: !m.favorit });
     case "entwurf1": return aendern(id, { entwurf: !m.entwurf });
+    case "vorschau-berechnen": return vorschauBerechnen(id);
     case "umbenennen": return umbenennen(id);
     case "loeschen": return modelle.length > 1 ? loeschenViele(modelle) : loeschen(id);
     case "wiederherstellen": return stapel("wiederherstellen", null, modelle);
