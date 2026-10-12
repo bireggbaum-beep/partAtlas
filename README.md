@@ -78,11 +78,11 @@ Kopie: `PARTATLAS_QUELLE=/pfad/zur/kopie python tests/…`.
 
 ## Zurück auf eine frühere Fassung
 
-Jede Fassung, die auf `main` kam, lässt sich wieder holen. Vor 0.95 steht die Marke `v0.55.0`:
+Jede Fassung, die auf `main` kam, lässt sich wieder holen. Der Stand vor 0.95 liegt im Zweig `fassung-0.55.0`:
 
 ```bash
 ./start.sh            # partAtlas beenden (Strg+C im Fenster), dann:
-git checkout v0.55.0  # die alte Fassung
+git fetch origin && git checkout fassung-0.55.0  # die alte Fassung
 ./start.sh
 git checkout main     # später wieder zur neuen
 ```

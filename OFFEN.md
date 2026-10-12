@@ -32,7 +32,7 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
 
 ## Stand: 0.95.0 auf `main` (12.10.2026, für den Tester)
 
-Alles aus Iteration 1 und 2 und Bereinigen Pakete 1–2 (0.56–0.67). Rückweg: Marke `v0.55.0` (README, „Zurück auf eine frühere Fassung“).
+Alles aus Iteration 1 und 2 und Bereinigen Pakete 1–2 (0.56–0.67). Rückweg: Zweig `fassung-0.55.0` (README, „Zurück auf eine frühere Fassung“).
 Vor dem Push: alle Suiten ausser test_ui grün (zuletzt je Paket), `test_ui.py` komplett 70/70 — eine Prüfung schliesst jetzt das neue
 Fenster „Dateien fehlen“ und prüft dabei, dass es kommt (+1).
 
