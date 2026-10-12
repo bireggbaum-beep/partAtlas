@@ -4,6 +4,28 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Katalog fertig — drei Iterationen (Auftrag 12.10.2026, Branch `claude/partatlas-katalog-fertig-amxqfg`)
+
+Auftrag des Anwenders: den Katalog fertig machen, Qualität und Bedienung einer fertigen Anwendung, Grenze „vor Anbindung Drucker“.
+Drei Iterationen, vor jeder höchstens fünf Fragen, währenddessen eine. Antworten vor Iteration 1: **partAtlas löscht weiterhin nie**
+(Ordner anlegen/umbenennen/verschieben ja); **Drucke Stufe b gehört dazu** (ohne Drucker); **gleiches Teil in mehreren Formaten bleibt je
+eine Kachel**, die anderen Formate erscheinen als Reiter „Varianten“ im Inspektor; **nur Branch, `main` erst am Schluss** (test_ui komplett
+nur dann).
+
+Plan: (1) Tags verwalten, Papierkorb für Sammlungen/Baugruppen/Drucke/Tags, Auswahl wie im Explorer, Vorschaubild-Vorrang und einzeln
+neu erzeugen, Sicherungen mit Zurückholen in der Oberfläche. (2) Druckeinstellungen aus 3MF, Dokumente/Anhänge, Baugruppen-Notizen,
+gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operationen, Qualitätsdurchgang, Handbuch, alle Suiten, 1.0.
+
+**Iteration 1**
+- **Tags verwalten (0.56.0):** Fenster „Tags verwalten“ (⋯ am Abschnitt Tags, „Alle n Tags …“ unter den 30 häufigsten, Rechtsklick auf
+  einen Tag, Einstellungen › Einlesen): alle Tags mit Anzahl und „davon automatisch“, Suche, Sortierung; umbenennen, zusammenführen,
+  löschen (Papierkorb, Kanten bleiben → zurückholbar), „Alle automatischen entfernen“ (eigene bleiben, Sicherung vorher, wahlweise
+  Auto-Tags ausschalten). Die Kante `HAS_TAG` trägt jetzt `auto` (true/false); ältere ohne das Feld gelten als automatisch, wenn die
+  Regeln (`tags.vorschlaege`) sie heute vorschlagen würden. Gelöschte und zusammengeführte Namen stehen in `auto_tags_gesperrt`
+  (Einstellungen, im Fenster aufhebbar) und kommen beim Einlesen nicht wieder; an einem Modell entfernte stehen in `tags_ab` am Modell.
+  Ein von Hand neu gesetzter Tag, der im Papierkorb liegt, kommt ohne seine alten Zuordnungen zurück. Neue Suite `test_tags.py` 15/15,
+  drei Gegenproben fallen (Sperre, alte Kanten, eigene als automatisch).
+
 ## Als Nächstes (8.10.2026, Anwender)
 
 1. Offene Punkte nach 0.50 abarbeiten. **Erledigt (0.50.1):** Protokoll schreibt „nimmt Anfragen an“ erst, wenn der Port offen ist

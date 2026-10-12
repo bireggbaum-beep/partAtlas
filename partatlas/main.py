@@ -873,6 +873,28 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def tags():
         return K().tags()
 
+    @app.get("/api/tags/verwaltung")
+    @am_stueck
+    def tags_verwaltung():
+        return K().tags_verwaltung()
+
+    @app.post("/api/tags/loeschen")
+    def tags_loeschen(d: dict = Depends(json_koerper)):
+        return K().tags_loeschen(list(d.get("namen") or []), sperren=bool(d.get("sperren", True)))
+
+    @app.post("/api/tags/zusammenfuehren")
+    def tags_zusammenfuehren(d: dict = Depends(json_koerper)):
+        return K().tags_zusammenfuehren(list(d.get("quellen") or []), d.get("ziel") or "")
+
+    @app.post("/api/tags/auto_entfernen")
+    def auto_tags_entfernen(d: dict = Depends(json_koerper)):
+        return K().auto_tags_entfernen(nur_zaehlen=bool(d.get("nur_zaehlen")), abschalten=bool(d.get("abschalten", True)))
+
+    @app.post("/api/tags/sperre_aufheben")
+    def auto_sperre_aufheben(d: dict = Depends(json_koerper)):
+        K().auto_sperre_aufheben(list(d.get("namen") or []))
+        return K().tags_verwaltung()
+
     @app.get("/api/ordner")
     @am_stueck
     def ordner():

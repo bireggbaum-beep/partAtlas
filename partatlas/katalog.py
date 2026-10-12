@@ -248,9 +248,7 @@ class Katalog:
         # cascade_delete: wer das Modell löscht, legt seine Datei mit in den
         # Papierkorb (VERTRAG §2.4) — und loeschfolgen() zeigt das vorher an.
         self.db.create_edge(ref(MODELL, mid), ref(DATEI, h), HAT_DATEI, cascade_delete=True)
-        if self.b.einstellungen().get("auto_tags", True):
-            for t in tags.vorschlaege(name, felder):
-                self._tag_verbinden(mid, t)
+        self._auto_tags(mid, name, felder)
         self._datei_materialien(h, felder)
         return mid
 
@@ -356,9 +354,8 @@ class Katalog:
         self._datei_materialien(h, felder)
         mid = self.modell_von(h)
         m = self.db.get_node(ref(MODELL, mid), readonly=True) if mid else None
-        if m is not None and self.b.einstellungen().get("auto_tags", True):
-            for t in tags.vorschlaege(m.get("name") or "", felder):
-                self._tag_verbinden(mid, t)
+        if m is not None:
+            self._auto_tags(mid, m.get("name") or "", felder, m)
 
     def ausstehende_vorschauen(self):
         return [(h, d) for h, d in self._dateien().items() if d.get("vorschau") == "ausstehend"]
@@ -1270,17 +1267,45 @@ class Katalog:
         alle = [k for k in self.db.list_nodes(MATERIAL, readonly=True)]
         return [m for m in MATERIALIEN if m in alle] + sorted(m for m in alle if m not in MATERIALIEN)
 
-    def _tag_verbinden(self, mid, name):
+    def _auto_tags(self, mid, name, felder, m=None):
+        """Tags aus Dateiname und Werten (tags.py) — ohne die, die der Anwender verworfen hat: global gesperrte (gelöschte Tags,
+        Einstellungen) und die an diesem Modell entfernten. Sonst kämen sie beim nächsten Auslesen derselben Datei wieder."""
+        e = self.b.einstellungen()
+        if not e.get("auto_tags", True):
+            return
+        m = m if m is not None else self.db.get_node(ref(MODELL, mid), readonly=True) or {}
+        aus = set(e.get("auto_tags_gesperrt") or ()) | set(m.get("tags_ab") or ())
+        for t in tags.vorschlaege(name, felder):
+            if t not in aus:
+                self._tag_verbinden(mid, t, auto=True)
+
+    def _tag_verbinden(self, mid, name, auto=False):
+        """Die Kante trägt, woher der Tag kommt (`auto`): nur so lassen sich die automatischen später gesammelt entfernen, ohne die
+        eigenen mitzunehmen. Ein Tag, den der Anwender von Hand setzt, ist danach seiner, auch wenn er vorher automatisch kam."""
         name = tags.normalisiere(name)
         if not name:
             raise KatalogFehler("Leerer Tag.")
         if self.db.get_node(ref(TAG, name), readonly=True) is None:
             if self.db.get_node_raw(ref(TAG, name)) is not None:
+                # Liegt im Papierkorb: seine alten Kanten gehören zu jenem Löschen. Zurückholen ohne sie, sonst hinge der Tag
+                # plötzlich wieder an allen Modellen von früher.
+                for kid, _ in self.db.get_connected_edges(ref(TAG, name), direction="in", rel_type=HAT_TAG):
+                    self.db.delete_edge(kid)
                 self.db.restore_node(TAG, name)
+                self.db.update_node(TAG, name, {"ersetzt_durch": None})
             else:
                 self.db.create_node(TAG, name, {"name": name})
-        if ref(TAG, name) not in self.db.get_connected(ref(MODELL, mid), rel_type=HAT_TAG):
-            self.db.create_edge(ref(MODELL, mid), ref(TAG, name), HAT_TAG)
+        kanten = [(kid, k) for kid, k in self.db.get_connected_edges(ref(MODELL, mid), rel_type=HAT_TAG)
+                  if k["target"] == ref(TAG, name)]
+        if not kanten:
+            self.db.create_edge(ref(MODELL, mid), ref(TAG, name), HAT_TAG, meta={"auto": auto})
+        elif not auto and kanten[0][1].get("auto") is not False:
+            self.db.delete_edge(kanten[0][0])
+            self.db.create_edge(ref(MODELL, mid), ref(TAG, name), HAT_TAG, meta={"auto": False})
+        if not auto:
+            m = self.db.get_node(ref(MODELL, mid), readonly=True) or {}
+            if name in (m.get("tags_ab") or ()):
+                self.db.update_node(MODELL, mid, {"tags_ab": [t for t in m["tags_ab"] if t != name]})
         return name
 
     def tag_setzen(self, mid, name):
@@ -1288,9 +1313,14 @@ class Katalog:
             return self._tag_verbinden(mid, name)
 
     def tag_loesen(self, mid, name):
-        for kid, andere in self.db.verwendungen(ref(MODELL, mid), direction="out").get(HAT_TAG, []):
-            if andere == ref(TAG, name):
-                self.db.delete_edge(kid)
+        with self.db.transaction():
+            for kid, andere in self.db.verwendungen(ref(MODELL, mid), direction="out").get(HAT_TAG, []):
+                if andere == ref(TAG, name):
+                    self.db.delete_edge(kid)
+            # Bewusst entfernt: das Auslesen derselben Datei soll ihn nicht wieder anhängen.
+            m = self.db.get_node(ref(MODELL, mid), readonly=True) or {}
+            if name not in (m.get("tags_ab") or ()):
+                self.db.update_node(MODELL, mid, {"tags_ab": [*(m.get("tags_ab") or ()), name]})
 
     def tags(self):
         """[{name, anzahl}] — Anzahl über die Nachbarschaft, nicht gezählt über Modelle."""
@@ -1300,6 +1330,112 @@ class Katalog:
             if n:
                 liste.append({"name": name, "anzahl": n})
         return sorted(liste, key=lambda t: (-t["anzahl"], t["name"]))
+
+    # ------------------------------------------------------------ Tags verwalten
+
+    def _ist_auto(self, kante, mid, cache):
+        """Kanten von vor 0.56 tragen kein `auto`. Für sie gilt: automatisch, wenn die Regeln (tags.py) den Tag für dieses Modell heute
+        vorschlagen würden. Ein von Hand gesetzter Tag, der zufällig auch so heisst, zählt dann mit — er wäre ohnehin wiedergekommen."""
+        if "auto" in kante:
+            return kante["auto"] is True
+        if mid not in cache:
+            m = self.db.get_node(ref(MODELL, mid), readonly=True) or {}
+            h = self.datei_von(mid)
+            d = (self.db.get_node(ref(DATEI, h), readonly=True) if h else None) or {}
+            cache[mid] = set(tags.vorschlaege(m.get("name") or "", d))
+        return kante["target"].split("/", 1)[1] in cache[mid]
+
+    def tags_verwaltung(self):
+        """Alle Tags für die Verwaltung, auch ohne Modelle: [{name, anzahl, auto}] — `auto`: an wie vielen Modellen automatisch."""
+        cache, liste = {}, []
+        for name in self.db.list_nodes(TAG, readonly=True):
+            kanten = self.db.get_connected_edges(ref(TAG, name), direction="in", rel_type=HAT_TAG)
+            lebend = [(k["source"].split("/", 1)[1], k) for _, k in kanten
+                      if self.db.get_node(k["source"], readonly=True) is not None]
+            liste.append({"name": name, "anzahl": len(lebend),
+                          "auto": sum(1 for mid, k in lebend if self._ist_auto(k, mid, cache))})
+        return {"tags": sorted(liste, key=lambda t: (-t["anzahl"], t["name"])),
+                "gesperrt": sorted(self.b.einstellungen().get("auto_tags_gesperrt") or ()),
+                "auto_tags": self.b.einstellungen().get("auto_tags", True)}
+
+    def _sperren(self, namen):
+        e = self.b.einstellungen()
+        self.b.einstellungen_setzen(auto_tags_gesperrt=sorted(set(e.get("auto_tags_gesperrt") or ()) | set(namen)))
+
+    def auto_sperre_aufheben(self, namen):
+        e = self.b.einstellungen()
+        self.b.einstellungen_setzen(auto_tags_gesperrt=sorted(set(e.get("auto_tags_gesperrt") or ()) - set(namen)))
+
+    def tags_loeschen(self, namen, sperren=True):
+        """Tags in den Papierkorb. Die Kanten bleiben (VERTRAG §2.4): Wiederherstellen hängt den Tag wieder an dieselben Modelle.
+        `sperren`: das Wort nicht mehr automatisch vorschlagen — sonst wäre ein gelöschter Auto-Tag beim nächsten Einlesen zurück."""
+        namen = [tags.normalisiere(n) for n in namen]
+        fehlt = [n for n in namen if self.db.get_node(ref(TAG, n), readonly=True) is None]
+        if fehlt:
+            raise KatalogFehler(f"Tag „{fehlt[0]}“ gibt es nicht.")
+        if len(namen) > 1:
+            self._sichern_vor("tags-loeschen")
+        with self.db.transaction():
+            for n in namen:
+                self.db.soft_delete(TAG, n)
+        if sperren:
+            self._sperren(namen)
+        return {"geloescht": len(namen)}
+
+    def tag_umbenennen(self, alt, neu):
+        """Umbenennen ist Zusammenführen mit einem neuen Namen: die Kennung eines Tags ist sein Name. Gibt es `neu` schon, kommen die
+        Modelle von `alt` dazu. `alt` geht in den Papierkorb, ohne Kanten — zurückholen heisst hier: wieder umbenennen."""
+        return self.tags_zusammenfuehren([alt], neu)
+
+    def tags_zusammenfuehren(self, quellen, ziel):
+        ziel = tags.normalisiere(ziel)
+        if not ziel:
+            raise KatalogFehler("Der neue Name ist leer.")
+        quellen = [q for q in dict.fromkeys(tags.normalisiere(q) for q in quellen) if q != ziel]
+        for q in quellen:
+            if self.db.get_node(ref(TAG, q), readonly=True) is None:
+                raise KatalogFehler(f"Tag „{q}“ gibt es nicht.")
+        if len(quellen) > 1:
+            self._sichern_vor("tags-zusammenfuehren")
+        n = 0
+        with self.db.transaction():
+            for q in quellen:
+                for kid, k in self.db.get_connected_edges(ref(TAG, q), direction="in", rel_type=HAT_TAG):
+                    mid = k["source"].split("/", 1)[1]
+                    if self.db.get_node(k["source"], readonly=True) is not None:
+                        self._tag_verbinden(mid, ziel)
+                        n += 1
+                    self.db.delete_edge(kid)
+                self.db.update_node(TAG, q, {"ersetzt_durch": ziel})
+                self.db.soft_delete(TAG, q)
+        # Wer zusammenführt, will die alten Namen nicht wieder vorgeschlagen bekommen.
+        self._sperren(quellen)
+        return {"ziel": ziel, "modelle": n}
+
+    def auto_tags_entfernen(self, nur_zaehlen=False, abschalten=True):
+        """Alle automatisch angehängten Tags von allen Modellen lösen; von Hand gesetzte bleiben. Tags, an denen danach nichts mehr
+        hängt, gehen in den Papierkorb. Für Bestände, in denen die Dateinamen-Tags mehr stören als helfen (3MF Katalog: bis zu vier
+        Wörter je Datei — bei 9 000 Dateien tausende Tags)."""
+        cache, weg = {}, []
+        for mid in self.db.list_nodes(MODELL, readonly=True):
+            for kid, k in self.db.get_connected_edges(ref(MODELL, mid), rel_type=HAT_TAG):
+                if self.db.get_node(k["target"], readonly=True) is not None and self._ist_auto(k, mid, cache):
+                    weg.append((kid, k["target"]))
+        if nur_zaehlen:
+            return {"kanten": len(weg), "tags": len({t for _, t in weg})}
+        if weg:
+            self._sichern_vor("auto-tags-entfernen")
+        leer = []
+        with self.db.transaction():
+            for kid, _ in weg:
+                self.db.delete_edge(kid)
+            for t in {t for _, t in weg}:
+                if not self.db.get_connected(t, direction="in", rel_type=HAT_TAG):
+                    self.db.soft_delete(TAG, t.split("/", 1)[1])
+                    leer.append(t)
+        if abschalten:
+            self.b.einstellungen_setzen(auto_tags=False)
+        return {"kanten": len(weg), "tags": len(leer)}
 
     # ------------------------------------------------------------ Ordner (abgeleitet)
 

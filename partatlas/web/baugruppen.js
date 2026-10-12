@@ -607,7 +607,8 @@ async function einstellungen() {
     ["einlesen", "Einlesen", `
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
-      <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben.</p>
+      <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben; umbenennen, zusammenführen, löschen oder alle automatischen
+        auf einmal entfernen: <button type="button" class="knopf-text" data-tags-verwalten>Tags verwalten …</button></p>
       <div class="i-titel">EINLESEN</div>
       <label><input type="checkbox" id="ein-start" ${e.scan_beim_start ? "checked" : ""}> Beim Start einlesen</label>
       <p class="dim">Aus (Vorgabe): partAtlas liest nur ein, wenn du es auslöst — mit ⟳ neben „Bibliothek“. Bei einer grossen Bibliothek auf einer langsamen

@@ -334,8 +334,10 @@ async function ladeSeite() {
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
   zeichneHinweisLeiste();
+  // Nur die häufigsten: bei tausenden Auto-Tags füllte die Liste sonst die Seitenleiste. Alle stehen in „Tags verwalten“.
   abgleichen($("#tag-liste"), tags.slice(0, 30).map((t) =>
-    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join(""));
+    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("")
+    + (tags.length > 30 ? `<button class="eintrag leer-eintrag" data-tags-verwalten>Alle ${zahl(tags.length, 0)} Tags …</button>` : ""));
   markiereAnsicht();
 }
 
@@ -2903,6 +2905,7 @@ async function wurzelEntfernen({ id, name, pfad, anzahl }) {
 
 async function kontextAktion(k, knopf) {
   $("#kontext").hidden = true;
+  if (kontextMenu.ziel.tag) return tagKontext(k);
   if (kontextMenu.ziel.ordner) {
     const o = kontextMenu.ziel.ordner;
     if (k === "wurzel-weg") return wurzelEntfernen(kontextMenu.ziel.wurzel);
