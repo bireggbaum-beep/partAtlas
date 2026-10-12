@@ -93,6 +93,13 @@ Varianten **gleicher Name, gleicher Ordner**; gemerkte Suchen als **intelligente
   Tippen (1 s) und beim Verlassen; Live-Nachladen zeichnet ein Notizfeld unter den Fingern nicht neu. Suche: Feld `notiz` (Notiz und
   Namen der Anhänge), `notiz:` als Filter. Neue Suite `test_anhaenge.py` 13/13, drei Gegenproben fallen; Wächter ergänzt.
   **Für das Backup (Iteration 3):** `vault/anhaenge/` → eigene Zeile, Vorgabe an.
+- **Gemerkte Suchen (0.65.0):** intelligente Sammlungen = `COLLECTION` mit `regel` {q, tags, material, format, ordner} (genau die Filter
+  der Ansicht; ein Ordner allein ist keine Suche). „☆ Suche merken …“ in der Filterzeile, sobald Suchtext, Chips oder Format gelten;
+  danach „gemerkt als ⌕ Name“. In der Seitenleiste vor den gewöhnlichen Sammlungen, mit der Zahl der Treffer jetzt; ein Klick setzt die
+  Filter (sichtbar und änderbar — kein undurchsichtiger Ordner), Rechtsklick: umbenennen, jetzige Filter übernehmen, löschen (Papierkorb:
+  „Gemerkte Suche“). Hineinlegen von Modellen abgewiesen. test_sammlungen 23/23 (+5), zwei Gegenproben fallen.
+
+**Iteration 2 abgeschlossen (0.61–0.65)** — siehe unten die Suiten.
 
 ## Als Nächstes (8.10.2026, Anwender)
 

@@ -84,4 +84,20 @@ if __name__ == "__main__":
         check("STEP ohne Geometrie: 422 statt Absturz", c.get(f"/api/modelle/{ids['Welle']}/netz").status_code == 422)
         check("three.js wird lokal ausgeliefert (kein CDN)",
               c.get("/web/vendor/three.module.min.js").status_code == 200 and "importmap" in c.get("/").text)
+
+        # -- Gemerkte Suche (intelligente Sammlung): füllt sich selbst, zählt jetzt
+        c.post(f"/api/modelle/{ids['Arm']}/tags", json={"tag": "drohne"})
+        r = c.post("/api/sammlungen", json={"name": "Drohnenteile STL", "regel": {"tags": ["drohne"], "format": "stl"}})
+        gs = r.json()["id"]
+        liste = c.get("/api/sammlungen").json()
+        check("Gemerkte Suche: steht vor den gewöhnlichen, zählt die Treffer der Regel", r.status_code == 200
+              and liste[0]["id"] == gs and liste[0]["anzahl"] == 1 and liste[0]["regel"]["tags"] == ["drohne"])
+        c.post(f"/api/modelle/{ids['Haken']}/tags", json={"tag": "drohne"})
+        check("… und füllt sich von selbst", c.get("/api/sammlungen").json()[0]["anzahl"] == 2)
+        check("Modelle hineinlegen geht nicht", c.post(f"/api/sammlungen/{gs}/modelle", json={"modelle": [ids["Deckel"]]}).status_code == 400)
+        c.patch(f"/api/sammlungen/{gs}", json={"regel": {"q": "haken"}})
+        check("Regel ändern", c.get("/api/sammlungen").json()[0]["anzahl"] == 1)
+        check("Leere Regel und unbekanntes Format abgewiesen",
+              c.post("/api/sammlungen", json={"name": "x", "regel": {}}).status_code == 400
+              and c.post("/api/sammlungen", json={"name": "x", "regel": {"format": "dwg"}}).status_code == 400)
     muster.ende()

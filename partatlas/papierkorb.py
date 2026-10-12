@@ -35,7 +35,7 @@ def weitere(k):
     for sid, v in _geloeschte(db, SAMMLUNG).items():
         n = _lebende_quellen(db, ref(SAMMLUNG, sid), IN_SAMMLUNG)
         erg["sammlung"].append({"id": sid, "name": v.get("name"), "geloescht": v["_deletion_flag"],
-                                "info": f"{n} Modell{'' if n == 1 else 'e'}"})
+                                "info": "Gemerkte Suche" if v.get("regel") else f"{n} Modell{'' if n == 1 else 'e'}"})
     for bid, v in _geloeschte(db, BAUGRUPPE).items():
         n = len(db.get_connected_edges(ref(BAUGRUPPE, bid), rel_type=ENTHAELT))
         erg["baugruppe"].append({"id": bid, "name": v.get("name"), "geloescht": v["_deletion_flag"],

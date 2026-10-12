@@ -1180,3 +1180,5 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .md-vorschau h3, .md-vorschau h4, .md-vorschau h5 { margin: var(--s4) 0 var(--s2); }
 .md-vorschau code { font-family: var(--mono); font-size: 12.5px; background: var(--panel-2); padding: 0 3px; border-radius: 3px; }
 .md-vorschau a { color: var(--accent); }
+.eintrag.gemerkt .gm-zeichen { color: var(--accent); margin-right: var(--s2); font-weight: 600; }
+#filterzeile #suche-merken { color: var(--accent); }

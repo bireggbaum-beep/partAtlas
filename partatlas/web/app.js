@@ -307,8 +307,9 @@ async function ladeSeite() {
   // wäre er falsch: er versteckt Bereinigen und lässt aussehen, als sei alles weg.
   zustand.katalogLeer = !((z.alle || 0) + (z.papierkorb || 0) + entfernt.length);
   zustand.sammlungen = sammlungen;
-  abgleichen($("#sammlungen"), sammlungen.map((x) =>
-    `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("")
+  abgleichen($("#sammlungen"), sammlungen.map((x) => x.regel
+    ? `<button class="eintrag gemerkt ${gemerktAktiv(x) ? "aktiv" : ""}" data-gemerkt="${esc(x.id)}" title="Gemerkte Suche: ${esc(regelText(x.regel))}"><span><span class="gm-zeichen">⌕</span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`
+    : `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("")
     || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`);
   abgleichen($("#ws-liste"), ws.map((m, i) =>
     `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b><span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
@@ -417,11 +418,102 @@ function zeichneFilterzeile() {
   if (zustand.format) teile.push(esc(endung[zustand.format] || zustand.format));
   if (zustand.suche) teile.push(`„${esc(zustand.suche)}“`);
   const z = $("#filterzeile");
-  z.hidden = teile.length === 0;
-  abgleichen(z, teile.join(" · ") + ` <button id="filter-weg">✕ Filter aufheben</button>`);
+  const regel = jetzigeRegel();
+  const gm = zustand.sammlungen.find((x) => x.regel && gemerktAktiv(x));
+  const merken = !regel ? "" : gm ? ` <span class="dim">· gemerkt als</span> <b>⌕ ${esc(gm.name)}</b>`
+    : ` <button id="suche-merken" title="Diese Suche mit ihren Filtern als intelligente Sammlung merken — sie füllt sich von selbst">☆ Suche merken …</button>`;
+  z.hidden = teile.length === 0 && !regel;
+  abgleichen(z, teile.join(" · ") + merken + ` <button id="filter-weg">✕ Filter aufheben</button>`);
   zustand.filterTeile = teile.length + (zustand.ordner ? 1 : 0);
   zeichnePfad();
   zeichneLeer();
+}
+
+// Gemerkte Suchen (intelligente Sammlungen): eine Regel aus genau den Filtern der Ansicht. Ein Klick setzt sie wieder; die Seitenleiste
+// zeigt sie als gewählt, solange die Filter genau so stehen.
+function jetzigeRegel() {
+  if (zustand.sammlung || zustand.baugruppe || zustand.ansicht !== "alle") return null;
+  const r = { q: (zustand.suche || "").trim(), tags: [...zustand.tags].sort(), material: [...zustand.material].sort(), format: zustand.format || "",
+              ordner: zustand.ordner || "" };
+  // Ein Ordner allein ist keine Suche — er steht schon in der Seitenleiste; mit Suchbegriff oder Filtern gehört er dazu.
+  return r.q || r.tags.length || r.material.length || r.format ? r : null;
+}
+function gemerktAktiv(x) {
+  const r = jetzigeRegel();
+  if (!r || !x.regel) return false;
+  const g = { ...x.regel, tags: [...(x.regel.tags || [])].sort(), material: [...(x.regel.material || [])].sort() };
+  return JSON.stringify([r.q, r.tags, r.material, r.format, r.ordner]) === JSON.stringify([g.q || "", g.tags, g.material, g.format || "", g.ordner || ""]);
+}
+function regelText(r) {
+  return [r.q && `„${r.q}“`, ...(r.tags || []).map((t) => "#" + t), ...(r.material || []), r.format && (endung[r.format] || r.format),
+          r.ordner && `in ${r.ordner.split("/").slice(1).join("/") || wurzelName(r.ordner)}`].filter(Boolean).join(" · ");
+}
+function gemerktAnwenden(id) {
+  const x = zustand.sammlungen.find((s) => s.id === id);
+  if (!x?.regel) return;
+  const r = x.regel;
+  return navigiere(() => {
+    Object.assign(zustand, { suche: r.q || "", tags: new Set(r.tags || []), material: new Set(r.material || []), format: r.format || "",
+                             ordner: r.ordner || "", sammlung: "", ansicht: "alle" });
+    $("#suche").value = r.q || "";
+    $("#suche-x").hidden = !r.q;
+    return neuLaden();
+  });
+}
+async function sucheMerken() {
+  const regel = jetzigeRegel();
+  if (!regel) return;
+  const r = await rueckfrage(`<h2>Suche merken</h2><p class="dim">${esc(regelText(regel))}</p>
+    <p>Als intelligente Sammlung: sie steht in der Seitenleiste und füllt sich von selbst mit allem, was dazu passt — auch mit Modellen,
+      die später dazukommen.</p>
+    <label>Name <input type="text" name="name" value="${esc(regel.q || [...regel.tags].map((t) => "#" + t).join(" ") || "Gemerkte Suche")}"></label>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Merken</button></div>`);
+  if (r.a !== "ja") return;
+  try { await api("/api/sammlungen", { method: "POST", body: { name: r.name, regel } }); toast("Suche gemerkt."); }
+  catch (e) { return toast(e.message); }
+  await ladeSeite();
+  zeichneFilterzeile();
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.("#suche-merken")) return sucheMerken();
+  const g = e.target.closest?.("[data-gemerkt]");
+  if (g) gemerktAnwenden(g.dataset.gemerkt);
+});
+document.addEventListener("contextmenu", (e) => {
+  const g = e.target.closest?.("[data-gemerkt]");
+  if (!g) return;
+  e.preventDefault();
+  const menu = $("#kontext");
+  const aktiv = jetzigeRegel() && !gemerktAktiv(zustand.sammlungen.find((x) => x.id === g.dataset.gemerkt) || {});
+  menu.innerHTML = `<button type="button" data-km="gm-umbenennen">Umbenennen …</button>
+    ${aktiv ? `<button type="button" data-km="gm-uebernehmen" title="Die Filter, die jetzt gelten, für diese gemerkte Suche übernehmen">Jetzige Filter übernehmen</button>` : ""}
+    <hr><button type="button" data-km="gm-loeschen" class="gefahr">Löschen …</button>`;
+  kontextMenu.ziel = { gemerkt: g.dataset.gemerkt };
+  menu.hidden = false;
+  const b = menu.getBoundingClientRect();
+  menu.style.left = Math.min(e.clientX, innerWidth - b.width - 6) + "px";
+  menu.style.top = Math.min(e.clientY, innerHeight - b.height - 6) + "px";
+});
+async function gemerktKontext(k) {
+  const x = zustand.sammlungen.find((s) => s.id === kontextMenu.ziel.gemerkt);
+  if (!x) return;
+  try {
+    if (k === "gm-umbenennen") {
+      const r = await rueckfrage(`<h2>Gemerkte Suche umbenennen</h2><input type="text" name="name" value="${esc(x.name)}">
+        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Umbenennen</button></div>`);
+      if (r.a === "ja" && r.name.trim()) await api(`/api/sammlungen/${x.id}`, { method: "PATCH", body: { name: r.name } });
+    } else if (k === "gm-uebernehmen") {
+      await api(`/api/sammlungen/${x.id}`, { method: "PATCH", body: { regel: jetzigeRegel() } });
+      toast(`„${x.name}“ sucht jetzt: ${regelText(jetzigeRegel())}`);
+    } else if (k === "gm-loeschen") {
+      const r = await rueckfrage(`<h2>„${esc(x.name)}“ löschen?</h2><p>Nur die gemerkte Suche geht; Modelle sind nicht betroffen. Sie liegt danach im
+        Papierkorb (Bereinigen) und lässt sich zurückholen.</p>
+        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr akzent" value="ja">Löschen</button></div>`);
+      if (r.a === "ja") await api(`/api/sammlungen/${x.id}`, { method: "DELETE" });
+    }
+  } catch (e) { toast(e.message); }
+  await ladeSeite();
+  zeichneFilterzeile();
 }
 
 // Wenn nichts zu sehen ist, sagen warum — und beim ersten Start an die Hand
@@ -3322,6 +3414,7 @@ async function wurzelEntfernen({ id, name, pfad, anzahl }) {
 async function kontextAktion(k, knopf) {
   $("#kontext").hidden = true;
   if (kontextMenu.ziel.tag) return tagKontext(k);
+  if (kontextMenu.ziel.gemerkt) return gemerktKontext(k);
   if (kontextMenu.ziel.ordner) {
     const o = kontextMenu.ziel.ordner;
     if (k === "wurzel-weg") return wurzelEntfernen(kontextMenu.ziel.wurzel);

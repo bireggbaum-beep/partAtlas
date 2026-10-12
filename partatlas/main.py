@@ -568,11 +568,14 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
 
     @app.post("/api/sammlungen")
     def sammlung_neu(d: dict = Depends(json_koerper)):
-        return {"id": K().sammlung_anlegen(d.get("name", ""), d.get("modelle", []))}
+        return {"id": K().sammlung_anlegen(d.get("name", ""), d.get("modelle", []), d.get("regel"))}
 
     @app.patch("/api/sammlungen/{sid}")
     def sammlung_umbenennen(sid: str, koerper: dict = Depends(json_koerper)):
-        K().sammlung_umbenennen(sid, koerper.get("name", ""))
+        if "name" in koerper:
+            K().sammlung_umbenennen(sid, koerper.get("name", ""))
+        if "regel" in koerper:
+            K().sammlung_regel_setzen(sid, koerper["regel"])
         return {"ok": True}
 
     @app.delete("/api/sammlungen/{sid}")

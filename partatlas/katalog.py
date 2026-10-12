@@ -1154,11 +1154,34 @@ class Katalog:
     # Kanten der Sammlung in einer Transaktion neu legen.
 
     def sammlungen(self):
+        """Sammlungen; die gemerkten Suchen (`regel`) zuerst, ihre Anzahl ist die der Treffer jetzt."""
         liste = []
         for sid, s in self.db.list_nodes(SAMMLUNG, readonly=True).items():
-            n = len(self.db.get_connected(ref(SAMMLUNG, sid), direction="in", rel_type=IN_SAMMLUNG))
-            liste.append({"id": sid, "name": s["name"], "anzahl": n, "angelegt": s.get("angelegt")})
-        return sorted(liste, key=lambda x: x["name"].lower())
+            if s.get("regel"):
+                n = len(self.regel_treffer(s["regel"]))
+            else:
+                n = len(self.db.get_connected(ref(SAMMLUNG, sid), direction="in", rel_type=IN_SAMMLUNG))
+            liste.append({"id": sid, "name": s["name"], "anzahl": n, "angelegt": s.get("angelegt"), "regel": s.get("regel")})
+        return sorted(liste, key=lambda x: (not x["regel"], x["name"].lower()))
+
+    @staticmethod
+    def regel_pruefen(regel):
+        """Eine gemerkte Suche (intelligente Sammlung): Suchtext, Tag- und Material-Chips, Format, Ordner — genau das, was die Ansicht
+        filtert. Leer ist keine Regel."""
+        if not isinstance(regel, dict):
+            raise KatalogFehler("Regel ungültig.")
+        liste = lambda x: [str(v).strip()[:60] for v in (regel.get(x) or []) if str(v).strip()][:20]
+        r = {"q": str(regel.get("q") or "").strip()[:200], "tags": liste("tags"), "material": liste("material"),
+             "format": str(regel.get("format") or "").strip()[:10], "ordner": str(regel.get("ordner") or "").strip()[:500]}
+        if r["format"] and r["format"] not in set(formate.FORMATE.values()):
+            raise KatalogFehler("Unbekanntes Format.")
+        if not any(r.values()):
+            raise KatalogFehler("Eine gemerkte Suche braucht einen Suchbegriff oder Filter.")
+        return r
+
+    def regel_treffer(self, regel):
+        return self.modelle(suche=regel.get("q") or None, ordner=regel.get("ordner") or None, fmt=regel.get("format") or None,
+                            tags=regel.get("tags") or (), materialien=regel.get("material") or ())
 
     def _sammlung_pruefen(self, sid):
         if self.db.get_node(ref(SAMMLUNG, sid), readonly=True) is None:
@@ -1189,11 +1212,14 @@ class Katalog:
             raise KatalogFehler("Name leer oder zu lang.")
         return name
 
-    def sammlung_anlegen(self, name, modelle=()):
+    def sammlung_anlegen(self, name, modelle=(), regel=None):
         name = self._name_pruefen(name)
+        regel = self.regel_pruefen(regel) if regel is not None else None
+        if regel and modelle:
+            raise KatalogFehler("Eine gemerkte Suche füllt sich selbst — Modelle lassen sich nicht hineinlegen.")
         with self.db.transaction():
             sid = self.db.next_id(SAMMLUNG, "s_", 4)
-            self.db.create_node(SAMMLUNG, sid, {"name": name, "angelegt": jetzt()})
+            self.db.create_node(SAMMLUNG, sid, {"name": name, "angelegt": jetzt(), **({"regel": regel} if regel else {})})
             self._hinzufuegen(sid, modelle)
         return sid
 
@@ -1201,12 +1227,20 @@ class Katalog:
         self._sammlung_pruefen(sid)
         self.db.update_node(SAMMLUNG, sid, {"name": self._name_pruefen(name)})
 
+    def sammlung_regel_setzen(self, sid, regel):
+        self._sammlung_pruefen(sid)
+        if not (self.db.get_node(ref(SAMMLUNG, sid), readonly=True) or {}).get("regel"):
+            raise KatalogFehler("Das ist eine gewöhnliche Sammlung, keine gemerkte Suche.")
+        self.db.update_node(SAMMLUNG, sid, {"regel": self.regel_pruefen(regel)})
+
     def sammlung_loeschen(self, sid):
         """Die Sammlung geht, die Modelle bleiben — nur ihre Kanten verlieren das Ziel."""
         self._sammlung_pruefen(sid)
         self.db.soft_delete(SAMMLUNG, sid)
 
     def _hinzufuegen(self, sid, modelle):
+        if modelle and (self.db.get_node(ref(SAMMLUNG, sid), readonly=True) or {}).get("regel"):
+            raise KatalogFehler("Eine gemerkte Suche füllt sich selbst — Modelle lassen sich nicht hineinlegen.")
         vorhanden = self._sammlung_kanten(sid)
         drin = {mid for _, mid, _ in vorhanden}
         pos = max((p for _, _, p in vorhanden), default=-1) + 1
