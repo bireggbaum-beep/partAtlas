@@ -30,7 +30,12 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.2 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.3 auf `main` (12.10.2026, für den Tester)
+
+**0.95.3:** Klicks in Bereinigen waren langsam (Anwender, ~8 600 Modelle, Windows). Jeder Wechsel der Ansicht holte Zähler, Ordnerbaum, Tags,
+Sammlungen, Warteschlange **und** die Baugruppen-Vorschläge (rechnen über alle Modelle) neu. Jetzt holt er nur die Liste; die Seitenleiste wird aus
+den letzten Daten gezeichnet (`ansichtLaden`, `test_ansicht_ui`). Gemessen mit 8 000 Modellen unter Linux: ~250–650 ms → ~15–40 ms je Wechsel;
+unter Windows nicht gemessen. Der Server rechnet bei 8 000 Modellen schnell (alle Ansichten ≤ 25 ms, Zähler ≤ 290 ms) — die Last lag im Neuladen.
 
 **0.95.2:** Der Ordnerdialog geht unter Windows trotzdem hinter dem Browser auf (`dateidialog.py` ist seit 0.55 unverändert; „nach vorn“ aus 0.95.1
 reichte dort nicht). Darum: nach 3 s ohne Antwort ein Hinweis mit „Stattdessen hier wählen“ — schliesst den Dialog des Rechners und öffnet den

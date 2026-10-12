@@ -295,12 +295,16 @@ function listeAnwenden() {
   if (zustand.baugruppe) zeigeBaugruppeFlaeche(true);
 }
 
-async function ladeSeite() {
+// `ausMerkzettel`: die Seitenleiste mit den Daten vom letzten Mal neu zeichnen, ohne den Server zu fragen — für den Wechsel der Ansicht (s. ansichtLaden).
+async function ladeSeite({ ausMerkzettel = false } = {}) {
   const nr = ladeSeite.nr = (ladeSeite.nr || 0) + 1;     // wie bei ladeModelle: nur die neueste Antwort zählt
-  const [z, ordner, tags, sammlungen, ws, entfernt] = await Promise.all([api("/api/zaehler"), api("/api/ordner"), api("/api/tags"),
-                                                              api("/api/sammlungen"), api("/api/warteschlange"),
-                                                              api("/api/wurzeln/entfernt").catch(() => [])]);   // ein älterer Server kennt den Endpunkt nicht: die Seite muss trotzdem aufgehen
+  const daten = ausMerkzettel && zustand.seitenDaten ? zustand.seitenDaten
+    : await Promise.all([api("/api/zaehler"), api("/api/ordner"), api("/api/tags"),
+                         api("/api/sammlungen"), api("/api/warteschlange"),
+                         api("/api/wurzeln/entfernt").catch(() => [])]);   // ein älterer Server kennt den Endpunkt nicht: die Seite muss trotzdem aufgehen
   if (nr !== ladeSeite.nr) return;
+  zustand.seitenDaten = daten;
+  const [z, ordner, tags, sammlungen, ws, entfernt] = daten;
   zustand.entfernteWurzeln = entfernt;
   if (zustand.ansicht === "papierkorb") ladeKorbWeitere();
   // Der Willkommensschirm gehört in einen wirklich leeren Katalog. Sind alle Ordner entfernt, die Modelle aber noch da (als „Datei fehlt“),
@@ -2517,9 +2521,9 @@ $("#gruppierung").value = zustand.gruppierung;
   if (k && (e.ctrlKey || e.metaKey || e.shiftKey)) return klickMitTaste(k.dataset.id, e);
   if (k) return waehleEines(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
-  if (ansicht) return navigiere(() => { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); });
+  if (ansicht) return navigiere(() => { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const rail = t.closest("[data-rail]");
-  if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); });
+  if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const ordner = t.closest("[data-ordner]");
   if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); });
   const sammlung = t.closest("[data-sammlung]");
@@ -2755,6 +2759,15 @@ function sucheLeeren() {
 }
 $("#suche-x").addEventListener("click", sucheLeeren);
 $("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
+
+// Ein Wechsel der Ansicht (Bereinigen › Duplikate, Papierkorb …) ändert nur die Liste. Zähler, Ordnerbaum, Tags und die Vorschläge der
+// Baugruppen-Leiste — die über alle Modelle rechnen und unter Windows bei 8 600 Modellen mehrere Sekunden brauchen — bleiben, wie sie sind:
+// ändert sich daran etwas, meldet es der Server und `neuLaden` holt alles neu (Anwender, 12.10.2026: „Klicks in Bereinigen sind langsam“).
+function ansichtLaden() {
+  ladeModelle();
+  ladeSeite({ ausMerkzettel: true });
+  if (zustand.baugruppe) ladeBaugruppe();
+}
 
 function neuLaden() {
   ladeModelle();
