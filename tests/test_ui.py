@@ -330,8 +330,31 @@ async def oberflaeche(port):
         check("Warteschlange per Ziehen umsortiert",
               [m["name"] for m in api(port, "/api/warteschlange")] == ["Vase", "Haken", "Arm"])
 
-        # -- Mehrfachauswahl und Aktionsleiste
+        # -- Auswahl wie im Explorer: Klick, Strg, Umschalt, Strg+A, Rahmen
         await suche("")
+        k = pg.locator(".karte")
+        ids = await pg.evaluate("[...document.querySelectorAll('.karte')].slice(0, 3).map((e) => e.dataset.id)")
+        wahl = lambda: pg.evaluate("[...zustand.auswahl].sort()")
+        await k.nth(2).click(); a0 = await wahl()
+        await k.nth(0).click(modifiers=["Control"]); a1 = await wahl()       # nimmt das gezeigte (2) mit, wie der Explorer
+        await k.nth(1).click(modifiers=["Shift"]); a2 = await wahl()         # Bereich vom Ausgangspunkt (0) bis 1 ersetzt die Auswahl
+        await k.nth(0).click(); a3 = await wahl()
+        await pg.keyboard.press("Control+a"); a4 = len(await wahl())
+        await pg.keyboard.press("Escape")
+        r0, r1 = await k.nth(0).bounding_box(), await k.nth(1).bounding_box()
+        await pg.mouse.move(r0["x"] - 6, r0["y"] - 6)
+        await pg.mouse.down()
+        await pg.mouse.move(r1["x"] + 20, r1["y"] + 20, steps=5)
+        await pg.mouse.up()
+        a5 = await wahl()
+        await pg.mouse.click(r0["x"] - 6, r0["y"] - 6)
+        a6 = await wahl()
+        check("Auswahl wie im Explorer: Klick wählt eines, Strg+Klick nimmt das gezeigte mit, Umschalt+Klick ersetzt durch den Bereich, "
+              "Klick hebt auf, Strg+A alle, Rahmen aufziehen, Klick daneben hebt auf",
+              a0 == [] and a1 == sorted([ids[0], ids[2]]) and a2 == sorted(ids[:2]) and a3 == []
+              and a4 == await pg.evaluate("zustand.modelle.length") and a5 == sorted(ids[:2]) and a6 == [])
+
+        # -- Mehrfachauswahl und Aktionsleiste
         oben = (await pg.locator(".karte").nth(2).bounding_box())["y"]
         await pg.locator(".karte .wahl").nth(0).click()
         await pg.wait_for_selector("#stapel:not([hidden])")

@@ -1075,3 +1075,7 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 .pk-eintrag { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: var(--s4); align-items: center; min-height: 26px;
               padding-left: var(--s4); }
 .pk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Rahmen aufziehen (Auswahl wie im Explorer) */
+.auswahl-rahmen { position: absolute; z-index: 5; pointer-events: none; border: 1px solid var(--accent);
+                  background: color-mix(in oklch, var(--accent) 12%, transparent); border-radius: 2px; }

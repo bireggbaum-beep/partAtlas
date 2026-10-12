@@ -573,7 +573,40 @@ const raster = (() => {
     const z = zeilen.find((r) => !r.kopf && i >= r.von && i < r.bis);
     if (z) { aussen.scrollTop = z.y - a.abstand; zeichne(); }
   }
-  return { neu, zeichne, anker };
+  // Wo liegt Modell i (Inhaltskoordinaten von #raster-innen)? Gerechnet aus den Zeilen, nicht aus dem DOM: gezeichnet ist nur der
+  // sichtbare Teil, der Rahmen und die Pfeiltasten brauchen aber auch die anderen.
+  function lage(z, i) {
+    const { B, H, LUECKE, RAND: R } = mass();
+    return zustand.layout === "raster" ? { x: R + (i - z.von) * (B + LUECKE), y: z.y, b: B, h: H } : { x: 0, y: z.y, b: innen.clientWidth, h: H };
+  }
+  function imRechteck(x0, y0, x1, y1) {
+    const ids = [];
+    for (let z = suche(y0); z < zeilen.length && zeilen[z].y <= y1; z++) {
+      const r = zeilen[z];
+      if (r.kopf) continue;
+      for (let i = r.von; i < r.bis; i++) {
+        const l = lage(r, i);
+        if (l.x <= x1 && l.x + l.b >= x0 && l.y <= y1 && l.y + l.h >= y0) ids.push(zustand.modelle[i].id);
+      }
+    }
+    return ids;
+  }
+  // Index des Modells eine Zeile darüber/darunter (gleiche Spalte, so weit es geht) — über Gruppenbänder hinweg.
+  function nachbar(i, schritt) {
+    const z = zeilen.findIndex((r) => !r.kopf && i >= r.von && i < r.bis);
+    if (z < 0) return i;
+    let n = z + schritt;
+    while (n >= 0 && n < zeilen.length && zeilen[n].kopf) n += schritt;
+    if (n < 0 || n >= zeilen.length) return i;
+    return Math.min(zeilen[n].von + (i - zeilen[z].von), zeilen[n].bis - 1);
+  }
+  function zeigen(i) {
+    const z = zeilen.find((r) => !r.kopf && i >= r.von && i < r.bis);
+    if (!z) return;
+    if (z.y < aussen.scrollTop) aussen.scrollTop = z.y - 13;
+    else if (z.y + z.h > aussen.scrollTop + aussen.clientHeight) aussen.scrollTop = z.y + z.h - aussen.clientHeight + 13;
+  }
+  return { neu, zeichne, anker, imRechteck, nachbar, zeigen, spalten: () => spalten };
 })();
 
 // Beim schnellen Ziehen an der Scrollleiste fliegen dutzende Kacheln an den Augen
@@ -835,21 +868,134 @@ function kopfWahlZeichnen() {
 // Wie im 3MF Katalog: Kästchen je Kachel, Umschalt-Klick wählt einen
 // Bereich, Leiste mit den Aktionen für alle Gewählten.
 
+// Dazu wie im Explorer (5.10.2026, Wunsch des Testers): Klick wählt eines und hebt die Auswahl auf, Strg+Klick nimmt dazu oder
+// heraus, Umschalt+Klick wählt den Bereich vom Ausgangspunkt (Strg+Umschalt: dazu), Strg+A alles in der Ansicht, Pfeiltasten
+// bewegen (mit Umschalt erweitern), Rahmen aufziehen auf freier Fläche. Der Ausgangspunkt ist das zuletzt einzeln angeklickte Modell.
+
 let letzteWahl = null;
 
-function waehleAus(id, bereich) {
-  if (bereich && letzteWahl) {
-    const ids = zustand.modelle.map((m) => m.id);
-    const [a, b] = [ids.indexOf(letzteWahl), ids.indexOf(id)].sort((x, y) => x - y);
-    if (a >= 0 && b >= 0) ids.slice(a, b + 1).forEach((x) => zustand.auswahl.add(x));
-  } else if (zustand.auswahl.has(id)) {
-    zustand.auswahl.delete(id);
+function bereichIds(a, b) {
+  const [x, y] = [zustand.idIndex.get(a), zustand.idIndex.get(b)].sort((p, q) => p - q);
+  return x == null || y == null ? [] : zustand.modelle.slice(x, y + 1).map((m) => m.id);
+}
+
+// `bereich`: Umschalt; `dazu`: Strg (Bereich zur Auswahl hinzu statt sie zu ersetzen); `mitGewaehltem`: Strg+Klick nimmt das gerade
+// im Inspektor gezeigte Modell mit, wie der Explorer die vorher einzeln gewählte Datei — das Kästchen nicht, es meint genau dieses.
+function waehleAus(id, bereich, { dazu = true, mitGewaehltem = false } = {}) {
+  const anker = letzteWahl ?? zustand.gewaehlt;
+  if (bereich && anker != null && zustand.idIndex.has(anker)) {
+    if (!dazu) zustand.auswahl.clear();
+    bereichIds(anker, id).forEach((x) => zustand.auswahl.add(x));
   } else {
-    zustand.auswahl.add(id);
+    if (mitGewaehltem && !zustand.auswahl.size && zustand.gewaehlt && zustand.gewaehlt !== id && zustand.idIndex.has(zustand.gewaehlt))
+      zustand.auswahl.add(zustand.gewaehlt);
+    if (zustand.auswahl.has(id)) zustand.auswahl.delete(id); else zustand.auswahl.add(id);
+    letzteWahl = id;
   }
-  letzteWahl = id;
   zeichneStapel();
   raster.zeichne();
+}
+
+// Tastatur in Raster, Liste und Karten. true = verbraucht.
+function tastaturAuswahl(e) {
+  const strg = e.ctrlKey || e.metaKey;
+  const n = zustand.modelle.length;
+  if (!n || zustand.ansicht === "aufraeumen" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
+  // Auf einem Knopf gehören Enter und Leertaste dem Knopf.
+  const knopf = document.activeElement?.closest?.("button, a, summary, [contenteditable]");
+  if (strg && e.key.toLowerCase() === "a" && !e.altKey) {
+    zustand.modelle.forEach((m) => zustand.auswahl.add(m.id));
+    zeichneStapel(); raster.zeichne(); return true;
+  }
+  const jetzt = zustand.idIndex.get(zustand.gewaehlt);
+  const raster_ = zustand.layout === "raster";
+  let ziel = null;
+  if (e.key === "ArrowRight" && raster_) ziel = jetzt == null ? 0 : Math.min(n - 1, jetzt + 1);
+  else if (e.key === "ArrowLeft" && raster_) ziel = jetzt == null ? 0 : Math.max(0, jetzt - 1);
+  else if (e.key === "ArrowDown") ziel = jetzt == null ? 0 : raster.nachbar(jetzt, 1);
+  else if (e.key === "ArrowUp") ziel = jetzt == null ? 0 : raster.nachbar(jetzt, -1);
+  else if (e.key === "Home") ziel = 0;
+  else if (e.key === "End") ziel = n - 1;
+  else if (e.key === "Enter" && jetzt != null && !strg && !knopf) {
+    const m = zustand.modelle[jetzt];
+    if (m && !m.fehlt && zustand.ansicht !== "papierkorb") modellOeffnen({}, m.id);
+    return true;
+  } else if (e.key === " " && jetzt != null && !knopf) {
+    waehleAus(zustand.modelle[jetzt].id, false);
+    return true;
+  } else return false;
+  const id = zustand.modelle[ziel].id;
+  raster.zeigen(ziel);
+  if (e.shiftKey) {
+    // Umschalt+Pfeil erweitert vom Ausgangspunkt; der Ausgangspunkt bleibt, das gezeigte Modell wandert mit.
+    if (letzteWahl == null) letzteWahl = zustand.gewaehlt ?? id;
+    zustand.auswahl.clear();
+    bereichIds(letzteWahl, id).forEach((x) => zustand.auswahl.add(x));
+    zeichneStapel();
+    waehle(id);
+  } else waehleEines(id);
+  return true;
+}
+
+// Rahmen aufziehen auf freier Fläche des Rasters (auch in Liste und Karten unter der letzten Zeile). Gerechnet in den Koordinaten des
+// Inhalts über `raster.imRechteck`, nicht über gezeichnete Elemente — die Liste ist virtuell, ausserhalb des Bildes gibt es keine.
+// Strg/Umschalt nimmt zur bestehenden Auswahl dazu. Ein Klick ohne Ziehen auf freie Fläche hebt die Auswahl auf.
+(() => {
+  const aussen = $("#raster"), innen = $("#raster-innen");
+  let start = null, basis = null, rahmen = null, maus = null, rollen = 0;
+  const punkt = (e) => { const r = innen.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  function ziehen() {
+    if (!start || !maus) return;
+    const p = punkt(maus);
+    const x0 = Math.min(start.x, p.x), y0 = Math.min(start.y, p.y), x1 = Math.max(start.x, p.x), y1 = Math.max(start.y, p.y);
+    if (!rahmen) {
+      if (Math.abs(p.x - start.x) + Math.abs(p.y - start.y) < 5) return;
+      rahmen = document.createElement("div");
+      rahmen.className = "auswahl-rahmen";
+    }
+    Object.assign(rahmen.style, { left: x0 + "px", top: y0 + "px", width: x1 - x0 + "px", height: y1 - y0 + "px" });
+    zustand.auswahl = new Set([...basis, ...raster.imRechteck(x0, y0, x1, y1)]);
+    zeichneStapel();
+    raster.zeichne();
+    if (!rahmen.isConnected) innen.append(rahmen);      // abgleichen() beim Zeichnen nimmt ihn heraus
+  }
+  aussen.addEventListener("mousedown", (e) => {
+    if (e.button !== 0 || e.target.closest(".karte, .zeile-l, .zeile-k, .gruppe, button, input, a, select") || zustand.baugruppe) return;
+    if (e.offsetX > aussen.clientWidth) return;           // auf der Scrollleiste
+    e.preventDefault();
+    start = punkt(e);
+    maus = e;
+    basis = e.ctrlKey || e.metaKey || e.shiftKey ? new Set(zustand.auswahl) : new Set();
+    // Am oberen oder unteren Rand weiterrollen, solange die Maus dort steht.
+    rollen = setInterval(() => {
+      if (!maus) return;
+      const r = aussen.getBoundingClientRect();
+      const d = maus.clientY < r.top + 21 ? -21 : maus.clientY > r.bottom - 21 ? 21 : 0;
+      if (d && rahmen) { aussen.scrollTop += d; ziehen(); }
+    }, 30);
+  });
+  document.addEventListener("mousemove", (e) => { if (start) { maus = e; ziehen(); } });
+  document.addEventListener("mouseup", () => {
+    if (!start) return;
+    clearInterval(rollen);
+    if (!rahmen && !basis.size && zustand.auswahl.size) { zustand.auswahl.clear(); zeichneStapel(); raster.zeichne(); }
+    rahmen?.remove();
+    start = rahmen = maus = null;
+  });
+})();
+
+// Ein einfacher Klick: dieses eine Modell, die Mehrfachauswahl ist aufgehoben.
+function waehleEines(id) {
+  letzteWahl = id;
+  if (zustand.auswahl.size) { zustand.auswahl.clear(); zeichneStapel(); }
+  return waehle(id);
+}
+
+// Klick mit Strg/Umschalt auf Kachel oder Zeile.
+function klickMitTaste(id, e) {
+  const strg = e.ctrlKey || e.metaKey;
+  if (e.shiftKey) return waehleAus(id, true, { dazu: strg });
+  return waehleAus(id, false, { mitGewaehltem: true });
 }
 
 function zeichneStapel() {
@@ -1981,7 +2127,7 @@ document.addEventListener("click", (e) => {
 document.addEventListener("click", async (e) => {
   const t = e.target;
   const wahl = t.closest("[data-wahl]");
-  if (wahl) { e.stopPropagation(); return waehleAus(wahl.dataset.wahl, e.shiftKey); }
+  if (wahl) { e.stopPropagation(); return waehleAus(wahl.dataset.wahl, e.shiftKey, { dazu: true }); }
   const gw = t.closest("[data-gruppe-wahl]");
   if (gw) {
     e.stopPropagation();
@@ -2044,8 +2190,8 @@ $("#gruppierung").value = zustand.gruppierung;
   const sort = t.closest("[data-sortiere]");
   if (sort) { sortierungWaehlen(sort.dataset.sortiere); sortiere.angeklickt = true; return ladeModelle(); }
   const zeileListe = t.closest(".zeile-l, .zeile-k");
-  if (zeileListe && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(zeileListe.dataset.id, e.shiftKey);
-  if (zeileListe) return waehle(zeileListe.dataset.id);
+  if (zeileListe && (e.ctrlKey || e.metaKey || e.shiftKey)) return klickMitTaste(zeileListe.dataset.id, e);
+  if (zeileListe) return waehleEines(zeileListe.dataset.id);
   const herz = t.closest("[data-herz]");
   if (herz) {
     e.stopPropagation();
@@ -2062,8 +2208,8 @@ $("#gruppierung").value = zustand.gruppierung;
     return;
   }
   const k = t.closest(".karte");
-  if (k && (e.ctrlKey || e.metaKey || e.shiftKey)) return waehleAus(k.dataset.id, e.shiftKey);
-  if (k) return waehle(k.dataset.id);
+  if (k && (e.ctrlKey || e.metaKey || e.shiftKey)) return klickMitTaste(k.dataset.id, e);
+  if (k) return waehleEines(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
   if (ansicht) return navigiere(() => { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return neuLaden(); });
   const rail = t.closest("[data-rail]");
@@ -2272,6 +2418,7 @@ document.addEventListener("keydown", async (e) => {
   // Escape hebt die Auswahl auch aus dem Suchfeld heraus auf — nur ein
   // offener Dialog schliesst zuerst sich selbst.
   if (e.key === "Escape" && zustand.auswahl.size && !$("#dialog").open) stapelAktion("keine");
+  if (!tippt && !document.querySelector("dialog[open]") && tastaturAuswahl(e)) e.preventDefault();
   if ((e.key === "Delete" || e.key === "Backspace") && zustand.auswahl.size && !tippt && zustand.ansicht !== "papierkorb") {
     e.preventDefault();
     loeschenViele([...zustand.auswahl]);

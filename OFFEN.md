@@ -31,6 +31,14 @@ gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operation
   seine Fotos im Vault (bis 0.55 gingen sie nach `vault_archive/`; beim Zurückholen alter Drucke kommen sie von dort zurück, Wächter
   `ERLAUBT` ergänzt). Ein zurückgeholter Tag wird wieder vorgeschlagen. Neue Suite `test_papierkorb.py` 11/11; Gegenproben (Fotos
   archiviert, kein Nachziehen der Zähler, leere Drucke gezeigt) fallen; zwei Filter ohne fallende Gegenprobe entfernt.
+- **Auswahl wie im Explorer (0.58.0):** Klick wählt eines und hebt die Mehrfachauswahl auf; Strg+Klick nimmt dazu/heraus (das gerade
+  gezeigte Modell kommt mit, wie die vorher einzeln gewählte Datei im Explorer); Umschalt+Klick ersetzt die Auswahl durch den Bereich
+  vom Ausgangspunkt (Strg+Umschalt: dazu); Kästchen wie bisher. Strg+A alles in der Ansicht; Pfeiltasten bewegen (Raster: vier
+  Richtungen über Gruppenbänder hinweg, Liste/Karten: auf/ab), Umschalt+Pfeil erweitert, Pos1/Ende, Leertaste schaltet das gezeigte um,
+  Enter öffnet im Standardprogramm. Rahmen aufziehen auf freier Fläche (Lücken, Rand, unter der letzten Zeile), gerechnet aus den
+  Zeilenlagen des virtuellen Rasters (`raster.imRechteck`), rollt am Rand mit; Strg/Umschalt nimmt dazu; Klick auf freie Fläche hebt
+  auf. test_ui +1 (gezielt mit `ui_gezielt.py` im Scratchpad: Abschnitt aus `oberflaeche()` mit gleichem Aufbau), drei Gegenproben
+  fallen; der folgende Mehrfachauswahl-Block gezielt 3/3. **test_ui komplett steht aus** (vor `main`).
 
 ## Als Nächstes (8.10.2026, Anwender)
 
