@@ -30,7 +30,13 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.0 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.1 auf `main` (12.10.2026, für den Tester)
+
+**0.95.1 (Windows, Protokoll des Anwenders):** „+“ tat nichts, Strg+C kam nicht zum Prompt zurück. Ursache: Der Ordnerdialog (PowerShell) ging
+hinter dem Browser auf; jeder weitere Klick hängte einen weiteren unsichtbaren Dialog an, und Python wartete beim Beenden auf diese Threads.
+Jetzt: Dialog mit unsichtbarem Eigentümer ganz oben (kommt nach vorn), nur ein Dialog zugleich (sonst Meldung), offener Dialog wird beim
+Beenden geschlossen, Strg+C ohne „Unbehandelter Fehler“. Auf Linux nachgestellt und getestet (`test_dateidialog`); die Wirkung von
+„nach vorn“ unter Windows ist **nicht** nachgemessen — der Anwender bestätigt.
 
 Alles aus Iteration 1 und 2 und Bereinigen Pakete 1–2 (0.56–0.67). Rückweg: Zweig `fassung-0.55.0` (README, „Zurück auf eine frühere Fassung“).
 Vor dem Push: alle Suiten ausser test_ui grün (zuletzt je Paket), `test_ui.py` komplett 70/70 — eine Prüfung schliesst jetzt das neue

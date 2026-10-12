@@ -286,6 +286,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             pfad = dateidialog.ordner_waehlen("Ordner mit 3D-Modellen auswählen")
         except dateidialog.KeinDialog:
             return {"keinDialog": True}
+        except dateidialog.DialogOffen as e:
+            raise KatalogFehler(str(e))
         if not pfad:
             return {"abgebrochen": True}
         modelle, vollstaendig = durchsuchen.zaehlen(pfad)
@@ -1072,7 +1074,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             raise KatalogFehler("Slicer oder CAD.")
         try:
             pfad = dateidialog.programm_waehlen(f"{programme.ARTEN[art]} auswählen")
-        except dateidialog.KeinDialog as e:
+        except (dateidialog.KeinDialog, dateidialog.DialogOffen) as e:
             raise KatalogFehler(str(e))
         if not pfad:
             return {"abgebrochen": True}

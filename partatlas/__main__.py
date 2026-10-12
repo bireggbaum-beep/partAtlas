@@ -6,6 +6,7 @@ import threading
 
 import uvicorn
 
+from . import dateidialog
 from .bestand import standard_ort
 from .main import erstelle_app
 from .version import VERSION
@@ -44,6 +45,11 @@ if __name__ == "__main__":
             # nie. partAtlas liess sich dann nur abschiessen (nachgestellt am 7.10.2026), und das Abbrechen eines laufenden Einlesens wurde
             # gar nicht erst erreicht. Darum zuerst die Live-Verbindungen schliessen; die Zeitgrenze unten fängt ab, was sonst noch hängt.
             app.state.verteiler.beenden()
+            # Ein offener Ordnerdialog hält sonst den Prozess am Leben: Python wartet auf den Thread, der auf ihn wartet.
+            dateidialog.abbrechen()
             super().handle_exit(sig, frame)
 
-    Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", log_config=None, timeout_graceful_shutdown=5)).run()
+    try:
+        Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", log_config=None, timeout_graceful_shutdown=5)).run()
+    except KeyboardInterrupt:
+        pass            # Strg+C: uvicorn wirft es nach dem geordneten Beenden noch einmal; als „Unbehandelter Fehler“ sah das nach Absturz aus
