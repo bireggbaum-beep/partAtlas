@@ -220,7 +220,14 @@ class Katalog:
             werte["zuletzt_ort"] = d["orte"][0]
         if orte and d.get("ohne_datei"):
             werte["ohne_datei"] = None
+        zurueck = orte and not d.get("orte")
         self.db.update_node(DATEI, h, werte)
+        if zurueck:
+            # Ins Archiv kam das Modell, weil seine Datei fehlte: jetzt ist sie da, also gehört es wieder in den Katalog.
+            mid = self.modell_von(h)
+            m = self.db.get_node(ref(MODELL, mid), readonly=True) if mid else None
+            if m is not None and m.get("archiv") and m.get("archiv_grund") == "fehlt":
+                self.db.update_node(MODELL, mid, {"archiv": None, "archiv_grund": None})
 
     def neue_datei(self, h, felder, orte, vorschau, fehler=None, vorgaenger=None):
         """Datei, Modell und automatische Tags in einem Zug. Aufrufer hält die Transaktion.
@@ -445,6 +452,7 @@ class Katalog:
             # Der Anwender hat gesagt: die Datei ist absichtlich weg. Dann kein Problem mehr, nur ein ruhiges Zeichen.
             "ohne_datei": bool(d.get("ohne_datei")) and not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),
+            "archiv": m.get("archiv") if not papierkorb else None,
             "ordner": [f'{o["wurzel"]}/{o["pfad"].rsplit("/", 1)[0] if "/" in o["pfad"] else ""}' for o in orte],
             "tags": self.tags_von(mid) if not papierkorb else [],
             "angelegt": m.get("angelegt"), "warteschlange": m.get("warteschlange"),
@@ -601,11 +609,15 @@ class Katalog:
             reihe = self._sammlung_reihe(sammlung)
             kandidaten = {k: v for k, v in kandidaten.items() if k in reihe}
         liste = [dict(alle[k]) for k in kandidaten]       # flache Kopien: wer die Liste ändert, ändert nicht den Zwischenspeicher
+        # Das Archiv ruht: nicht in Liste, Suche, Zählern und Bereinigen — nur in seiner eigenen Ansicht.
+        liste = [x for x in liste if bool(x.get("archiv")) == (ansicht == "archiv")]
         if fmt:
             liste = [x for x in liste if x["format"] == fmt]
         if ordner:
             liste = [x for x in liste if any(o == ordner or o.startswith(ordner.rstrip("/") + "/")
                                              for o in x["ordner"])]
+        if ansicht == "archiv":
+            return sorted(liste, key=lambda x: x["archiv"] or "", reverse=True)
         if ansicht == "favoriten":
             liste = [x for x in liste if x["favorit"]]
         elif ansicht == "duplikate":
@@ -728,7 +740,8 @@ class Katalog:
     def modell_aendern(self, mid, werte):
         # entwurf: ein Konstruktionsstand, der nicht gebraucht wird — ausblendbar, nicht in neuen Baugruppen. Kein Versionsbaum,
         # nur ein Etikett, das der Anwender setzt (03.10.2026: Versionsverwaltung war zu viel).
-        erlaubt = {"favorit": bool, "gedruckt": bool, "entwurf": bool, "quelle_url": (str, type(None)), "notiz": (str, type(None))}
+        erlaubt = {"favorit": bool, "gedruckt": bool, "entwurf": bool, "quelle_url": (str, type(None)), "notiz": (str, type(None)),
+                   "archiv": bool}
         neu = {}
         for k, v in werte.items():
             if k not in erlaubt or not isinstance(v, erlaubt[k]):
@@ -744,6 +757,17 @@ class Katalog:
         if "notiz" in neu:
             from .anhaenge import notiz_pruefen
             neu["notiz"] = notiz_pruefen(neu["notiz"], 20000).strip() or None
+        if "archiv" in neu:
+            # Archiv (Anwender, 12.10.2026): das Modell ruht — nicht mehr in Liste und Suche, aber mit Drucken, Tags, Anhängen,
+            # Baugruppen. Nichts wird gelöscht. Der Grund entscheidet, ob es von selbst zurückkommt (nur „fehlt“, wenn die Datei
+            # wieder auftaucht); von Hand Archiviertes holt nur der Anwender zurück.
+            an = neu.pop("archiv")
+            h = self.datei_von(mid)
+            d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+            neu["archiv"] = jetzt() if an else None
+            neu["archiv_grund"] = ("fehlt" if d is not None and not d.get("orte") else "hand") if an else None
+            if an:
+                neu["warteschlange"] = None
         if "gedruckt" in neu:
             # „Gedruckt“ ist abgeleitet: es gibt es, wenn es einen Druck gibt (KONZEPT §4.6).
             # Der Haken legt einen leeren Druck an; zurücknehmen geht nur, solange
@@ -1080,10 +1104,13 @@ class Katalog:
         """Eine Aktion für viele Modelle; reine Graph-Änderungen in einer
         Transaktion, Dateiaktionen einzeln (jede für sich rückgängig)."""
         fehler = []
-        if aktion in ("favorit", "gedruckt", "entwurf", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange", "behalten"):
+        if aktion in ("favorit", "gedruckt", "entwurf", "archiv", "tag", "material", "sammlung", "warteschlange", "aus_warteschlange",
+                      "behalten"):
+            if aktion == "archiv" and len(modelle) > 1:
+                self._sichern_vor("archiv", f"Vor dem {'Archivieren' if wert else 'Zurückholen aus dem Archiv'} von {len(modelle)} Modellen")
             with self.db.transaction():
                 for mid in modelle:
-                    if aktion in ("favorit", "gedruckt", "entwurf"):
+                    if aktion in ("favorit", "gedruckt", "entwurf", "archiv"):
                         self.modell_aendern(mid, {aktion: bool(wert)})
                     elif aktion == "tag":
                         self._tag_verbinden(mid, wert)

@@ -4,6 +4,20 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Bereinigen professionell (Auftrag 12.10.2026, nach Iteration 2)
+
+Anwender: Bereinigen muss professionell werden — der Anwender bereinigt dort seine Datenbank bewusst. Entschieden: **Archiv** = das Modell
+ruht, alles bleibt; neue und verschobene Dateien **ohne Fenster** wie bisher; **ein Fenster erst ganz am Ende des Einlesens**, nur für
+fehlende Dateien, je Zeile Archiv (Vorgabe) / Behalten / Löschen und „Für alle übernehmen“ (ganzer Ordner gelöscht); „nicht unterscheidbar“
+= gleicher Name, anderer Inhalt. Gliederung: Aufräumen (Datei fehlt · Gleiche Datei · Nicht unterscheidbar) · Archiv · Papierkorb.
+Pakete: (1) Archiv, (2) Fenster am Ende des Einlesens, (3) Bereinigen neu gegliedert. Iteration 3 vom Anwender nicht gewünscht; der
+Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
+- **Paket 1 Archiv (0.66.0):** Feld `archiv` (Zeit) und `archiv_grund` („fehlt“/„hand“) am Modell. Archiviertes nur in der Ansicht
+  „archiv“ (Bereinigen › 🗄 Archiv, mit Zähler), nicht in Liste, Suche, Zählern, Sammlungen. Ins Archiv: Rechtsklick, Leiste der
+  Mehrfachauswahl (vorher Sicherung), im Inspektor bei „Datei fehlt“ als erster Weg (Archiv · Behalten · Suchen · Löschen). Zurück:
+  Band im Inspektor, Rechtsklick, Leiste. Grund „fehlt“: taucht die Datei wieder auf (auch an anderem Ort), kehrt das Modell von selbst
+  zurück (`_orte_setzen`). Neue Suite `test_archiv.py` 8/8, drei Gegenproben fallen.
+
 ## Katalog fertig — drei Iterationen (Auftrag 12.10.2026, Branch `claude/partatlas-katalog-fertig-amxqfg`)
 
 Auftrag des Anwenders: den Katalog fertig machen, Qualität und Bedienung einer fertigen Anwendung, Grenze „vor Anbindung Drucker“.

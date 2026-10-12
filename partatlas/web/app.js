@@ -313,7 +313,7 @@ async function ladeSeite() {
     || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`);
   abgleichen($("#ws-liste"), ws.map((m, i) =>
     `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b><span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
-  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "warteschlange"]) {
+  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "archiv", "warteschlange"]) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
@@ -356,7 +356,7 @@ function zweig(k, tiefe) {
 }
 
 // Die Seitenleiste wechselt als Ganzes (wie bei VS Code): Katalog oder Bereinigen.
-const BEREINIGEN = ["aufraeumen", "papierkorb", "duplikate", "fehlt", "unlesbar"];
+const BEREINIGEN = ["aufraeumen", "papierkorb", "archiv", "duplikate", "fehlt", "unlesbar"];
 
 function markiereAnsicht() {
   const bereinigt = BEREINIGEN.includes(zustand.ansicht);
@@ -544,6 +544,7 @@ function zeichneLeer() {
   } else {
     leer.textContent = zustand.ansicht === "papierkorb"
       ? (Object.values(zustand.korbWeitere || {}).some((l) => l.length) ? "Keine Modelle im Papierkorb." : "Der Papierkorb ist leer.")
+      : zustand.ansicht === "archiv" ? "Das Archiv ist leer. Was nicht mehr gebraucht wird, aber nicht verloren gehen soll, legt man hier ab: Rechtsklick › Ins Archiv."
       : (zustand.filterTeile ? "Keine Treffer." : "Noch keine Modelle in diesem Ordner.");
   }
 }
@@ -1097,16 +1098,17 @@ function zeichneStapel() {
   for (const id of [...zustand.auswahl]) if (!sichtbar.has(id)) zustand.auswahl.delete(id);
   const n = zustand.auswahl.size;
   // Dezent unten: wie viele Modelle die Liste zeigt, und wie viele davon gewählt sind.
-  $("#anzahl").textContent = `${zustand.modelle.length.toLocaleString("de-DE")} Modelle${n ? ` · ${n} ausgewählt` : ""}`;
+  $("#anzahl").textContent = `${zustand.modelle.length.toLocaleString("de-DE")} ${zustand.modelle.length === 1 ? "Modell" : "Modelle"}${n ? ` · ${n} ausgewählt` : ""}`;
   zeichneHinweisLeiste();
   const st = $("#stapel");
   st.hidden = n === 0;
   if (!n) return;
-  abgleichen(st, zustand.ansicht === "papierkorb"
+  const nurZurueck = { papierkorb: ["wiederherstellen", "↩ Wiederherstellen"], archiv: ["aus-archiv", "↩ Aus dem Archiv zurückholen"] }[zustand.ansicht];
+  abgleichen(st, nurZurueck
     ? `<div class="st-kopf"><b>${n} ausgewählt</b>
         <button class="link" data-stapel="alle">Alle ${anzahl(zustand.modelle.length)} auswählen</button>
         <button class="st-zu" data-stapel="keine" title="Auswahl aufheben (Esc)" aria-label="Auswahl aufheben">✕</button></div>
-       <div class="st-aktionen"><div class="st-gruppe"><button class="knopf" data-stapel="wiederherstellen">↩ Wiederherstellen</button></div></div>`
+       <div class="st-aktionen"><div class="st-gruppe"><button class="knopf" data-stapel="${nurZurueck[0]}">${nurZurueck[1]}</button></div></div>`
     : `<div class="st-kopf"><b>${n} ausgewählt</b>
         <button class="link" data-stapel="alle">Alle ${anzahl(zustand.modelle.length)} auswählen</button>
         <button class="st-zu" data-stapel="keine" title="Auswahl aufheben (Esc)" aria-label="Auswahl aufheben">✕</button></div>
@@ -1125,6 +1127,7 @@ function zeichneStapel() {
         </div>
         <div class="st-gruppe" role="group" aria-label="Dateien">
           <button class="knopf" data-stapel="verschieben">Verschieben …</button>
+          <button class="knopf" data-stapel="ins-archiv" title="Ruhen lassen: nicht mehr in Liste und Suche, mit allem, was daran hängt">🗄 Archiv</button>
           <button class="knopf gefahr" data-stapel="loeschen">Löschen …</button>
         </div>
       </div>`);
@@ -1140,8 +1143,9 @@ function fehltTeil(m) {
   }
   return `<div class="fehlt-teil"><p><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr: gelöscht, ausserhalb der Ordner von
     partAtlas verschoben oder auf einem Laufwerk, das gerade fehlt. Tags, Drucke und Bilder sind noch da.</p>${zuletzt}
-    <div class="knoepfe-zeile">${suchen}<button class="knopf" id="ohne-datei">Ohne Datei behalten</button>
-      <button class="knopf gefahr" id="fehlt-entfernen">Aus dem Katalog entfernen …</button></div></div>`;
+    <div class="knoepfe-zeile"><button class="knopf akzent" id="ins-archiv" title="Ruht mit allem, was daran hängt; kommt die Datei wieder, ist das Modell von selbst zurück">Ins Archiv</button>
+      <button class="knopf" id="ohne-datei">Behalten</button>${suchen}
+      <button class="knopf gefahr" id="fehlt-entfernen">Löschen …</button></div></div>`;
 }
 
 // Einen Ordner zeigen; partAtlas prüft, ob fehlende Dateien darin liegen (gleicher Inhalt), auch die anderer Modelle.
@@ -1216,6 +1220,11 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl], anker = null
       return;
     }
     case "loeschen": return loeschenViele(modelle);
+    case "ins-archiv": case "aus-archiv":
+      await stapel("archiv", aktion === "ins-archiv", modelle);
+      toast(aktion === "ins-archiv" ? `${modelle.length} ${modelle.length === 1 ? "Modell" : "Modelle"} im Archiv.` : "Zurück im Katalog.");
+      zustand.auswahl.clear();
+      return;
     case "wiederherstellen":
       await stapel("wiederherstellen", null, modelle);     // eine Anfrage für alle, nicht eine je Modell
       zustand.auswahl.clear();
@@ -1415,6 +1424,8 @@ async function waehle(id, live = false) {
             <hr><button id="loeschen" class="gefahr">Löschen …</button>
           </div></div></div>`}
       </div>
+      ${m.archiv ? `<div class="archiv-band"><span><b>Im Archiv</b> seit ${esc(datumDe(m.archiv.slice(0, 10)))} — es ruht, mit allem, was daran hängt.</span>
+        <button class="knopf" id="aus-archiv">Zurückholen</button></div>` : ""}
       ${papierkorb ? `<div class="i-haupt"><button class="knopf akzent" id="wiederherstellen">Wiederherstellen</button>
         <button class="knopf gefahr" id="endgueltig">Endgültig entfernen …</button></div>` : ""}
       ${reiterKopf}
@@ -2618,6 +2629,12 @@ $("#gruppierung").value = zustand.gruppierung;
     case "endgueltig": return endgueltigEntfernen(id);
     case "datei-suchen": return dateiSuchen();
     case "fehlt-entfernen": return loeschen(id);
+    case "ins-archiv": case "aus-archiv":
+      try { await api(`/api/modelle/${id}`, { method: "PATCH", body: { archiv: t.id === "ins-archiv" } }); }
+      catch (err) { return toast(err.message); }
+      toast(t.id === "ins-archiv" ? "Im Archiv — es ruht mit allem, was daran hängt." : "Zurück im Katalog.");
+      zustand.angezeigt = null;
+      return waehle(id);
     case "ohne-datei": case "ohne-datei-aus":
       // Die Markierung steht am Datei-Knoten; die Live-Meldung zeichnet nur die Liste neu, der Inspektor folgt hier.
       try { await api(`/api/modelle/${id}/ohne_datei`, { method: "POST", body: { an: t.id === "ohne-datei" } }); waehle(id); }
@@ -3221,7 +3238,9 @@ async function kontextMenu(e, id) {
   const m = zustand.modelle.find((x) => x.id === id) || {};
   const papierkorb = zustand.ansicht === "papierkorb";
   let eintraege;
-  if (papierkorb) {
+  if (zustand.ansicht === "archiv") {
+    eintraege = [["aus-archiv", `↩ Aus dem Archiv zurückholen${mehrere ? ` (${modelle.length})` : ""}`]];
+  } else if (papierkorb) {
     // Endgültig nur je Modell, nie für eine Auswahl: ein „alles leeren“ gibt es bewusst nicht.
     eintraege = [["wiederherstellen", `↩ Wiederherstellen${mehrere ? ` (${modelle.length})` : ""}`],
       ...(mehrere ? [] : [["-"], ["endgueltig", "Endgültig entfernen …", "gefahr"]])];
@@ -3231,7 +3250,7 @@ async function kontextMenu(e, id) {
       ["warteschlange", "☰ In die Warteschlange"], ["druck", "🖨 Zusammen gedruckt …"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"], ["entwurf", "✎ Entwurf ein/aus"],
       ["-"], ["tag", "＃ Tag …"], ["material", "Material …"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ...(modelle.length <= 12 ? [["varianten", "⧉ Als Varianten verknüpfen"]] : []),
-      ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
+      ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["ins-archiv", "🗄 Ins Archiv"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
   } else {
     const prog = await ladeProgramme();
     const { je } = programmeFuer(m, prog);
@@ -3253,7 +3272,7 @@ async function kontextMenu(e, id) {
       ["entwurf1", m.entwurf ? "✎ Kein Entwurf mehr" : "✎ Als Entwurf markieren"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ...(da ? [["vorschau-berechnen", "Vorschaubild berechnen"]] : []),
-      ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"],
+      ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"], ["ins-archiv", "🗄 Ins Archiv"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
   }
   eintraege = eintraege.filter(([k]) => ab2(k));

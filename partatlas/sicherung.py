@@ -36,7 +36,7 @@ ANLASS = {"start": "Beim Start", "von-hand": "Von Hand", "vor-zurueckholen": "Vo
           "vor-entfernen": "Vor dem Entfernen von Modellen", "vor-ordner-entfernen": "Vor dem Entfernen eines Ordners",
           "vor-ordner-aus-katalog": "Vor dem Entfernen eines Ordners aus dem Katalog", "vor-endgueltig-entfernen": "Vor dem endgültigen Entfernen",
           "vor-tags-loeschen": "Vor dem Löschen von Tags", "vor-tags-zusammenfuehren": "Vor dem Zusammenführen von Tags",
-          "vor-auto-tags-entfernen": "Vor dem Entfernen der automatischen Tags"}
+          "vor-auto-tags-entfernen": "Vor dem Entfernen der automatischen Tags", "vor-archiv": "Vor dem Archivieren"}
 # Zeit, dann ein immer zweistelliger Zähler: so ist die Reihenfolge der Namen die der Entstehung, auch in derselben Sekunde.
 log = logging.getLogger("partatlas")
 _NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{6})-(\d{2})__([\w-]+)$")

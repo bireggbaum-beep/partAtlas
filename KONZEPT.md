@@ -150,7 +150,8 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   | Kopie mit gleichem Inhalt | ein Container, zwei Orte („Duplikat“) |
   | überschrieben (gleicher Ort, neuer Inhalt) | derselbe Container mit neuem Inhalt — sofern der alte Inhalt nirgends mehr liegt; sonst ist es eine abgezweigte Kopie mit eigenem Container (0.14) |
   | in partAtlas gelöscht | nur aus dem Katalog (Papierkorb von partAtlas, Dialog zeigt, was dranhängt); **die Datei bleibt im Ordner liegen** (seit 0.30). Der Scan lässt sie danach in Ruhe; „Wiederherstellen“ nimmt das Modell wieder auf. Den Papierkorb endgültig zu leeren gibt es bewusst nicht (0.30.1): der Müllsammler räumte auch entfernte Ordner, Baugruppen und Drucke ab |
-  | im Dateimanager gelöscht | bleibt, auf der Kachel deutlich als „Datei fehlt“ |
+  | im Dateimanager gelöscht | bleibt, auf der Kachel deutlich als „Datei fehlt“; der Anwender entscheidet: **Archiv** (Vorgabe), Behalten oder Löschen (0.66) |
+  | ins Archiv gelegt (0.66) | ruht: nicht in Liste, Suche, Zählern; Drucke, Tags, Anhänge, Baugruppen bleiben. Kam es hinein, weil die Datei fehlte, kehrt es zurück, sobald sie wieder auftaucht; von Hand Archiviertes holt nur der Anwender zurück |
 - **Eine Datei wird an ihrem Inhalt erkannt** (SHA-256 als Kennung).
   Verschoben oder umbenannt außerhalb der App → der nächste Scan findet sie
   wieder, Tags und Historie bleiben dran. Verschwunden → Knoten wird als

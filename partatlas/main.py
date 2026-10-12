@@ -377,6 +377,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             "papierkorb": len(k.modelle(ansicht="papierkorb")), "formate": formate,
             "warteschlange": sum(m["warteschlange"] is not None for m in alle),
             "neu": len(k.modelle(ansicht="neu")),
+            "archiv": len(k.modelle(ansicht="archiv")),
         }
 
     @app.get("/api/modelle/{mid}")
