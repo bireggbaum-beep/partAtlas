@@ -684,6 +684,43 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def druck_bild(did: str, k: str):
         return _bild_antwort(K().drucke.bild_pfad(did, k))
 
+    @app.post("/api/drucke/{did}/datei")
+    def druck_datei(did: str, name: str, roh: bytes = Depends(roh_koerper)):
+        return K().drucke.datei_anhaengen(did, name, roh)
+
+    @app.delete("/api/drucke/{did}/datei")
+    def druck_datei_loesen(did: str):
+        K().drucke.datei_loesen(did)
+        return {"ok": True}
+
+    @app.get("/api/drucke/{did}/datei")
+    def druck_datei_laden(did: str):
+        info = K().drucke.datei_von(did)
+        if not info:
+            raise HTTPException(404)
+        return FileResponse(zustand["bestand"].pfad(*info["datei"].split("/")), filename=info["name"])
+
+    @app.get("/api/drucke/{did}/einstellungen")
+    def druck_einstellungen(did: str):
+        return K().drucke.einstellungen(did)
+
+    @app.get("/api/drucke/vergleich")
+    def drucke_vergleich(a: str, b: str):
+        return K().drucke.vergleich(a, b)
+
+    @app.post("/api/drucke/{did}/oeffnen")
+    def druck_oeffnen(did: str):
+        """Die Datei des Drucks im Slicer — genau diese eine, auch wenn der Druck an mehreren Modellen hängt (KONZEPT §4.6)."""
+        info = K().drucke.datei_von(did)
+        if not info:
+            raise KatalogFehler("Dieser Druck hat keine Datei.")
+        liste, std = _programme()
+        pfad = std.get("3mf")
+        if not pfad:
+            raise KatalogFehler("Kein Slicer eingerichtet (Einstellungen › Programme).")
+        programme.oeffnen(pfad, zustand["bestand"].pfad(*info["datei"].split("/")), zustand["bestand"].pfad("arbeit", "programmstart.log"))
+        return {"ok": True, "programm": next((p["name"] for p in liste if p["pfad"] == pfad), "Slicer")}
+
     @app.delete("/api/drucke/{did}/bilder/{k}")
     def druck_bild_weg(did: str, k: str):
         K().drucke.bild_entfernen(did, k)

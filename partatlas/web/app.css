@@ -1132,3 +1132,20 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 .sl-zeile[hidden] { display: none; }
 .i-reiter { overflow-x: auto; scrollbar-width: none; }
 .i-reiter::-webkit-scrollbar { display: none; }
+
+/* Drucke › Datei (Stufe b) und Vergleich */
+.d-datei { margin-top: var(--s3); padding: var(--s3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.d-datei-name { display: flex; gap: var(--s3); align-items: baseline; min-width: 0; }
+.d-datei-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-datei-art { font: 11.5px var(--mono); padding: 0 var(--s2); border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); flex: none; }
+.d-datei-info { margin: var(--s1) 0 var(--s2); font-size: 12.5px; }
+.d-datei .d-aktionen { flex-wrap: wrap; }
+dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min(610px, 94vw); max-width: none; }
+.vg-tabelle { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: var(--s3) 0; }
+.vg-tabelle th { text-align: left; font: var(--fs-label) var(--mono); color: var(--ink-3); padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); }
+.vg-tabelle td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); vertical-align: top; }
+.vg-tabelle td:not(:first-child) { font-family: var(--mono); font-size: var(--fs-meta); }
+.einst-druck { max-height: 60vh; overflow: auto; }
+.d-datei .d-aktionen { gap: var(--s3); margin-top: 0; padding-top: 0; border-top: 0; }
+.d-datei .link { color: var(--ink-2); text-decoration: none; }
+.d-datei .link:hover { color: var(--accent); text-decoration: underline; }

@@ -91,7 +91,8 @@ function rueckfrage(html) {
     if (e.key === "Enter" && e.target.matches("input[type=text]")) { e.preventDefault(); d.querySelector(".akzent")?.click(); }
   });
   return new Promise((ok) => d.addEventListener("close", () => {
-    const werte = Object.fromEntries([...d.querySelectorAll("input")].map((i) => [i.name, i.type === "checkbox" ? i.checked : i.value]));
+    const werte = Object.fromEntries([...d.querySelectorAll("input")].filter((i) => i.type !== "radio" || i.checked)
+      .map((i) => [i.name, i.type === "checkbox" ? i.checked : i.value]));
     d.remove();
     ok({ a: d.returnValue, ...werte });
   }, { once: true }));

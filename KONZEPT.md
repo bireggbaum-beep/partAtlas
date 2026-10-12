@@ -502,11 +502,18 @@ Status auf Kachel und Inspektor. Kein G-Code. Das ist die Demo für den
 Piloten. Bestehende Haken „gedruckt“ werden beim Umzug je zu einem
 leeren Druck (wie die Umstellung der eigenen Bilder in 0.11).
 
-**Stufe b — Datei zum Druck (offen).** G-Code oder Slicer-Projekt auf einen Druck
+**Stufe b — Datei zum Druck (gebaut 0.63, ohne Vorschlag aus Mehr-Objekt-Dateien).** G-Code oder Slicer-Projekt auf einen Druck
 ziehen: im Vault abgelegt (`GCODE_ARTIFACT`, Kennung = Hash),
 Einstellungen und Filament ausgelesen (§4.1), `PRINT_PROFILE` per Hash,
 Vergleich zweier Drucke. Aus einer Datei mit mehreren Objekten wird vorgeschlagen,
 an welchen Modellen der Druck hängt; der Anwender bestätigt.
+
+Gebaut (0.63): G-Code oder Projekt (.gcode, .3mf, .gcode.3mf) auf einen Druck ziehen oder wählen → unverändert nach
+`vault/gcode/<Titel>__<Hash>`, `GCODE_ARTIFACT` je Inhalt, Einstellungen (`slicer.py`) als `PRINT_PROFILE` je Hash der Werte ohne
+Namen/Herkunft; die Modelldatei als Kopie nach `vault/quellen/` (`SLICED_FROM`). Leere Felder des Drucks füllt der Kopf (Gewicht, Dauer).
+Am Druck: Einstellungen, „×-mal diese Einstellungen“ (über alle Modelle), Vergleich mit einem anderen Druck des Modells (nur, was sich
+unterscheidet, in Worten), im Slicer öffnen (genau diese Datei), herunterladen, lösen (die Datei bleibt im Vault). Offen: aus einer Datei
+mit mehreren Objekten vorschlagen, an welchen Modellen der Druck hängt; Baugruppensummen aus Referenzdrucken.
 
 **Ab Phase 2:** Anbindung, Sensordaten (§4.2), „Nochmal“ (§4.3). Sie
 legen Drucke selbst an, mit `EXECUTED_ON` und Kurven; an der Form des

@@ -79,6 +79,12 @@ Varianten **gleicher Name, gleicher Ordner**; gemerkte Suchen als **intelligente
   `profil_hash` ohne Namen/Herkunft/Fassung (Liste geschätzt), `unterschiede` — beides für Drucke Stufe b. **Gelesen erst beim Öffnen des
   Reiters**, nicht beim Einlesen: einige hundert Werte je Datei gehören nicht in den Graphen. Neue Suite `test_slicer.py` 13/13 (nachgebaute
   Dateien, keine echten von Bambu/Anycubic — mit einer echten Datei des Anwenders prüfen), drei Gegenproben fallen.
+- **Drucke Stufe b (0.63.0, KONZEPT §4.6):** siehe dort. Server `Drucke.datei_anhaengen/datei_von/datei_loesen/einstellungen/vergleich`,
+  Routen `/api/drucke/{id}/datei` (POST mit `?name=`, GET, DELETE), `/einstellungen`, `/oeffnen`, `/api/drucke/vergleich?a=&b=`.
+  Oberfläche: „＋ G-Code / Projekt“ am Druck oder Datei auf den Druck ziehen (ohne Druck: neuer Druck), Dateizeile mit Einstellungen,
+  Vergleichen, Im Slicer, ⤓, Lösen. test_drucke 39/39 (+11), drei Gegenproben fallen; Wächter in test_schutz um zwei Einträge
+  ergänzt (Ablegen im Vault nur, wenn dort noch nichts liegt). **Für das Backup (Iteration 3):** `vault/gcode/` und `vault/quellen/`
+  sind Daten des Anwenders → eigene Zeile, Vorgabe an. Nicht mit echten Dateien von Bambu Studio/Anycubic geprüft.
 
 ## Als Nächstes (8.10.2026, Anwender)
 

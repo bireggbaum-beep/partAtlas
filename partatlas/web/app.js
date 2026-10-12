@@ -1409,12 +1409,86 @@ function druckeTafel(m) {
       ${d.zusammen_mit.length ? `<div class="d-zusammen">zusammen mit ${d.zusammen_mit.map((x) => `<button class="link" data-gefaehrte="${esc(x.id)}">${esc(x.name)}</button>`).join(", ")}</div>` : ""}
       <div class="d-fotos">${d.bilder.map((b) => `<span class="d-foto"><a href="${esc(b.url)}" target="_blank" rel="noopener"><img src="${esc(b.url)}" alt="" loading="lazy"></a>
         <button data-druck-bild-weg="${esc(d.id)}|${esc(b.k)}" title="Foto entfernen">×</button></span>`).join("")}
-        <button class="d-fotoplus" data-druck-foto="${esc(d.id)}" title="Foto zum Druck hinzufügen">＋ Foto</button></div>
+        <button class="d-fotoplus" data-druck-foto="${esc(d.id)}" title="Foto zum Druck hinzufügen">＋ Foto</button>
+        ${d.datei ? "" : `<button class="d-fotoplus" data-druck-datei="${esc(d.id)}" title="G-Code oder Slicer-Projekt dieses Drucks — auch per Hineinziehen">＋ G-Code / Projekt</button>`}</div>
+      ${d.datei ? druckDateiZeile(d, liste) : ""}
       <div class="d-aktionen"><button class="link" data-druck-ref="${esc(d.id)}" data-an="${d.referenz ? "0" : "1"}">${d.referenz ? "★ Keine Referenz mehr" : "☆ Als Referenz"}</button>
         <button class="link" data-druck-aendern="${esc(d.id)}">Bearbeiten …</button>
         <button class="link gefahr" data-druck-weg="${esc(d.id)}">Entfernen …</button></div>
     </div>`;
   }).join("");
+}
+
+// Die Datei eines Drucks (Stufe b, KONZEPT §4.6): was es ist, woher, wie oft genau diese Einstellungen gedruckt wurden, und was man
+// damit tun kann. Vergleichen nur, wenn ein anderer Druck dieses Modells auch Einstellungen hat.
+function druckDateiZeile(d, liste) {
+  const f = d.datei;
+  const andere = liste.filter((x) => x.id !== d.id && x.datei?.profil).length;
+  const gleich = f.gleiche > 1 ? ` · <span title="Drucke mit genau diesen Einstellungen, über alle Modelle">${f.gleiche}× diese Einstellungen</span>` : "";
+  return `<div class="d-datei"><div class="d-datei-name"><span class="d-datei-art">${f.art === "3mf" ? "3MF" : "G-Code"}</span>
+      <b title="${esc(f.name)}">${esc(f.name)}</b></div>
+    <div class="dim d-datei-info">${esc(f.slicer || "Slicer unbekannt")}${f.profil ? "" : " · keine Einstellungen gefunden"}${gleich}</div>
+    <div class="d-aktionen">${f.profil ? `<button class="link" data-druck-einst="${esc(d.id)}">Einstellungen</button>` : ""}
+      ${f.profil && andere ? `<button class="link" data-druck-vergleich="${esc(d.id)}">Vergleichen …</button>` : ""}
+      <button class="link" data-druck-slicer="${esc(d.id)}" title="Genau diese Datei im Slicer öffnen">Im Slicer</button>
+      <a class="link" href="/api/drucke/${esc(d.id)}/datei" download title="Herunterladen">⤓</a>
+      <button class="link" data-druck-datei-weg="${esc(d.id)}" title="Vom Druck lösen — die Datei bleibt im Bestand und ist beim erneuten Anhängen gleich wieder da">Lösen</button></div></div>`;
+}
+
+// Das Wichtigste gruppiert und alle Werte zum Durchsuchen — im Reiter „Slicer“ und für die Einstellungen eines Drucks.
+function einstellungenHtml(d) {
+  const zeile = (a, b, titel) => `<div class="zeile" ${titel ? `title="${esc(titel)}"` : ""}><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
+  return d.wichtig.map((g) => `<div class="i-titel">${esc(g.gruppe.toUpperCase())}</div><div class="i-karte">${g.zeilen.map((z) => zeile(z.name, z.wert, z.schluessel)).join("")}</div>`).join("")
+    + (d.objekte?.length ? `<div class="i-titel">ABWEICHEND JE OBJEKT</div><div class="i-karte">${d.objekte.map((o) =>
+        zeile(o.name, Object.entries(o.werte).map(([k, v]) => `${k} = ${v}`).join(", "))).join("")}</div>` : "")
+    + `<details class="sl-alle"><summary class="i-titel">ALLE WERTE <em>${d.alle.length}</em></summary>
+        <input type="text" class="sl-filter" placeholder="Wert suchen, z. B. temp oder wall" autocomplete="off" spellcheck="false">
+        <div class="sl-liste">${d.alle.map((x) => `<div class="sl-zeile"><code>${esc(x.schluessel)}</code><span>${esc(x.wert)}</span></div>`).join("")}</div></details>`;
+}
+
+async function druckDateiAblegen(did, datei) {
+  const id = zustand.gewaehlt;
+  if (!id || !datei) return;
+  if (!/\.(gcode|3mf)$/i.test(datei.name)) return toast("Nur G-Code (.gcode) oder ein Slicer-Projekt (.3mf).");
+  toast(`${datei.name} wird gelesen …`, { dauer: 20000 });
+  try {
+    if (!did) did = (await api("/api/drucke", { method: "POST", body: { modelle: [id], felder: {} } })).id;
+    const r = await fetch(`/api/drucke/${did}/datei?name=${encodeURIComponent(datei.name)}`, { method: "POST", body: datei });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.fehler || d.detail || "Datei nicht gespeichert.");
+    toast(d.werte ? `${d.werte} Einstellungen gelesen${d.gleiche_einstellungen > 1 ? ` — schon ${d.gleiche_einstellungen - 1}× so gedruckt` : ""}.`
+      : "Datei gespeichert; Einstellungen fand partAtlas darin keine.");
+  } catch (err) { toast(err.message); }
+  if (zustand.gewaehlt === id) { zustand.angezeigt = null; waehle(id); }
+}
+let druckDateiZiel = null;
+$("#druck-datei-wahl").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (f) druckDateiAblegen(druckDateiZiel, f);
+});
+
+async function druckVergleichen(did) {
+  const m = await api(`/api/modelle/${zustand.gewaehlt}`);
+  const andere = m.drucke.filter((x) => x.id !== did && x.datei?.profil);
+  const name = (x) => `${datumDe(x.datum)} · ${(ERGEBNIS[x.ergebnis] || ERGEBNIS.gut)[0]}${x.referenz ? " · Referenz" : ""}`;
+  let b = andere[0]?.id;
+  if (andere.length > 1) {
+    const r = await rueckfrage(`<h2>Vergleichen mit …</h2>
+      ${andere.map((x, i) => `<label><input type="radio" name="vg" value="${esc(x.id)}" ${i ? "" : "checked"}> ${esc(name(x))}</label>`).join("")}
+      <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Vergleichen</button></div>`);
+    if (r.a !== "ja") return;
+    b = r.vg;
+  }
+  if (!b) return;
+  const a = m.drucke.find((x) => x.id === did), bb = m.drucke.find((x) => x.id === b);
+  let v;
+  try { v = await api(`/api/drucke/vergleich?a=${encodeURIComponent(did)}&b=${encodeURIComponent(b)}`); } catch (err) { return toast(err.message); }
+  await rueckfrage(`<h2>Was sich unterscheidet</h2>
+    ${v.gleich ? `<p>Die Einstellungen sind gleich — der Unterschied lag nicht am Slicer (Filament, Bett, Raum?).</p>`
+      : `<table class="vg-tabelle"><thead><tr><th>Einstellung</th><th>${esc(name(a))}</th><th>${esc(name(bb))}</th></tr></thead><tbody>
+        ${v.unterschiede.map((x) => `<tr><td title="${esc(x.schluessel)}">${esc(x.name || x.schluessel)}</td><td>${esc(x.a || "–")}</td><td>${esc(x.b || "–")}</td></tr>`).join("")}</tbody></table>`}
+    <div class="knoepfe"><button class="knopf akzent" value="ok">Schliessen</button></div>`);
 }
 
 // Ein Formular für „neu“ und „bearbeiten“. Gibt die Felder zurück oder null.
@@ -1566,14 +1640,7 @@ async function slicerTafelLaden() {
   try { d = await api(`/api/modelle/${mid}/slicer`); } catch (e) { tafel.innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
   if (!tafel.isConnected) return;
   if (d.leer) { tafel.innerHTML = `<p class="dim v-leer">${esc(d.grund)}</p>`; return; }
-  const zeile = (a, b, titel) => `<div class="zeile" ${titel ? `title="${esc(titel)}"` : ""}><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
-  tafel.innerHTML = `<p class="dim sl-quelle">${esc(d.slicer)} · aus der Datei gelesen</p>`
-    + d.wichtig.map((g) => `<div class="i-titel">${esc(g.gruppe.toUpperCase())}</div><div class="i-karte">${g.zeilen.map((z) => zeile(z.name, z.wert, z.schluessel)).join("")}</div>`).join("")
-    + (d.objekte.length ? `<div class="i-titel">ABWEICHEND JE OBJEKT</div><div class="i-karte">${d.objekte.map((o) =>
-        zeile(o.name, Object.entries(o.werte).map(([k, v]) => `${k} = ${v}`).join(", "))).join("")}</div>` : "")
-    + `<details class="sl-alle"><summary class="i-titel">ALLE WERTE <em>${d.alle.length}</em></summary>
-        <input type="text" class="sl-filter" placeholder="Wert suchen, z. B. temp oder wall" autocomplete="off" spellcheck="false">
-        <div class="sl-liste">${d.alle.map((x) => `<div class="sl-zeile"><code>${esc(x.schluessel)}</code><span>${esc(x.wert)}</span></div>`).join("")}</div></details>`;
+  tafel.innerHTML = `<p class="dim sl-quelle">${esc(d.slicer)} · aus der Datei gelesen</p>` + einstellungenHtml(d);
 }
 document.addEventListener("input", (e) => {
   if (!e.target.matches?.(".sl-filter")) return;
@@ -1625,6 +1692,29 @@ document.addEventListener("click", async (e) => {
   }
   const foto = t.closest("[data-druck-foto]");
   if (foto) { druckFotoZiel = foto.dataset.druckFoto; return $("#druck-bild-wahl").click(); }
+  const ddatei = t.closest("[data-druck-datei]");
+  if (ddatei) { druckDateiZiel = ddatei.dataset.druckDatei; return $("#druck-datei-wahl").click(); }
+  const deinst = t.closest("[data-druck-einst]");
+  if (deinst) {
+    let d;
+    try { d = await api(`/api/drucke/${deinst.dataset.druckEinst}/einstellungen`); } catch (err) { return toast(err.message); }
+    return rueckfrage(`<h2>Einstellungen dieses Drucks</h2><p class="dim">${esc(d.datei)} · ${esc(d.slicer || "")}</p>
+      <div class="einst-druck">${einstellungenHtml(d)}</div><div class="knoepfe"><button class="knopf akzent" value="ok">Schliessen</button></div>`);
+  }
+  const dvg = t.closest("[data-druck-vergleich]");
+  if (dvg) return druckVergleichen(dvg.dataset.druckVergleich);
+  const dsl = t.closest("[data-druck-slicer]");
+  if (dsl) {
+    try { const r = await api(`/api/drucke/${dsl.dataset.druckSlicer}/oeffnen`, { method: "POST" }); toast(`${r.programm} wird geöffnet …`); }
+    catch (err) { toast(err.message); }
+    return;
+  }
+  const dweg = t.closest("[data-druck-datei-weg]");
+  if (dweg) {
+    try { await api(`/api/drucke/${dweg.dataset.druckDateiWeg}/datei`, { method: "DELETE" }); } catch (err) { toast(err.message); }
+    zustand.angezeigt = null;
+    return waehle(id);
+  }
   const fw = t.closest("[data-druck-bild-weg]");
   if (fw) {
     const [did, k] = fw.dataset.druckBildWeg.split("|");
@@ -2968,7 +3058,12 @@ window.addEventListener("drop", (e) => {
   const dz = druckZiel(e);
   abwurfAufraeumen();
   if (aufGalerie(e)) return bilderHochladen(e.dataTransfer.files);
-  if (dz) return druckBilderAblegen(dz.closest(".druck")?.dataset.druck || null, e.dataTransfer.files);
+  if (dz) {
+    const did = dz.closest(".druck")?.dataset.druck || null;
+    const datei = [...e.dataTransfer.files].find((f) => /\.(gcode|3mf)$/i.test(f.name));
+    if (datei) return druckDateiAblegen(did, datei);
+    return druckBilderAblegen(did, e.dataTransfer.files);
+  }
 });
 document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
 kachelKnopfZeigen();

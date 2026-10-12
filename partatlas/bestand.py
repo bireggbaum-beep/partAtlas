@@ -34,6 +34,11 @@ DRUCK = "PRINT_JOB"
 GEDRUCKT_IN = "PRINTED_IN"       # Modell ─→ Druck; ein Druck an einem oder mehreren Modellen (KONZEPT §4.6)
 REFERENZ = "REFERENCE"           # Modell ─→ Druck: „so war es gut“, höchstens einer je Modell
 VARIANTE = "SAME_PART"           # Modell ─ Modell, ungerichtet: von Hand verknüpfte Varianten desselben Teils (Katalog.varianten)
+GCODE = "GCODE_ARTIFACT"         # G-Code oder Slicer-Projekt eines Drucks, im Vault (Kennung: SHA-256), KONZEPT §4.6 Stufe b
+PROFIL = "PRINT_PROFILE"         # die Einstellungen dazu, Kennung = Hash der normalisierten Werte (slicer.profil_hash)
+AUSGEFUEHRT = "EXECUTED_GCODE"   # Druck ─→ G-Code
+BASIERT_AUF = "BASED_ON_PROFILE" # G-Code ─→ Profil
+GESLICED_AUS = "SLICED_FROM"     # G-Code ─→ Datei (PART_GEOMETRY), deren Kopie im Vault liegt
 SAMMLUNG = "COLLECTION"
 IN_SAMMLUNG = "IN_COLLECTION"
 # Texte ab so vielen Zeichen liegen als Datei in vault_text/ und werden erst
