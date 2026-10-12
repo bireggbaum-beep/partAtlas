@@ -421,9 +421,10 @@ eine Liste. Eine Baugruppe ist eine **Stückliste**:
   Feldern (Druckteile, Kaufteile, Filament, Druckzeit, „steckt in“), darunter Reiter **Stückliste · Notizen ·
   Anhänge**. Die Stückliste ist eine nummerierte Tabelle in der Reihenfolge des PDFs; die Zähler „gedruckt / beschafft“
   und der Fortschrittsbalken sind entfallen — was gedruckt wurde, steht an den Drucken des Modells (§4.6). Jedes Druckteil
-  lässt sich beim Überfahren im Slicer oder CAD öffnen. **Notizen** (Markdown) und **Anhänge** (Montageanleitung,
-  Konstruktionszeichnungen aus CorelDRAW & Co., Datenblätter; Dateien bleiben unverändert im Bestand) sind in der
-  Aufteilung vorgesehen, aber noch nicht verdrahtet.
+  lässt sich beim Überfahren im Slicer oder CAD öffnen. **Notizen** (Markdown, Schreiben/Vorschau, gespeichert beim
+  Tippen) und **Anhänge** (Montageanleitung, Konstruktionszeichnungen aus CorelDRAW & Co., Datenblätter) sind seit 0.64 verdrahtet;
+  Anhänge gibt es auch am Modell (Übersicht, mit einer kurzen Notiz). Anhänge sind eine **Kopie im Bestand** (`vault/anhaenge/`,
+  entschieden 12.10.2026), entfernte gehen nach `vault_archive/`; „Öffnen“ startet eine Kopie, der Vault bleibt unverändert.
 - **Mitte Stückliste, rechts Übersicht**: die Mitte zeigt Kopf,
   Aktionen und Stückliste. Die rechte Seitenleiste, sonst die
   Modellvorschau, trägt die Übersicht: Filament je Material mit

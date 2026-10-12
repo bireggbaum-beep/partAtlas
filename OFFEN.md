@@ -85,6 +85,14 @@ Varianten **gleicher Name, gleicher Ordner**; gemerkte Suchen als **intelligente
   Vergleichen, Im Slicer, ⤓, Lösen. test_drucke 39/39 (+11), drei Gegenproben fallen; Wächter in test_schutz um zwei Einträge
   ergänzt (Ablegen im Vault nur, wenn dort noch nichts liegt). **Für das Backup (Iteration 3):** `vault/gcode/` und `vault/quellen/`
   sind Daten des Anwenders → eigene Zeile, Vorgabe an. Nicht mit echten Dateien von Bambu Studio/Anycubic geprüft.
+- **Anhänge und Notizen (0.64.0):** `anhaenge.py` (Liste `anhaenge` am Modell bzw. an der Baugruppe, Datei unverändert in
+  `vault/anhaenge/<Titel>__<Hash>`, derselbe Inhalt nur einmal; entfernen → `vault_archive/`, auch beim endgültigen Entfernen eines
+  Modells; „Öffnen“ = Kopie in `arbeit/geoeffnet/` mit dem Programm des Rechners). Ansehen im Browser nur PDF/Bilder/Text, mit
+  `Content-Security-Policy: sandbox`; SVG/HTML u. a. nur als Download (könnten Skript enthalten). Notiz am Modell (Übersicht, ≤ 20 000
+  Zeichen), Notizen an der Baugruppe (Markdown, Schreiben/Vorschau, ≤ 50 000, lange Texte über `vault_text`); beides gespeichert beim
+  Tippen (1 s) und beim Verlassen; Live-Nachladen zeichnet ein Notizfeld unter den Fingern nicht neu. Suche: Feld `notiz` (Notiz und
+  Namen der Anhänge), `notiz:` als Filter. Neue Suite `test_anhaenge.py` 13/13, drei Gegenproben fallen; Wächter ergänzt.
+  **Für das Backup (Iteration 3):** `vault/anhaenge/` → eigene Zeile, Vorgabe an.
 
 ## Als Nächstes (8.10.2026, Anwender)
 

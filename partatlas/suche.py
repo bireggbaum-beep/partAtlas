@@ -44,6 +44,7 @@ FELDGEWICHT = {
     "designer": 3.0,
     "ordner": 3.0,
     "material": 2.0,
+    "notiz": 1.0,           # die eigene Notiz am Modell und die Namen seiner Anhänge
 }
 # Ganzes Wort wiegt doppelt: „arm“ meint eher „Arm“ als „Armatur“.
 WORTBONUS = 2.0
@@ -51,7 +52,7 @@ WORTBONUS = 2.0
 # feld:wert — deutsch, wie es der Anwender tippt.
 FILTER = {"tag": "tags", "ordner": "ordner", "baugruppe": "baugruppen", "sammlung": "sammlungen",
           "material": "material", "designer": "designer", "name": "name", "titel": "titel",
-          "format": "format", "gedruckt": "gedruckt", "favorit": "favorit"}
+          "format": "format", "gedruckt": "gedruckt", "favorit": "favorit", "notiz": "notiz"}
 # Diese vergleichen genau: „format:st“ soll nicht STL und STEP liefern.
 GENAU = {"format", "gedruckt", "favorit"}
 JA = {"ja": "ja", "j": "ja", "1": "ja", "true": "ja", "nein": "nein", "n": "nein", "0": "nein", "false": "nein"}
@@ -158,6 +159,8 @@ class Suchindex:
             "format": d.get("format") or "",
             "gedruckt": "ja" if m.get("gedruckt") else "nein",
             "favorit": "ja" if m.get("favorit") else "nein",
+            "notiz": norm(" ".join([self.db.get_node_full(ref(MODELL, mid)).get("notiz") or ""]
+                                   + [a.get("name", "") for a in m.get("anhaenge") or []])),
         }
 
     def _eintragen(self, mid):

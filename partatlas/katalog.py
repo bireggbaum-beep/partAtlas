@@ -53,6 +53,8 @@ class Katalog:
         self._vault_nachziehen()
         from .drucke import Drucke
         self.drucke = Drucke(self)
+        from .anhaenge import Anhaenge
+        self.anhaenge = Anhaenge(self)
 
     # ------------------------------------------------------------ Wurzeln
 
@@ -652,6 +654,8 @@ class Katalog:
             "ref_werte": m.get("ref_werte"),
             "drucke": [] if papierkorb else self.drucke.liste(mid),
             "varianten": [] if papierkorb else self.varianten(mid),
+            "notiz": self.db.get_node_full(ref(MODELL, mid)).get("notiz") if not papierkorb else m.get("notiz"),
+            "anhaenge": [] if papierkorb else self.anhaenge.liste("modell", mid),
         }
 
     # ------------------------------------------------------------ Varianten
@@ -724,7 +728,7 @@ class Katalog:
     def modell_aendern(self, mid, werte):
         # entwurf: ein Konstruktionsstand, der nicht gebraucht wird — ausblendbar, nicht in neuen Baugruppen. Kein Versionsbaum,
         # nur ein Etikett, das der Anwender setzt (03.10.2026: Versionsverwaltung war zu viel).
-        erlaubt = {"favorit": bool, "gedruckt": bool, "entwurf": bool, "quelle_url": (str, type(None))}
+        erlaubt = {"favorit": bool, "gedruckt": bool, "entwurf": bool, "quelle_url": (str, type(None)), "notiz": (str, type(None))}
         neu = {}
         for k, v in werte.items():
             if k not in erlaubt or not isinstance(v, erlaubt[k]):
@@ -737,6 +741,9 @@ class Katalog:
             if url and (not re.match(r"https?://[^\s]+$", url, re.I) or len(url) > 2000):
                 raise KatalogFehler("Quelle muss eine http(s)-Adresse sein.")
             neu["quelle_url"] = url or None
+        if "notiz" in neu:
+            from .anhaenge import notiz_pruefen
+            neu["notiz"] = notiz_pruefen(neu["notiz"], 20000).strip() or None
         if "gedruckt" in neu:
             # „Gedruckt“ ist abgeleitet: es gibt es, wenn es einen Druck gibt (KONZEPT §4.6).
             # Der Haken legt einen leeren Druck an; zurücknehmen geht nur, solange
@@ -1750,6 +1757,8 @@ class Katalog:
         self._sichern_vor("endgueltig-entfernen", f"Vor dem endgültigen Entfernen von „{roh.get('name') or mid}“")
         self.db.purge(MODELL, mid)
         for b in roh.get("bilder") or []:
+            self._archivieren(b["datei"])
+        for b in roh.get("anhaenge") or []:            # was der Anwender angehängt hat, verschwindet nie
             self._archivieren(b["datei"])
         for a in d.get("papierkorb") or []:
             if "ablage" in a:

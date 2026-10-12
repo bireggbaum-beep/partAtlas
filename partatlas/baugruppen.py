@@ -131,6 +131,9 @@ class Baugruppen:
             neu["name"] = name[:120]
         if "beschreibung" in werte:
             neu["beschreibung"] = str(werte["beschreibung"] or "")[:4000]
+        if "notizen" in werte:
+            from .anhaenge import notiz_pruefen
+            neu["notizen"] = notiz_pruefen(werte["notizen"])
         if neu:
             self.db.update_node(BAUGRUPPE, bid, neu)
 
@@ -378,7 +381,9 @@ class Baugruppen:
                 eintrag.update(name=u["name"], unter_bedarf=f["bedarf"], unter_erledigt=f["erledigt"],
                                unter_positionen=len(self._positionen(kid)))
             positionen.append(eintrag)
-        return {"id": bid, "name": b["name"], "beschreibung": self.db.get_node_full(ref(BAUGRUPPE, bid)).get("beschreibung", ""), "exemplare": exemplare,
+        voll = self.db.get_node_full(ref(BAUGRUPPE, bid))
+        return {"id": bid, "name": b["name"], "beschreibung": voll.get("beschreibung", ""), "notizen": voll.get("notizen") or "",
+                "anhaenge": self.k.anhaenge.liste("baugruppe", bid), "exemplare": exemplare,
                 "positionen": positionen, "fortschritt": self.fortschritt(bid),
                 "summen": self.summen(bid), "verwendet_in": self.verwendet_in(ref(BAUGRUPPE, bid)),
                 "materialien": self.k.materialien()}

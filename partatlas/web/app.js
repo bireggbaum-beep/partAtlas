@@ -1356,6 +1356,11 @@ async function waehle(id, live = false) {
         <select class="knopf klein" id="sammlung-dazu"><option value="">＋ Sammlung …</option>${zustand.sammlungen
           .filter((x) => !m.sammlungen.some((y) => y.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}
           <option value="__neu">Neue Sammlung …</option></select></div></div>`}
+    ${papierkorb ? "" : `<div class="i-titel">NOTIZ</div>
+      <div class="notiz-feld"><textarea data-notiz="modell:${esc(m.id)}" data-gespeichert="${esc(m.notiz || "")}" rows="2"
+        placeholder="z. B. braucht die 0.6er Düse · Fassung für den Bambu">${esc(m.notiz || "")}</textarea><span class="notiz-stand dim"></span></div>
+      <div class="i-titel">ANHÄNGE</div>
+      ${anhaengeHtml("modell", m.id, m.anhaenge || [], { leerText: "Zeichnungen, Anleitungen, Datenblätter — als Kopie im Bestand." })}`}
     </div>
 
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="verwendet">${verwendetTafel(m)}</div>`}

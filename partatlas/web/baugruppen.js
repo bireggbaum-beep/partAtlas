@@ -91,7 +91,7 @@ async function ladeBaugruppe() {
   if (zustand.baugruppe !== bid) return;
   bgDaten = d;
   // Eine Eingabe an Ort und Stelle (Name, Beschreibung) nicht unter den Fingern wegzeichnen.
-  if (document.activeElement?.classList.contains("inline-edit")) return;
+  if (document.activeElement?.classList.contains("inline-edit") || document.activeElement?.matches?.("[data-notiz]")) return;
   abgleichen($("#bg-ansicht"), zeichneBaugruppe(d));
   // Rechts steht die Übersicht, solange kein einzelnes Teil gewählt ist.
   if (!zustand.gewaehlt) zeigeBgUebersicht();
@@ -182,7 +182,8 @@ function zeichneBaugruppe(d) {
   const titelbild = d.positionen.filter((p) => p.art === "modell").map((p) => bildUrl(p)).find(Boolean);
   const offenDruck = d.fortschritt.druck_bedarf - d.fortschritt.druck_erledigt;
   const leer = !d.positionen.length;
-  const reiter = [["stueckliste", "Stückliste", d.positionen.length || ""], ["notizen", "Notizen", ""], ["anhaenge", "Anhänge", ""]];
+  const reiter = [["stueckliste", "Stückliste", d.positionen.length || ""], ["notizen", "Notizen", d.notizen ? "✓" : ""],
+                  ["anhaenge", "Anhänge", (d.anhaenge || []).length || ""]];
   return `
   <div class="sf">
     <div class="sf-bild">${titelbild ? `<img src="${titelbild}" alt="">` : "🧩"}</div>
@@ -194,8 +195,8 @@ function zeichneBaugruppe(d) {
     ${leer ? "" : schriftfeld(d)}
   </div>
   <div class="bg-reiter" role="tablist">${reiter.map(([k, t, n]) =>
-    `<button role="tab" data-bg-reiter="${k}" class="${k === bgReiter ? "an" : ""}">${t}${n ? ` <span class="d-zahl">${n}</span>` : ""}${k === "stueckliste" ? "" : ' <small class="folgt">folgt</small>'}</button>`).join("")}</div>
-  ${bgReiter === "notizen" ? notizenTafel() : bgReiter === "anhaenge" ? anhaengeTafel() : stuecklisteTafel(d, leer, offenDruck)}`;
+    `<button role="tab" data-bg-reiter="${k}" class="${k === bgReiter ? "an" : ""}">${t}${n ? ` <span class="d-zahl">${n}</span>` : ""}</button>`).join("")}</div>
+  ${bgReiter === "notizen" ? notizenTafel(d) : bgReiter === "anhaenge" ? anhaengeTafel(d) : stuecklisteTafel(d, leer, offenDruck)}`;
 }
 
 function stuecklisteTafel(d, leer, offenDruck) {
@@ -227,22 +228,33 @@ function stuecklisteTafel(d, leer, offenDruck) {
   </div>`;
 }
 
-// Noch nicht verdrahtet: die Aufteilung steht, damit sich die Ansicht nicht mehr umbauen muss, wenn es kommt.
-function notizenTafel() {
+// Konstruktionsnotizen in Markdown: Schreiben und Vorschau, gespeichert beim Tippen (anhaenge.js).
+let bgNotizVorschau = false;
+function notizenTafel(d) {
   return `<div class="bg-tafel">
-    <div class="bg-tafel-kopf"><div class="segment"><button class="an" disabled>Schreiben</button><button disabled>Vorschau</button></div>
-      <span class="dim">Markdown</span></div>
-    <div class="bg-platz"><b>Konstruktionsnotizen</b><span>Maße, Toleranzen, Entwürfe, Montagehinweise — in Markdown geschrieben, an dieser Baugruppe gespeichert.</span></div>
+    <div class="bg-tafel-kopf"><div class="segment"><button type="button" class="${bgNotizVorschau ? "" : "an"}" data-bg-notiz="schreiben">Schreiben</button>
+      <button type="button" class="${bgNotizVorschau ? "an" : ""}" data-bg-notiz="vorschau">Vorschau</button></div>
+      <span class="dim">Markdown — # Überschrift, - Liste, **fett**, \`Code\`</span><span class="notiz-stand dim"></span></div>
+    ${bgNotizVorschau ? `<div class="md-vorschau">${markdownHtml(d.notizen)}</div>`
+      : `<textarea class="bg-notiz" data-notiz="baugruppe:${esc(d.id)}" data-gespeichert="${esc(d.notizen || "")}"
+          placeholder="Maße, Toleranzen, Montagehinweise, offene Punkte …">${esc(d.notizen || "")}</textarea>`}
   </div>`;
 }
 
-function anhaengeTafel() {
+function anhaengeTafel(d) {
   return `<div class="bg-tafel">
-    <div class="bg-tafel-kopf"><button class="knopf" disabled title="Kommt als Nächstes">＋ Datei anhängen</button><span class="dim">z. B. Montageanleitung, Konstruktionszeichnung</span></div>
-    <div class="anh-kopf"><span></span><span>TYP</span><span>NAME</span><span class="re">GRÖSSE</span><span>STAND</span></div>
-    <div class="bg-platz"><b>Dateien zur Baugruppe</b><span>Montageanleitungen, Konstruktionszeichnungen (PDF, CorelDRAW, SVG, DXF …), Datenblätter — hier ablegen. Die Dateien bleiben unverändert im Bestand.</span></div>
+    <p class="dim">Montageanleitungen, Konstruktionszeichnungen (PDF, CorelDRAW, SVG, DXF …), Datenblätter. partAtlas legt eine Kopie in
+      den Bestand: sie gehört zur Baugruppe und kommt ins Backup.</p>
+    ${anhaengeHtml("baugruppe", d.id, d.anhaenge || [])}
   </div>`;
 }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("[data-bg-notiz]");
+  if (!b) return;
+  const feld = document.querySelector(".bg-notiz");
+  if (feld) notizJetztSpeichern(feld).then(() => { bgNotizVorschau = b.dataset.bgNotiz === "vorschau"; ladeBaugruppe(); });
+  else { bgNotizVorschau = b.dataset.bgNotiz === "vorschau"; ladeBaugruppe(); }
+});
 
 function position(p, nr) {
   const r = esc(p.ref);

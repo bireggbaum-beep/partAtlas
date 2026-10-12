@@ -21,6 +21,7 @@ ERLAUBT = {
     ("bestand.py", "Bestand.thumb", "os.replace"): "Thumb im Bestand fertig ablegen",
     ("bestand.py", "Bestand.einstellungen_setzen", "schreibe_atomar"): "einstellungen.json im Bestand",
     ("cad.py", "_stapel", "shutil.rmtree"): "Arbeitsordner eines FreeCAD-Stapels unter arbeit/cad im Bestand",
+    ("anhaenge.py", "Anhaenge.hinzufuegen", "dateien.schreibe_atomar"): "Anhang → vault/anhaenge/<Titel>__<Hash>, nur wenn dort noch keiner liegt",
     ("drucke.py", "Drucke._quelle_sichern", "os.replace"): "Kopie der Modelldatei → vault/quellen/, nur wenn dort noch keine liegt",
     ("drucke.py", "Drucke.datei_anhaengen", "dateien.schreibe_atomar"): "G-Code/Projekt → vault/gcode/<Titel>__<Hash>, nur wenn dort noch keine liegt",
     ("dateien.py", "_kopiere_ohne_ueberschreiben", "os.replace"): "eigene Arbeitsdatei → Ziel, nur wenn das Ziel frei ist",

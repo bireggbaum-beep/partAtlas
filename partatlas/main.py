@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
-from . import aufraeumen, dateidialog, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
+from . import anhaenge, aufraeumen, dateidialog, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -402,6 +402,46 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             return {"leer": True, "grund": "Diese 3MF enthält nur die Geometrie, keine Slicer-Einstellungen."}
         return {"leer": False, "slicer": e["slicer"], "wichtig": slicer.wichtigste(e["werte"]), "alle": slicer.alle(e["werte"]),
                 "objekte": e["objekte"]}
+
+    # ---------------------------------------------------------------- Anhänge (anhaenge.py)
+
+    @app.get("/api/anhaenge/{art}/{kennung}")
+    def anhaenge_liste(art: str, kennung: str):
+        return K().anhaenge.liste(art, kennung)
+
+    @app.post("/api/anhaenge/{art}/{kennung}")
+    def anhang_dazu(art: str, kennung: str, name: str, roh: bytes = Depends(roh_koerper)):
+        return {"k": K().anhaenge.hinzufuegen(art, kennung, name, roh)}
+
+    @app.get("/api/anhaenge/{art}/{kennung}/{k}")
+    def anhang_laden(art: str, kennung: str, k: str, herunterladen: int = 0):
+        pfad, name = K().anhaenge.pfad(art, kennung, k)
+        if not os.path.exists(pfad):
+            raise HTTPException(404)
+        typ = anhaenge.ANZEIGEN.get(os.path.splitext(name)[1].lower())
+        # Ansehen nur für Formate, die der Browser sicher zeigt; und auch dann in einer Sandbox ohne Skript und ohne Zugriff auf partAtlas.
+        return FileResponse(pfad, filename=name, media_type=typ or "application/octet-stream",
+                            content_disposition_type="inline" if typ and not herunterladen else "attachment",
+                            headers={"Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"})
+
+    @app.delete("/api/anhaenge/{art}/{kennung}/{k}")
+    def anhang_weg(art: str, kennung: str, k: str):
+        K().anhaenge.entfernen(art, kennung, k)
+        return {"ok": True}
+
+    @app.patch("/api/anhaenge/{art}/{kennung}/{k}")
+    def anhang_umbenennen(art: str, kennung: str, k: str, d: dict = Depends(json_koerper)):
+        K().anhaenge.umbenennen(art, kennung, k, d.get("name"))
+        return {"ok": True}
+
+    @app.post("/api/anhaenge/{art}/{kennung}/{k}/oeffnen")
+    def anhang_oeffnen(art: str, kennung: str, k: str):
+        kopie = K().anhaenge.kopie_zum_oeffnen(art, kennung, k)
+        try:
+            programme.mit_system(kopie)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Ließ sich nicht öffnen: {e}")
+        return {"ok": True}
 
     @app.post("/api/varianten")
     def varianten_verknuepfen(d: dict = Depends(json_koerper)):
