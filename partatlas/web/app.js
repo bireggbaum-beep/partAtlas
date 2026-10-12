@@ -1150,10 +1150,8 @@ function fehltTeil(m) {
 
 // Einen Ordner zeigen; partAtlas prüft, ob fehlende Dateien darin liegen (gleicher Inhalt), auch die anderer Modelle.
 async function dateiSuchen() {
-  let w;
-  try { w = await api("/api/wurzeln/waehlen", { method: "POST" }); } catch (e) { return toast(e.message); }
-  if (w.abgebrochen) return;
-  const pfad = w.keinDialog ? await ordnerWaehler() : w.pfad;
+  let pfad;
+  try { pfad = await ordnerAuswahl(); } catch (e) { return toast(e.message); }
   if (!pfad) return;
   let r;
   try { r = await api("/api/fehlende/suchen", { method: "POST", body: { pfad } }); } catch (e) { return toast(e.message); }
@@ -2348,11 +2346,8 @@ async function umbenennen(id) {
 
 async function wurzelNeu() {
   $("#import-menu").hidden = true;
-  let w;
-  try { w = await api("/api/wurzeln/waehlen", { method: "POST" }); } catch (e) { return toast(e.message); }
-  if (w.abgebrochen) return;
-  // Ohne Dateidialog auf dem Rechner (kein zenity, kdialog, Tk) bleibt der eigene Ordnerbaum.
-  const pfad = w.keinDialog ? await ordnerWaehler() : w.pfad;
+  let pfad;
+  try { pfad = await ordnerAuswahl(); } catch (e) { return toast(e.message); }
   if (!pfad) return;
   // Erst zeigen, was kommt (wie pDMS), dann einlesen.
   let u;
@@ -2373,6 +2368,25 @@ async function wurzelNeu() {
     ladeSeite();
     einlesenGestartet(r.lauf);
   } catch (e) { toast(e.message); }
+}
+
+// Der Ordnerdialog des Rechners — oder, wenn es keinen gibt oder er sich nicht zeigt, der eigene Ordnerbaum. Unter Windows kann der
+// Dialog hinter dem Browser aufgehen, ohne dass partAtlas das merkt (Anwender, 12.10.2026): dann sieht „+“ tot aus. Darum bietet nach
+// drei Sekunden ein Hinweis den eigenen Ordnerbaum an; der Knopf schliesst den Dialog des Rechners.
+async function ordnerAuswahl() {
+  let imProgramm = false;
+  const h = document.createElement("div");
+  h.className = "toast";
+  h.id = "dialog-hinweis";
+  h.hidden = true;
+  h.innerHTML = `Der Ordnerdialog ist offen — schau in der Taskleiste nach. <button type="button">Stattdessen hier wählen</button>`;
+  document.body.append(h);
+  const zeit = setTimeout(() => { h.hidden = false; }, 3000);
+  h.querySelector("button").onclick = () => { imProgramm = true; h.hidden = true; api("/api/wurzeln/waehlen/abbrechen", { method: "POST" }).catch(() => {}); };
+  let w;
+  try { w = await api("/api/wurzeln/waehlen", { method: "POST" }); } finally { clearTimeout(zeit); h.remove(); }
+  if (imProgramm || w.keinDialog) return ordnerWaehler();
+  return w.abgebrochen ? null : w.pfad;
 }
 
 // Rückfall, wenn der Rechner keinen Ordnerdialog hat: Sprungziele links, Unterordner

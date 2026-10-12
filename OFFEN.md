@@ -30,7 +30,11 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.1 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.2 auf `main` (12.10.2026, für den Tester)
+
+**0.95.2:** Der Ordnerdialog geht unter Windows trotzdem hinter dem Browser auf (`dateidialog.py` ist seit 0.55 unverändert; „nach vorn“ aus 0.95.1
+reichte dort nicht). Darum: nach 3 s ohne Antwort ein Hinweis mit „Stattdessen hier wählen“ — schliesst den Dialog des Rechners und öffnet den
+eigenen Ordnerbaum (`test_dialog_ui`). Auf Linux gemessen; die Windows-Foreground-Sperre selbst ist nicht behoben, nur umgangen.
 
 **0.95.1 (Windows, Protokoll des Anwenders):** „+“ tat nichts, Strg+C kam nicht zum Prompt zurück. Ursache: Der Ordnerdialog (PowerShell) ging
 hinter dem Browser auf; jeder weitere Klick hängte einen weiteren unsichtbaren Dialog an, und Python wartete beim Beenden auf diese Threads.

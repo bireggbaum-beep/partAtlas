@@ -293,6 +293,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         modelle, vollstaendig = durchsuchen.zaehlen(pfad)
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
 
+    @app.post("/api/wurzeln/waehlen/abbrechen")
+    def wurzel_waehlen_abbrechen():
+        """Schliesst den offenen Ordnerdialog des Rechners; die wartende Anfrage endet dann mit „abgebrochen“."""
+        dateidialog.abbrechen()
+        return {"ok": True}
+
     @app.post("/api/wurzeln/uebersicht")
     def wurzel_uebersicht(koerper: dict = Depends(json_koerper)):
         """Was ein Ordner mitbringt, bevor er eingelesen wird: Modelldateien je Format (wie in pDMS vor dem Hinzufügen)."""
