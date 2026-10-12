@@ -99,7 +99,11 @@ Varianten **gleicher Name, gleicher Ordner**; gemerkte Suchen als **intelligente
   Filter (sichtbar und änderbar — kein undurchsichtiger Ordner), Rechtsklick: umbenennen, jetzige Filter übernehmen, löschen (Papierkorb:
   „Gemerkte Suche“). Hineinlegen von Modellen abgewiesen. test_sammlungen 23/23 (+5), zwei Gegenproben fallen.
 
-**Iteration 2 abgeschlossen (0.61–0.65)** — siehe unten die Suiten.
+**Iteration 2 abgeschlossen (12.10.2026, 0.61–0.65):** alle Suiten ausser test_ui grün — anhaenge 13 (neu), api 86, aufraeumen 13,
+baugruppen 48, cad 14, drucke 39, eigene 17, formate 25, papierkorb 11, sammlungen 23, scan 110, schutz 28, slicer 13 (neu), suche 28,
+tags 15, varianten 5 (neu), verwalten 76, vorschau 8, zuordnen 12. test_ui gezielt (Inspektor und Drucke, 9/9; Werkzeug
+`ui_gezielt.py` im Scratchpad nimmt jetzt mehrere Abschnitte). Neue Prüfungen in test_ui für Varianten, Slicer, Anhänge, gemerkte Suchen:
+keine — ihr Verhalten prüfen die Server-Suiten; die Oberfläche nur im Bild angesehen.
 
 ## Als Nächstes (8.10.2026, Anwender)
 
