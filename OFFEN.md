@@ -71,6 +71,14 @@ Varianten **gleicher Name, gleicher Ordner**; gemerkte Suchen als **intelligente
   `SAME_PART`, ungerichtet, höchstens 12). × löst (auch automatische: `varianten_ab` an beiden Modellen). Klick wechselt zum anderen Format.
   Nebenbei: der Reiter „Verwendet“ war nie als gewählt markiert (Regel im CSS fehlte); Reiterleiste mit Abstand statt gleich breiter Felder.
   Neue Suite `test_varianten.py` 5/5, drei Gegenproben fallen.
+- **Reiter „Slicer“ (0.62.0, Capacities „Mehr Daten aus den 3MF-Files“):** bei 3MF-Dateien ein Reiter mit den Einstellungen des Projekts:
+  Slicer und Fassung, das Wichtigste gruppiert in Worten mit Einheit (Drucker, Düse, Bett, Profil, Filament; Schichthöhe, Wände, oben/unten;
+  Füllung; Stützen, Brim; Temperaturen — Bett zur gewählten Platte; Geschwindigkeit, Lüfter), abweichende Einstellungen je Objekt, darunter
+  „Alle Werte“ zum Durchsuchen. Neues Modul `slicer.py`: Bambu/Orca/Anycubic (`Metadata/project_settings.config`, JSON) und PrusaSlicer
+  (`Slic3r_PE.config`); G-Code (CONFIG_BLOCK bzw. prusaslicer_config, Kopf mit Gewicht und Zeit; nur Anfang und Ende gelesen),
+  `profil_hash` ohne Namen/Herkunft/Fassung (Liste geschätzt), `unterschiede` — beides für Drucke Stufe b. **Gelesen erst beim Öffnen des
+  Reiters**, nicht beim Einlesen: einige hundert Werte je Datei gehören nicht in den Graphen. Neue Suite `test_slicer.py` 13/13 (nachgebaute
+  Dateien, keine echten von Bambu/Anycubic — mit einer echten Datei des Anwenders prüfen), drei Gegenproben fallen.
 
 ## Als Nächstes (8.10.2026, Anwender)
 

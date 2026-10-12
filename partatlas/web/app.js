@@ -1300,12 +1300,13 @@ async function waehle(id, live = false) {
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
-  const reiter = papierkorb ? "datei" : ["uebersicht", "verwendet", "drucke", "varianten", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
+  const reiter = papierkorb ? "datei" : ["uebersicht", "verwendet", "drucke", "varianten", "slicer", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
   const reiterKopf = papierkorb ? "" : `<div class="i-reiter" role="tablist">
       <button role="tab" data-reiter="uebersicht">Übersicht</button>
       <button role="tab" data-reiter="verwendet">Verwendet${(m.baugruppen || []).length + m.sammlungen.length ? ` <span class="d-zahl">${(m.baugruppen || []).length + m.sammlungen.length}</span>` : ""}</button>
       <button role="tab" data-reiter="drucke">Drucke${m.drucke_n ? ` <span class="d-zahl">${m.drucke_n}</span>` : ""}</button>
       <button role="tab" data-reiter="varianten" title="Dasselbe Teil in anderen Formaten">Varianten${m.varianten?.length ? ` <span class="d-zahl">${m.varianten.length}</span>` : ""}</button>
+      ${m.format === "3mf" ? `<button role="tab" data-reiter="slicer" title="Einstellungen des Slicers, aus dem 3MF-Projekt gelesen">Slicer</button>` : ""}
       <button role="tab" data-reiter="datei">Datei</button></div>`;
   $("#inspektor").innerHTML = `
     <div class="i-fix">
@@ -1360,6 +1361,7 @@ async function waehle(id, live = false) {
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="verwendet">${verwendetTafel(m)}</div>`}
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="drucke">${druckeTafel(m)}</div>`}
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="varianten">${variantenTafel(m)}</div>`}
+    ${papierkorb || m.format !== "3mf" ? "" : `<div class="i-tafel" data-reiter="slicer" data-slicer-fuer="${esc(m.id)}"><p class="dim">…</p></div>`}
 
     <div class="i-tafel" data-reiter="datei">
       <div class="i-titel">MODELLDATEN</div>
@@ -1368,9 +1370,11 @@ async function waehle(id, live = false) {
       <div class="i-label">${papierkorb ? "Lag zuletzt in" : "Ort" + (m.orte.length > 1 ? `e (${m.orte.length})` : "")}</div>
       ${orte}
     </div>`;
-  $("#inspektor").dataset.reiter = reiter;
+  // „Slicer“ gibt es nur bei 3MF: bei einem anderen Format die Übersicht, gemerkt bleibt „Slicer“ für das nächste 3MF.
+  $("#inspektor").dataset.reiter = reiter === "slicer" && m.format !== "3mf" ? "uebersicht" : reiter;
   $("#inspektor").classList.toggle("mit-reitern", !papierkorb);
   $("#inspektor").dataset.id = id;
+  if ($("#inspektor").dataset.reiter === "slicer") slicerTafelLaden();
   if (menuOffen) $("#mehr-menu").hidden = false;
   if (alteGalerie) { $("#i-galerie").replaceWith(alteGalerie); return; }
   zustand.angezeigt = id;
@@ -1548,7 +1552,34 @@ function springeZu(art, id) {
 function reiterWaehlen(r) {
   localStorageSchreiben("reiter", r);
   $("#inspektor").dataset.reiter = r;
+  if (r === "slicer") slicerTafelLaden();
 }
+
+// Reiter „Slicer“ (Capacities „Mehr Daten aus den 3MF-Files“): erst beim Öffnen aus der Datei gelesen — einige hundert Werte je Datei
+// gehören nicht in den Graphen (slicer.py). Das Wichtigste gruppiert, darunter alle Werte zum Durchsuchen.
+async function slicerTafelLaden() {
+  const tafel = document.querySelector("#inspektor .i-tafel[data-reiter=slicer]");
+  if (!tafel || tafel.dataset.geladen === tafel.dataset.slicerFuer) return;
+  const mid = tafel.dataset.slicerFuer;
+  tafel.dataset.geladen = mid;
+  let d;
+  try { d = await api(`/api/modelle/${mid}/slicer`); } catch (e) { tafel.innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
+  if (!tafel.isConnected) return;
+  if (d.leer) { tafel.innerHTML = `<p class="dim v-leer">${esc(d.grund)}</p>`; return; }
+  const zeile = (a, b, titel) => `<div class="zeile" ${titel ? `title="${esc(titel)}"` : ""}><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
+  tafel.innerHTML = `<p class="dim sl-quelle">${esc(d.slicer)} · aus der Datei gelesen</p>`
+    + d.wichtig.map((g) => `<div class="i-titel">${esc(g.gruppe.toUpperCase())}</div><div class="i-karte">${g.zeilen.map((z) => zeile(z.name, z.wert, z.schluessel)).join("")}</div>`).join("")
+    + (d.objekte.length ? `<div class="i-titel">ABWEICHEND JE OBJEKT</div><div class="i-karte">${d.objekte.map((o) =>
+        zeile(o.name, Object.entries(o.werte).map(([k, v]) => `${k} = ${v}`).join(", "))).join("")}</div>` : "")
+    + `<details class="sl-alle"><summary class="i-titel">ALLE WERTE <em>${d.alle.length}</em></summary>
+        <input type="text" class="sl-filter" placeholder="Wert suchen, z. B. temp oder wall" autocomplete="off" spellcheck="false">
+        <div class="sl-liste">${d.alle.map((x) => `<div class="sl-zeile"><code>${esc(x.schluessel)}</code><span>${esc(x.wert)}</span></div>`).join("")}</div></details>`;
+}
+document.addEventListener("input", (e) => {
+  if (!e.target.matches?.(".sl-filter")) return;
+  const q = e.target.value.trim().toLowerCase();
+  e.target.closest(".sl-alle").querySelectorAll(".sl-zeile").forEach((z) => { z.hidden = !!q && !z.textContent.toLowerCase().includes(q); });
+});
 
 let druckFotoZiel = null;
 document.addEventListener("click", async (e) => {

@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
-from . import aufraeumen, dateidialog, papierkorb, durchsuchen, formate, programme, sicherung, zuordnen
+from . import aufraeumen, dateidialog, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -386,6 +386,22 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         daten = k.modell(mid)
         daten["baugruppen"] = B().verwendet_in(f"MODEL_ASSET/{mid}")
         return daten
+
+    @app.get("/api/modelle/{mid}/slicer")
+    def modell_slicer(mid: str):
+        """Die Slicer-Einstellungen eines 3MF-Projekts, aus der Datei gelesen (slicer.py: nicht im Graphen)."""
+        m = K().modell(mid)
+        datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
+        if not datei or m["format"] != "3mf":
+            return {"leer": True, "grund": "Die Datei ist nicht da." if not datei else "Nur 3MF-Projekte tragen Slicer-Einstellungen."}
+        try:
+            e = slicer.aus_3mf(datei)
+        except slicer.SlicerFehler as f:
+            raise KatalogFehler(str(f))
+        if not e:
+            return {"leer": True, "grund": "Diese 3MF enthält nur die Geometrie, keine Slicer-Einstellungen."}
+        return {"leer": False, "slicer": e["slicer"], "wichtig": slicer.wichtigste(e["werte"]), "alle": slicer.alle(e["werte"]),
+                "objekte": e["objekte"]}
 
     @app.post("/api/varianten")
     def varianten_verknuepfen(d: dict = Depends(json_koerper)):

@@ -2,6 +2,7 @@
 was drinsteht und was die Prüfung erwarten darf."""
 import faulthandler
 import io
+import json
 import os
 import time
 import struct
@@ -87,7 +88,16 @@ PNG_1PX = bytes.fromhex(
     "1f15c4890000000d49444154789c6360f8cf00000301010018dd8db40000000049454e44ae426082")
 
 
-def dreimf(pfad, vorschau=True, slice_info=True, vorschau_als_platte=False):
+BAMBU_EINSTELLUNGEN = {
+    "layer_height": "0.2", "initial_layer_print_height": "0.24", "wall_loops": "3", "top_shell_layers": "5",
+    "bottom_shell_layers": "4", "sparse_infill_density": "15%", "sparse_infill_pattern": "gyroid", "enable_support": "0",
+    "nozzle_temperature": ["240"], "curr_bed_type": "Textured PEI Plate", "textured_plate_temp": ["70"], "hot_plate_temp": ["80"],
+    "nozzle_diameter": ["0.4"], "printer_settings_id": "Bambu Lab P1S 0.4 nozzle", "print_settings_id": "0.20mm Standard @BBL X1C",
+    "filament_settings_id": ["Bambu PETG Basic @BBL X1C"], "version": "01.09.00.70", "outer_wall_speed": "200",
+}
+
+
+def dreimf(pfad, vorschau=True, slice_info=True, vorschau_als_platte=False, einstellungen=None, objekt_einstellungen=None):
     """Bambu/Orca-Aufbau: Hauptmodell verweist per p:path auf ein Objekt in
     3D/Objects, mit Verschiebung im Build — zwei Teile, eins versetzt."""
     v, f = quader(10, 10, 10)
@@ -99,6 +109,7 @@ def dreimf(pfad, vorschau=True, slice_info=True, vorschau_als_platte=False):
     objekt = f'<model {ns}><resources><object id="1" type="model">{mesh}</object></resources><build/></model>'
     haupt = (f'<model unit="millimeter" {ns}>'
              '<metadata name="Title">Quader-Paar</metadata><metadata name="Designer">Tester</metadata>'
+             '<metadata name="Application">BambuStudio-01.09.00.70</metadata>'
              '<resources>'
              '<object id="2" type="model"><components><component p:path="/3D/Objects/object_1.model" objectid="1"/></components></object>'
              '<object id="3" type="model"><components><component p:path="/3D/Objects/object_1.model" objectid="1" '
@@ -128,6 +139,11 @@ def dreimf(pfad, vorschau=True, slice_info=True, vorschau_als_platte=False):
             z.writestr(ziel_bild, PNG_1PX)
         if slice_info:
             z.writestr("Metadata/slice_info.config", si)
+        if einstellungen is not None:
+            z.writestr("Metadata/project_settings.config", json.dumps(einstellungen))
+        if objekt_einstellungen:
+            z.writestr("Metadata/model_settings.config", '<?xml version="1.0"?><config><object id="2">'
+                       + "".join(f'<metadata key="{k}" value="{v}"/>' for k, v in objekt_einstellungen.items()) + '</object></config>')
 
 
 def step(pfad):

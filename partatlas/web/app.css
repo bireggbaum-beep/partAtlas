@@ -541,11 +541,13 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 #inspektor[data-reiter="verwendet"] .i-tafel[data-reiter="verwendet"],
 #inspektor[data-reiter="drucke"] .i-tafel[data-reiter="drucke"],
 #inspektor[data-reiter="varianten"] .i-tafel[data-reiter="varianten"],
+#inspektor[data-reiter="slicer"] .i-tafel[data-reiter="slicer"],
 #inspektor[data-reiter="datei"] .i-tafel[data-reiter="datei"] { display: block; }
 #inspektor[data-reiter="uebersicht"] .i-reiter [data-reiter="uebersicht"],
 #inspektor[data-reiter="verwendet"] .i-reiter [data-reiter="verwendet"],
 #inspektor[data-reiter="drucke"] .i-reiter [data-reiter="drucke"],
 #inspektor[data-reiter="varianten"] .i-reiter [data-reiter="varianten"],
+#inspektor[data-reiter="slicer"] .i-reiter [data-reiter="slicer"],
 #inspektor[data-reiter="datei"] .i-reiter [data-reiter="datei"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .i-tafel > .i-schalter { margin-top: 12px; }
 
@@ -736,8 +738,9 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .i-haupt .knopf, .i-haupt select.knopf { height: var(--s6); padding: 0 var(--s4); font-size: 13px; }
 .i-haupt select.knopf.schmal { width: var(--s6); padding: 0; }
 .i-haupt .mehr .schalter { width: var(--s6); height: var(--s6); padding: 0; border-radius: var(--radius); }
-.i-reiter { gap: var(--s3); margin: var(--s4) 0 0; justify-content: space-between; }
-.i-reiter button { flex: 0 1 auto; height: var(--s6); padding: 0 var(--s1); margin-bottom: -1px; white-space: nowrap; }
+.i-reiter { gap: var(--s2); margin: var(--s4) 0 0; justify-content: space-between; }
+.i-reiter button { font-size: 13px; }
+.i-reiter button { flex: 0 1 auto; height: var(--s6); padding: 0 1px; margin-bottom: -1px; white-space: nowrap; }
 .i-tafel { padding-top: var(--s4); }
 .i-tafel > .i-schalter { margin-top: 0; }
 .i-schalter { gap: var(--s2); margin-top: 0; }
@@ -1110,3 +1113,22 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 .var-weg { width: 26px; height: 26px; border: 0; background: none; color: var(--ink-3); cursor: pointer; opacity: 0; border-radius: var(--radius); }
 .var-zeile:hover .var-weg { opacity: 1; }
 .var-weg:hover { color: var(--crit); background: var(--panel); }
+
+/* Inspektor › Slicer */
+.sl-quelle { margin: 0 0 var(--s3); }
+.sl-alle summary { cursor: pointer; list-style: none; }
+.sl-alle summary::-webkit-details-marker { display: none; }
+.sl-alle summary::before { content: "▸ "; }
+.sl-alle[open] summary::before { content: "▾ "; }
+.sl-alle summary em { font-style: normal; color: var(--ink-3); }
+.sl-filter { width: 100%; margin: var(--s2) 0 var(--s3); padding: 5px 8px; background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+             border-radius: var(--radius); }
+.sl-liste { max-height: 377px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.sl-zeile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s3); padding: var(--s1) var(--s3);
+            border-bottom: 1px solid var(--line); font-size: var(--fs-meta); }
+.sl-zeile:last-child { border-bottom: 0; }
+.sl-zeile code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.sl-zeile span { word-break: break-word; }
+.sl-zeile[hidden] { display: none; }
+.i-reiter { overflow-x: auto; scrollbar-width: none; }
+.i-reiter::-webkit-scrollbar { display: none; }
