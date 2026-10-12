@@ -1293,6 +1293,10 @@ function zeichneHinweisLeiste() {
       zeilen.push(`<div class="pk-zeile"><span>📁 Entfernter Ordner <b>${esc(w.name || "")}</b> <code>${esc(w.pfad || "")}</code>${w.modelle ? ` · ${w.modelle.toLocaleString("de-DE")} Modelle` : ""}${w.vorhanden ? "" : " · liegt dort nicht mehr"}</span>
         ${w.vorhanden ? `<button class="knopf klein" data-wurzel-zurueck="${esc(w.id)}">Wieder hinzufügen</button>` : ""}</div>`);
     }
+  } else if (zustand.ansicht === "fehlt" && zustand.modelle.length) {
+    zeilen.push(`<div class="pk-zeile"><span>⚠ ${anzahl(zustand.modelle.length)} ${zustand.modelle.length === 1 ? "Modell, dessen Datei" : "Modelle, deren Datei"} nicht mehr
+      gefunden wird. Entscheide je Modell oder für alle: ins Archiv, behalten oder löschen.</span>
+      <button class="knopf klein akzent" data-fehlende-entscheiden>Entscheiden …</button></div>`);
   } else if (zustand.hatWurzeln === false && zustand.katalogLeer === false) {
     zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben im Katalog, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du unter Bereinigen › Papierkorb zurück." : ""}</span>
       <button class="knopf klein" id="wurzel-neu-4">Ordner hinzufügen …</button></div>`);
@@ -2896,12 +2900,14 @@ function einlesenMelden(m) {
   if (m.zurueckgeholt) teile.push(`${anzahl(m.zurueckgeholt)} aus dem Papierkorb zurück`);
   if (m.aufgeraeumt) teile.push(`${anzahl(m.aufgeraeumt)} ${m.aufgeraeumt === 1 ? "Entwurf" : "Entwürfe"} aufgeräumt (Datei gelöscht)`);
   const weg = (m.entfernt || 0) - (m.aufgeraeumt || 0);
-  if (weg > 0) { teile.push(`${anzahl(weg)} nicht mehr da`); ziele.push(["Datei fehlt", "fehlt"]); }
+  if (weg > 0) { teile.push(`${anzahl(weg)} nicht mehr da`); if (!m.fehlt_neu) ziele.push(["Datei fehlt", "fehlt"]); }
   if (m.unlesbar) { teile.push(`${anzahl(m.unlesbar)} unlesbar`); ziele.push(["Unlesbar", "unlesbar"]); }
   if (m.kopien) { teile.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Kopie" : "Kopien"} mit gleichem Inhalt`); ziele.push(["Duplikate", "duplikate"]); }
   if (m.nicht_erreichbar?.length) teile.push(`nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)`);
   toast(teile.join(" · "), { dauer: teile.length > 1 || ziele.length > 1 ? 9000 : 4500,
                 aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });
+  // Ganz am Ende, nur wenn bei diesem Lauf etwas verschwunden ist: entscheiden, was mit den Einträgen geschieht (fehlende.js).
+  if (m.fehlt_neu) fehlendeFenster({ neu: true });
 }
 
 // Klein beim Zahnrad: ein Balken, darüber in Worten, was gerade passiert. Keine Schritte (Einlesen und Hintergrund zählten getrennt:

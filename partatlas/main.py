@@ -444,6 +444,18 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             raise KatalogFehler(f"Ließ sich nicht öffnen: {e}")
         return {"ok": True}
 
+    @app.get("/api/fehlende")
+    @am_stueck
+    def fehlende(neu: int = 0):
+        aus = K().fehlende(nur=set(zustand["scanner"].fehlt_neu) if neu else None)
+        for x in aus:
+            x["haengt"]["baugruppen"] = len(B().verwendet_in(f"MODEL_ASSET/{x['id']}"))
+        return aus
+
+    @app.post("/api/fehlende/entscheiden")
+    def fehlende_entscheiden(d: dict = Depends(json_koerper)):
+        return K().fehlende_entscheiden(list(d.get("archiv") or []), list(d.get("behalten") or []), list(d.get("loeschen") or []))
+
     @app.post("/api/varianten")
     def varianten_verknuepfen(d: dict = Depends(json_koerper)):
         K().varianten_verknuepfen(list(d.get("modelle") or []))

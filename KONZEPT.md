@@ -340,7 +340,8 @@ Meldung „3 neue Modelle“ mit „Zeigen“ (Ansicht Neu) bzw. „Nichts Neues
 es das gibt. Das Ergebnis bleibt neben „Bibliothek“ stehen („gerade eben · 3 neu“). Vorschauen und FreeCAD zeigt die Anzeige beim Zahnrad.
 Den Fortschritt — auch beim ersten Einlesen eines grossen Ordners — zeigt nur die kleine Anzeige unten links (entschieden 7.10.2026; ein
 grösseres, nicht blockierendes Feld ist verworfen, vorerst). Fenster bleiben nur für Fragen, die auf den Anwender warten: die Übersicht vor
-dem Hinzufügen eines Ordners und die Zusage für FCStd über FreeCAD.
+dem Hinzufügen eines Ordners und die Zusage für FCStd über FreeCAD, und (seit 0.67) am Ende eines Einlesens, bei dem Dateien verschwunden sind:
+eine Liste der Modelle mit dem, was daran hängt, je Zeile, je Ordner oder für alle Archiv (Vorgabe) / Behalten / Löschen.
 
 **Abnahmefall:** in FreeCAD speichern, ⟳ drücken, die Kachel steht nach wenigen Sekunden da, die Oberfläche bleibt bedienbar — auch beim
 zweiten Speichern derselben Datei, beim Drücken während FreeCAD noch schreibt, mehrfach schnell hintereinander, während der Worker rechnet,

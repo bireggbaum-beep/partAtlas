@@ -17,6 +17,15 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Mehrfachauswahl (vorher Sicherung), im Inspektor bei „Datei fehlt“ als erster Weg (Archiv · Behalten · Suchen · Löschen). Zurück:
   Band im Inspektor, Rechtsklick, Leiste. Grund „fehlt“: taucht die Datei wieder auf (auch an anderem Ort), kehrt das Modell von selbst
   zurück (`_orte_setzen`). Neue Suite `test_archiv.py` 8/8, drei Gegenproben fallen.
+- **Paket 2 Fenster am Ende des Einlesens (0.67.0):** der Scanner merkt sich genau die Modelle, deren Datei bei diesem Lauf ihren letzten
+  Ort verlor (`Scanner.fehlt_neu`, Zahl im Status; nicht über die Zeit — zwei Läufe in derselben Sekunde —, nicht alle fehlenden).
+  Am Ende meldet die Oberfläche wie bisher und öffnet dann EIN Fenster (`web/fehlende.js`): „51 Dateien fehlen“, nach Ordner gruppiert,
+  je Modell was daran hängt (Drucke, Baugruppen, Sammlungen, Anhänge, eigene Bilder, Tags), Wahl je Zeile / je Ordner / für alle:
+  Archiv (Vorgabe) · Behalten · Löschen; Fusszeile zählt die Wahl; „Später entscheiden“ ändert nichts. Dasselbe Fenster für alle offenen
+  über Bereinigen › Datei fehlt › „Entscheiden …“. Server: `Katalog.fehlende(nur)`, `fehlende_entscheiden` (Sicherung vorher, prüft,
+  dass jedes Modell wirklich fehlt), `/api/fehlende[?neu=1]`, `/api/fehlende/entscheiden`. Entwürfe gehen weiter still in den Papierkorb.
+  Im Browser durchgespielt (Ordner „Drohne“, 51 Dateien, weggenommen → Fenster → alle ins Archiv; Ordner zurück → alle 51 von selbst
+  zurück im Katalog). Neue Suite `test_fehlende.py` 9/9, drei Gegenproben fallen.
 
 ## Katalog fertig — drei Iterationen (Auftrag 12.10.2026, Branch `claude/partatlas-katalog-fertig-amxqfg`)
 

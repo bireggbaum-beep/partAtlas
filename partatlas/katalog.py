@@ -218,8 +218,11 @@ class Katalog:
         werte = {"orte": orte}
         if not orte and d.get("orte"):
             werte["zuletzt_ort"] = d["orte"][0]
+            werte["fehlt_seit"] = jetzt()
         if orte and d.get("ohne_datei"):
             werte["ohne_datei"] = None
+        if orte and d.get("fehlt_seit"):
+            werte["fehlt_seit"] = None
         zurueck = orte and not d.get("orte")
         self.db.update_node(DATEI, h, werte)
         if zurueck:
@@ -1837,6 +1840,46 @@ class Katalog:
             return None
         w = self.db.get_node_raw(ref(WURZEL, ort["wurzel"])) or {}
         return os.path.join(w["pfad"], *ort["pfad"].split("/")) if w.get("pfad") else ort["pfad"]
+
+    def fehlende(self, nur=None):
+        """Modelle, deren Datei fehlt und über die noch nicht entschieden ist (nicht „behalten“, nicht im Archiv), mit dem, was daran
+        hängt — damit man weiss, was man gleich tut. `nur`: diese Modelle (was beim letzten Einlesen verschwunden ist, Scanner)."""
+        wurzeln = {wid: w for wid, w in self.db.list_nodes(WURZEL, include_deleted=True, readonly=True).items()}
+        aus = []
+        for k in self._kurz_alle().values():
+            if not k["fehlt"] or k["ohne_datei"] or k.get("archiv") or k.get("entwurf"):
+                continue
+            d = (self.db.get_node(ref(DATEI, k["hash"]), readonly=True) or {}) if k["hash"] else {}
+            if nur is not None and k["id"] not in nur:
+                continue
+            m = self.db.get_node(ref(MODELL, k["id"]), readonly=True) or {}
+            z = d.get("zuletzt_ort") or {}
+            ordner = z.get("pfad", "").rpartition("/")[0]
+            aus.append({"id": k["id"], "name": k["name"], "format": k["format"], "fehlt_seit": d.get("fehlt_seit"),
+                        "ordner": "/".join(x for x in ((wurzeln.get(z.get("wurzel")) or {}).get("name"), ordner) if x),
+                        "zuletzt": self._zuletzt_absolut(z) if z else None,
+                        "haengt": {"drucke": k.get("drucke_n") or 0, "tags": len(k.get("tags") or []),
+                                   "anhaenge": len(m.get("anhaenge") or []), "bilder": len(m.get("bilder") or []),
+                                   "sammlungen": len(self.db.get_connected(ref(MODELL, k["id"]), rel_type=IN_SAMMLUNG))}})
+        return sorted(aus, key=lambda x: (x["ordner"].lower(), (x["name"] or "").lower()))
+
+    def fehlende_entscheiden(self, archiv=(), behalten=(), loeschen=()):
+        """Die Wahl aus dem Fenster am Ende des Einlesens, für viele auf einmal: ins Archiv (Vorgabe), ohne Datei behalten, löschen
+        (Papierkorb). Vorher eine Sicherung, wenn es mehr als eins ist. Nur für Modelle, deren Datei wirklich fehlt."""
+        alle = list(archiv) + list(behalten) + list(loeschen)
+        fehlend = {x["id"] for x in self.fehlende()}
+        falsch = [m for m in alle if m not in fehlend]
+        if falsch:
+            raise KatalogFehler(f"{len(falsch)} der gewählten Modelle fehlen nicht (mehr) — bitte das Fenster neu öffnen.")
+        if len(alle) > 1:
+            self._sichern_vor("fehlende", f"Vor dem Entscheiden über {len(alle)} fehlende Dateien")
+        with self.db.transaction():
+            for mid in archiv:
+                self.modell_aendern(mid, {"archiv": True})
+            for mid in behalten:
+                self.ohne_datei(mid)
+        fehler = self._gruppenweise(list(loeschen), self.loeschen) if loeschen else []
+        return {"archiv": len(archiv), "behalten": len(behalten), "geloescht": len(loeschen) - len(fehler), "fehler": fehler}
 
     def ohne_datei(self, mid, an=True):
         """„Ohne Datei behalten“: das Modell bleibt mit allem im Katalog und zählt nicht mehr als Problem. Nur für ein Modell, dessen Datei

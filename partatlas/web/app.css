@@ -1184,3 +1184,32 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 #filterzeile #suche-merken { color: var(--accent); }
 .archiv-band { display: flex; gap: var(--s4); align-items: center; justify-content: space-between; margin: 0 0 var(--s4); padding: var(--s3) var(--s4);
                border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); font-size: 13.5px; }
+
+/* Fenster „Dateien fehlen“ (fehlende.js) */
+#fehlt-fenster { width: min(700px, 94vw); max-width: none; max-height: 88vh; padding: 0; }
+#fehlt-fenster[open] { display: flex; }
+.fw { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: var(--s5); gap: var(--s4); }
+.fw-kopf h2 { margin: 0 0 var(--s2); }
+.fw-kopf p { margin: 0; }
+.fw-alle { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s3) var(--s4);
+           background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); font-weight: 600; }
+.fw-liste { flex: 1; min-height: 89px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.fw-gruppe { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s2) var(--s4);
+             background: var(--bg); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 1; min-height: 34px; }
+.fw-ordner { font: var(--fs-meta) var(--mono); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-ordner em { font-style: normal; color: var(--ink-3); margin-left: var(--s2); }
+.fw-zeile { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s2) var(--s4) var(--s2) var(--s5);
+            border-bottom: 1px solid var(--line); min-height: 44px; }
+.fw-zeile:last-child { border-bottom: 0; }
+.fw-name { display: flex; flex-direction: column; min-width: 0; }
+.fw-name b { font-weight: 600; }
+.fw-name > span, .fw-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-seg { display: inline-flex; flex: none; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.fw-seg button { background: none; border: 0; border-right: 1px solid var(--line); padding: 3px 10px; font: inherit; font-size: 12.5px;
+                 color: var(--ink-2); cursor: pointer; }
+.fw-seg button:last-child { border-right: 0; }
+.fw-seg button:hover { background: var(--panel-2); color: var(--ink); }
+.fw-seg button.an { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.fw-seg button.gefahr.an { background: color-mix(in oklch, var(--crit) 14%, transparent); color: var(--crit); }
+.fw-fuss { display: flex; align-items: center; gap: var(--s3); }
+.fw-fuss > span { flex: 1; font-size: 13px; }

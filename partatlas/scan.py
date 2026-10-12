@@ -683,6 +683,8 @@ class Scanner(_Bahn):
                 return
         self.worker.lauf()
 
+    fehlt_neu = frozenset()     # Modelle, deren Datei beim letzten Einlesen verschwand (für das Fenster am Ende, `/api/fehlende?neu=1`)
+
     def einlesen(self):
         t0 = time.monotonic()
         self._stopp.clear()
@@ -694,7 +696,7 @@ class Scanner(_Bahn):
                     geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0, cad_gesamt=0, zu_pruefen=0, zu_analysieren=0,
                     analysiert=0, kopien=0, aufgeraeumt=0, nicht_erreichbar=[], gefunden=0, neu=0, geaendert=0, verschoben=0, entfernt=0,
                     bearbeitet=0, unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False,
-                    abgebrochen=False, beginn=time.strftime("%H:%M:%S"))
+                    abgebrochen=False, beginn=time.strftime("%H:%M:%S"), fehlt_neu=0)
         index = self.k.ort_index()
         ignoriert = self.k.ignorierte_orte()
         wurzeln = self.k.wurzeln()
@@ -822,6 +824,16 @@ class Scanner(_Bahn):
                 self.k.loeschen(mid)
             if aufgeraeumt:
                 self._setze(aufgeraeumt=len(aufgeraeumt))
+            # Was bei diesem Lauf verschwunden ist und eine Entscheidung braucht: die Oberfläche fragt am Ende danach (ein Fenster).
+            # Genau die Modelle, deren Datei bei diesem Lauf ihren letzten Ort verlor — nicht über die Zeit (zwei Läufe in derselben
+            # Sekunde) und nicht alle fehlenden (über frühere hat der Anwender vielleicht bewusst „später“ gesagt).
+            verloren = set()
+            for h, _ in weg:
+                d = self.b.db.get_node(f"{DATEI}/{h}", readonly=True)
+                if d is not None and not d.get("orte") and (mid := self.k.modell_von(h)):
+                    verloren.add(mid)
+            self.fehlt_neu = {x["id"] for x in self.k.fehlende(nur=verloren)} if verloren else set()
+            self._setze(fehlt_neu=len(self.fehlt_neu))
             # Das Einlesen ist fertig. `fcstd_frage`: die Oberfläche fragt jetzt, bevor der Worker FreeCAD startet — wer gleich antwortet,
             # bekommt die FCStd in derselben Hintergrundrunde. „Zuletzt eingelesen“ gilt ab jetzt, nicht erst nach FreeCAD (bei einer grossen
             # Bibliothek Stunden später). Fehlt der Platz zum Schreiben, ist das kein Grund, das Einlesen scheitern zu lassen.
