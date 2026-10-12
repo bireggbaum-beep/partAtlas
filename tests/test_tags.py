@@ -77,6 +77,6 @@ if __name__ == "__main__":
         check("Automatische entfernt, eigene bleiben — auch ein automatischer, den man von Hand bestätigt hat", r["kanten"] == n["kanten"]
               and rest == {"copter", "arm", "gross", "kabel-führung", "halter"})
         check("… und künftig keine Tags aus Dateinamen", c.get("/api/einstellungen").json()["auto_tags"] is False)
-        check("Vorher eine Sicherung", any(s["grund"] == "vor-auto-tags-entfernen" for s in c.get("/api/sicherungen").json()))
+        check("Vorher eine Sicherung", any(s["grund"] == "vor-auto-tags-entfernen" for s in c.get("/api/sicherungen").json()["liste"]))
 
     muster.ende()

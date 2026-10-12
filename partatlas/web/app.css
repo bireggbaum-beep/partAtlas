@@ -1081,3 +1081,15 @@ dialog.tv-frage label input[type=text] { flex: 1; }
                   background: color-mix(in oklch, var(--accent) 12%, transparent); border-radius: 2px; }
 .bild-knopf.zweiter { right: 42px; display: grid; place-items: center; }
 .bild-knopf svg { pointer-events: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Einstellungen › Backup & Wiederherstellung: ruhige Tabelle, Knöpfe rechts (KONZEPT §3.3a) */
+.sich-liste { margin: var(--s3) 0; max-height: 233px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.sich-liste > p { margin: var(--s4); }
+.sich-tabelle { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.sich-tabelle td { padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); vertical-align: middle; }
+.sich-tabelle tr:last-child td { border-bottom: 0; }
+.sich-tabelle td:first-child { white-space: nowrap; font-size: var(--fs-meta); }
+.sich-tabelle td:nth-child(3) { text-align: right; white-space: nowrap; font-size: var(--fs-meta); }
+.sich-tabelle td:last-child { text-align: right; width: 1%; white-space: nowrap; }
+.sich-behalten { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+.sich-behalten input { width: 55px; }

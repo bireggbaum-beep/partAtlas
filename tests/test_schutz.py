@@ -45,9 +45,9 @@ ERLAUBT = {
     ("scan.py", "_analyse", "dateien.schreibe_atomar"): "Vorschau aus der Datei in vault/vorschau",
     ("scan.py", "_rendern", "dateien.schreibe_atomar"): "berechnete Vorschau in vault/vorschau",
     ("scan.py", "_cad_bild", "dateien.schreibe_atomar"): "berechnete Vorschau in vault/vorschau",
-    ("sicherung.py", "_aufraeumen", "shutil.rmtree"): "alte Sicherung unter sicherungen/ (die neuesten 20 und je Tag eine bleiben)",
+    ("sicherung.py", "_aufraeumen", "shutil.rmtree"): "alte Sicherung unter sicherungen/ (die neuesten 5 und je Tag die neueste der letzten 30 bleiben)",
     ("sicherung.py", "sichern", "os.replace"): "fertige Sicherung an ihren Namen",
-    ("sicherung.py", "zurueckholen", "os.replace"): "jetzige Datenbank beiseite nach arbeit/, nicht gelöscht",
+    ("sicherung.py", "tauschen", "os.replace"): "jetzige Datenbank beiseite nach arbeit/, nicht gelöscht (Zurückholen über Kommandozeile und Oberfläche)",
 }
 
 if __name__ == "__main__":
@@ -134,11 +134,23 @@ if __name__ == "__main__":
     check("Zurückgeholt: der gesicherte Stand ist wieder da", sorted(m["name"] for m in k.modelle()) == modelle_vorher)
     check("Auch das Zurückholen ist umkehrbar: der vorige Stand liegt beiseite und als Sicherung",
           os.path.isdir(beiseite) and any(x["grund"] == "vor-zurueckholen" for x in sicherung.liste(b.wurzel)))
-    for _ in range(25):
+    # Ältere Tage von Hand: je zwei Sicherungen vor 3 und vor 40 Tagen (Namen wie sichern() sie bildet).
+    def alt(tage, uhr):
+        name = time.strftime("%Y-%m-%d", time.localtime(time.time() - tage * 86400)) + f"_{uhr}-01__alt"
+        shutil.copytree(os.path.join(b.wurzel, "sicherungen", sicherung.liste(b.wurzel)[0]["name"]), os.path.join(b.wurzel, "sicherungen", name))
+        return name
+    vor3_frueh, vor3_spaet, vor40 = alt(3, "080000"), alt(3, "200000"), alt(40, "120000")
+    for _ in range(8):
         sicherung.sichern(b, "viele", immer=True)
-    alle = sicherung.liste(b.wurzel)
-    check("Aufräumen: die neuesten 20 bleiben, dazu die erste des Tages, nichts ausserhalb von sicherungen/",
-          len(alle) == 21 and alle[-1]["name"] == erste and os.path.isdir(os.path.join(b.wurzel, "datenbank")))
+    namen = [x["name"] for x in sicherung.liste(b.wurzel)]
+    check("Aufräumen: die neuesten 5 bleiben, dazu je Tag die neueste der letzten 30 Tage; nichts ausserhalb von sicherungen/",
+          len([n for n in namen if n.endswith("__viele")]) == 5 and vor3_spaet in namen and vor3_frueh not in namen
+          and vor40 not in namen and os.path.isdir(os.path.join(b.wurzel, "datenbank")))
+    b.einstellungen_setzen(sicherung_neueste=2)
+    sicherung.sichern(b, "viele", immer=True)
+    check("Wie viele bleiben, steht in den Einstellungen", len([x for x in sicherung.liste(b.wurzel) if x["grund"] == "viele"]) == 2)
+    check("Die Liste nennt Anlass in Worten und Grösse (beim Anlegen gemerkt)",
+          sicherung.liste(b.wurzel)[0]["anlass"] == "Viele" and sicherung.liste(b.wurzel)[0]["bytes"] > 0)
 
     # -- Ein nicht erreichbarer Ordner ist nicht leer
     s = Scanner(b, k, prozesse=2)
@@ -201,4 +213,25 @@ if __name__ == "__main__":
     check("Beim nächsten Einlesen kommt die Datei als neues Modell wieder (wie der Dialog sagt)",
           "A" in {m["name"] for m in k.modelle()} and ids["A"] not in {m["id"] for m in k.modelle()})
     b.schliessen()
+
+    # -- Zurückholen im laufenden Betrieb, aus der Oberfläche (KONZEPT §3.3a)
+    from fastapi.testclient import TestClient
+    from partatlas.main import erstelle_app
+    with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=2)) as c:
+        z = c.app.state.zustand
+        z["scanner"].warten(60)
+        vorher = sorted(m["name"] for m in c.get("/api/modelle").json())
+        name = c.post("/api/sicherungen").json()["name"]
+        c.post("/api/stapel", json={"aktion": "loeschen", "modelle": [m["id"] for m in c.get("/api/modelle").json()]})
+        z["scanner"].warten(60)
+        leer = c.get("/api/modelle").json() == []
+        r = c.post(f"/api/sicherungen/{name}/zurueckholen")
+        check("Zurückholen in der Oberfläche: der Katalog ist wieder der gesicherte, ohne Neustart",
+              leer and r.status_code == 200 and sorted(m["name"] for m in c.get("/api/modelle").json()) == vorher)
+        liste = c.get("/api/sicherungen").json()["liste"]
+        check("… und umkehrbar: der Stand davor ist als Sicherung da", liste[0]["grund"] == "vor-zurueckholen"
+              or any(x["grund"] == "vor-zurueckholen" for x in liste[:2]))
+        check("Unbekannter Name wird abgewiesen, ohne etwas anzufassen",
+              c.post("/api/sicherungen/../datenbank/zurueckholen").status_code in (400, 404)
+              and c.post("/api/sicherungen/gibtsnicht/zurueckholen").status_code == 400 and c.get("/api/modelle").status_code == 200)
     muster.ende()

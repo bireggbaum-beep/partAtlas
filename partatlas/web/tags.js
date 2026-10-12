@@ -80,7 +80,7 @@ function tvZeichnen() {
 }
 
 // Rückfrage über dem Fenster: ein zweites, kleines <dialog> — #dialog würde den Inhalt des Einstellungsdialogs o. ä. ersetzen.
-function tvFrage(html) {
+function rueckfrage(html) {
   const d = document.createElement("dialog");
   d.className = "tv-frage";
   d.innerHTML = `<form method="dialog">${html}</form>`;
@@ -104,7 +104,7 @@ async function tvAktion(was) {
     if (was === "umbenennen" || was === "zusammen") {
       // Vorschlag als Ziel: der meistgenutzte der gewählten — er bleibt, die anderen gehen in ihm auf.
       const vorschlag = [...namen].sort((a, b) => anzahl(b) - anzahl(a))[0];
-      const r = await tvFrage(was === "umbenennen"
+      const r = await rueckfrage(was === "umbenennen"
         ? `<h2>Tag umbenennen</h2><p class="dim">#${esc(namen[0])} an ${anzahl(namen[0])} ${anzahl(namen[0]) === 1 ? "Modell" : "Modellen"}. Gibt es den neuen Namen schon, werden beide zusammengeführt.</p>
            <input type="text" name="ziel" value="${esc(namen[0])}" aria-label="Neuer Name">
            <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Umbenennen</button></div>`
@@ -117,7 +117,7 @@ async function tvAktion(was) {
       toast(was === "umbenennen" ? `Umbenannt in #${erg.ziel}.` : `Zusammengeführt zu #${erg.ziel} (${erg.modelle} Zuordnungen).`);
     } else if (was === "loeschen") {
       const modelle = namen.reduce((s, n) => s + anzahl(n), 0);
-      const r = await tvFrage(`<h2>${namen.length === 1 ? `Tag #${esc(namen[0])}` : `${namen.length} Tags`} löschen?</h2>
+      const r = await rueckfrage(`<h2>${namen.length === 1 ? `Tag #${esc(namen[0])}` : `${namen.length} Tags`} löschen?</h2>
         <p>${modelle ? `Wird von ${zahl(modelle, 0)} ${modelle === 1 ? "Zuordnung" : "Zuordnungen"} an Modellen entfernt. ` : ""}Die Modelle selbst bleiben.
           ${namen.length === 1 ? "Der Tag liegt danach" : "Die Tags liegen danach"} im Papierkorb und lassen sich mit allen Zuordnungen zurückholen.</p>
         <label><input type="checkbox" name="sperren" checked> Nicht mehr automatisch aus Dateinamen vorschlagen</label>
@@ -129,7 +129,7 @@ async function tvAktion(was) {
       toast(namen.length === 1 ? `#${namen[0]} gelöscht.` : `${namen.length} Tags gelöscht.`);
     } else if (was === "auto") {
       const n = await api("/api/tags/auto_entfernen", { method: "POST", body: { nur_zaehlen: true } });
-      const r = await tvFrage(`<h2>Alle automatischen Tags entfernen?</h2>
+      const r = await rueckfrage(`<h2>Alle automatischen Tags entfernen?</h2>
         <p>${zahl(n.kanten, 0)} automatisch angehängte ${n.kanten === 1 ? "Zuordnung" : "Zuordnungen"} (${zahl(n.tags, 0)} Tags) werden von den Modellen gelöst.
           Tags, die du selbst gesetzt hast, bleiben. Was danach an keinem Modell mehr hängt, geht in den Papierkorb.</p>
         <p class="dim">Vorher sichert partAtlas die Datenbank; zurückholen über Einstellungen › Sicherungen.</p>

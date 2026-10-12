@@ -49,6 +49,16 @@ gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operation
   GPU). Dabei gefunden: `get_node(readonly=True)` ist der lebende Knoten — nach `update_node` war der Wunsch schon gelöscht.
   Neue Suite `test_vorschau.py` 8/8, vier Gegenproben fallen; test_scan: eine Prüfung beschrieb das alte Verhalten (berechnet vor
   Thumbnail), auf das neue umgestellt. Der Kamera-Knopf nur im Browser geprüft (WebGL über SwiftShader), kein test_ui.
+- **Backup & Wiederherstellung, Teil „Automatische Sicherung“ (0.60.0, KONZEPT §3.3a Paket 1):** eigener Reiter in den Einstellungen
+  (ersetzt den Absatz unter Einlesen samt Kommandozeilen-Hinweis): Erklärsatz, Tabelle Zeit · Anlass in Worten · Grösse · „Zurückholen …“,
+  „Behalten: die letzten 5 und je Tag die neueste für 30 Tage“ (einstellbar, `sicherung_neueste`/`sicherung_tage`; vorher 20 und je Tag
+  die erste für 60), „Jetzt sichern“, „Ordner zeigen“. Zurückholen im laufenden Betrieb (`POST /api/sicherungen/{name}/zurueckholen`):
+  Einlesen anhalten, jetzigen Stand sichern, Datenbank schliessen, tauschen (`sicherung.tauschen`, auch von der Kommandozeile), neu
+  öffnen; währenddessen 503 wie beim Start; die Seite lädt danach neu. Gemessen hier: 0,14 s bei 300 Modellen. Anlass in Worten
+  (`info.json` je Sicherung, mit Grösse — die Liste zählt keine Dateien mehr: das war der Punkt „Sicherungen öffnet in 5–7 s“ der
+  Performance-Liste). Dabei gefunden: mit kleiner Aufbewahrung räumte die Sicherung „vor dem Zurückholen“ genau die zurückzuholende weg —
+  jetzt räumt sie erst danach auf. test_schutz 28/28 (+4; Aufbewahrung je Tag, Einstellung, Anlass, Zurückholen in der Oberfläche),
+  drei Gegenproben fallen. Nicht gebaut: harte Verweise statt Kopien (§3.3a, Vorschlag, vorher prüfen).
 
 ## Als Nächstes (8.10.2026, Anwender)
 
@@ -150,8 +160,7 @@ falsch zeichnen), eine Prüfung mit Chromium ohne WebGL.
 
 ## Später: Performance-Feinschliff (Anwender, 8.10.2026: „irgendwann“, nicht jetzt)
 
-- **Einstellungen › Sicherungen öffnet in 5–7 s** (Windows, 8 600 Modelle): `sicherung.liste(mit_groesse=True)` zählt jede Datei jeder
-  Sicherung. Abhilfe: Grösse beim Anlegen einmal merken (Datei neben `stand`). Aufwand 1.
+- ~~Einstellungen › Sicherungen öffnet in 5–7 s~~ — erledigt in 0.60 (Grösse in `info.json` beim Anlegen).
 - **Kalter Start unter Windows** (einmal 47 s Datenbank lesen, danach 2–3,5 s bei 2 265 Dateien): nur angehen, wenn es wiederkommt;
   dann in flatgraph weniger, grössere Dateien (Umzug der Speicherform).
 - **flatgraph: Fachgrösse** (`FACH_GROESSE = 25`, Repo flatgraphdb): unter Linux gemessenes Optimum (25 je Fach; 400 je Fach öffnet

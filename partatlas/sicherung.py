@@ -9,14 +9,17 @@ entfernen, mehrere Modelle entfernen). Kopiert wird unter der Sperre von flatgra
 Thread schreibt währenddessen, die Kopie ist ein Stand und keine Mischung. Fertig ist eine Sicherung erst nach `os.replace` des
 Arbeitsordners — eine abgebrochene liegt als `.…arbeit` da und zählt nicht.
 
-Behalten: die neuesten 20 und dazu die erste jedes Tages für 60 Tage. Zurückholen nur bei beendetem partAtlas:
+Behalten: die neuesten 5 und dazu die neueste jedes Tages für 30 Tage (KONZEPT §3.3a, wie pDMS; Einstellungen › Backup &
+Wiederherstellung). Zurückholen in der Oberfläche (main.py tauscht die Datenbank im laufenden Betrieb, `tauschen`) oder bei beendetem
+partAtlas:
     python -m partatlas.sicherung                 Sicherungen auflisten
     python -m partatlas.sicherung --jetzt         eine anlegen
     python -m partatlas.sicherung --zurueck NAME  diesen Stand zurückholen (der jetzige wird vorher selbst gesichert)
 """
+import hashlib
+import json
 import logging
 import os
-import hashlib
 import re
 import shutil
 import sys
@@ -25,8 +28,15 @@ import time
 ORDNER = "sicherungen"
 TEILE = ("datenbank", "vault_text", "einstellungen.json")
 STAND = "stand"         # Fingerabdruck des gesicherten Stands, neben den TEILEN; das Zurückholen kopiert ihn nicht mit
-NEUESTE = 20
-TAGE = 60
+INFO = "info.json"      # Anlass in Worten und Grösse, beim Anlegen geschrieben: die Liste muss dafür nicht jede Datei anfassen
+NEUESTE = 5
+TAGE = 30
+# Der Anlass in Worten, für die Liste in den Einstellungen; ein mitgegebener Text (`anlass`) geht vor.
+ANLASS = {"start": "Beim Start", "von-hand": "Von Hand", "vor-zurueckholen": "Vor dem Zurückholen einer Sicherung",
+          "vor-entfernen": "Vor dem Entfernen von Modellen", "vor-ordner-entfernen": "Vor dem Entfernen eines Ordners",
+          "vor-ordner-aus-katalog": "Vor dem Entfernen eines Ordners aus dem Katalog", "vor-endgueltig-entfernen": "Vor dem endgültigen Entfernen",
+          "vor-tags-loeschen": "Vor dem Löschen von Tags", "vor-tags-zusammenfuehren": "Vor dem Zusammenführen von Tags",
+          "vor-auto-tags-entfernen": "Vor dem Entfernen der automatischen Tags"}
 # Zeit, dann ein immer zweistelliger Zähler: so ist die Reihenfolge der Namen die der Entstehung, auch in derselben Sekunde.
 log = logging.getLogger("partatlas")
 _NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{6})-(\d{2})__([\w-]+)$")
@@ -47,11 +57,21 @@ def liste(wurzel, mit_groesse=True):
         m = _NAME.match(n)
         if not m or not os.path.isdir(os.path.join(basis, n)):
             continue
-        groesse = (sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(os.path.join(basis, n)) for f in fs)
-                   if mit_groesse else None)
+        info = {}
+        if mit_groesse:
+            try:
+                with open(os.path.join(basis, n, INFO), encoding="utf-8") as f:
+                    info = json.load(f)
+            except (OSError, ValueError):
+                info = {"bytes": _groesse(os.path.join(basis, n))}       # von vor 0.60: einmal zählen
         aus.append({"name": n, "zeit": f"{m.group(1)} {m.group(2)[:2]}:{m.group(2)[2:4]}:{m.group(2)[4:]}", "grund": m.group(4),
-                    "bytes": groesse})
+                    "anlass": info.get("anlass") or ANLASS.get(m.group(4)) or m.group(4).replace("-", " ").capitalize(),
+                    "bytes": info.get("bytes")})
     return sorted(aus, key=lambda x: x["name"], reverse=True)
+
+
+def _groesse(pfad):
+    return sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(pfad) for f in fs)
 
 
 def _kopieren(wurzel, ziel):
@@ -89,7 +109,7 @@ def _letzter_stand(basis, vorhanden):
         return None             # keine Sicherung oder eine von vor dem Abgleich: dann wird gesichert
 
 
-def sichern(bestand, grund, immer=False):
+def sichern(bestand, grund, immer=False, anlass=None, aufraeumen=True):
     """Legt eine Sicherung an und gibt ihren Namen zurück. Ohne `immer` nur, wenn sich seit der letzten etwas geändert hat, sonst None:
     vorher kopierte jeder Start die ganze Datenbank (unter Windows 6 s bei 8 600 Modellen, Protokoll des Anwenders, 8.10.2026), auch
     wenn seit der letzten Sicherung nichts geschehen war."""
@@ -114,22 +134,31 @@ def sichern(bestand, grund, immer=False):
         with open(os.path.join(arbeit, STAND), "w", encoding="utf-8") as f:
             f.write(stand)
     kopiert = time.monotonic() - t0
+    with open(os.path.join(arbeit, INFO), "w", encoding="utf-8") as f:
+        json.dump({"anlass": anlass, "bytes": _groesse(arbeit)}, f, ensure_ascii=False)
     os.replace(arbeit, os.path.join(basis, name))
-    _aufraeumen(bestand.wurzel)
+    if aufraeumen:            # nicht vor dem Zurückholen: es könnte genau die Sicherung wegräumen, die zurückkommen soll
+        aufraeumen_nach(bestand)
     # Unter Windows (Virenscanner prüft jede neue Datei) nie gemessen; so steht es beim nächsten Mal im Protokoll.
     log.info("Sicherung %s: kopiert in %.2f s (unter der Sperre), gesamt %.2f s", name, kopiert, time.monotonic() - t0)
     return name
 
 
-def _aufraeumen(wurzel):
-    """Alte Sicherungen gehen, aber nie die neuesten 20 und nie die erste eines Tages der letzten 60 Tage."""
+def aufraeumen_nach(bestand):
+    e = bestand.einstellungen()
+    _aufraeumen(bestand.wurzel, e.get("sicherung_neueste", NEUESTE), e.get("sicherung_tage", TAGE))
+
+
+def _aufraeumen(wurzel, neueste=NEUESTE, tage=TAGE):
+    """Alte Sicherungen gehen, aber nie die `neueste` letzten und nie die neueste eines Tages der letzten `tage` Tage — der Stand am
+    Ende eines Tages ist der, zu dem man zurückwill. Nie weniger als eine."""
     alle = liste(wurzel, mit_groesse=False)
-    behalten = {s["name"] for s in alle[:NEUESTE]}
-    grenze = time.strftime("%Y-%m-%d", time.localtime(time.time() - TAGE * 86400))
-    erste_des_tages = {}
-    for s in reversed(alle):                 # älteste zuerst: die erste je Tag gewinnt
-        erste_des_tages.setdefault(s["zeit"][:10], s["name"])
-    behalten |= {n for tag, n in erste_des_tages.items() if tag >= grenze}
+    behalten = {s["name"] for s in alle[:max(1, neueste)]}
+    grenze = time.strftime("%Y-%m-%d", time.localtime(time.time() - tage * 86400))
+    neueste_des_tages = {}
+    for s in alle:                            # neueste zuerst: die neueste je Tag gewinnt
+        neueste_des_tages.setdefault(s["zeit"][:10], s["name"])
+    behalten |= {n for tag, n in neueste_des_tages.items() if tag >= grenze}
     basis = os.path.realpath(_ordner(wurzel))
     for s in alle:
         if s["name"] not in behalten:
@@ -143,14 +172,26 @@ def zurueckholen(wurzel, name):
     das Öffnen hier beweist, dass keiner da ist. Der jetzige Stand wird vorher gesichert und bleibt zusätzlich in `arbeit/` liegen:
     auch das Zurückholen ist umkehrbar."""
     from .bestand import Bestand
-    quelle = os.path.join(_ordner(wurzel), name)
-    if not _NAME.match(name) or not os.path.isdir(quelle):
-        raise ValueError(f"Keine Sicherung: {name}")
+    pruefen(wurzel, name)
     b = Bestand(wurzel)                       # wirft BestandBelegt, solange partAtlas läuft
     try:
-        sichern(b, "vor-zurueckholen", immer=True)
+        sichern(b, "vor-zurueckholen", immer=True, aufraeumen=False)
     finally:
         b.schliessen()
+    return tauschen(wurzel, name)
+
+
+def pruefen(wurzel, name):
+    quelle = os.path.join(_ordner(wurzel), name)
+    if not _NAME.match(name or "") or not os.path.isdir(quelle):
+        raise ValueError(f"Keine Sicherung: {name}")
+    return quelle
+
+
+def tauschen(wurzel, name):
+    """Die Datenbank gegen die der Sicherung tauschen. Der Aufrufer hat gesichert und hält die Datenbank geschlossen (CLI: beendetes
+    partAtlas; main.py: im Betrieb, nach dem Schliessen des Bestands)."""
+    quelle = pruefen(wurzel, name)
     beiseite = os.path.join(wurzel, "arbeit", f"datenbank_ersetzt_{time.strftime('%Y-%m-%d_%H%M%S')}")
     os.makedirs(os.path.dirname(beiseite), exist_ok=True)
     os.replace(os.path.join(wurzel, "datenbank"), beiseite)

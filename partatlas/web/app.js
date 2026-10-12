@@ -3065,7 +3065,7 @@ document.addEventListener("click", async (e) => {
     catch (err) { toast(err.message); }
   }
   if (e.target.closest("#ein-sichern")) {
-    try { const r = await api("/api/sicherungen", { method: "POST" }); toast(`Gesichert: ${r.name}`); sicherungenZeigen(); } catch (err) { toast(err.message); }
+    try { await api("/api/sicherungen", { method: "POST" }); toast("Gesichert."); sicherungenZeigen(); } catch (err) { toast(err.message); }
   }
   if (e.target.closest("#ein-sicherungen-zeigen")) {
     try { await api("/api/sicherungen/zeigen", { method: "POST" }); } catch (err) { toast(err.message); }
@@ -3075,16 +3075,42 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// Die letzten Sicherungen in den Einstellungen: sehen, dass es sie gibt, ist schon die halbe Beruhigung.
+// Die Sicherungen in den Einstellungen (KONZEPT §3.3a): eine ruhige Tabelle Zeit · Anlass · Grösse · Zurückholen. Sehen, dass es sie
+// gibt, ist schon die halbe Beruhigung; zurückholen geht im laufenden Betrieb.
+const SICH_ZEIT = (z) => new Date(z.replace(" ", "T")).toLocaleString("de-DE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const SICH_MB = (b) => b == null ? "" : b >= 1048576 ? `${zahl(b / 1048576, 1)} MB` : `${zahl(b / 1024, 0)} kB`;
 async function sicherungenZeigen() {
   const el = document.getElementById("ein-sicherungen");
   if (!el) return;
   try {
-    const l = await api("/api/sicherungen");
-    el.innerHTML = l.length ? `${l.length} Sicherungen, neueste: ${l.slice(0, 3).map((s) => `${esc(s.zeit)} (${esc(s.grund)})`).join(" · ")}` : "Noch keine Sicherung.";
-  } catch { el.textContent = "Sicherungen nicht lesbar."; }
+    const { liste } = await api("/api/sicherungen");
+    sicherungenZeigen.liste = liste;
+    el.innerHTML = liste.length ? `<table class="sich-tabelle"><tbody>${liste.map((x) => `<tr>
+        <td class="mono">${esc(SICH_ZEIT(x.zeit))}</td><td>${esc(x.anlass)}</td><td class="mono dim">${SICH_MB(x.bytes)}</td>
+        <td><button type="button" class="knopf klein" data-sich-zurueck="${esc(x.name)}">Zurückholen …</button></td></tr>`).join("")}</tbody></table>`
+      : `<p class="dim">Noch keine Sicherung.</p>`;
+  } catch { el.innerHTML = `<p class="dim">Sicherungen nicht lesbar.</p>`; }
 }
-new MutationObserver(() => { if (document.getElementById("ein-sicherungen")?.textContent === "…") sicherungenZeigen(); })
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest?.("[data-sich-zurueck]");
+  if (!b) return;
+  const x = (sicherungenZeigen.liste || []).find((s) => s.name === b.dataset.sichZurueck);
+  if (!x) return;
+  const r = await rueckfrage(`<h2>Stand vom ${esc(SICH_ZEIT(x.zeit))} zurückholen?</h2>
+    <p><b>${esc(x.anlass)}.</b> Der Katalog wird durch diesen Stand ersetzt: was du seitdem geändert hast — Tags, Sammlungen, Drucke,
+      Baugruppen —, ist danach nicht mehr da.</p>
+    <p class="dim">Vorher sichert partAtlas den jetzigen Stand; auch das Zurückholen lässt sich so wieder rückgängig machen. Deine Dateien in
+      den Ordnern bleiben unberührt. Einlesen und Hintergrundarbeit halten dafür kurz an.</p>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Zurückholen</button></div>`);
+  if (r.a !== "ja") return;
+  b.disabled = true;
+  b.textContent = "Wird zurückgeholt …";
+  try {
+    await api(`/api/sicherungen/${encodeURIComponent(x.name)}/zurueckholen`, { method: "POST" });
+    location.reload();          // ein ganz anderer Stand: alles neu, nichts aus dem alten im Speicher der Seite
+  } catch (err) { toast(err.message); sicherungenZeigen(); }
+});
+new MutationObserver(() => { if (document.getElementById("ein-sicherungen")?.textContent.trim() === "…") sicherungenZeigen(); })
   .observe(document.getElementById("dialog"), { childList: true, subtree: true });
 
 async function ordnerZeigen(id) {

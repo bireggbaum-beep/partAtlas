@@ -630,13 +630,16 @@ async function einstellungen() {
       <p class="dim">Was partAtlas beim Einlesen und bei Fehlern meldet, steht auch in der Datei <code>partatlas.log</code> im Bestand.
         Bei einem Fehler: diese Datei schicken.</p>
       <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>
-      <div class="i-titel">SICHERUNGEN</div>
-      <p class="dim">partAtlas sichert die Datenbank (Modelle, Tags, Drucke, Baugruppen, Ordner) beim Start und vor jeder Massenaktion,
-        etwa bevor ein Ordner entfernt wird. Es löscht nie Dateien in deinen Ordnern. Zurückholen bei beendetem partAtlas:
-        <code>python -m partatlas.sicherung --zurueck NAME</code>.</p>
-      <div id="ein-sicherungen" class="dim">…</div>
-      <div class="knoepfe" style="justify-content:flex-start"><button type="button" class="knopf" id="ein-sichern">Jetzt sichern</button>
-        <button type="button" class="knopf" id="ein-sicherungen-zeigen">Ordner zeigen</button></div>`],
+`],
+    ["sicherung", "Backup & Wiederherstellung", `
+      <div class="i-titel">AUTOMATISCHE SICHERUNG (NUR DATENBANK)</div>
+      <p class="dim">Sichert die Datenbank — Modelle, Tags, Drucke, Baugruppen, Sammlungen, Ordner — beim Start und vor jeder Massenaktion.
+        Nicht enthalten: Bilder und deine Modelldateien. Liegt auf demselben Rechner: kein Ersatz für ein Backup.</p>
+      <div id="ein-sicherungen" class="sich-liste"><p class="dim">…</p></div>
+      <div class="sich-behalten">Behalten: die letzten <input type="number" id="ein-sich-neueste" min="1" max="100" value="${e.sicherung_neueste ?? 5}">
+        und je Tag die neueste für <input type="number" id="ein-sich-tage" min="0" max="365" value="${e.sicherung_tage ?? 30}"> Tage</div>
+      <div class="knoepfe"><button type="button" class="knopf" id="ein-sicherungen-zeigen">Ordner zeigen</button>
+        <button type="button" class="knopf" id="ein-sichern">Jetzt sichern</button></div>`],
     ["pdf", "PDF-Export", `
       <p class="dim">Was die Stückliste einer Baugruppe als PDF enthält („Stückliste als PDF“ in der Baugruppe).</p>
       <div class="i-titel">ABSCHNITTE</div>
@@ -662,6 +665,7 @@ async function einstellungen() {
   try {
     await api("/api/einstellungen", { method: "PUT", body: { standard_material: mwWahl.material, standard_farbe: mwWahl.farbe, vorschau_farbe: vfWahl.farbe,
                                                           rolle_g: Number($("#ein-rolle").value), auto_tags: $("#ein-autotags").checked, scan_beim_start: $("#ein-start").checked,
+                                                          sicherung_neueste: Number($("#ein-sich-neueste").value) || 5, sicherung_tage: Number($("#ein-sich-tage").value) || 0,
                                                           vorschau_berechnen: document.querySelector("[name=ein-vorschau]:checked")?.value || "ohne_bild",
                                                           fcstd_freecad: $("#ein-fcstd").value || null,
                                                           programm: progWahl.geaendert,

@@ -89,11 +89,11 @@ class Katalog:
                                           "angelegt": jetzt()})
         return wid
 
-    def _sichern_vor(self, was):
+    def _sichern_vor(self, was, anlass=None):
         """Vor einer Massenaktion immer eine Sicherung der Datenbank. Scheitert sie (Platte voll), unterbleibt die Aktion: lieber nichts
-        tun als etwas, das sich nicht zurückholen lässt."""
+        tun als etwas, das sich nicht zurückholen lässt. `anlass`: in Worten, für die Liste in den Einstellungen."""
         try:
-            sicherung.sichern(self.b, f"vor-{was}", immer=True)
+            sicherung.sichern(self.b, f"vor-{was}", immer=True, anlass=anlass)
         except OSError as e:
             raise KatalogFehler(f"Vorher liess sich keine Sicherung anlegen ({e}); die Aktion unterbleibt.") from e
 
@@ -104,7 +104,7 @@ class Katalog:
         Liegt keine Datei mehr darunter, ändert sich nur dieser Eintrag: dann keine Sicherung (sie kopiert die ganze Datenbank samt
         Papierkorb — beim Anwender 4 s für einen leeren Ordner)."""
         if any(o["wurzel"] == wid for d in self._dateien().values() for o in d.get("orte", [])):
-            self._sichern_vor("ordner-entfernen")
+            self._sichern_vor("ordner-entfernen", f"Vor dem Entfernen des Ordners „{(self.wurzeln().get(wid) or {}).get('name', wid)}“ aus partAtlas")
         with self.db.transaction():
             n = 0
             for h, d in self._dateien().items():
@@ -798,7 +798,8 @@ class Katalog:
         if i["wurzel"]:
             raise KatalogFehler("Ein Wurzelordner wird nicht gelöscht, nur aus partAtlas entfernt.")
         if i["modelle"]:
-            self._sichern_vor("ordner-aus-katalog")
+            self._sichern_vor("ordner-aus-katalog", f"Vor dem Entfernen des Ordners „{os.path.basename(i['pfad'] or '')}“ "
+                                                    f"({len(i['modelle'])} Modelle)")
         fehler = self.loeschen_mit(i["modelle"], tags, sammlungen) if i["modelle"] else []
         return {"fehler": fehler, "modelle": len(i["modelle"]) - len(fehler), "pfad": i["pfad"],
                 "mehrfach": len(i["mehrfach"]), "andere": len(i["andere"])}
@@ -1414,7 +1415,7 @@ class Katalog:
         if fehlt:
             raise KatalogFehler(f"Tag „{fehlt[0]}“ gibt es nicht.")
         if len(namen) > 1:
-            self._sichern_vor("tags-loeschen")
+            self._sichern_vor("tags-loeschen", f"Vor dem Löschen von {len(namen)} Tags")
         with self.db.transaction():
             for n in namen:
                 self.db.soft_delete(TAG, n)
@@ -1464,7 +1465,7 @@ class Katalog:
         if nur_zaehlen:
             return {"kanten": len(weg), "tags": len({t for _, t in weg})}
         if weg:
-            self._sichern_vor("auto-tags-entfernen")
+            self._sichern_vor("auto-tags-entfernen", f"Vor dem Entfernen von {len(weg)} automatischen Tag-Zuordnungen")
         leer = []
         with self.db.transaction():
             for kid, _ in weg:
@@ -1573,7 +1574,8 @@ class Katalog:
         vorher; gelöscht wird erst, wenn alles passt."""
         tags, sammlungen = self._mitloeschen_pruefen(modelle, tags, sammlungen)
         if len(modelle) > 1 or tags or sammlungen:
-            self._sichern_vor("entfernen")      # ein einzelnes Modell holt der Papierkorb zurück; mehrere und Mitgelöschtes die Sicherung
+            # ein einzelnes Modell holt der Papierkorb zurück; mehrere und Mitgelöschtes die Sicherung
+            self._sichern_vor("entfernen", f"Vor dem Entfernen von {len(modelle):,} Modell{'' if len(modelle) == 1 else 'en'}".replace(",", " "))
         # Nur Graph-Änderungen, die Dateien bleiben (siehe loeschen).
         fehler = self._gruppenweise(modelle, self.loeschen, melden)
         if tags or sammlungen:
@@ -1677,7 +1679,7 @@ class Katalog:
         roh = self._im_papierkorb(mid)
         h = self._datei_im_papierkorb(mid)
         d = (self.db.get_node_raw(ref(DATEI, h)) if h else None) or {}
-        self._sichern_vor("endgueltig-entfernen")
+        self._sichern_vor("endgueltig-entfernen", f"Vor dem endgültigen Entfernen von „{roh.get('name') or mid}“")
         self.db.purge(MODELL, mid)
         for b in roh.get("bilder") or []:
             self._archivieren(b["datei"])

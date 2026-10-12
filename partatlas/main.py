@@ -717,6 +717,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             if d["vorschau_berechnen"] not in ("ohne_bild", "immer"):
                 raise KatalogFehler("Vorschaubilder: ohne_bild oder immer.")
             werte["vorschau_berechnen"] = d["vorschau_berechnen"]
+        for feld, (lo, hi) in {"sicherung_neueste": (1, 100), "sicherung_tage": (0, 365)}.items():
+            if feld in d:
+                try:
+                    werte[feld] = max(lo, min(int(d[feld]), hi))
+                except (TypeError, ValueError):
+                    raise KatalogFehler("Anzahl der Sicherungen als ganze Zahl angeben.")
         if "auto_tags" in d:
             werte["auto_tags"] = bool(d["auto_tags"])
         if "scan_beim_start" in d:
@@ -988,11 +994,50 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
 
     @app.get("/api/sicherungen")
     def sicherungen():
-        return sicherung.liste(zustand["bestand"].wurzel)
+        e = zustand["bestand"].einstellungen()
+        return {"liste": sicherung.liste(zustand["bestand"].wurzel),
+                "neueste": e.get("sicherung_neueste", sicherung.NEUESTE), "tage": e.get("sicherung_tage", sicherung.TAGE)}
 
     @app.post("/api/sicherungen")
     def sicherung_jetzt():
         return {"name": sicherung.sichern(zustand["bestand"], "von-hand", immer=True)}
+
+    tausch_sperre = threading.Lock()
+
+    @app.post("/api/sicherungen/{name}/zurueckholen")
+    def sicherung_zurueckholen(name: str):
+        """Im laufenden Betrieb (KONZEPT §3.3a): Einlesen und Hintergrund halten an, der jetzige Stand wird gesichert, die Datenbank
+        geschlossen, getauscht und neu geöffnet. Währenddessen antwortet /api/* mit 503 und die Oberfläche wartet wie beim Start.
+        Auch das ist umkehrbar: die Sicherung „vor-zurueckholen“ holt den Stand davor zurück."""
+        b = zustand["bestand"]
+        try:
+            sicherung.pruefen(b.wurzel, name)
+        except ValueError as e:
+            raise KatalogFehler(str(e))
+        if not tausch_sperre.acquire(blocking=False):
+            raise KatalogFehler("Es wird gerade schon eine Sicherung zurückgeholt.")
+        try:
+            s = zustand["scanner"]
+            s.abbrechen()
+            s.warten(BEENDEN_S)
+            # Scheitert sie, bleibt alles, wie es war. Aufgeräumt wird erst danach: sonst ginge womöglich die zurückzuholende weg.
+            sicherung.sichern(b, "vor-zurueckholen", immer=True, aufraeumen=False)
+            oeffnen_stand["bereit"] = False
+            log.info("Sicherung %s wird zurückgeholt", name)
+            b.schliessen()
+            try:
+                beiseite = sicherung.tauschen(b.wurzel, name)
+            except ValueError as e:
+                raise KatalogFehler(str(e))
+            finally:
+                oeffnen()                 # in jedem Fall wieder öffnen — notfalls den alten Stand, wenn das Tauschen scheiterte
+            log.info("Sicherung %s zurückgeholt; der vorige Stand liegt in %s", name, beiseite)
+            sicherung.aufraeumen_nach(zustand["bestand"])
+        finally:
+            oeffnen_stand["bereit"] = True
+            tausch_sperre.release()
+        verteiler.senden("neu_laden", {})
+        return {"ok": True}
 
     @app.post("/api/sicherungen/zeigen")
     def sicherungen_zeigen():
