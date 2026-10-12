@@ -64,6 +64,14 @@ gemerkte Suchen, Drucke Stufe b, Varianten. (3) Backup als ZIP, Ordner-Operation
 drucke 28, eigene 17, formate 25, papierkorb 11 (neu), sammlungen 18, scan 110, schutz 28, suche 28, tags 15 (neu), verwalten 76,
 vorschau 8 (neu), zuordnen 12. test_ui nur gezielt (Auswahl 1 neu, Mehrfachauswahl 3/3); komplett vor `main` am Schluss.
 
+**Iteration 2** — Antworten vorher: Anhänge als **Kopie im Bestand**; Slicer **Bambu Studio** und **Anycubic Slicer Next** (Orca-Abkömmling);
+Varianten **gleicher Name, gleicher Ordner**; gemerkte Suchen als **intelligente Sammlungen**.
+- **Varianten (0.61.0):** Reiter „Varianten“ im Inspektor (mit Zahl): dasselbe Teil in anderen Formaten — automatisch gleicher Name (ohne
+  Endung, Gross-/Kleinschreibung egal) im gleichen Ordner; dazu von Hand: mehrere wählen › Rechtsklick › „Als Varianten verknüpfen“ (Kante
+  `SAME_PART`, ungerichtet, höchstens 12). × löst (auch automatische: `varianten_ab` an beiden Modellen). Klick wechselt zum anderen Format.
+  Nebenbei: der Reiter „Verwendet“ war nie als gewählt markiert (Regel im CSS fehlte); Reiterleiste mit Abstand statt gleich breiter Felder.
+  Neue Suite `test_varianten.py` 5/5, drei Gegenproben fallen.
+
 ## Als Nächstes (8.10.2026, Anwender)
 
 1. Offene Punkte nach 0.50 abarbeiten. **Erledigt (0.50.1):** Protokoll schreibt „nimmt Anfragen an“ erst, wenn der Port offen ist

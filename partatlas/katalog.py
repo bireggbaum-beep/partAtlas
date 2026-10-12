@@ -18,7 +18,7 @@ import time
 
 from . import archiv, dateien, formate, sicherung, tags
 from .suche import Suchindex
-from .bestand import (BRAUCHT, DATEI, HAT_DATEI, VORSCHAU_ARTEN, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
+from .bestand import (VARIANTE, BRAUCHT, DATEI, HAT_DATEI, VORSCHAU_ARTEN, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
                       TAG, VORGESEHEN, WURZEL)
 
 
@@ -651,7 +651,75 @@ class Katalog:
             "ansichten": self.ansichten(mid, m, d),
             "ref_werte": m.get("ref_werte"),
             "drucke": [] if papierkorb else self.drucke.liste(mid),
+            "varianten": [] if papierkorb else self.varianten(mid),
         }
+
+    # ------------------------------------------------------------ Varianten
+
+    @staticmethod
+    def _variantenschluessel(o):
+        """Ordner und Name ohne Endung, klein: Halter.FCStd, Halter.step und HALTER.stl im selben Ordner sind dasselbe Teil."""
+        ordner, _, datei = o["pfad"].rpartition("/")
+        return (o["wurzel"], ordner, os.path.splitext(datei)[0].lower())
+
+    def varianten(self, mid):
+        """Dasselbe Teil in anderen Formaten (Wunsch des Anwenders, 12.10.2026: je Datei eine Kachel, die anderen Formate im Inspektor).
+        Automatisch: gleicher Name, gleicher Ordner, andere Datei. Dazu von Hand verknüpfte (Kante SAME_PART, ungerichtet); automatisch
+        gefundene, die der Anwender gelöst hat, stehen in `varianten_ab`. [{id, name, format, hand}]"""
+        h = self.datei_von(mid)
+        d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+        m = self.db.get_node(ref(MODELL, mid), readonly=True) or {}
+        ab = set(m.get("varianten_ab") or ())
+        gefunden = {}
+        schluessel = {self._variantenschluessel(o) for o in (d or {}).get("orte", [])}
+        if schluessel:
+            for h2, d2 in self._dateien().items():
+                if h2 != h and any(self._variantenschluessel(o) in schluessel for o in d2.get("orte", [])):
+                    m2 = self.modell_von(h2)
+                    if m2 and m2 != mid and m2 not in ab:
+                        gefunden[m2] = False
+        for r in self.db.get_connected(ref(MODELL, mid), direction="both", rel_type=VARIANTE):
+            gefunden[r.split("/", 1)[1]] = True
+        erg = []
+        for vid, hand in gefunden.items():
+            v = self.db.get_node(ref(MODELL, vid), readonly=True)
+            if v is not None:
+                k = self._kurz(vid, v)
+                erg.append({"id": vid, "name": k["name"], "format": k["format"], "masse": k.get("masse"), "fehlt": k.get("fehlt"),
+                            "hash": k.get("hash"), "vorschau": k.get("vorschau"), "vorschau_art": k.get("vorschau_art"),
+                            "bild": k.get("bild"), "hand": hand})
+        return sorted(erg, key=lambda x: (x["format"] or "", x["name"].lower()))
+
+    def varianten_verknuepfen(self, modelle):
+        """Mehrere Modelle als Varianten desselben Teils, je zwei verbunden. Eine früher gelöste Zuordnung gilt wieder."""
+        modelle = list(dict.fromkeys(modelle))
+        if len(modelle) < 2:
+            raise KatalogFehler("Mindestens zwei Modelle wählen.")
+        if len(modelle) > 12:
+            raise KatalogFehler("Höchstens zwölf Modelle auf einmal — Varianten sind dasselbe Teil in wenigen Formaten.")
+        with self.db.transaction():
+            for mid in modelle:
+                m = self.db.get_node(ref(MODELL, mid), readonly=True)
+                if m is None:
+                    raise KatalogFehler(f"Modell {mid} gibt es nicht.")
+                if set(m.get("varianten_ab") or ()) & set(modelle):
+                    self.db.update_node(MODELL, mid, {"varianten_ab": [x for x in m["varianten_ab"] if x not in modelle]})
+            for i, a in enumerate(modelle):
+                da = set(self.db.get_connected(ref(MODELL, a), direction="both", rel_type=VARIANTE))
+                for b in modelle[i + 1:]:
+                    if ref(MODELL, b) not in da:
+                        self.db.create_edge(ref(MODELL, a), ref(MODELL, b), VARIANTE, gerichtet=False)
+
+    def variante_loesen(self, mid, andere):
+        """Von Hand verknüpft: die Kante geht. Automatisch gefunden: beide merken es sich (`varianten_ab`), sonst käme sie gleich wieder."""
+        with self.db.transaction():
+            for kid, k in self.db.get_connected_edges(ref(MODELL, mid), direction="both", rel_type=VARIANTE):
+                if ref(MODELL, andere) in (k["source"], k["target"]):
+                    self.db.delete_edge(kid)
+            for a, b in ((mid, andere), (andere, mid)):
+                m = self.db.get_node(ref(MODELL, a), readonly=True)
+                if m is not None and b not in (m.get("varianten_ab") or ()):
+                    self.db.update_node(MODELL, a, {"varianten_ab": [*(m.get("varianten_ab") or ()), b]})
 
     def modell_aendern(self, mid, werte):
         # entwurf: ein Konstruktionsstand, der nicht gebraucht wird — ausblendbar, nicht in neuen Baugruppen. Kein Versionsbaum,

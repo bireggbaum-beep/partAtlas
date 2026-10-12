@@ -33,6 +33,7 @@ HAT_TAG = "HAS_TAG"
 DRUCK = "PRINT_JOB"
 GEDRUCKT_IN = "PRINTED_IN"       # Modell ─→ Druck; ein Druck an einem oder mehreren Modellen (KONZEPT §4.6)
 REFERENZ = "REFERENCE"           # Modell ─→ Druck: „so war es gut“, höchstens einer je Modell
+VARIANTE = "SAME_PART"           # Modell ─ Modell, ungerichtet: von Hand verknüpfte Varianten desselben Teils (Katalog.varianten)
 SAMMLUNG = "COLLECTION"
 IN_SAMMLUNG = "IN_COLLECTION"
 # Texte ab so vielen Zeichen liegen als Datei in vault_text/ und werden erst

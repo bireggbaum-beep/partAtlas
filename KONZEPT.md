@@ -605,6 +605,8 @@ ASSEMBLY       ─[CONTAINS]──────────▶ MODEL_ASSET | ASSE
 MODEL_ASSET    ─[REMIX_OF]──────────▶ MODEL_ASSET
 MODEL_ASSET    ─[SPARE_PART_FOR]────▶ MODEL_ASSET
 MODEL_ASSET    ─[FITS]──────────────  MODEL_ASSET       ungerichtet
+MODEL_ASSET    ─[SAME_PART]─────────  MODEL_ASSET       ungerichtet, von Hand verknüpfte Varianten (0.61; gleicher Name im
+                                                        gleichen Ordner gilt ohne Kante, gelöste stehen in `varianten_ab`)
 ```
 
 Bilder sind keine Knoten (§3.2): die Vorschauen sind Felder der Datei,

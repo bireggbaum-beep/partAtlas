@@ -540,9 +540,12 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 #inspektor[data-reiter="uebersicht"] .i-tafel[data-reiter="uebersicht"],
 #inspektor[data-reiter="verwendet"] .i-tafel[data-reiter="verwendet"],
 #inspektor[data-reiter="drucke"] .i-tafel[data-reiter="drucke"],
+#inspektor[data-reiter="varianten"] .i-tafel[data-reiter="varianten"],
 #inspektor[data-reiter="datei"] .i-tafel[data-reiter="datei"] { display: block; }
 #inspektor[data-reiter="uebersicht"] .i-reiter [data-reiter="uebersicht"],
+#inspektor[data-reiter="verwendet"] .i-reiter [data-reiter="verwendet"],
 #inspektor[data-reiter="drucke"] .i-reiter [data-reiter="drucke"],
+#inspektor[data-reiter="varianten"] .i-reiter [data-reiter="varianten"],
 #inspektor[data-reiter="datei"] .i-reiter [data-reiter="datei"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .i-tafel > .i-schalter { margin-top: 12px; }
 
@@ -733,8 +736,8 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .i-haupt .knopf, .i-haupt select.knopf { height: var(--s6); padding: 0 var(--s4); font-size: 13px; }
 .i-haupt select.knopf.schmal { width: var(--s6); padding: 0; }
 .i-haupt .mehr .schalter { width: var(--s6); height: var(--s6); padding: 0; border-radius: var(--radius); }
-.i-reiter { gap: 0; margin: var(--s4) 0 0; }
-.i-reiter button { height: var(--s6); padding: 0; margin-bottom: -1px; }
+.i-reiter { gap: var(--s3); margin: var(--s4) 0 0; justify-content: space-between; }
+.i-reiter button { flex: 0 1 auto; height: var(--s6); padding: 0 var(--s1); margin-bottom: -1px; white-space: nowrap; }
 .i-tafel { padding-top: var(--s4); }
 .i-tafel > .i-schalter { margin-top: 0; }
 .i-schalter { gap: var(--s2); margin-top: 0; }
@@ -1093,3 +1096,17 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 .sich-tabelle td:last-child { text-align: right; width: 1%; white-space: nowrap; }
 .sich-behalten { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
 .sich-behalten input { width: 55px; }
+
+/* Inspektor › Varianten */
+.var-liste { display: flex; flex-direction: column; gap: var(--s1); margin-bottom: var(--s4); }
+.var-zeile { display: grid; grid-template-columns: 34px minmax(0, 1fr) 26px; gap: var(--s3); align-items: center; padding: var(--s2) var(--s4);
+             border-radius: var(--radius); cursor: pointer; }
+.var-zeile:hover { background: var(--panel-2); }
+.var-bild { width: 34px; height: 34px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.var-bild img { width: 100%; height: 100%; object-fit: cover; }
+.var-name { display: flex; flex-direction: column; min-width: 0; }
+.var-name b { font-weight: 600; }
+.var-name > span, .var-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.var-weg { width: 26px; height: 26px; border: 0; background: none; color: var(--ink-3); cursor: pointer; opacity: 0; border-radius: var(--radius); }
+.var-zeile:hover .var-weg { opacity: 1; }
+.var-weg:hover { color: var(--crit); background: var(--panel); }

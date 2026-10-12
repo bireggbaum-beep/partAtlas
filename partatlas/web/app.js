@@ -1300,11 +1300,12 @@ async function waehle(id, live = false) {
   const alteGalerie = zustand.angezeigt === id && $("#i-galerie")?.dataset.sig === sig ? $("#i-galerie") : null;
   // Eine Live-Meldung zeichnet den Inspektor neu; ein offenes Menü bleibt offen.
   const menuOffen = zustand.angezeigt === id && $("#mehr-menu") && !$("#mehr-menu").hidden;
-  const reiter = papierkorb ? "datei" : ["uebersicht", "verwendet", "drucke", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
+  const reiter = papierkorb ? "datei" : ["uebersicht", "verwendet", "drucke", "varianten", "datei"].includes(localStorageLesen("reiter")) ? localStorageLesen("reiter") : "uebersicht";
   const reiterKopf = papierkorb ? "" : `<div class="i-reiter" role="tablist">
       <button role="tab" data-reiter="uebersicht">Übersicht</button>
       <button role="tab" data-reiter="verwendet">Verwendet${(m.baugruppen || []).length + m.sammlungen.length ? ` <span class="d-zahl">${(m.baugruppen || []).length + m.sammlungen.length}</span>` : ""}</button>
       <button role="tab" data-reiter="drucke">Drucke${m.drucke_n ? ` <span class="d-zahl">${m.drucke_n}</span>` : ""}</button>
+      <button role="tab" data-reiter="varianten" title="Dasselbe Teil in anderen Formaten">Varianten${m.varianten?.length ? ` <span class="d-zahl">${m.varianten.length}</span>` : ""}</button>
       <button role="tab" data-reiter="datei">Datei</button></div>`;
   $("#inspektor").innerHTML = `
     <div class="i-fix">
@@ -1358,6 +1359,7 @@ async function waehle(id, live = false) {
 
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="verwendet">${verwendetTafel(m)}</div>`}
     ${papierkorb ? "" : `<div class="i-tafel" data-reiter="drucke">${druckeTafel(m)}</div>`}
+    ${papierkorb ? "" : `<div class="i-tafel" data-reiter="varianten">${variantenTafel(m)}</div>`}
 
     <div class="i-tafel" data-reiter="datei">
       <div class="i-titel">MODELLDATEN</div>
@@ -1467,6 +1469,21 @@ async function druckAnlegen(modelle) {
 }
 
 // „Wo kommt dieses Modell vor?“ — jede Zeile führt dorthin. Die Angaben stehen schon im Modell; flatgraph liefert sie als Nachbarschaft des Knotens.
+// Dasselbe Teil in anderen Formaten (KONZEPT §3.1, „Varianten“): je Datei eine Kachel, hier der Weg zwischen ihnen.
+function variantenTafel(m) {
+  const v = m.varianten || [];
+  const zeilen = v.map((x) => {
+    const url = bildUrl(x);
+    return `<div class="var-zeile" data-variante="${esc(x.id)}" title="Zu ${esc(x.name)}${esc(endung[x.format] || "")} wechseln">
+      <span class="var-bild">${url ? `<img src="${url}" alt="" loading="lazy">` : ""}</span>
+      <span class="var-name"><span><b>${esc(x.name)}</b>${esc(endung[x.format] || "")}</span><small class="dim">${x.fehlt ? "Datei fehlt" : esc(masse(x.masse) || "")}${x.hand ? " · von Hand verknüpft" : ""}</small></span>
+      <button type="button" class="var-weg" data-variante-weg="${esc(x.id)}" title="Keine Variante dieses Modells">×</button></div>`;
+  }).join("");
+  return (zeilen ? `<div class="i-titel">DASSELBE TEIL IN ANDEREN FORMATEN</div><div class="var-liste">${zeilen}</div>` : "")
+    + `<p class="dim v-leer">${zeilen ? (v.some((x) => !x.hand) ? "Ohne „von Hand“: gefunden über den gleichen Namen im gleichen Ordner." : "") : "Keine weiteren Formate. Gleichnamige Dateien im selben Ordner (Halter.step, Halter.stl …) erscheinen hier von selbst."}
+      Andere verknüpfen: Modelle wählen › Rechtsklick › „Als Varianten verknüpfen“.</p>`;
+}
+
 function verwendetTafel(m) {
   const zeile = (attr, inhalt, rechts) => `<button class="v-zeile" ${attr}><span>${inhalt}</span>${rechts ? `<em>${rechts}</em>` : ""}</button>`;
   const gruppe = (titel, zeilen) => (zeilen.length ? `<div class="i-titel">${titel}</div><div class="v-liste">${zeilen.join("")}</div>` : "");
@@ -1543,6 +1560,14 @@ document.addEventListener("click", async (e) => {
   if (t.closest("[data-druck-neu]")) return druckAnlegen([id]);
   const gef = t.closest("[data-gefaehrte]");
   if (gef) return waehle(gef.dataset.gefaehrte);
+  const varWeg = t.closest("[data-variante-weg]");
+  if (varWeg) {
+    try { await api(`/api/modelle/${id}/varianten/${varWeg.dataset.varianteWeg}`, { method: "DELETE" }); } catch (err) { return toast(err.message); }
+    zustand.angezeigt = null;
+    return waehle(id);
+  }
+  const variante = t.closest("[data-variante]");
+  if (variante) { raster.zeigen(zustand.idIndex.get(variante.dataset.variante) ?? -1); return waehleEines(variante.dataset.variante); }
   const bearb = t.closest("[data-druck-aendern]");
   if (bearb) {
     const m = await api(`/api/modelle/${id}`);
@@ -2982,6 +3007,7 @@ async function kontextMenu(e, id) {
       ["kopf", `${modelle.length} Modelle`],
       ["warteschlange", "☰ In die Warteschlange"], ["druck", "🖨 Zusammen gedruckt …"], ["gedruckt", "✓ Als gedruckt markieren"], ["favorit", "♥ Favorit"], ["entwurf", "✎ Entwurf ein/aus"],
       ["-"], ["tag", "＃ Tag …"], ["material", "Material …"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
+      ...(modelle.length <= 12 ? [["varianten", "⧉ Als Varianten verknüpfen"]] : []),
       ["-"], ["verschieben", "In anderen Ordner verschieben …"], ["-"], ["loeschen", "Löschen …", "gefahr"]];
   } else {
     const prog = await ladeProgramme();
@@ -3202,6 +3228,11 @@ async function kontextAktion(k, knopf) {
     case "wiederherstellen": return stapel("wiederherstellen", null, modelle);
     case "endgueltig": return endgueltigEntfernen(id);
     case "druck": return druckAnlegen(modelle);
+    case "varianten":
+      try { await api("/api/varianten", { method: "POST", body: { modelle } }); toast(`${modelle.length} Modelle als Varianten verknüpft.`); }
+      catch (err) { toast(err.message); }
+      zustand.angezeigt = null;
+      return waehle(id);
     default: return stapelAktion(k, modelle);
   }
 }

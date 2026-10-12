@@ -387,6 +387,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         daten["baugruppen"] = B().verwendet_in(f"MODEL_ASSET/{mid}")
         return daten
 
+    @app.post("/api/varianten")
+    def varianten_verknuepfen(d: dict = Depends(json_koerper)):
+        K().varianten_verknuepfen(list(d.get("modelle") or []))
+        return {"ok": True}
+
+    @app.delete("/api/modelle/{mid}/varianten/{andere}")
+    def variante_loesen(mid: str, andere: str):
+        K().variante_loesen(mid, andere)
+        return {"ok": True}
+
     @app.patch("/api/modelle/{mid}")
     def modell_aendern(mid: str, daten: dict = Depends(json_koerper)):
         k = K()
