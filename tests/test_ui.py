@@ -505,6 +505,12 @@ async def oberflaeche(port):
         api(port, "/api/scan", {})
         while api(port, "/api/stand")["scan"].get("laeuft"):
             time.sleep(0.3)
+        # Am Ende des Einlesens fragt ein Fenster, was mit der fehlenden Datei geschehen soll (0.67); hier: später entscheiden.
+        await pg.wait_for_selector("#fehlt-fenster[open]", timeout=10000)
+        check("Datei verschwunden: am Ende des Einlesens ein Fenster mit genau dieser Datei, Vorgabe Archiv",
+              "Arm" in await pg.inner_text("#fehlt-fenster .fw-liste")
+              and await pg.locator("#fehlt-fenster .fw-zeile [data-fw-wert=archiv].an").count() == 1)
+        await pg.click('#fehlt-fenster [data-fw="spaeter"]')
         await suche("Arm")
         await pg.wait_for_selector(".karte.fehlt .fehlt-band", timeout=5000)
         check("Datei fehlt: Kachel bleibt im Raster, mit Band „Datei fehlt“",

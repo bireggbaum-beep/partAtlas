@@ -26,6 +26,15 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   dass jedes Modell wirklich fehlt), `/api/fehlende[?neu=1]`, `/api/fehlende/entscheiden`. Entwürfe gehen weiter still in den Papierkorb.
   Im Browser durchgespielt (Ordner „Drohne“, 51 Dateien, weggenommen → Fenster → alle ins Archiv; Ordner zurück → alle 51 von selbst
   zurück im Katalog). Neue Suite `test_fehlende.py` 9/9, drei Gegenproben fallen.
+- **Paket 3 (Bereinigen neu gegliedert) nicht gebaut** — Sparvariante auf Wunsch des Anwenders (Limit). Offen: Aufräumen als Gruppe mit
+  Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
+  gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
+
+## Stand: 0.95.0 auf `main` (12.10.2026, für den Tester)
+
+Alles aus Iteration 1 und 2 und Bereinigen Pakete 1–2 (0.56–0.67). Rückweg: Marke `v0.55.0` (README, „Zurück auf eine frühere Fassung“).
+Vor dem Push: alle Suiten ausser test_ui grün (zuletzt je Paket), `test_ui.py` komplett 70/70 — eine Prüfung schliesst jetzt das neue
+Fenster „Dateien fehlen“ und prüft dabei, dass es kommt (+1).
 
 ## Katalog fertig — drei Iterationen (Auftrag 12.10.2026, Branch `claude/partatlas-katalog-fertig-amxqfg`)
 

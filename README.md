@@ -75,3 +75,18 @@ Chromium (`PARTATLAS_CHROMIUM`, wenn Playwrights eigenes fehlt).
 Selbstgeschrieben wie flatgraph und pDMS: jede Suite endet mit „n/n Checks
 bestanden“, Exit 1 bei einem Fehlschlag. Gegenprobe an einer mutierten
 Kopie: `PARTATLAS_QUELLE=/pfad/zur/kopie python tests/…`.
+
+## Zurück auf eine frühere Fassung
+
+Jede Fassung, die auf `main` kam, lässt sich wieder holen. Vor 0.95 steht die Marke `v0.55.0`:
+
+```bash
+./start.sh            # partAtlas beenden (Strg+C im Fenster), dann:
+git checkout v0.55.0  # die alte Fassung
+./start.sh
+git checkout main     # später wieder zur neuen
+```
+
+Die Datenbank bleibt dabei lesbar (keine neue Speicherform): 0.55 übersieht nur, was es noch nicht kennt (Archiv, Anhänge, Dateien an
+Drucken). Wer auch den Katalog zurück will: Einstellungen › Backup & Wiederherstellung › eine automatische Sicherung von vor dem
+Wechsel „Zurückholen“ (in 0.55 über `python -m partatlas.sicherung --zurueck NAME`, bei beendetem partAtlas).
