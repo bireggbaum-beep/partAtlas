@@ -979,6 +979,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def kaufteile(q: str = "", kategorie: str = ""):
         return B().kaufteile(q or None, kategorie or None)
 
+    @app.delete("/api/kaufteile/{kid}")
+    def kaufteil_weg(kid: str):
+        B().kaufteil_loeschen(kid)
+        return {"ok": True}
+
     @app.post("/api/kaufteile")
     def kaufteil_neu(d: dict = Depends(json_koerper)):
         return {"id": B().kaufteil_anlegen(d.get("name", ""), d.get("kategorie") or "Eigene", d.get("einheit") or "Stück")}

@@ -1218,3 +1218,5 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .neu-fassung { margin: 12px 0 2px; font-size: 13px; color: var(--accent); }
 .neu { margin: 2px 0 4px 18px; padding: 0; }
 .neu li { margin: 3px 0; }
+.waehler .w-weg { padding: 0; background: none; border: 0; color: var(--ink-3); font: inherit; text-decoration: underline; cursor: pointer; }
+.waehler .w-weg:hover { color: var(--danger, #c0392b); }

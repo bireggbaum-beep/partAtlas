@@ -8,6 +8,8 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.95.7", ["Kaufteile: Ein selbst angelegtes Kaufteil (etwa mit Tippfehler) lässt sich in der Auswahl „Kaufteile hinzufügen“ mit „löschen“ entfernen — "
+                "sofern es in keiner Baugruppe steckt. Die mitgelieferten Normteile bleiben."]),
     ("0.95.6", ["Beim ersten Start nach einem Update erscheint dieses Fenster mit dem, was neu ist. Ein Klick auf die Fassung oben links zeigt es wieder."]),
     ("0.95.5", ["Anhänge: SVG, XHTML und HTML öffnen im neuen Tab des Browsers, ohne Download. Skripte darin laufen nicht."]),
     ("0.95.4", ["Anhänge, die der Browser nicht zeigt (DXF, CorelDRAW …), starten beim Anklicken im Programm des Rechners — ohne Datei im Downloadordner.",

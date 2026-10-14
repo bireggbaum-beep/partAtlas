@@ -38,6 +38,21 @@ if __name__ == "__main__":
         check("Eigenes Kaufteil anlegen, Kategorie „Eigene“",
               c.get("/api/kaufteile", params={"kategorie": "Eigene"}).json()[0]["id"] == eigen)
 
+        # -- Selbst angelegtes Kaufteil löschen (Tippfehler): nur wenn nirgends verwendet, nie die Normteile
+        falsch = c.post("/api/kaufteile", json={"name": "Propelller 5 Zoll"}).json()["id"]
+        probe = c.post("/api/baugruppen", json={"name": "Probe"}).json()["id"]
+        c.post(f"/api/baugruppen/{probe}/positionen", json={"ref": f"PURCHASED_PART/{falsch}", "menge": 2})
+        r = c.delete(f"/api/kaufteile/{falsch}")
+        check("Kaufteil, das in einer Baugruppe steckt: nicht gelöscht, die Meldung nennt die Baugruppe",
+              r.status_code == 400 and "Steckt noch in: Probe" in r.json()["fehler"]
+              and any(t["id"] == falsch for t in c.get("/api/kaufteile").json()))
+        c.delete(f"/api/baugruppen/{probe}/positionen", params={"ref": f"PURCHASED_PART/{falsch}"})
+        check("Nach dem Herausnehmen lässt es sich löschen und ist aus der Liste weg",
+              c.delete(f"/api/kaufteile/{falsch}").status_code == 200 and not any(t["id"] == falsch for t in c.get("/api/kaufteile").json()))
+        check("Die mitgelieferten Normteile lassen sich nicht löschen", c.delete("/api/kaufteile/din912-m3x10").status_code == 400
+              and any(t["id"] == "din912-m3x10" for t in c.get("/api/kaufteile").json()))
+        c.delete(f"/api/baugruppen/{probe}")
+
         # -- Vorschlag aus dem Ordner
         v = c.get("/api/baugruppen/vorschlaege").json()
         check("Vorschlag: Ordner „Drohne V2“ mit 3 Modellen, eines mit Menge im Namen",

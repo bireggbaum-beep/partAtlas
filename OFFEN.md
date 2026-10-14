@@ -30,7 +30,11 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.6 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.7 auf `main` (12.10.2026, für den Tester)
+
+**0.95.7 (Tester, 14.10.2026):** Selbst angelegte Kaufteile lassen sich löschen (Auswahl „Kaufteile hinzufügen“, Knopf „löschen“): nur wenn in keiner
+Baugruppe verwendet (Meldung „Steckt noch in: …“), nie die Normteile, ohne Papierkorb-Eintrag in der Oberfläche (weich gelöscht, in den Sicherungen).
+Umbenennen eines Kaufteils gibt es weiterhin nicht.
 
 **0.95.6:** „Neu in dieser Fassung“ — kleines Fenster beim ersten Start nach einem Update (Wunsch Tester/Anwender, 14.10.2026); gemerkt im Bestand
 (`einstellungen.json`, `neuigkeiten_gesehen`), nicht im Browser. Ein ganz neuer Bestand sieht nichts, einer von vor dem Fenster alles ab 0.95.1;

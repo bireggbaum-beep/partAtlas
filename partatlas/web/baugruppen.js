@@ -362,7 +362,8 @@ async function waehler(art) {
     if (kaufteile) {
       const liste = await api(`/api/kaufteile?q=${encodeURIComponent(q)}&kategorie=${encodeURIComponent(kategorie)}`);
       // Ohne Suche und Kategorie alles zeigen: sortiert nach Kategorie würden 120 Zeilen nur Schrauben ergeben.
-      zeilen = liste.map((t) => ({ ref: `PURCHASED_PART/${t.id}`, name: t.name, klein: [t.kategorie, t.norm].filter(Boolean).join(" · "), bild: null, symbol: symbolFuer(t.kategorie) }));
+      zeilen = liste.map((t) => ({ ref: `PURCHASED_PART/${t.id}`, name: t.name, klein: [t.kategorie, t.norm].filter(Boolean).join(" · "), bild: null, symbol: symbolFuer(t.kategorie),
+        weg: t.standard === false ? t.id : null }));
     } else if (art === "unter") {
       zeilen = (await api("/api/baugruppen")).filter((b) => b.id !== bid() && b.name.toLowerCase().includes(q.toLowerCase()))
         .map((b) => ({ ref: `ASSEMBLY/${b.id}`, name: b.name, klein: `${b.positionen} Positionen`, bild: null }));
@@ -374,7 +375,7 @@ async function waehler(art) {
     const drin = new Set((bgDaten?.positionen || []).map((p) => p.ref));
     $("#w-liste").innerHTML = zeilen.map((z) => `<div class="w-zeile">
       ${z.bild ? `<img loading="lazy" src="${z.bild}" alt="">` : `<div class="mini" style="display:grid;place-items:center">${z.symbol || ""}</div>`}
-      <div><b>${esc(z.name)}</b><small>${esc(z.klein || "")}</small></div>
+      <div><b>${esc(z.name)}</b><small>${esc(z.klein || "")}${z.weg ? ` · <button type="button" class="w-weg" data-w-kaufteil-weg="${esc(z.weg)}" data-name="${esc(z.name)}" title="Dieses selbst angelegte Kaufteil löschen">löschen</button>` : ""}</small></div>
       <input type="number" min="1" value="1" data-enter="" data-w-menge="${esc(z.ref)}">
       <button type="button" class="plus ${drin.has(z.ref) ? "ok" : ""}" data-w-plus="${esc(z.ref)}" title="${drin.has(z.ref) ? "ist drin — Klick nimmt es wieder heraus" : "hinzufügen"}"><span class="a">${drin.has(z.ref) ? "✓" : "＋"}</span><span class="b">−</span></button></div>`).join("")
       || '<div class="pos-leer">Nichts gefunden.</div>';
@@ -382,6 +383,15 @@ async function waehler(art) {
   let zeit;
   $("#w-suche").addEventListener("input", () => { clearTimeout(zeit); zeit = setTimeout(laden, 150); });
   $("#w-liste").addEventListener("click", async (e) => {
+    const weg = e.target.closest("[data-w-kaufteil-weg]");
+    if (weg) {
+      const r = await rueckfrage(`<h2>„${esc(weg.dataset.name)}“ löschen?</h2><p>Das selbst angelegte Kaufteil verschwindet aus der Liste. Es lässt sich in partAtlas nicht zurückholen.</p>
+        <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr akzent" value="ja">Löschen</button></div>`);
+      if (r.a !== "ja") return;
+      try { await api(`/api/kaufteile/${encodeURIComponent(weg.dataset.wKaufteilWeg)}`, { method: "DELETE" }); laden(); }
+      catch (err) { toast(err.message); }          // „Steckt noch in …“
+      return;
+    }
     const plus = e.target.closest("[data-w-plus]");
     if (!plus) return;
     if (plus.disabled) return;

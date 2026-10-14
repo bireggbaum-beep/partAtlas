@@ -92,6 +92,20 @@ class Baugruppen:
                                             "einheit": einheit or "Stück", "standard": False})
         return kid
 
+    def kaufteil_loeschen(self, kid):
+        """Ein selbst angelegtes Kaufteil (Tippfehler, Doppelt) ganz entfernen. Die mitgelieferten Normteile bleiben, und was in einer Baugruppe
+        steckt, bleibt auch: sonst fehlte dort still eine Zeile (wie bei den eigenen Komponenten). Kein Papierkorb-Eintrag in der Oberfläche
+        (Entscheid 14.10.2026); wie jedes Löschen in flatgraph ist es weich und steht noch in den Sicherungen."""
+        n = self.db.get_node(ref(KAUFTEIL, kid), readonly=True)
+        if n is None:
+            raise KatalogFehler("Dieses Kaufteil gibt es nicht (mehr).")
+        if n.get("standard") is not False:
+            raise KatalogFehler("Die mitgelieferten Kaufteile bleiben; löschen lassen sich nur selbst angelegte.")
+        wo = self.verwendet_in(ref(KAUFTEIL, kid))
+        if wo:
+            raise KatalogFehler("Steckt noch in: " + ", ".join(v["name"] for v in wo) + ". Erst dort herausnehmen.")
+        self.db.soft_delete(KAUFTEIL, kid)
+
     # ------------------------------------------------------------ Baugruppen
 
     def _pruefen(self, bid):
