@@ -12,8 +12,8 @@ function anhaengeHtml(art, id, liste, { leerText = "Noch nichts angehängt." } =
     const endungA = (a.name.split(".").pop() || "").toLowerCase();
     return `<div class="anh-zeile" data-anh="${esc(a.k)}">
       <span class="anh-typ">${esc(ANH_SYMBOL[endungA] || endungA.toUpperCase().slice(0, 4) || "?")}</span>
-      <a class="anh-name" href="${esc(a.url)}${a.anzeigen ? "" : "?herunterladen=1"}" ${a.anzeigen ? 'target="_blank" rel="noopener"' : "download"}
-         title="${a.anzeigen ? "Im Browser ansehen" : "Herunterladen"}: ${esc(a.name)}">${esc(a.name)}</a>
+      <a class="anh-name" ${a.anzeigen ? `href="${esc(a.url)}" target="_blank" rel="noopener"` : 'href="#" data-anh-oeffnen'}
+         title="${a.anzeigen ? "Im Browser ansehen" : "Mit dem Programm des Rechners öffnen"}: ${esc(a.name)}">${esc(a.name)}</a>
       <span class="anh-groesse dim">${anhGroesse(a.groesse)}</span>
       <span class="anh-akt">
         <button type="button" data-anh-oeffnen title="Mit dem Programm des Rechners öffnen (eine Kopie — Änderungen als neue Fassung wieder anhängen)">↗</button>
@@ -64,7 +64,11 @@ document.addEventListener("click", async (e) => {
   if (!zeile) return;
   const k = zeile.dataset.anh;
   try {
-    if (e.target.closest("[data-anh-oeffnen]")) return await api(`/api/anhaenge/${art}/${id}/${k}/oeffnen`, { method: "POST" });
+    if (e.target.closest("[data-anh-oeffnen]")) {      // der Name einer nicht ansehbaren Datei öffnet sie, statt sie in den Downloadordner zu laden
+      e.preventDefault();
+      await api(`/api/anhaenge/${art}/${id}/${k}/oeffnen`, { method: "POST" });
+      return toast("Wird geöffnet …");
+    }
     if (e.target.closest("[data-anh-weg]")) {
       const r = await rueckfrage(`<h2>Anhang entfernen?</h2><p>„${esc(zeile.querySelector(".anh-name").textContent)}“ verschwindet aus der Liste.
         Die Datei kommt ins Archiv des Bestands — partAtlas löscht nichts, was du hineingetan hast.</p>

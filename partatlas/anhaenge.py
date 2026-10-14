@@ -8,6 +8,7 @@ entfernt geht es nach `vault_archive/`.
 Öffnen startet eine **Kopie** in `arbeit/geoeffnet/`: ein Programm, das beim Speichern die Datei an Ort und Stelle ändert, darf den Vault
 nicht verändern (er wird nie überschrieben, §3.2). Geänderte Fassungen hängt man neu an.
 """
+import filecmp
 import hashlib
 import os
 import re
@@ -103,7 +104,16 @@ class Anhaenge:
         quelle, name = self.pfad(art, kennung, k)
         ordner = self.k.b.pfad("arbeit", "geoeffnet")
         os.makedirs(ordner, exist_ok=True)
-        ziel = dateien.freier_name(os.path.join(ordner, name))
+        # Dieselbe, unveränderte Kopie wieder nehmen: nach zehnmal Anklicken lagen sonst zehn gleiche Dateien da (Tester, 13.10.2026). Eine,
+        # die das Programm inzwischen geändert hat, bleibt unberührt — die Kopie daneben ist dann eine neue.
+        ziel = os.path.join(ordner, name)
+        stamm, endung = os.path.splitext(ziel)
+        n = 1
+        while os.path.lexists(ziel):
+            if os.path.isfile(ziel) and filecmp.cmp(quelle, ziel, shallow=False):
+                return ziel
+            n += 1
+            ziel = f"{stamm} ({n}){endung}"
         shutil.copyfile(quelle, ziel)
         return ziel
 

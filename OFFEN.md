@@ -30,7 +30,12 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.3 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.4 auf `main` (12.10.2026, für den Tester)
+
+**0.95.4 (Tester, 13.10.2026):** Der Name eines Anhangs, den der Browser nicht selbst zeigt (SVG, DXF, XHTML …), lud ihn in den Downloadordner — zehn
+Klicks, zehn Dateien. Jetzt startet er ihn im Programm des Rechners (Windows: bei unbekannter Endung fragt das System „Öffnen mit“); ⤓ bleibt für den
+ausdrücklichen Download. Die Kopie in `arbeit/geoeffnet/` wird bei unverändertem Inhalt wiederverwendet (`test_anhang_ui`, `test_anhaenge`).
+Bekannt flatterhaft: test_ui „Die erste Änderung nach einer Ruhepause lädt sofort“ wartet nur 60 ms und fiel einmal unter Last (allein 4/4).
 
 **0.95.3:** Klicks in Bereinigen waren langsam (Anwender, ~8 600 Modelle, Windows). Jeder Wechsel der Ansicht holte Zähler, Ordnerbaum, Tags,
 Sammlungen, Warteschlange **und** die Baugruppen-Vorschläge (rechnen über alle Modelle) neu. Jetzt holt er nur die Liste; die Seitenleiste wird aus

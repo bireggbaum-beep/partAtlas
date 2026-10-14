@@ -57,6 +57,14 @@ if __name__ == "__main__":
         kopie = z["katalog"].anhaenge.kopie_zum_oeffnen("modell", H, ks)
         check("Öffnen nimmt eine Kopie in arbeit/geoeffnet/", kopie.startswith(b.pfad("arbeit", "geoeffnet")) and open(kopie, "rb").read() == SVG)
 
+        kopie2 = z["katalog"].anhaenge.kopie_zum_oeffnen("modell", H, ks)
+        check("Nochmal öffnen: dieselbe unveränderte Kopie, keine zweite (sonst lägen nach zehn Klicks zehn Dateien da)", kopie2 == kopie)
+        with open(kopie, "wb") as f:
+            f.write(b"vom Programm geaendert")
+        kopie3 = z["katalog"].anhaenge.kopie_zum_oeffnen("modell", H, ks)
+        check("Hat das Programm die Kopie geändert, bleibt sie unberührt und es kommt eine neue daneben",
+              kopie3 != kopie and open(kopie, "rb").read() == b"vom Programm geaendert" and open(kopie3, "rb").read() == SVG)
+
         # -- Baugruppe: Anhänge und Notizen
         bid = c.post("/api/baugruppen", json={"name": "Drohne", "modelle": [H]}).json()["id"]
         c.post(f"/api/anhaenge/baugruppe/{bid}", params={"name": "Explosionszeichnung.pdf"}, content=PDF + b"x")
