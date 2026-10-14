@@ -30,7 +30,11 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.4 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.5 auf `main` (12.10.2026, für den Tester)
+
+**0.95.5:** SVG, XHTML und HTML als Anhang öffnen im neuen Tab (Anwender, 14.10.2026), nicht mehr als Download. Sicher durch
+`Content-Security-Policy: sandbox` — in echtem Chromium geprüft: ein Skript in der Datei läuft nicht (`test_anhang_ui`, fällt ohne den Kopf).
+Offen bleibt, dass bei XHTML/HTML Bilder und Stile fehlen, die neben der Datei lagen (nur die eine Datei liegt im Bestand); ⤓ und ↗ bleiben.
 
 **0.95.4 (Tester, 13.10.2026):** Der Name eines Anhangs, den der Browser nicht selbst zeigt (SVG, DXF, XHTML …), lud ihn in den Downloadordner — zehn
 Klicks, zehn Dateien. Jetzt startet er ihn im Programm des Rechners (Windows: bei unbekannter Endung fragt das System „Öffnen mit“); ⤓ bleibt für den

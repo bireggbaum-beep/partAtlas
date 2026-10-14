@@ -36,11 +36,16 @@ if __name__ == "__main__":
               and r.headers["content-disposition"].startswith("inline") and r.headers["content-security-policy"] == "sandbox")
         ks = c.post(f"/api/anhaenge/modell/{H}", params={"name": "Zeichnung.svg"}, content=SVG).json()["k"]
         r = c.get(f"/api/anhaenge/modell/{H}/{ks}")
-        check("SVG (kann Skript enthalten) nur als Download", r.headers["content-disposition"].startswith("attachment")
+        check("SVG (kann Skript enthalten) zum Ansehen im Browser, aber in der Sandbox", r.headers["content-disposition"].startswith("inline")
+              and r.headers["content-type"] == "image/svg+xml" and r.headers["content-security-policy"] == "sandbox"
+              and c.get(f"/api/modelle/{H}").json()["anhaenge"][-1]["anzeigen"])
+        kd = c.post(f"/api/anhaenge/modell/{H}", params={"name": "Plan2.dxf"}, content=b"0\nSECTION\n").json()["k"]
+        r = c.get(f"/api/anhaenge/modell/{H}/{kd}")
+        check("Was der Browser nicht zeigt (DXF), kommt nur als Download", r.headers["content-disposition"].startswith("attachment")
               and r.headers["content-type"] == "application/octet-stream")
         check("Derselbe Inhalt noch einmal: kein zweiter Eintrag",
               c.post(f"/api/anhaenge/modell/{H}", params={"name": "nochmal.pdf"}, content=PDF).json()["k"] == k
-              and len(c.get(f"/api/modelle/{H}").json()["anhaenge"]) == 2)
+              and len(c.get(f"/api/modelle/{H}").json()["anhaenge"]) == 3)
         check("Name aus dem Browser: nur der Dateiname, kein Pfad", c.post(f"/api/anhaenge/modell/{H}", params={"name": "../../x/Plan.dxf"},
               content=b"0\nSECTION").status_code == 200 and "Plan.dxf" in [x["name"] for x in c.get(f"/api/modelle/{H}").json()["anhaenge"]])
         c.patch(f"/api/anhaenge/modell/{H}/{k}", json={"name": "Anleitung v2.pdf"})

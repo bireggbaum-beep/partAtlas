@@ -21,10 +21,13 @@ from .katalog import KatalogFehler, jetzt, ref
 BAUGRUPPE = "ASSEMBLY"          # wie baugruppen.BAUGRUPPE; hier ohne den Import, der sonst im Kreis liefe
 ZIELE = {"modell": MODELL, "baugruppe": BAUGRUPPE}
 MAX_ANHANG = 500 << 20
-# Im Browser ansehen statt herunterladen: nur, was der Browser selbst sicher darstellt. Alles andere (auch SVG und HTML, die Skript
-# enthalten können) kommt als Download.
+# Im Browser ansehen statt herunterladen: was der Browser selbst darstellt. SVG und HTML können Skript enthalten; der Server schickt jeden Anhang
+# mit `Content-Security-Policy: sandbox` (main.anhang_laden) — dann läuft kein Skript und die Datei erreicht partAtlas nicht. Darum ist auch das
+# im neuen Tab sicher (Entscheid 14.10.2026, nach dem Wunsch des Testers: SVG und XHTML nicht erst in den Downloadordner laden).
 ANZEIGEN = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
-            ".gif": "image/gif", ".txt": "text/plain; charset=utf-8", ".md": "text/plain; charset=utf-8"}
+            ".gif": "image/gif", ".txt": "text/plain; charset=utf-8", ".md": "text/plain; charset=utf-8",
+            ".svg": "image/svg+xml", ".xhtml": "application/xhtml+xml", ".xht": "application/xhtml+xml",
+            ".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8"}
 
 
 class Anhaenge:

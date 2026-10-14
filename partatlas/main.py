@@ -428,7 +428,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if not os.path.exists(pfad):
             raise HTTPException(404)
         typ = anhaenge.ANZEIGEN.get(os.path.splitext(name)[1].lower())
-        # Ansehen nur für Formate, die der Browser sicher zeigt; und auch dann in einer Sandbox ohne Skript und ohne Zugriff auf partAtlas.
+        # Ansehen nur für Formate, die der Browser selbst zeigt; immer in einer Sandbox ohne Skript und ohne Zugriff auf partAtlas.
         return FileResponse(pfad, filename=name, media_type=typ or "application/octet-stream",
                             content_disposition_type="inline" if typ and not herunterladen else "attachment",
                             headers={"Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"})
