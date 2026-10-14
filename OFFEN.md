@@ -30,7 +30,12 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
   gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
 
-## Stand: 0.95.5 auf `main` (12.10.2026, für den Tester)
+## Stand: 0.95.6 auf `main` (12.10.2026, für den Tester)
+
+**0.95.6:** „Neu in dieser Fassung“ — kleines Fenster beim ersten Start nach einem Update (Wunsch Tester/Anwender, 14.10.2026); gemerkt im Bestand
+(`einstellungen.json`, `neuigkeiten_gesehen`), nicht im Browser. Ein ganz neuer Bestand sieht nichts, einer von vor dem Fenster alles ab 0.95.1;
+Klick auf die Fassung oben links zeigt die letzten fünf Einträge. **Pflege: zu jeder neuen Fassung ein Eintrag in `partatlas/neuigkeiten.py`**
+(`test_neuigkeiten` fällt sonst).
 
 **0.95.5:** SVG, XHTML und HTML als Anhang öffnen im neuen Tab (Anwender, 14.10.2026), nicht mehr als Download. Sicher durch
 `Content-Security-Policy: sandbox` — in echtem Chromium geprüft: ein Skript in der Datei läuft nicht (`test_anhang_ui`, fällt ohne den Kopf).

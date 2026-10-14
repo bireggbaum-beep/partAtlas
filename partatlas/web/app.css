@@ -1213,3 +1213,8 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .fw-seg button.gefahr.an { background: color-mix(in oklch, var(--crit) 14%, transparent); color: var(--crit); }
 .fw-fuss { display: flex; align-items: center; gap: var(--s3); }
 .fw-fuss > span { flex: 1; font-size: 13px; }
+
+/* „Neu in dieser Fassung“ */
+.neu-fassung { margin: 12px 0 2px; font-size: 13px; color: var(--accent); }
+.neu { margin: 2px 0 4px 18px; padding: 0; }
+.neu li { margin: 3px 0; }

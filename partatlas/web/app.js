@@ -2234,6 +2234,26 @@ async function aendern(id, werte) {
 
 // Was an einem Modell hängt, in Worten statt Kantennamen; der Name der
 // Kante steht dahinter, damit man sieht, dass es flatgraph ist, der zählt.
+// „Neu in dieser Fassung“ (neuigkeiten.py): einmal nach einem Update, gemerkt im Bestand. `alle`: Klick auf die Fassung, zeigt die letzten Einträge.
+// Liegt gerade ein anderes Fenster offen, wird es nicht überdeckt; ein paar Mal später noch einmal versucht.
+async function neuigkeitenZeigen({ alle = false, versuch = 0 } = {}) {
+  let n;
+  try { n = await api("/api/neuigkeiten" + (alle ? "?alle=1" : "")); } catch { return; }
+  if (!n.neu.length) return;
+  if ($("#dialog").open || $("#fehlt-fenster")?.open) {
+    if (versuch < 8) setTimeout(() => neuigkeitenZeigen({ alle, versuch: versuch + 1 }), 4000);
+    return;
+  }
+  await dialog(`<h2>partAtlas ${esc(n.version)}</h2><p class="dim">${alle ? "Zuletzt dazugekommen" : "Neu seit deinem letzten Start"}</p>
+    ${n.neu.map((e) => `<h3 class="neu-fassung">${esc(e.version)}</h3><ul class="neu">${e.zeilen.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>`).join("")}
+    <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
+  if (!alle) api("/api/neuigkeiten/gesehen", { method: "POST" }).catch(() => {});
+}
+setTimeout(() => neuigkeitenZeigen(), 1200);
+$("#version").style.cursor = "pointer";
+$("#version").title = "Fassung — Klick zeigt, was neu ist";
+$("#version").addEventListener("click", () => neuigkeitenZeigen({ alle: true }));
+
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;

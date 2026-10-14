@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
-from . import anhaenge, aufraeumen, dateidialog, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
+from . import anhaenge, aufraeumen, dateidialog, neuigkeiten, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -99,6 +99,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         k = Katalog(b)
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
+        neuigkeiten.beim_oeffnen(b, k)
         zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))
         s.schleifenprobe = verteiler.antwortzeit
         _startinfo(b, k, s)
@@ -292,6 +293,20 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             return {"abgebrochen": True}
         modelle, vollstaendig = durchsuchen.zaehlen(pfad)
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
+
+    @app.get("/api/neuigkeiten")
+    def neuigkeiten_holen(alle: int = 0):
+        """Was seit der zuletzt gesehenen Fassung neu ist; `alle=1`: die letzten Einträge, unabhängig davon (Klick auf die Fassung)."""
+        b = zustand["bestand"]
+        if alle:
+            return {"version": VERSION, "neu": neuigkeiten.letzte()}
+        gesehen = b.einstellungen().get("neuigkeiten_gesehen") or neuigkeiten.START
+        return {"version": VERSION, "neu": neuigkeiten.seit(gesehen, VERSION)}
+
+    @app.post("/api/neuigkeiten/gesehen")
+    def neuigkeiten_gesehen():
+        zustand["bestand"].einstellungen_setzen(neuigkeiten_gesehen=VERSION)
+        return {"ok": True}
 
     @app.post("/api/wurzeln/waehlen/abbrechen")
     def wurzel_waehlen_abbrechen():
