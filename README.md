@@ -12,24 +12,28 @@ Voraussetzung, einmalig:
 - **Python 3.10 oder neuer** von [python.org](https://www.python.org/downloads/) — beim Installieren „Add python.exe to PATH“ ankreuzen.
 - **Git** von [git-scm.com](https://git-scm.com/download/win) (holt beim Installieren die Datenbank flatgraph).
 
-In der **PowerShell**:
+Dann den Ordner holen, in der **PowerShell**:
 
 ```powershell
 git clone https://github.com/bireggbaum-beep/partAtlas
-cd partAtlas
-py -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt     # einmalig, ein paar Minuten
-.venv\Scripts\python -m partatlas                          # starten
 ```
 
-Dann im Browser **http://127.0.0.1:8765** öffnen. Beenden mit Strg+C im PowerShell-Fenster. Beim nächsten Mal genügt im Ordner
-`partAtlas` die letzte Zeile.
+und im Ordner `partAtlas` **`start.bat` doppelklicken**. Beim ersten Mal legt sie die Umgebung an und holt die Pakete (ein paar
+Minuten), danach startet partAtlas und der Browser öffnet **http://127.0.0.1:8765**. Beenden mit Strg+C im Fenster (die Frage
+„Batchvorgang abbrechen?“ mit J beantworten) oder das Fenster schliessen. Läuft partAtlas schon, öffnet `start.bat` nur den Browser.
 
-**Aktualisieren** (neue Fassung holen): partAtlas beenden, dann
+**Aktualisieren** (neue Fassung holen): partAtlas beenden, dann in der PowerShell im Ordner `partAtlas`
 
 ```powershell
-cd partAtlas
 git pull
+```
+
+und wieder `start.bat` doppelklicken — neue Pakete holt sie selbst. Läuft beim Start noch die alte Fassung, sagt sie es.
+
+Ohne `start.bat`, von Hand in der PowerShell:
+
+```powershell
+py -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 .venv\Scripts\python -m partatlas
 ```

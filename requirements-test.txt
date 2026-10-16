@@ -1,4 +1,4 @@
 # Für die Suiten: TestClient braucht httpx, test_ui.py Playwright + Chromium.
-httpx
-playwright
-pypdf
+httpx==0.28.1
+playwright==1.64.0
+pypdf==6.17.0

@@ -816,7 +816,7 @@ aber **nicht** am Ort, wo es zählt. Wer eines davon bestätigt oder widerlegt, 
 | Verzeichnis-`fsync` | Linux | Windows kennt ihn nicht (flatgraph VERTRAG §2.2) |
 | 3D-Ansicht ohne Grafikkarte | Chromium ohne WebGL, SwiftShader | auf dem alten Rechner des Testers (GeForce 9, nouveau) |
 | Grosser Bestand | Anwender unter Windows mit ≈ 8 600 Modellen (Einlesen, Bereinigen, Löschen) | Ordner-Aktionen und Neuer Baum mit allen Ordnern bei so vielen Ordnern unter Windows |
-| Installation nach README | Linux aus frischem Klon (start.sh --demo) | Windows nach README (PowerShell) |
+| Installation nach README | Linux aus frischem Klon (start.sh --demo); alle Suiten in einer frischen Umgebung aus den festen Fassungen | Windows: `start.bat` und die Schritte in der PowerShell (Anwender prüft) |
 
 Bewusst nicht in 1.0 (siehe OFFEN.md): Backup als ZIP und Wiederherstellen (gebaut, ausgeblendet), Versionsverlauf je Modell,
 Zusammenführen gleichnamiger Ordner, Ordner auf andere Platten verschieben.

@@ -1,9 +1,14 @@
 # flatgraph auf einen Commit festgenagelt, wie in pDMS. Aktualisieren:
 # Commit ersetzen, pip install -r requirements.txt, alle Suiten.
 flatgraph @ git+https://github.com/bireggbaum-beep/flatgraphdb.git@39698faa8cc713ce970643a3ce45616856bd26b3
-fastapi>=0.140
-uvicorn>=0.50
-numpy>=2.0
-pillow>=11.0
+# Feste, geprüfte Fassungen (16.10.2026, für 1.0): eine neuere Fassung bei einer Neuinstallation soll partAtlas nicht unbemerkt brechen.
+# Anheben bewusst: Fassung ändern, pip install -r requirements.txt, alle Suiten. starlette und pydantic kommen mit fastapi, tragen
+# aber die Web-Schicht — darum ebenfalls fest.
+fastapi==0.143.2
+starlette==1.6.0
+pydantic==2.13.5
+uvicorn==0.53.0
+numpy==2.5.3
+pillow==12.3.0
 # Stückliste als PDF (nur die App; flatgraph bleibt ohne Abhängigkeiten)
-reportlab>=4.0
+reportlab==5.0.1
