@@ -4,6 +4,20 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.0 auf `main` (16.10.2026, für den Tester)
+
+Der Katalog ist fertig. Seit 0.95.7: Bereinigen neu gegliedert, jede Ansicht erklärt sich (0.96); Hinweis „Dein Katalog in deinem
+Backup“, ZIP-Backup gebaut aber bis zum Wiederherstellen ausgeblendet (0.97); Ordner anlegen/umbenennen/verschieben wie im Explorer,
+alle Unterordner im Baum (0.98.0–0.98.2); Umbenennen überall am Namen mit langsamem zweitem Klick, Rückgängig/Strg+Z (0.98.3);
+Fehlermeldungen in einem Satz, feste Paketfassungen, start.bat, README für Fremde (0.98.4); Handbuch in der App mit Bildern, F1
+(0.98.5/0.98.6); „Farbe der Vorschaubilder“ ausgeblendet (1.0.0). „Neu in dieser Fassung“: ein Eintrag 1.0.0 statt der Zwischenfassungen
+(die nie auf `main` waren). Rückweg: Zweig `fassung-0.95.7` (README).
+Vor dem Push: alle 32 Suiten ausser test_ui grün, **test_ui komplett 70/70**. test_ordner_ui fiel im Gesamtlauf einmal bei „Strg+Z:
+Modell wieder unter altem Namen“ (Datei nach 10 s nicht zurück), danach siebenmal nachgestellt ohne Fehler, auch unter Volllast aller
+Kerne — Wartezeit auf 20 s, die Prüfung nennt beim nächsten Fehlschlag den Zustand (Rückgängig gemerkt, Fokus, Meldung, Ordner).
+**Offen nach 1.0:** Rückmeldung des Anwenders unter Windows (start.bat, Ordner mit offener Datei, nur andere Schreibung); echte Dateien
+aus Bambu Studio und Anycubic Slicer Next; dann Versionsverlauf je Modell (OFFEN, „Nach 1.0 zuerst“).
+
 ## Bereinigen professionell (Auftrag 12.10.2026, nach Iteration 2)
 
 Anwender: Bereinigen muss professionell werden — der Anwender bereinigt dort seine Datenbank bewusst. Entschieden: **Archiv** = das Modell

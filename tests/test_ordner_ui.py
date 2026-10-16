@@ -143,9 +143,16 @@ if __name__ == "__main__":
             check("Enter: Datei auf der Platte umbenannt, Endung geblieben, Meldung mit „Rückgängig“",
                   os.path.isfile(os.path.join(samm, "Ziel", "Anderes v2.stl")) and "Rückgängig" in pg.inner_text("#toast"))
             pg.evaluate("document.activeElement?.blur()")
+            vorher = pg.evaluate("[!!ordnerAktion.letzte, document.activeElement.tagName, !!document.querySelector('dialog[open]')]")
             pg.keyboard.press("Control+z")
-            warte(lambda: os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")), 10)
-            check("Strg+Z: Modell wieder unter altem Namen", os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")))
+            try:
+                # 20 s: im Gesamtlauf aller Suiten fiel das einmal mit 10 s (16.10.2026), siebenmal nachgestellt nie — auch nicht unter Volllast.
+                warte(lambda: os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")), 20)
+            except Exception:
+                pass
+            zustand_text = f"vorher (Rückgängig gemerkt, Fokus, Fenster offen) {vorher}, Meldung „{pg.inner_text('#toast')}“, Ordner {sorted(os.listdir(os.path.join(samm, 'Ziel')))}"
+            ok = os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl"))
+            check("Strg+Z: Modell wieder unter altem Namen" + ("" if ok else f" — {zustand_text}"), ok)
 
             # -- F2 auf dem gezeigten Modell; verbotenes Zeichen lässt das Feld offen
             time.sleep(0.5)
