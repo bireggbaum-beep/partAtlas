@@ -16,6 +16,9 @@ from schutz_inventur import inventur
 
 # (Datei, Funktion, Aufruf) → warum das nichts des Anwenders gefährdet
 ERLAUBT = {
+    ("backup.py", "Backup._lauf", "os.replace"): "eigene Arbeitsdatei (.…zip.arbeit) → Backup-ZIP im Zielordner, nur unter freiem Namen",
+    ("backup.py", "_aufraeumen", "os.remove"): "ältere eigene Backup-ZIPs im Zielordner (nur unser Name, nie das neue, nie das letzte) — KONZEPT §3.3a",
+    ("backup.py", "_weg", "os.remove"): "eigene Arbeitsdatei eines abgebrochenen oder gescheiterten Backups",
     ("bestand.py", "Bestand.entfernen", "os.unlink"): "der einzige Löschweg; verweigert alles ausserhalb des Bestands",
     ("bestand.py", "Bestand.thumb", "os.remove"): "eigene Arbeitsdatei neben dem Thumb (thumbs/ im Bestand)",
     ("bestand.py", "Bestand.thumb", "os.replace"): "Thumb im Bestand fertig ablegen",

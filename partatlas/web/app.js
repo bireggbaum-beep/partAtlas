@@ -3199,7 +3199,9 @@ function live() {
 function liveMeldung(m) {
   if (m.art === "scan") return liveScan(m);
   if (m.art === "worker") return liveWorker(m);
-  if (m.art === "aktion") {                    // Löschen/Wiederherstellen vieler Modelle: Fortschritt unten links
+  if (m.art === "backup" || (m.art === "aktion" && m.was === "Backup")) backupLive(m);
+  if (m.art === "backup") return;
+  if (m.art === "aktion") {                    // Löschen/Wiederherstellen vieler Modelle, Backup: Fortschritt unten links
     if (m.laeuft && !zustand.aktion?.laeuft) m.beginn = Date.now(); else m.beginn = zustand.aktion?.beginn;
     zustand.aktion = m;
     return hintergrundZeichnen();
@@ -3461,8 +3463,93 @@ document.addEventListener("click", async (e) => {
     location.reload();          // ein ganz anderer Stand: alles neu, nichts aus dem alten im Speicher der Seite
   } catch (err) { toast(err.message); sicherungenZeigen(); }
 });
-new MutationObserver(() => { if (document.getElementById("ein-sicherungen")?.textContent.trim() === "…") sicherungenZeigen(); })
-  .observe(document.getElementById("dialog"), { childList: true, subtree: true });
+new MutationObserver(() => {
+  if (document.getElementById("ein-sicherungen")?.textContent.trim() === "…") sicherungenZeigen();
+  if (document.getElementById("ein-backup")?.textContent.trim() === "…") backupZeigen();
+}).observe(document.getElementById("dialog"), { childList: true, subtree: true });
+
+// Backup als ZIP (KONZEPT §3.3a): Stand, Zielordner, je Zeile was hinein kommt mit Grösse, Erstellen mit Fortschritt. Die Zeilen und
+// Grössen rechnet der Server (backup.py); hier wird nur gezeigt und umgeschaltet.
+const BK_GROESSE = (b) => b >= 1e9 ? `${zahl(b / 1e9, 1)} GB` : b >= 1e6 ? `${zahl(b / 1e6, 0)} MB` : `${zahl((b || 0) / 1e3, 0)} kB`;
+function bkVor(iso) {
+  const tage = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(iso).setHours(0, 0, 0, 0)) / 86400000);
+  return tage <= 0 ? "heute" : tage === 1 ? "gestern" : `vor ${tage} Tagen`;
+}
+async function backupZeigen(daten) {
+  const el = document.getElementById("ein-backup");
+  if (!el) return;
+  let u = daten;
+  if (!u) {
+    try { u = await api("/api/backup"); } catch { el.innerHTML = `<p class="dim">Backup-Einstellungen nicht lesbar.</p>`; return; }
+  }
+  backupZeigen.u = u;
+  const l = u.letztes;
+  const stand = l ? `Letztes Backup <b>${bkVor(l.zeit)}</b> · ${anzahl(l.modelle)} Modelle · ${BK_GROESSE(l.bytes)}${l.nicht_lesbar
+    ? ` · <span class="warn">${anzahl(l.nicht_lesbar)} ${l.nicht_lesbar === 1 ? "Datei" : "Dateien"} nicht lesbar</span>` : ""}` : "Noch kein Backup.";
+  const summe = u.zeilen.filter((z) => z.an).reduce((s, z) => s + z.bytes, 0);
+  const laeuft = u.status?.laeuft;
+  el.innerHTML = `<div class="bk-stand">${stand}</div>
+    <div class="bk-ziel"><span>Zielordner</span><code class="${u.ziel ? "" : "dim"}">${esc(u.ziel || "noch keiner gewählt")}</code>
+      <button type="button" class="knopf klein" data-bk-ziel>${u.ziel ? "Ändern …" : "Wählen …"}</button>
+      ${u.ziel ? `<button type="button" class="knopf klein" data-bk-zeigen>Zeigen</button>` : ""}</div>
+    <table class="bk-zeilen"><tbody>${u.zeilen.map((z) => `<tr>
+      <td><input type="checkbox" data-bk-zeile="${esc(z.id)}" ${z.an ? "checked" : ""} ${z.immer || laeuft ? "disabled" : ""}
+        aria-label="${esc(z.titel)}"></td>
+      <td><b>${esc(z.titel)}</b>${z.immer ? ` <span class="dim">· immer</span>` : ""}<div class="dim">${esc(z.hinweis)}</div></td>
+      <td class="mono dim">${z.dateien ? BK_GROESSE(z.bytes) : "leer"}</td></tr>`).join("")}</tbody></table>
+    ${u.unbekannt?.length ? `<p class="dim">Kommt zusätzlich als „Sonstiges“ mit: ${u.unbekannt.map(esc).join(", ")}.</p>` : ""}
+    <div class="bk-fuss"><span>Zusammen etwa <b>${BK_GROESSE(summe)}</b> (vor dem Packen)</span>
+      <span>Im Zielordner behalten: die letzten <input type="number" id="bk-behalten" min="1" max="50" value="${u.behalten}"> Backups</span></div>
+    <div class="bk-knoepfe" id="bk-knoepfe">${laeuft ? bkLauf(u.status)
+      : `<button type="button" class="knopf akzent" data-bk-start ${u.ziel ? "" : "disabled title=\"Erst einen Zielordner wählen\""}>Backup erstellen</button>`}</div>`;
+}
+const bkLauf = (st) => `<div class="bk-lauf"><span>Backup läuft … ${anzahl(st.fertig || 0)} / ${anzahl(st.gesamt || 0)} Dateien</span>
+  <div class="balken klein"><i style="width:${Math.round(((st.fertig || 0) / (st.gesamt || 1)) * 100)}%"></i></div>
+  <button type="button" class="knopf klein" data-bk-abbrechen>Abbrechen</button></div>`;
+
+// Der Zielordner: der Ordnerdialog des Rechners; gibt es keinen, ein Feld für den Pfad. Ein Ordner mit Modellen oder im Bestand lehnt
+// der Server mit einem Satz ab.
+async function backupZielWaehlen() {
+  let w;
+  try { w = await api("/api/backup/ziel/waehlen", { method: "POST" }); } catch (e) { return toast(e.message); }
+  if (w.abgebrochen) return null;
+  if (!w.keinDialog) return w.pfad;
+  const r = await rueckfrage(`<h2>Zielordner für das Backup</h2>
+    <p class="dim">Der vollständige Pfad eines vorhandenen Ordners — nicht in einem Ordner mit Modellen.</p>
+    <input type="text" name="pfad" value="${esc(backupZeigen.u?.ziel || "")}" style="width:100%">
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Übernehmen</button></div>`);
+  return r.a === "ja" && r.pfad.trim() ? r.pfad.trim() : null;
+}
+async function backupSetzen(werte) {
+  try { backupZeigen(await api("/api/backup", { method: "PUT", body: werte })); } catch (e) { toast(e.message); backupZeigen(); }
+}
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest?.("#ein-backup")) return;
+  if (e.target.closest("[data-bk-ziel]")) {
+    const pfad = await backupZielWaehlen();
+    if (pfad) backupSetzen({ ziel: pfad });
+  }
+  if (e.target.closest("[data-bk-zeigen]")) { try { await api("/api/backup/zeigen", { method: "POST" }); } catch (err) { toast(err.message); } }
+  if (e.target.closest("[data-bk-start]")) {
+    try { const st = await api("/api/backup", { method: "POST" }); $("#bk-knoepfe").innerHTML = bkLauf(st); } catch (err) { toast(err.message); }
+  }
+  if (e.target.closest("[data-bk-abbrechen]")) { try { await api("/api/backup/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); } }
+});
+document.addEventListener("change", (e) => {
+  const z = e.target.closest?.("[data-bk-zeile]");
+  if (z) backupSetzen({ zeilen: { [z.dataset.bkZeile]: z.checked } });
+  if (e.target.id === "bk-behalten") backupSetzen({ behalten: e.target.value });
+});
+// Live: Fortschritt im offenen Reiter (nur die Zeile, nicht alles neu rechnen), am Ende das Ergebnis.
+function backupLive(m) {
+  if (m.art === "aktion" && m.was === "Backup" && m.laeuft && $("#bk-knoepfe")) $("#bk-knoepfe").innerHTML = bkLauf(m);
+  if (m.art !== "backup") return;
+  if (m.ergebnis === "fertig") toast(`Backup fertig: ${m.letztes.name} (${BK_GROESSE(m.letztes.bytes)})${m.letztes.nicht_lesbar
+    ? ` — ${anzahl(m.letztes.nicht_lesbar)} ${m.letztes.nicht_lesbar === 1 ? "Datei liess" : "Dateien liessen"} sich nicht lesen, siehe Protokoll` : ""}.`);
+  else if (m.ergebnis === "abgebrochen") toast("Backup abgebrochen — es wurde nichts geschrieben.");
+  else if (m.ergebnis === "fehler") toast(`Backup gescheitert: ${m.fehler}`);
+  backupZeigen();
+}
 
 async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }

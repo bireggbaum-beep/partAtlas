@@ -39,10 +39,33 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
 
 Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währenddessen 1. Massstab Qualität. Reihenfolge:
 1. ~~Bereinigen Paket 3~~ (0.96.0).
-2. **Backup & Wiederherstellung** als ein Reiter in den Einstellungen (KONZEPT §3.3a): der vorhandene Reiter „Automatische Sicherung“
+2. **Backup & Wiederherstellung** — **Paket 1 Backup erstellen (0.97.0, 16.10.2026):** `backup.py`, Zeilen je Inhalt (`ZEILEN`: Datenbank
+   immer; Modelldateien, eigene Bilder/Druckfotos/Kaufteile, Anhänge, G-Code und Quellen, Aufgehobenes = `vault_archive` + alter
+   `papierkorb/` — Vorgabe an; Vorschaubilder aus), `AUSGENOMMEN` mit Grund (arbeit, sicherungen, netz, thumbs, cache, Protokoll).
+   Unbekanntes im Bestand kommt als „sonstiges“ trotzdem mit, `unbekannt()` meldet es (test_backup). Modelldateien = nur die Orte im
+   Katalog, unter `dateien/<Wurzel-Kennung>/<Pfad>`; andere Dateien in den Ordnern nicht. ZIP mit `partatlas-backup.json`
+   (Fassung, Zeilen mit Anzahl/Grösse, ausgelassene, Wurzelordner, nicht lesbare Dateien); Datenbank unter der Sperre, Dateien danach;
+   Arbeitsdatei + fsync + os.replace, nie überschreiben; Platz vorher geprüft; Abbrechen; die letzten 2 bleiben (nur unser Name);
+   Zielordner nicht im Bestand und nicht in einem Ordner mit Modellen. Reiter: Stand („Letztes Backup heute · n Modelle · Grösse“),
+   Zielordner (Dialog des Rechners, sonst Pfad eintippen), Zeilen mit Grösse, Summe, Behalten, Fortschritt im Reiter und unten links.
+   Zeilen und Zielordner gelten sofort (nicht erst mit „Speichern“ — „Backup erstellen“ braucht sie). test_backup 19/19 (vier
+   Gegenproben fallen), test_backup_ui 3/3 (Gegenprobe fällt), test_schutz 28/28 (drei Einträge in ERLAUBT), test_api 86/86.
+   Nicht gemessen: grosser Bestand (Zeit, Grösse; Windows). **Offen:** Paket 2 Wiederherstellen aus dem ZIP (ersetzt den Katalog,
+   vorher Sicherung; Wurzelordner auf dem neuen Rechner neu zuordnen; Vorschaubilder neu erzeugen, wenn sie nicht dabei waren),
+   Paket 3 Erinnerung nach 30 Tagen und Hinweis in Bereinigen. Ursprünglicher Plan: als ein Reiter in den Einstellungen (KONZEPT §3.3a): der vorhandene Reiter „Automatische Sicherung“
    wird Teil davon; Backup als ZIP mit Zeilen je Inhalt (auch `vault/gcode`, `vault/quellen`, `vault/anhaenge`), Inhaltsverzeichnis,
    Wiederherstellen, letzte 2 behalten, Erinnerung nach 30 Tagen. In Bereinigen nur ein Hinweis mit Link dorthin.
-3. Ordner-Operationen prüfen (was fehlt noch?), Qualitätsdurchgang, Handbuch, alle Suiten, test_ui komplett, 1.0.
+3. **Ordner umbenennen und verschieben** (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
+   Auf der Platte samt allen Modellorten, Sicherung vorher, nie überschreiben. Aufwand 3.
+4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
+   README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag
+   „mit echten Dateien nicht geprüft“.
+5. **Handbuch (HTML; PDF später)** — zuletzt, wenn die Oberfläche steht. `handbuch.html` ist seit 0.53 nicht nachgezogen (fehlen u. a.
+   Tags verwalten, Varianten, gemerkte Suchen, Archiv bis 0.96, Backup) und **in der App nicht erreichbar**. Geplant: Kapitel für Kapitel
+   an der laufenden App prüfen; Eintrag „Handbuch“ in der App (Server liefert es aus, neuer Tab, ohne Internet), mit Prüfung;
+   **Screenshots per Skript** (`werkzeuge/`, Demo-Sammlung, Chromium/Playwright, hell und dunkel, roter Rahmen um die gemeinte Stelle,
+   eigene Dateien neben dem HTML) — vor jeder Fassung neu erzeugbar. `partAtlas.pdf` ist kein Handbuch, sondern die alte URS v1.5.0.
+6. Fassung 1.0: Eintrag „Neu in dieser Fassung“, Rückweg-Zweig auf die letzte 0.x, `main` für den Tester.
 
 ## Stand: 0.95.7 auf `main` (12.10.2026, für den Tester)
 

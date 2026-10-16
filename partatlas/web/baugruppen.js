@@ -654,6 +654,12 @@ async function einstellungen() {
       <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>
 `],
     ["sicherung", "Backup & Wiederherstellung", `
+      <p class="dim">Drei Dinge schützen deine Daten: das <b>Backup</b> gegen Plattenschaden und für den Umzug auf einen anderen Rechner,
+        die <b>automatische Sicherung</b> gegen eigene Fehlgriffe, der <b>Papierkorb</b> gegen einen Klick zu schnell.</p>
+      <div class="i-titel">BACKUP (ZIP)</div>
+      <p class="dim">Katalog und — wie du es einstellst — Modelldateien und Bilder in einer Datei, in einem Ordner deiner Wahl. Am besten
+        einer, den dein eigenes Backup (Cloud, NAS, externe Platte) ohnehin mitnimmt.</p>
+      <div id="ein-backup"><p class="dim">…</p></div>
       <div class="i-titel">AUTOMATISCHE SICHERUNG (NUR DATENBANK)</div>
       <p class="dim">Sichert die Datenbank — Modelle, Tags, Drucke, Baugruppen, Sammlungen, Ordner — beim Start und vor jeder Massenaktion.
         Nicht enthalten: Bilder und deine Modelldateien. Liegt auf demselben Rechner: kein Ersatz für ein Backup.</p>

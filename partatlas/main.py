@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
-from . import anhaenge, aufraeumen, dateidialog, neuigkeiten, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
+from . import anhaenge, aufraeumen, backup, dateidialog, neuigkeiten, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
 from .katalog import Katalog, KatalogFehler
@@ -86,6 +86,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     zustand = {}
     oeffnen_stand = {"bereit": False, "fehler": None}
 
+    def backup_melden(st):
+        # Fortschritt unten links wie bei Massenaktionen (Live-Meldung „aktion“), das Ergebnis für den Reiter als eigene Meldung.
+        verteiler.senden("aktion", {"was": "Backup", "fertig": st.get("fertig", 0), "gesamt": st.get("gesamt", 0), "laeuft": st.get("laeuft")})
+        if not st.get("laeuft"):
+            verteiler.senden("backup", {k: v for k, v in st.items() if not k.startswith("_")})
+
     def oeffnen():
         t0 = time.monotonic()
         b = Bestand(bestand_pfad, bei_aenderung=verteiler.graph)
@@ -100,7 +106,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
         neuigkeiten.beim_oeffnen(b, k)
-        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg))
+        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg), backup=backup.Backup(b, k, melden=backup_melden))
         s.schleifenprobe = verteiler.antwortzeit
         _startinfo(b, k, s)
         # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
@@ -145,6 +151,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         # Beenden bricht ein laufendes Einlesen ab (was fertig ist, steht in der Datenbank), statt bis zu 30 s darauf zu warten: sonst
         # reagiert partAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
         # beim harten Beenden als eigener Prozess zurück.
+        zustand["backup"].abbrechen()          # ein halbes ZIP bleibt nicht liegen: die Arbeitsdatei geht beim Abbruch weg
+        zustand["backup"].warten(BEENDEN_S)
         s.abbrechen()
         if not s.warten(BEENDEN_S):
             # Datenverlust droht nicht: was das Einlesen danach noch schreiben will, scheitert an der geschlossenen Datenbank, und jede
@@ -1161,6 +1169,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             sicherung.pruefen(b.wurzel, name)
         except ValueError as e:
             raise KatalogFehler(str(e))
+        if zustand["backup"].status.get("laeuft"):
+            raise KatalogFehler("Erst wenn das Backup fertig ist — es liest gerade die Datenbank.")
         if not tausch_sperre.acquire(blocking=False):
             raise KatalogFehler("Es wird gerade schon eine Sicherung zurückgeholt.")
         try:
@@ -1184,6 +1194,68 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             oeffnen_stand["bereit"] = True
             tausch_sperre.release()
         verteiler.senden("neu_laden", {})
+        return {"ok": True}
+
+    # ---------------------------------------------------------------- Backup als ZIP (KONZEPT §3.3a)
+
+    @app.get("/api/backup")
+    def backup_uebersicht():
+        return {**backup.uebersicht(zustand["bestand"], K()), "status": {k: v for k, v in zustand["backup"].status.items()
+                                                                          if not k.startswith("_")}}
+
+    @app.put("/api/backup")
+    def backup_einstellen(d: dict = Depends(json_koerper)):
+        b = zustand["bestand"]
+        werte = {}
+        if "ziel" in d:
+            try:
+                werte["backup_ziel"] = backup.ziel_pruefen(b, K(), d["ziel"]) if d["ziel"] else ""
+            except ValueError as e:
+                raise KatalogFehler(str(e))
+        if "zeilen" in d:      # nur bekannte Zeilen, nur Wahrheitswerte; die Datenbank ist immer dabei
+            frei = {z["id"] for z in backup.ZEILEN if not z.get("immer")}
+            werte["backup_zeilen"] = {**(b.einstellungen().get("backup_zeilen") or {}),
+                                      **{k: bool(v) for k, v in (d["zeilen"] or {}).items() if k in frei}}
+        if "behalten" in d:
+            try:
+                werte["backup_behalten"] = max(1, min(int(d["behalten"]), 50))
+            except (TypeError, ValueError):
+                raise KatalogFehler("Anzahl der Backups als ganze Zahl angeben.")
+        b.einstellungen_setzen(**werte)
+        return backup_uebersicht()
+
+    @app.post("/api/backup")
+    def backup_erstellen():
+        try:
+            return zustand["backup"].starten()
+        except ValueError as e:
+            raise KatalogFehler(str(e))
+
+    @app.post("/api/backup/abbrechen")
+    def backup_abbrechen():
+        zustand["backup"].abbrechen()
+        return {"ok": True}
+
+    @app.post("/api/backup/ziel/waehlen")
+    def backup_ziel_waehlen():
+        """Der Ordnerdialog des Rechners für den Zielordner; gesetzt wird erst mit PUT /api/backup (dort geprüft)."""
+        try:
+            pfad = dateidialog.ordner_waehlen("Ordner für das Backup auswählen")
+        except dateidialog.KeinDialog:
+            return {"keinDialog": True}
+        except dateidialog.DialogOffen as e:
+            raise KatalogFehler(str(e))
+        return {"pfad": pfad} if pfad else {"abgebrochen": True}
+
+    @app.post("/api/backup/zeigen")
+    def backup_zeigen():
+        ziel = zustand["bestand"].einstellungen().get("backup_ziel")
+        if not ziel or not os.path.isdir(ziel):
+            raise KatalogFehler("Es ist noch kein Zielordner gewählt.")
+        try:
+            programme.mit_system(ziel)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
         return {"ok": True}
 
     @app.post("/api/sicherungen/zeigen")

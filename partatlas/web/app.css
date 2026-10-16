@@ -1104,6 +1104,23 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 .sich-tabelle td:last-child { text-align: right; width: 1%; white-space: nowrap; }
 .sich-behalten { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
 .sich-behalten input { width: 55px; }
+/* Backup (ZIP): Stand, Zielordner, Zeilen mit Grösse, Fuss mit Summe — ruhig wie die Sicherungen darunter. */
+#ein-backup { display: flex; flex-direction: column; gap: var(--s3); font-size: 13.5px; }
+.bk-stand { color: var(--ink-2); }
+.bk-stand .warn { color: var(--warn); }
+.bk-ziel { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.bk-ziel > span { color: var(--ink-2); }
+.bk-ziel code { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; font-size: 12.5px; padding: 3px 6px; background: var(--panel-2); border-radius: var(--radius); }
+.bk-zeilen { width: 100%; border-collapse: collapse; }
+.bk-zeilen td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); vertical-align: top; }
+.bk-zeilen tr:last-child td { border-bottom: 0; }
+.bk-zeilen td:first-child { width: 1%; padding-left: 0; }
+.bk-zeilen td:last-child { width: 1%; text-align: right; white-space: nowrap; font-size: var(--fs-meta); }
+.bk-zeilen .dim { font-size: var(--fs-meta); margin-top: 2px; }
+.bk-fuss { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); flex-wrap: wrap; color: var(--ink-2); }
+.bk-fuss input { width: 55px; }
+.bk-lauf { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.bk-lauf .balken { flex: 1 1 120px; }
 
 /* Inspektor › Varianten */
 .var-liste { display: flex; flex-direction: column; gap: var(--s1); margin-bottom: var(--s4); }
