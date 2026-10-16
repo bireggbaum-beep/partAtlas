@@ -8,6 +8,8 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.98.6", ["Das Handbuch ist neu geschrieben, mit Bildern der Oberfläche (hell und dunkel) — dazu neue Kapitel zu Ordnern und zur Tastatur.",
+                "Die Roadmap (⚑) zeigt den heutigen Stand: als Nächstes kommen Versionsverlauf und Backup mit Wiederherstellen."]),
     ("0.98.5", ["Das Handbuch ist jetzt in partAtlas: der Knopf „?“ links unten oder F1 öffnet es in einem neuen Tab — in Bereinigen gleich beim passenden Kapitel."]),
     ("0.98.4", ["Geht etwas Unerwartetes schief (Platte voll, Datei in einem anderen Programm geöffnet, Datei ausserhalb verschoben), sagt partAtlas "
                 "in einem Satz, was los ist, statt nur „Fehler 500“."]),

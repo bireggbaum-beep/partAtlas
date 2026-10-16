@@ -66,7 +66,10 @@ if __name__ == "__main__":
                 pg.keyboard.press("F1")
             hb = neu.value
             hb.wait_for_load_state()
-            check("F1 in Bereinigen öffnet das Handbuch beim Kapitel „Bereinigen“", hb.url.endswith("/web/handbuch/index.html#bereinigen"))
+            hb.wait_for_timeout(1500)                     # Bilder laden beim Hinscrollen; danach darf die Seite nicht verrutscht sein
+            oben = hb.evaluate("document.getElementById('bereinigen').getBoundingClientRect().top")
+            check(f"F1 in Bereinigen öffnet das Handbuch beim Kapitel „Bereinigen“, und es steht oben (Abstand {oben:.0f} px)",
+                  hb.url.endswith("/web/handbuch/index.html#bereinigen") and -5 <= oben <= 60)
             b.close()
     finally:
         server.terminate()

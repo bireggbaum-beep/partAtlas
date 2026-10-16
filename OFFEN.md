@@ -136,7 +136,13 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
    `/api/stand`. Bilder: `werkzeuge/handbuch_bilder.py` (Demo-Sammlung, Drucke, Tags, Sammlung, gemerkte Suche, Baugruppe; je Motiv
    hell und dunkel als WebP, roter Rahmen um die gemeinte Stelle); im Handbuch `<figure class="bild">` mit `.hell`/`.dunkel`, folgt dem
    Hell/Dunkel des Handbuchs. test_handbuch 4/4 (Bilder da und gepaart, Kapitel-Verweise, „?“, F1), vier Gegenproben fallen.
-   **Offen H2:** Inhalt Kapitel für Kapitel an der laufenden App, Motive dazu.
+   **Paket H2 Inhalt (0.98.6):** Handbuch neu geschrieben, an Oberfläche und Code geprüft (Kapitel neu: Ordner, Tastatur; überarbeitet:
+   alle übrigen — Einlesen mit Fenster für fehlende Dateien, Auswahl wie im Explorer, gemerkte Suchen, Tags verwalten, Reiter des
+   Inspektors mit Varianten/Slicer, Notizen und Anhänge, Drucke mit G-Code und Vergleich, Baugruppen mit Notizen/Export, Einstellungen
+   je Reiter, Bestand unter Windows/Linux, Sicherungen 5/30, Stand 1.0). 13 Motive aus `handbuch_bilder.py` (26 WebP, ≈ 1 MB); jedes
+   Bild mit Breite/Höhe (sonst verrutschte der Sprung zu einem Kapitel um 4 300 px, test_handbuch prüft es jetzt, Gegenprobe fällt);
+   das Skript trägt die Grössen selbst nach. Roadmap (⚑) auf denselben Stand. **Pflege:** neue Funktion → Kapitel im Handbuch, ggf.
+   Motiv in `handbuch_bilder.py`; vor jeder Fassung `python werkzeuge/handbuch_bilder.py`.
    Ursprünglicher Plan: **Handbuch (HTML; PDF später)** — zuletzt, wenn die Oberfläche steht. `handbuch.html` ist seit 0.53 nicht nachgezogen (fehlen u. a.
    Tags verwalten, Varianten, gemerkte Suchen, Archiv bis 0.96, Backup) und **in der App nicht erreichbar**. Geplant: Kapitel für Kapitel
    an der laufenden App prüfen; Eintrag „Handbuch“ in der App (Server liefert es aus, neuer Tab, ohne Internet), mit Prüfung;

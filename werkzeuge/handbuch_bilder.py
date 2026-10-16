@@ -79,7 +79,8 @@ def vorbereiten(port, samm):
 
 # ---------------------------------------------------------------- Motive
 # Jedes Motiv bekommt die Seite und die Kennungen aus `vorbereiten`; es bringt die Oberfläche in den Zustand und gibt zurück, was
-# fotografiert wird: {"clip": (x, y, b, h)} oder nichts (ganzes Fenster), dazu "rahmen": [CSS-Selektoren] für die roten Rahmen.
+# fotografiert wird: {"clip": (x, y, b, h)}, {"element": Selektor} oder nichts (ganzes Fenster), dazu "rahmen": [CSS-Selektoren] für die
+# roten Rahmen.
 
 def baum_auf(pg):
     """Die Bibliothek aufklappen (ein frischer Browser hat sie zu)."""
@@ -112,10 +113,80 @@ def bereinigen(pg, d):
     pg.click('[data-rail="bereinigen"]')
     pg.click('[data-ansicht="duplikate"]')
     pg.wait_for_timeout(1200)
-    return {"clip": (0, 0, BREITE - 520, 520), "rahmen": ['.sektion[data-sektion="bereinigen"]', "#pk-leiste"]}
+    return {"clip": (0, 0, 1060, 420), "rahmen": ['.sektion[data-sektion="bereinigen"] .sk-inhalt', "#pk-leiste"]}
 
 
-MOTIVE = {"katalog": katalog, "einlesen": einlesen, "ordner": ordner, "bereinigen": bereinigen}
+def karte(pg, name):
+    """Die Kachel eines Modells (genauer Name, nicht nur ein Teil davon)."""
+    return pg.locator(".karte", has=pg.locator(".name", has_text=name)).first
+
+
+def ansichten(pg, d):
+    pg.click('[data-layout="liste"]')
+    pg.wait_for_timeout(800)
+    return {"clip": (288, 0, 780, 520), "rahmen": ["#ansicht-wahl", "#listenkopf"]}
+
+
+def auswahl(pg, d):
+    karte(pg, "Adapter").click()
+    karte(pg, "Akkuhalter").click(modifiers=["Control"])
+    karte(pg, "Arm_Hinten_v1").click(modifiers=["Control"])
+    pg.wait_for_selector("#stapel:not([hidden])")
+    return {"rahmen": ["#stapel"]}
+
+
+def suche(pg, d):
+    pg.fill("#suche", "tag:drohne arm")
+    pg.wait_for_timeout(1200)
+    return {"clip": (0, 0, 1060, 520), "rahmen": [".suche-feld", "#tagleiste"]}
+
+
+def inspektor(pg, d):
+    karte(pg, "Arm_Front").click()
+    pg.wait_for_selector("#inspektor .i-reiter")
+    return {"element": "#inspektor", "rahmen": ["#inspektor .i-reiter"]}
+
+
+def drucke(pg, d):
+    karte(pg, "Arm_Front").click()
+    pg.click('#inspektor [data-reiter="drucke"]')
+    pg.wait_for_timeout(800)
+    return {"element": "#inspektor"}
+
+
+def baugruppe(pg, d):
+    pg.click(f'.eintrag[data-baugruppe="{d["baugruppe"]}"]')
+    pg.wait_for_timeout(1500)
+    return {}
+
+
+def umbenennen(pg, d):
+    k = karte(pg, "Adapter")
+    k.click()
+    pg.wait_for_timeout(300)
+    pg.keyboard.press("F2")
+    pg.wait_for_selector(".namens-feld")
+    return {"clip": (288, 40, 620, 380), "rahmen": [".namens-feld"]}
+
+
+def einstellungen(pg, d):
+    pg.click("#einstellungen")
+    pg.click('[data-ein="sicherung"]')
+    pg.wait_for_timeout(1200)
+    # Der Bestand dieses Laufs liegt in einem Arbeitsordner mit Zufallsnamen; im Bild steht ein gewöhnlicher Ort.
+    pg.evaluate("""() => document.querySelectorAll('#dialog .bk-ziel code').forEach((c) => { c.textContent = '/home/anna/.local/share/partatlas'; })""")
+    return {"rahmen": []}
+
+
+def tags_verwalten(pg, d):
+    pg.locator("[data-tags-verwalten]").first.click()
+    pg.wait_for_timeout(1200)
+    return {}
+
+
+MOTIVE = {"katalog": katalog, "einlesen": einlesen, "ansichten": ansichten, "auswahl": auswahl, "suche": suche, "inspektor": inspektor,
+          "drucke": drucke, "baugruppe": baugruppe, "ordner": ordner, "umbenennen": umbenennen, "bereinigen": bereinigen,
+          "einstellungen": einstellungen, "tags_verwalten": tags_verwalten}
 
 
 # ---------------------------------------------------------------- Fotografieren
@@ -144,12 +215,33 @@ def foto(browser, port, name, motiv, d, thema):
     was = motiv(pg, d) or {}
     pg.wait_for_timeout(400)
     pg.evaluate(RAHMEN_JS, was.get("rahmen") or [])
+    if was.get("element"):
+        k = pg.locator(was["element"]).bounding_box()
+        was["clip"] = (k["x"], k["y"], k["width"], min(k["height"], HOEHE - k["y"]))
     x, y, b, h = was.get("clip") or (0, 0, BREITE, HOEHE)
     png = pg.screenshot(clip={"x": x, "y": y, "width": b, "height": h})
     ctx.close()
     pfad = os.path.join(ZIEL, f"{name}-{thema}.webp")
     Image.open(io.BytesIO(png)).save(pfad, "WEBP", quality=82, method=6)
     return pfad
+
+
+def groessen_eintragen():
+    """Breite und Höhe jedes Bildes im Handbuch nachziehen: sie halten den Platz frei, solange ein Bild noch lädt (sonst verrutscht
+    ein Sprung zu einem Kapitel, test_handbuch). Ändert sich ein Motiv in der Grösse, stimmt das Handbuch danach wieder."""
+    import re
+    datei = os.path.join(os.path.dirname(ZIEL), "index.html")
+    html = open(datei, encoding="utf-8").read()
+
+    def setzen(m):
+        pfad = os.path.join(os.path.dirname(ZIEL), m.group(1))
+        if not os.path.isfile(pfad):
+            return m.group(0)
+        b, h = Image.open(pfad).size
+        return re.sub(r'width="\d+" height="\d+"', f'width="{b}" height="{h}"', m.group(0))
+    neu = re.sub(r'<img [^>]*src="(bilder/[^"]+)"[^>]*>', setzen, html)
+    if neu != html:
+        open(datei, "w", encoding="utf-8").write(neu)
 
 
 def main(namen):
@@ -179,6 +271,7 @@ def main(namen):
         server.terminate()
         server.wait(10)
         shutil.rmtree(tmp, ignore_errors=True)
+    groessen_eintragen()
 
 
 if __name__ == "__main__":

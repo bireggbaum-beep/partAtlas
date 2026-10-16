@@ -3,19 +3,19 @@
 // die Quelle der Wahrheit bleibt KONZEPT §7 und OFFEN.md.
 const ROADMAP = [
   ["Jetzt da", "da", [
-    ["Katalog", "Ordner einlesen, Vorschaubilder, Suche, Tags, Sammlungen, 3D-Ansicht — in Raster, Liste und Karten, auch gruppiert."],
-    ["Baugruppen", "Stückliste mit Mengen und Kaufteilen, Filament und Druckzeit über alle Ebenen, als PDF zum Ausdrucken."],
-    ["Drucke festhalten", "Wann, mit welchem Filament, wie es wurde — mit Foto. Der beste Druck wird zur Referenz: „so war es gut“."],
-    ["Öffnen im Slicer und CAD", "Ein Klick auf deinem Rechner, mit den Programmen, die du in den Einstellungen wählst."],
+    ["Katalog", "Ordner einlesen, Vorschaubilder, 3D-Ansicht, Suche und gemerkte Suchen, Tags, Sammlungen, Varianten — in Raster, Liste und Karten."],
+    ["Ordnen wie im Dateimanager", "Ordner anlegen, umbenennen, verschieben; Modelle umbenennen direkt am Namen; Rückgängig mit Strg+Z."],
+    ["Baugruppen", "Stückliste mit Mengen und Kaufteilen, Notizen und Anhänge, Filament und Druckzeit über alle Ebenen, als PDF."],
+    ["Drucke festhalten", "Wann, womit, wie es wurde — mit Foto und G-Code. Einstellungen in Worten, zwei Drucke im Vergleich."],
+    ["Aufräumen ohne Risiko", "Fehlende und doppelte Dateien, Archiv, Papierkorb, automatische Sicherungen — partAtlas löscht in deinen Ordnern nichts."],
   ]],
   ["Als Nächstes", "naechst", [
-    ["Notizen und Anhänge", "An jeder Baugruppe: Konstruktionsnotizen in Markdown, dazu Montageanleitungen und Zeichnungen als Dateien."],
-    ["Schnelleres Einlesen", "Vorschaubilder im Hintergrund vorbauen, damit auch große Sammlungen sofort zügig aufgehen."],
-    ["G-Code zuordnen", "Das Ergebnis aus dem Slicer einem Modell zuordnen und die Einstellungen daraus übernehmen."],
+    ["Versionsverlauf", "Frühere Fassungen einer Datei aufheben, ansehen und als Kopie zurückholen — „gestern war es noch richtig“."],
+    ["Backup und Wiederherstellen", "Katalog und Dateien in eine ZIP-Datei, und sicher zurück: immer als neuer Bestand neben dem alten."],
     ["Warteschlange", "Was als Nächstes gedruckt wird, in einer Reihenfolge, die du ziehen kannst. Gebaut, aber noch ausgeblendet."],
   ]],
   ["Später", "spaeter", [
-    ["Filament-Lager", "Spulen und Fächer erfassen, abbuchen und vorher wissen: reicht das Filament für diesen Druck?"],
+    ["Filament-Lager", "Spulen und Fächer erfassen, abbuchen, Kosten je Druck — und vorher wissen: reicht das Filament?"],
     ["Drucker anbinden", "Moonraker, PrusaLink und Bambu im Heimnetz; Temperatur- und Verlaufskurven am Druck."],
     ["Mehrere Drucker", "Prüfen, welcher Drucker passt, eine gemeinsame Warteschlange, STL mit deinen Referenzeinstellungen slicen."],
     ["Zugriff aus dem Heimnetz", "Mit Passwort, damit auch Tablet und Handy mitmachen. Bis dahin bleibt partAtlas bewusst nur auf diesem Rechner."],
