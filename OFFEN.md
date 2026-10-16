@@ -402,6 +402,26 @@ falsch zeichnen), eine Prüfung mit Chromium ohne WebGL.
 (Browser-App-Modus und Electron vom Anwender verworfen). Erstes Risiko: WebGL unter WebKitGTK auf Manjaro — vorher mit Epiphany
 (nutzt WebKitGTK) prüfen. Kein .deb/macOS; Windows-Installer + AppImage; PyInstaller `onedir`; freier Port.
 
+## Nach 1.0, als Erstes: Desktop-Programm mit Tauri (Anwender, 16.10.2026) — vor neuen Funktionen
+
+**Ziel ist ein Programm, das man installiert und per Doppelklick startet, das sich selbst aktualisiert — nicht der Weg mit git pull und
+`python -m partatlas` im Terminal.** Der Terminal-Weg bleibt für uns zum Entwickeln und Testen; 1.0 mit Terminal ist ein Entwicklerstand,
+die erste Fassung für Fremde ist die erste Desktop-Fassung (das README spricht Fremde dann mit dem Download an, nicht mehr mit `git clone`).
+Reihenfolge **vor** Versionsverlauf, Backup/Wiederherstellen und allem Neuen; erst nach der Rückmeldung unter Windows zu 1.0 (start.bat)
+und den echten Slicer-Dateien. Richtung entschieden am 9.10.2026 (Tauri; Electron und Browser-App-Modus verworfen), nie ausprobiert.
+Aufwand insgesamt 4–5:
+1. **Spike** (2): Tauri-Fenster auf das laufende partAtlas (`http://127.0.0.1:<Port>`, System-Webview: Windows WebView2 = Chromium, Linux
+   WebKitGTK). Prüfen: WebGL/3D-Ansicht in WebKitGTK (der Tester hat WebGL-Probleme: nouveau, GeForce 9), `window.open` in einen neuen Tab
+   (Handbuch/F1, SVG/HTML-Anhänge — ein Tauri-Fenster hat keine Tabs: zweites Fenster oder Systembrowser), Ordnerdialog (kommt heute vom
+   Python-Server: zenity/PowerShell), Download ⤓, Strg+V von Bildern, Ziehen von Dateien ins Fenster, Rechtsklickmenüs, F1/F2/Strg+Z.
+2. **Eine Datei** (2): partAtlas mit PyInstaller `onedir` bündeln (numpy, Pillow, reportlab, flatgraph; Grösse messen; Windows-Virenwarnungen
+   bei PyInstaller bekannt), freier Port, nur eine Instanz (der Bestand lässt nur einen Besitzer zu), sauberes Beenden mit dem Fenster.
+3. **Installer** (1–2): Windows-Installer, Linux AppImage; Programm im Startmenü. Kein .deb, kein macOS.
+4. **Updates** (2): Tauri-Updater — braucht einen Signaturschlüssel und einen Ort für die Fassungen (Vorschlag: GitHub-Releases);
+   unter Windows wahrscheinlich Codesignatur gegen SmartScreen (Kosten). Bis dahin: Windows zuerst (der Anwender testet dort), Linux danach.
+Offen: Wo liegen die Fassungen (Vorschlag GitHub-Releases)? Ein Rechner mit Rust-Werkzeugen und Bildschirm ist nötig (der Cloud-Container
+hat keinen Bildschirm, WebView2 gibt es nur unter Windows); ob sich hier ein Linux-Spike bauen lässt, ist ungeprüft.
+
 ## Nach 1.0 zuerst: Versionsverlauf je Modell (Anwender, 16.10.2026: „hoch relevant“)
 
 Anlass: ein Kollege des Anwenders („warum ist partAtlas nicht wie git für Druckmodelle?“). Die Lücke heute: wird eine Datei am selben Ort
