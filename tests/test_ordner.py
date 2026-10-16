@@ -112,4 +112,31 @@ if __name__ == "__main__":
         z["scanner"].status["laeuft"] = False
         check("Während des Einlesens abgelehnt, mit einem Satz", r.status_code == 400 and "Einlesen" in r.json()["fehler"]
               and os.path.isdir(os.path.join(samm, "Endstand")))
+
+        # -- Der Baum zeigt alle Unterordner wie der Dateimanager: auch leere und solche ohne Modelle, keine versteckten
+        def baum_ids():
+            aus = {}
+
+            def gehe(k):
+                aus[k["id"]] = k["anzahl"]
+                for x in k["kinder"]:
+                    gehe(x)
+            for w in c.get("/api/ordner").json():
+                gehe(w)
+            return aus
+        os.makedirs(os.path.join(samm, "Leer"))
+        os.makedirs(os.path.join(samm, ".versteckt"))
+        z["scanner"].starten()
+        z["scanner"].warten(120)
+        b = baum_ids()
+        check("Baum: leerer Ordner mit 0, Ordner mit Modellen gezählt, versteckter nicht",
+              b.get(f"{wid}/Leer") == 0 and b.get(f"{wid}/Endstand") == 2 and f"{wid}/.versteckt" not in b)
+
+        # -- Neuer Ordner: freier Name wie im Explorer
+        n1 = c.post("/api/verzeichnisse", json={"eltern": wid, "frei": True}).json()["id"]
+        n2 = c.post("/api/verzeichnisse", json={"eltern": wid, "frei": True}).json()["id"]
+        check("Neuer Ordner: „Neuer Ordner“, dann „Neuer Ordner (2)“, beide auf der Platte und sofort im Baum",
+              n1 == f"{wid}/Neuer Ordner" and n2 == f"{wid}/Neuer Ordner (2)" and os.path.isdir(os.path.join(samm, "Neuer Ordner (2)"))
+              and baum_ids().get(n2) == 0)
+        check("Ordner anlegen prüft die Windows-Regeln", c.post("/api/verzeichnisse", json={"eltern": wid, "name": "a|b"}).status_code == 400)
     muster.ende()

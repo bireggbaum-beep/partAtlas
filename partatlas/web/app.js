@@ -356,8 +356,10 @@ function zweig(k, tiefe) {
   const aktiv = zustand.ordner === k.id ? "aktiv" : "";
   const ort = tiefe === 0 && zustand.doppelteWurzeln?.has(k.name)
     ? `<small class="wz-ort">${esc((k.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || (k.pfad || ""))}</small>` : "";
-  let html = `<button class="eintrag ${aktiv}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
-    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}</span><em>${k.anzahl}</em></button>`;
+  // Ordner ohne Modelle stehen da wie im Dateimanager, aber grau und ohne Zahl.
+  const ohne = tiefe > 0 && !k.anzahl ? "ohne-modelle" : "";
+  let html = `<button class="eintrag ${aktiv} ${ohne}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
+    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}</span><em>${ohne ? "" : k.anzahl}</em></button>`;
   if (hatKinder && offen) html += k.kinder.map((c) => zweig(c, tiefe + 1)).join("");
   return html;
 }
@@ -2135,7 +2137,8 @@ document.addEventListener("contextmenu", (e) => {
     const menu = $("#kontext");
     const istWurzel = eintrag.dataset.wurzel !== undefined;
     // Wie in VS Code: „Im Dateimanager zeigen“ für jeden Ordner. Löschen nur für Unterordner; die Wurzel wird nur entfernt.
-    menu.innerHTML = `<button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
+    menu.innerHTML = `<button type="button" data-km="ordner-neu">Neuer Ordner</button><hr>
+      <button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
       + (istWurzel ? "" : `<button type="button" data-km="ordner-umbenennen">Umbenennen <kbd>F2</kbd></button>
                            <button type="button" data-km="ordner-verschieben">Verschieben nach …</button>`)
       + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`
@@ -3616,6 +3619,18 @@ async function ordnerBewegen(id, ziel, text) {
   return r;
 }
 
+// Wie im Explorer: der neue Ordner heisst „Neuer Ordner“ (oder „Neuer Ordner (2)“) und steht gleich zum Umbenennen offen; Esc lässt
+// den Namen so. Kein Rückgängig dafür — partAtlas löscht in deinen Ordnern nichts, auch keinen eben angelegten.
+async function ordnerNeu(eltern) {
+  let id;
+  try { id = (await api("/api/verzeichnisse", { method: "POST", body: { eltern, frei: true } })).id; } catch (e) { return toast(e.message); }
+  ordnerAktion.letzte = null;
+  zustand.offen.add(eltern);
+  localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));
+  await ladeSeite();
+  ordnerUmbenennenStart(id);
+}
+
 const ordnerName = (id) => id.includes("/") ? id.split("/").pop() : (zustand.wurzelNamen?.get(id) || id);
 
 async function ordnerVerschiebenNach(id) {
@@ -3737,6 +3752,7 @@ async function kontextAktion(k, knopf) {
     if (k === "wurzel-weg") return wurzelEntfernen(kontextMenu.ziel.wurzel);
     if (k === "ordner-zeigen") return ordnerZeigen(o.id);
     if (k === "ordner-umbenennen") return ordnerUmbenennenStart(o.id);
+    if (k === "ordner-neu") return ordnerNeu(o.id);
     if (k === "ordner-verschieben") return ordnerVerschiebenNach(o.id);
     if (k === "ordner-weg") return ordnerLoeschen(o.id, o.name);
     return;

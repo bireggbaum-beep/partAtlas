@@ -8,6 +8,9 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.98.2", ["Neuer Ordner: Rechtsklick auf einen Ordner › Neuer Ordner — er heisst „Neuer Ordner“ und steht gleich zum Umbenennen offen, wie im Explorer.",
+                "Der Ordnerbaum zeigt jetzt alle Unterordner, auch leere und solche ohne Modelle (grau, ohne Zahl). Ordner, die du ausserhalb anlegst, "
+                "erscheinen mit dem nächsten Einlesen."]),
     ("0.98.1", ["Ordner verschieben: einen Ordner im Baum auf einen anderen ziehen oder Rechtsklick › Verschieben nach … — mit allem, was darin liegt. "
                 "Beim Ziehen klappt ein zugeklappter Ordner nach kurzem Verweilen auf. Rückgängig wie beim Umbenennen."]),
     ("0.98.0", ["Ordner umbenennen wie im Dateimanager: Rechtsklick auf einen Ordner › Umbenennen oder F2 — der Name wird direkt im Baum bearbeitet, "

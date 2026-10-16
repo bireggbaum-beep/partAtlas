@@ -73,6 +73,7 @@ button, input, select { font: inherit; color: inherit; }
 .eintrag em { font-style: normal; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
 .eintrag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Ordnername im Baum bearbeiten (F2): das Feld sitzt genau dort, wo der Name stand. */
+.seite .baum .eintrag.ohne-modelle:not(.aktiv) { color: var(--ink-3); }
 .baum-bearbeiten { cursor: default; }
 .baum-bearbeiten > span { flex: 1; display: flex; align-items: center; min-width: 0; }
 .baum-name { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--accent);

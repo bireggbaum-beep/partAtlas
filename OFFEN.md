@@ -84,7 +84,15 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
    sich selbst, nicht in eigene Unterordner, nicht dorthin, wo er schon liegt; nach 0,8 s Verweilen klappt ein zugeklappter Ordner auf
    (wie im Explorer). Rechtsklick › „Verschieben nach …“ (Auswahl ohne den Ordner und seine Unterordner, mit „Neuer Unterordner darin“).
    Meldung „„X“ verschoben nach „Y““ mit Rückgängig, Strg+Z. test_ordner_ui 9/9 (+4, zwei Gegenproben fallen).
-   **Offen:** Paket 3 Neuer Ordner im Baum und alle Ordner zeigen. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
+   **Paket 3 Neuer Ordner, alle Ordner im Baum (0.98.2):** `Katalog.ordner_platte_lesen` liest alle Unterordner (ohne .versteckte,
+   $System und den Bestand, wie das Einlesen) — nach jedem Einlesen und nach eigenen Ordner-Aktionen, nicht je Abfrage (unter Windows
+   kostet jedes Verzeichnis); `ordnerbaum` fügt sie mit Anzahl 0 ein, die Oberfläche zeigt sie grau ohne Zahl. Rechtsklick › „Neuer
+   Ordner“ (`Katalog.ordner_neu`: „Neuer Ordner“, „Neuer Ordner (2)“ …, per mkdir nie einen vorhandenen) mit offenem Namensfeld; kein
+   Rückgängig dafür (partAtlas löscht nichts, auch keinen eben angelegten Ordner). „Ordner anlegen“ prüft jetzt dieselben Windows-Regeln.
+   test_ordner 18/18 (+3), test_ordner_ui 11/11 (+2), je eine Gegenprobe fällt (Baum ohne Platte, ohne Nummer, ohne Grau, ohne Lesen
+   nach dem Einlesen). test_scan 110, api 86, verwalten 76, schutz 28, suche 28, bereinigen_ui 2 grün.
+   **test_ansicht_ui flatterte** (2/3, auch vor dieser Änderung): `/api/neuigkeiten` (seit 0.95.6 beim Start) kam mal nach dem
+   Ansichtswechsel und zählte mit — in der Prüfung jetzt ausgenommen, dreimal 3/3. **Ordner damit fertig für 1.0.** (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
    Auf der Platte samt allen Modellorten, Sicherung vorher, nie überschreiben. Aufwand 3.
 4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
    README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag

@@ -96,6 +96,19 @@ if __name__ == "__main__":
             pg.click('#dialog button[value="ja"]')
             warte(lambda: os.path.isdir(os.path.join(samm, "Ziel", "Projekt")), 10)
             check("… und OK verschiebt", os.path.isfile(os.path.join(samm, "Ziel", "Projekt", "Teil.stl")))
+
+            # -- Neuer Ordner: im Baum, mit offenem Namensfeld; ohne Modelle grau und ohne Zahl
+            pg.click(f'.eintrag[data-ordner="{wid}"]', button="right")
+            pg.click('[data-km="ordner-neu"]')
+            pg.wait_for_selector(".baum-name", timeout=5000)
+            check("Rechtsklick › Neuer Ordner: angelegt als „Neuer Ordner“, Name zum Umbenennen offen",
+                  os.path.isdir(os.path.join(samm, "Neuer Ordner")) and pg.locator(".baum-name").input_value() == "Neuer Ordner")
+            pg.locator(".baum-name").fill("Teile")
+            pg.locator(".baum-name").press("Enter")
+            neu = f'.eintrag[data-ordner="{wid}/Teile"]'
+            pg.wait_for_selector(neu, timeout=10000)
+            check("Umbenannt; im Baum grau und ohne Zahl, weil ohne Modelle", os.path.isdir(os.path.join(samm, "Teile"))
+                  and "ohne-modelle" in pg.get_attribute(neu, "class") and pg.inner_text(f"{neu} em") == "")
             b.close()
     finally:
         server.terminate()

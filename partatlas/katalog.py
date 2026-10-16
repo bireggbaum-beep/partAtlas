@@ -51,6 +51,7 @@ class Katalog:
         self._kurz_sperre = threading.Lock()
         self._kurz_bau = threading.Lock()    # immer nur ein Nachbau: zwei gleichzeitig verlören die Änderungen des einen
         bestand.hoeren(self._kurz_veraltet)
+        self._ordner_platte = None           # {Wurzel: [Unterordner …]} von der Platte — siehe ordner_platte_lesen
         self.suche = Suchindex(self)
         self._material_nachziehen()
         self._vault_nachziehen()
@@ -862,7 +863,24 @@ class Katalog:
         if os.path.lexists(ziel):
             raise KatalogFehler("Dort liegt schon eine Datei mit diesem Namen.")
         os.makedirs(ziel)
+        self.ordner_platte_lesen()
         return f"{eltern_id.rstrip('/')}/{name}"
+
+    def ordner_neu(self, eltern_id, name="Neuer Ordner"):
+        """Wie im Explorer: „Neuer Ordner“, ist der vergeben „Neuer Ordner (2)“ usw.; nie einen vorhandenen. os.mkdir scheitert, wenn
+        es den Namen inzwischen gibt — dann der nächste."""
+        _, _, eltern = self._ordner_pfad(eltern_id)
+        if not os.path.isdir(eltern):
+            raise KatalogFehler("Diesen Ordner gibt es auf der Platte nicht mehr.")
+        for n in range(1, 1000):
+            kandidat = name if n == 1 else f"{name} ({n})"
+            try:
+                os.mkdir(os.path.join(eltern, kandidat))
+            except FileExistsError:
+                continue
+            self.ordner_platte_lesen()
+            return f"{eltern_id.rstrip('/')}/{kandidat}"
+        raise KatalogFehler("Kein freier Name für einen neuen Ordner.")
 
     def ordner_bewegen(self, ordner_id, eltern_id=None, name=None):
         """Einen Unterordner umbenennen (`name`) oder verschieben (`eltern_id`) — wie im Dateimanager, mit allem, was darin liegt (auch
@@ -937,6 +955,7 @@ class Katalog:
                 dateien.ordner_umbenennen(ziel, quelle)     # Platte zurück; die Transaktion verwirft den Katalog
                 raise
         log.info("Ordner %s → %s (%d Dateien im Katalog nachgezogen)", ordner_id, neu_id, len(betroffen))
+        self.ordner_platte_lesen()
         return {"id": neu_id, "vorher": ordner_id.rstrip("/")}
 
     def ordner_inhalt(self, ordner_id):
@@ -1698,10 +1717,34 @@ class Katalog:
 
     # ------------------------------------------------------------ Ordner (abgeleitet)
 
+    def ordner_platte_lesen(self):
+        """Alle Unterordner der Wurzeln auf der Platte, auch leere und solche ohne Modelle — wie im Dateimanager (Anwender, 16.10.2026).
+        Ohne versteckte (.name), Systemordner ($RECYCLE.BIN …) und den eigenen Bestand, wie beim Einlesen. Gelesen nach jedem Einlesen
+        und nach eigenen Ordner-Aktionen, nicht bei jeder Abfrage: der Baum wird bei jeder Änderung geholt, und unter Windows kostet jedes
+        Verzeichnis. Was ausserhalb angelegt wird, erscheint wie neue Dateien mit dem nächsten Einlesen."""
+        bestand = os.path.abspath(self.b.wurzel)
+        aus = {}
+        for wid, w in self.wurzeln().items():
+            liste = []
+            for ordner, unter, _ in os.walk(w["pfad"], followlinks=False):
+                unter[:] = sorted(u for u in unter if not u.startswith((".", "$")) and os.path.abspath(os.path.join(ordner, u)) != bestand)
+                liste += [os.path.relpath(os.path.join(ordner, u), w["pfad"]).replace(os.sep, "/") for u in unter]
+            aus[wid] = liste
+        self._ordner_platte = aus
+        return aus
+
     def ordnerbaum(self):
-        """Je Wurzel ein Baum aus den Pfaden der Dateien — KONZEPT §3.1."""
+        """Je Wurzel ein Baum aus den Pfaden der Dateien — KONZEPT §3.1 — und den übrigen Unterordnern auf der Platte (Anzahl 0)."""
         baeume = {wid: {"id": wid, "name": w["name"], "pfad": w["pfad"], "anzahl": 0, "kinder": {}}
                   for wid, w in self.wurzeln().items()}
+        platte = self._ordner_platte if self._ordner_platte is not None else self.ordner_platte_lesen()
+        for wid, liste in platte.items():
+            for rel in liste:
+                knoten = baeume.get(wid)
+                weg = wid
+                for t in rel.split("/") if knoten else ():
+                    weg += "/" + t
+                    knoten = knoten["kinder"].setdefault(t, {"id": weg, "name": t, "anzahl": 0, "kinder": {}})
         for d in self._dateien().values():
             for o in d.get("orte", []):
                 knoten = baeume.get(o["wurzel"])

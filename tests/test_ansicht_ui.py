@@ -73,6 +73,8 @@ if __name__ == "__main__":
             pg.wait_for_function("document.querySelectorAll('.karte').length === 0", timeout=10000)
             time.sleep(1)
             geholt = set(pg.evaluate("window.__a"))
+            # „Neu in dieser Fassung“ fragt einmal beim Start (0.95.6) und kommt zeitlich mal vor, mal nach dem Wechsel — kein Teil davon.
+            geholt.discard("/api/neuigkeiten")
             check("Beim Wechsel wird nur die Liste geholt (kein Zähler, Ordnerbaum, Tags, keine Baugruppen-Vorschläge)",
                   geholt <= {"/api/modelle", "/api/papierkorb/weitere"})
             check("Die Hervorhebung wechselt mit", pg.evaluate("document.querySelector('[data-ansicht=\"duplikate\"]').classList.contains('aktiv')")

@@ -845,6 +845,10 @@ class Scanner(_Bahn):
             self._setze(entfernt=len(weg), cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), zuletzt_eingelesen=jetzt)
         finally:
             self._pool_beenden(self._pool, hart=self._stopp.is_set())
+        try:
+            self.k.ordner_platte_lesen()          # neue und verschwundene Ordner für den Baum, auch leere
+        except OSError as e:
+            log.warning("Ordner für den Baum nicht gelesen: %s", e)
         self._setze(laeuft=False, abbricht=False, phase="fertig", einlesen_s=round(time.monotonic() - t0, 1), dauer_s=round(time.monotonic() - t0, 1))
         st = self.status
         log.info("Lauf %s fertig in %s s: %s Dateien gefunden, %s neu, %s geändert, %s verschoben, %s entfernt, %s unlesbar, %s Kopien",

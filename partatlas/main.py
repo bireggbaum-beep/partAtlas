@@ -680,6 +680,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
 
     @app.post("/api/verzeichnisse")
     def verzeichnis_neu(d: dict = Depends(json_koerper)):
+        if d.get("frei"):          # „Neuer Ordner“ im Baum: ein freier Name wie im Explorer, danach benennt der Anwender um
+            return {"id": K().ordner_neu(d.get("eltern", ""))}
         return {"id": K().ordner_anlegen(d.get("eltern", ""), d.get("name", ""))}
 
     @app.post("/api/modelle/{mid}/verschieben")
