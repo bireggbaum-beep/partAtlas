@@ -1,9 +1,40 @@
 # partAtlas
 
-Katalog für 3D-Druck-Sammlungen auf [flatgraph](https://github.com/bireggbaum-beep/flatgraphdb) —
-Demo-Pilot, Vorbild ist der 3MF Katalog Manager. Führend ist `KONZEPT.md`.
+Ein Katalog für deine 3D-Druck-Sammlung. partAtlas liest deine Ordner ein (STL, 3MF, OBJ, STEP, FCStd), zeigt Vorschaubilder und eine
+3D-Ansicht und hält fest, was du daraus machst: Tags, Sammlungen, Baugruppen mit Stückliste, Drucke mit Ergebnis und Einstellungen.
+Es läuft auf deinem Rechner im Browser, ohne Konto und ohne Internet. Deine Dateien bleiben, wo sie sind — partAtlas kopiert sie nicht
+und löscht in deinen Ordnern nie etwas. Gebaut auf [flatgraph](https://github.com/bireggbaum-beep/flatgraphdb); führend für die
+Entwicklung ist `KONZEPT.md`, die Bedienung beschreibt `handbuch.html`.
 
-## Ausprobieren (Manjaro / Linux)
+## Installieren und starten — Windows
+
+Voraussetzung, einmalig:
+- **Python 3.10 oder neuer** von [python.org](https://www.python.org/downloads/) — beim Installieren „Add python.exe to PATH“ ankreuzen.
+- **Git** von [git-scm.com](https://git-scm.com/download/win) (holt beim Installieren die Datenbank flatgraph).
+
+In der **PowerShell**:
+
+```powershell
+git clone https://github.com/bireggbaum-beep/partAtlas
+cd partAtlas
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt     # einmalig, ein paar Minuten
+.venv\Scripts\python -m partatlas                          # starten
+```
+
+Dann im Browser **http://127.0.0.1:8765** öffnen. Beenden mit Strg+C im PowerShell-Fenster. Beim nächsten Mal genügt im Ordner
+`partAtlas` die letzte Zeile.
+
+**Aktualisieren** (neue Fassung holen): partAtlas beenden, dann
+
+```powershell
+cd partAtlas
+git pull
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m partatlas
+```
+
+## Installieren und starten — Linux (Manjaro u. a.)
 
 Voraussetzung: Python 3.10+, git und für die Dateiauswahl zenity oder kdialog (`sudo pacman -S python git zenity`).
 
@@ -30,17 +61,17 @@ Fassung. Slicer und CAD (PrusaSlicer, Orca, Cura, FreeCAD …)
 findet partAtlas im PATH, bei Flatpak und als AppImage in `~/Applications`
 oder `~/AppImages`; „Öffnen in …“ startet sie auf dem eigenen Rechner.
 
-## Starten
+## Wo deine Daten liegen
 
-```bash
-pip install -r requirements.txt
-python -m partatlas                 # http://127.0.0.1:8765
-```
+Deine Modelldateien bleiben in deinen Ordnern. Was partAtlas dazu weiss — Tags, Drucke, Baugruppen, Sammlungen, Notizen, Anhänge,
+eigene Bilder — liegt im **Bestand**: unter Windows `C:\Users\<Name>\.local\share\partatlas`, unter Linux `~/.local/share/partatlas`
+(anderer Ort mit `PARTATLAS_BESTAND=…`). **Nimm diesen Ordner in dein eigenes Backup auf**; Einstellungen › Backup & Wiederherstellung
+zeigt ihn mit „Ordner zeigen“. Gegen eigene Fehlgriffe legt partAtlas darin automatische Sicherungen an, die sich dort zurückholen lassen.
 
-Bestand unter `~/.local/share/partatlas`, anderer Ort mit `PARTATLAS_BESTAND=…`.
-In der Oberfläche: **Importieren → Ordner hinzufügen** öffnet den Ordnerdialog des Rechners.
+## Erste Schritte
 
-Zum Ausprobieren ohne eigene Sammlung:
+In der Oberfläche: **Importieren → Ordner hinzufügen** öffnet den Ordnerdialog des Rechners; partAtlas liest den Ordner samt
+Unterordnern ein. Zum Ausprobieren ohne eigene Sammlung:
 
 ```bash
 python werkzeuge/demo_sammlung.py ~/partatlas-demo --anzahl 60

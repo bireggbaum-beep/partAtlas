@@ -2909,7 +2909,7 @@ function sucheLeeren() {
 $("#suche-x").addEventListener("click", sucheLeeren);
 $("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
 
-// Ein Wechsel der Ansicht (Bereinigen › Duplikate, Papierkorb …) ändert nur die Liste. Zähler, Ordnerbaum, Tags und die Vorschläge der
+// Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste. Zähler, Ordnerbaum, Tags und die Vorschläge der
 // Baugruppen-Leiste — die über alle Modelle rechnen und unter Windows bei 8 600 Modellen mehrere Sekunden brauchen — bleiben, wie sie sind:
 // ändert sich daran etwas, meldet es der Server und `neuLaden` holt alles neu (Anwender, 12.10.2026: „Klicks in Bereinigen sind langsam“).
 function ansichtLaden() {

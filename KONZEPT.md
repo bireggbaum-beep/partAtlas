@@ -799,3 +799,24 @@ Ungeprüft, zu klären vor der genannten Phase:
 | flatgraph: Müllsammler nur für Knoten, die länger als N Tage im Papierkorb liegen — heute räumt `run_garbage_collection` alles ab, also auch gestern Gelöschtes | 1 |
 | 7z und rar: `py7zr` bzw. `rarfile` + `unrar` — fremde Pakete, Lizenz von unrar prüfen | 1 |
 | Lizenz: Hinweis auf den 3MF Katalog (MIT) steht in `web/app.css`; beim Übernehmen weiterer Teile mitführen | 1 |
+
+## 10. Stand 1.0: was zugesagt und was nicht geprüft ist
+
+Zusammengetragen im Qualitätsdurchgang (16.10.2026). Was hier steht, ist gebaut und mit nachgebauten Dateien oder unter Linux geprüft,
+aber **nicht** am Ort, wo es zählt. Wer eines davon bestätigt oder widerlegt, trägt es hier nach.
+
+| Was | geprüft | nicht geprüft |
+|---|---|---|
+| Reiter „Slicer“, Drucke Stufe b (Einstellungen, Vergleich) | nachgebaute 3MF/G-Code nach dem Aufbau von Bambu Studio, Orca, PrusaSlicer | echte Dateien aus **Bambu Studio** und **Anycubic Slicer Next** |
+| FCStd (FreeCAD-Dokumente) | nachgebautes Zip mit der Struktur des Formats | echte FCStd-Dateien |
+| STEP über FreeCAD | Aufruf mit Ersatzprogramm (test_cad) | FreeCAD als Paket, Flatpak, AppImage, unter Windows; Zeit für grosse Teile |
+| Ordner umbenennen/verschieben | Linux (ext4) | Windows: Datei im Ordner offen (→ Meldung), nur andere Schreibung; Ziel auf anderer Platte, Netzlaufwerke |
+| Modell umbenennen, nur andere Schreibung | Linux | Windows (os.rename über samefile) |
+| Ordnerdialog unter Windows | Linux, Ersatz | dass er vorn aufgeht (umgangen mit „Stattdessen hier wählen“) |
+| Verzeichnis-`fsync` | Linux | Windows kennt ihn nicht (flatgraph VERTRAG §2.2) |
+| 3D-Ansicht ohne Grafikkarte | Chromium ohne WebGL, SwiftShader | auf dem alten Rechner des Testers (GeForce 9, nouveau) |
+| Grosser Bestand | Anwender unter Windows mit ≈ 8 600 Modellen (Einlesen, Bereinigen, Löschen) | Ordner-Aktionen und Neuer Baum mit allen Ordnern bei so vielen Ordnern unter Windows |
+| Installation nach README | Linux aus frischem Klon (start.sh --demo) | Windows nach README (PowerShell) |
+
+Bewusst nicht in 1.0 (siehe OFFEN.md): Backup als ZIP und Wiederherstellen (gebaut, ausgeblendet), Versionsverlauf je Modell,
+Zusammenführen gleichnamiger Ordner, Ordner auf andere Platten verschieben.
