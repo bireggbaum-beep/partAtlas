@@ -282,6 +282,22 @@ falsch zeichnen), eine Prüfung mit Chromium ohne WebGL.
 (Browser-App-Modus und Electron vom Anwender verworfen). Erstes Risiko: WebGL unter WebKitGTK auf Manjaro — vorher mit Epiphany
 (nutzt WebKitGTK) prüfen. Kein .deb/macOS; Windows-Installer + AppImage; PyInstaller `onedir`; freier Port.
 
+## Später, nach 1.0: Ideen aus anderen Werkzeugen (Anwender, 16.10.2026)
+
+Anlass: Extrudio (G-Code → fotorealistische Bilder, Cloud, bezahlt) und Creallo Atlas (lokaler Betrachter, 13 Formate, Messen, Schnitt,
+Kostenschätzung aus Volumen und Oberfläche). Beide nicht anbinden (Cloud bzw. fremder Dienst); übernommen werden nur Ideen.
+- **G-Code-Vorschau am Druck:** aus dem G-Code im Vault (Drucke Stufe b) die Bahnen Schicht für Schicht in der 3D-Ansicht zeichnen,
+  mit Schieberegler — zeigt, was gedruckt wurde, nicht das CAD-Modell. Lokal, ohne Rendern wie Extrudio. Aufwand 3–4, zu Phase 2.
+- **Filamentkosten je Modell:** Gewicht (kennt partAtlas) × Preis je kg des Materials; Preis je Material in den Einstellungen, später
+  je Spule (Lager). Aufwand 2, zu Phase 3.
+- **Messen und Schnitt in der 3D-Ansicht:** Abstand zweier Punkte, Schnittebene. Aufwand 3.
+- **Mehr Formate** (Anwender: „eine gute Sache“). Heute: 3MF, STL, OBJ, STEP/STP, FCStd (`formate.FORMATE`). Kandidaten, Schätzung:
+  IGES/IGS über FreeCAD wie STEP (Aufwand 1–2, Nutzen für CAD-Anwender, zuerst); AMF (XML, oft gezippt, Netz direkt) und PLY (Netz,
+  binär/ASCII), je Aufwand 2; glTF/GLB (Aufwand 2–3). Proprietäre CAD-Formate (SLDPRT, F3D, IPT) nur als Eintrag ohne Netz und Vorschau —
+  fraglich, ob das nützt. Keine fremde CAD-Bibliothek (Open CASCADE direkt): bleibt bei FreeCAD als optionalem Programm.
+- **Name:** Creallo „Atlas“ — Verwechslung gering eingeschätzt (anderes Produkt, eigenes Wort). Vor öffentlicher Verteilung von 1.0 eine
+  kurze Markensuche nach „partAtlas“ (DPMA, EUIPO); keine Rechtsberatung.
+
 ## Später: Performance-Feinschliff (Anwender, 8.10.2026: „irgendwann“, nicht jetzt)
 
 - ~~Einstellungen › Sicherungen öffnet in 5–7 s~~ — erledigt in 0.60 (Grösse in `info.json` beim Anlegen).
