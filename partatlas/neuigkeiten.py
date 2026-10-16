@@ -8,27 +8,19 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
-    ("0.98.6", ["Das Handbuch ist neu geschrieben, mit Bildern der Oberfläche (hell und dunkel) — dazu neue Kapitel zu Ordnern und zur Tastatur.",
-                "Die Roadmap (⚑) zeigt den heutigen Stand: als Nächstes kommen Versionsverlauf und Backup mit Wiederherstellen."]),
-    ("0.98.5", ["Das Handbuch ist jetzt in partAtlas: der Knopf „?“ links unten oder F1 öffnet es in einem neuen Tab — in Bereinigen gleich beim passenden Kapitel."]),
-    ("0.98.4", ["Geht etwas Unerwartetes schief (Platte voll, Datei in einem anderen Programm geöffnet, Datei ausserhalb verschoben), sagt partAtlas "
-                "in einem Satz, was los ist, statt nur „Fehler 500“."]),
-    ("0.98.3", ["Umbenennen überall wie im Explorer: Klick auf den Namen eines schon gewählten Ordners oder Modells (nicht Doppelklick) — oder F2 — "
-                "öffnet ein Feld direkt am Namen. Bei Modellen bleibt die Endung. Das kleine Fenster zum Umbenennen gibt es nicht mehr.",
-                "Auch das Umbenennen eines Modells lässt sich mit „Rückgängig“ oder Strg+Z zurücknehmen."]),
-    ("0.98.2", ["Neuer Ordner: Rechtsklick auf einen Ordner › Neuer Ordner — er heisst „Neuer Ordner“ und steht gleich zum Umbenennen offen, wie im Explorer.",
-                "Der Ordnerbaum zeigt jetzt alle Unterordner, auch leere und solche ohne Modelle (grau, ohne Zahl). Ordner, die du ausserhalb anlegst, "
-                "erscheinen mit dem nächsten Einlesen."]),
-    ("0.98.1", ["Ordner verschieben: einen Ordner im Baum auf einen anderen ziehen oder Rechtsklick › Verschieben nach … — mit allem, was darin liegt. "
-                "Beim Ziehen klappt ein zugeklappter Ordner nach kurzem Verweilen auf. Rückgängig wie beim Umbenennen."]),
-    ("0.98.0", ["Ordner umbenennen wie im Dateimanager: Rechtsklick auf einen Ordner › Umbenennen oder F2 — der Name wird direkt im Baum bearbeitet, "
-                "Enter übernimmt, Esc bricht ab. Alles im Ordner geht mit; Tags, Drucke und Baugruppen bleiben.",
-                "Rückgängig mit dem Knopf in der Meldung oder Strg+Z. F2 auf einem Modell benennt das Modell um."]),
-    ("0.97.1", ["Einstellungen › Backup & Wiederherstellung zeigt, wo dein Katalog liegt (Tags, Drucke, Baugruppen, Notizen …), mit „Ordner zeigen“ — "
-                "nimm diesen Ordner in dein eigenes Backup auf."]),
-    ("0.96.0", ["Bereinigen ist neu gegliedert: oben „Aufräumen“ (Datei fehlt, Gleiche Datei, Unlesbar, Vorschläge), darunter „Aufbewahrt“ "
-                "(Archiv, Papierkorb). Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.",
-                "„Duplikate“ heisst jetzt „Gleiche Datei“. Im Inspektor unter Datei öffnet ein Klick auf einen Ort den Ordner — dort löschst du eine überzählige Kopie."]),
+    ("1.0.0", ["Handbuch in partAtlas: Knopf „?“ links unten oder F1 öffnet es — neu geschrieben, mit Bildern der Oberfläche und Kapiteln zu "
+               "Ordnern und Tastatur.",
+               "Ordner wie im Explorer: Rechtsklick auf einen Ordner › Neuer Ordner, Umbenennen, Verschieben nach … — oder einen Ordner auf einen "
+               "anderen ziehen. Alles darin geht mit, Tags und Drucke bleiben. Der Baum zeigt jetzt alle Unterordner, auch leere (grau).",
+               "Umbenennen direkt am Namen, bei Ordnern und Modellen: F2, Rechtsklick › Umbenennen oder ein zweiter Klick auf den Namen eines schon "
+               "gewählten Eintrags. Das kleine Fenster dafür gibt es nicht mehr. Rückgängig mit Strg+Z oder dem Knopf in der Meldung.",
+               "Bereinigen neu gegliedert: „Aufräumen“ (Datei fehlt, Gleiche Datei — vorher „Duplikate“ —, Unlesbar, Vorschläge) und „Aufbewahrt“ "
+               "(Archiv, Papierkorb). Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.",
+               "Einstellungen › Backup & Wiederherstellung zeigt, wo dein Katalog liegt (Tags, Drucke, Baugruppen, Notizen …) — nimm diesen Ordner "
+               "in dein eigenes Backup auf.",
+               "Geht etwas schief (Platte voll, Datei in einem anderen Programm offen), sagt partAtlas es in einem Satz statt „Fehler 500“.",
+               "Windows: start.bat zum Doppelklicken richtet partAtlas ein und startet es (siehe README).",
+               "Ausgeblendet: „Farbe der Vorschaubilder“ unter Einstellungen › Ansicht — sie wirkte noch nicht und kommt, wenn sie es tut."]),
     ("0.95.7", ["Kaufteile: Ein selbst angelegtes Kaufteil (etwa mit Tippfehler) lässt sich in der Auswahl „Kaufteile hinzufügen“ mit „löschen“ entfernen — "
                 "sofern es in keiner Baugruppe steckt. Die mitgelieferten Normteile bleiben."]),
     ("0.95.6", ["Beim ersten Start nach einem Update erscheint dieses Fenster mit dem, was neu ist. Ein Klick auf die Fassung oben links zeigt es wieder."]),

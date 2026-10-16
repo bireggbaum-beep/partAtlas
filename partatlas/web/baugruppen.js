@@ -621,11 +621,8 @@ async function einstellungen() {
       <div class="i-titel">UNTER DEM NAMEN</div>
       ${Object.entries(KACHEL_ZEILEN).map(([k, z]) => `<label><input type="checkbox" data-kachel-zeile="${k}" ${zustand.kachelZeilen.includes(k) ? "checked" : ""}> ${z.titel}</label>`).join("")}
       <p class="dim">Mehr Zeilen machen die Kachel etwas höher. Gilt für diesen Browser und wirkt sofort.</p>
-      <div class="i-titel">FARBE DER VORSCHAUBILDER</div>
-      <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === e.vorschau_farbe ? "aktiv" : ""}" data-vf-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
-        <button type="button" class="knopf ${e.vorschau_farbe ? "" : "aktiv"}" data-vf-farbe="">Vorgabe</button></div>
-      <p class="dim">Für Modelle, deren Datei keine eigene Farbe mitbringt — Farben aus der Datei gehen immer vor.
-        Vorgesehen für eine spätere Fassung: die gewählte Farbe wird gespeichert, die Bilder ändern sich noch nicht.</p>`],
+      ${/* „Farbe der Vorschaubilder“ ausgeblendet bis sie wirkt (1.0, Anwender): gespeichert wird sie weiter (`vorschau_farbe`), die Bilder
+          ändern sich noch nicht — eine Einstellung ohne Wirkung gehört nicht in die Oberfläche. Zurück: den Abschnitt aus 0.98.6 holen. */ ""}`],
     ["einlesen", "Einlesen", `
       <div class="i-titel">TAGS</div>
       <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>

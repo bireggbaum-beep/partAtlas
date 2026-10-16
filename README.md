@@ -113,15 +113,14 @@ Kopie: `PARTATLAS_QUELLE=/pfad/zur/kopie python tests/…`.
 
 ## Zurück auf eine frühere Fassung
 
-Jede Fassung, die auf `main` kam, lässt sich wieder holen. Der Stand vor 0.95 liegt im Zweig `fassung-0.55.0`:
+Jede Fassung, die auf `main` kam, lässt sich wieder holen. Der Stand vor 1.0 liegt im Zweig `fassung-0.95.7`, der vor 0.95 in
+`fassung-0.55.0`. partAtlas beenden (Strg+C im Fenster), dann im Ordner `partAtlas`:
 
 ```bash
-./start.sh            # partAtlas beenden (Strg+C im Fenster), dann:
-git fetch origin && git checkout fassung-0.55.0  # die alte Fassung
-./start.sh
-git checkout main     # später wieder zur neuen
+git fetch origin && git checkout fassung-0.95.7   # die alte Fassung
+./start.sh                                         # Windows: .venv\Scripts\python -m partatlas (start.bat gibt es dort noch nicht)
+git checkout main                                  # später wieder zur neuen
 ```
 
-Die Datenbank bleibt dabei lesbar (keine neue Speicherform): 0.55 übersieht nur, was es noch nicht kennt (Archiv, Anhänge, Dateien an
-Drucken). Wer auch den Katalog zurück will: Einstellungen › Backup & Wiederherstellung › eine automatische Sicherung von vor dem
-Wechsel „Zurückholen“ (in 0.55 über `python -m partatlas.sicherung --zurueck NAME`, bei beendetem partAtlas).
+Die Datenbank bleibt dabei lesbar (keine neue Speicherform): eine ältere Fassung übersieht nur, was sie noch nicht kennt. Wer auch den
+Katalog zurück will: Einstellungen › Backup & Wiederherstellung › eine automatische Sicherung von vor dem Wechsel „Zurückholen“.
