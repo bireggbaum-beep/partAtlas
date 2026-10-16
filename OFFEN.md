@@ -49,6 +49,16 @@ entscheidet), (8) Liste „nicht geprüft“ für 1.0 in KONZEPT. test_ui komple
 - (5) unerwartete Fehler zeigten „Fehler 500“. Jetzt `unerwartet` in main.py: Platte voll / keine Berechtigung oder gesperrt / Datei weg
   in einem Satz, sonst Art und Text, immer mit Hinweis aufs Protokoll (0.98.4). Neue Suite test_fehler 4/4, Gegenprobe fällt;
   test_api 86/86 (`unerwartet` in BEWUSST_ASYNC).
+- (6) README für Fremde: Linux aus frischem Klon nach Anleitung geprüft (start.sh --demo, 57 Modelle); Windows-Abschnitt neu,
+  Beschreibung ohne „Demo-Pilot“, „Wo deine Daten liegen“. **`start.bat`** (Doppelklick): Python ≥ 3.10 und git prüfen, kein zweites
+  partAtlas (andere Fassung → Hinweis, beendet nichts selbst), `.venv` anlegen, Pakete nur bei geänderter requirements.txt (SHA256 über
+  certutil), Browser öffnen, sobald der Server antwortet; CRLF über .gitattributes. **Unter Windows nicht ausgeführt — Anwender prüft.**
+- (7) Feste Paketfassungen (Anwender: ja): requirements.txt (fastapi, starlette, pydantic, uvicorn, numpy, pillow, reportlab) und
+  requirements-test.txt auf die geprüften Fassungen. Frische Umgebung nur daraus: `pip check` ohne Konflikt, alle 31 Suiten ausser
+  test_ui grün.
+- (8) KONZEPT §10 „Stand 1.0“: was nur nachgebaut oder nicht unter Windows geprüft ist.
+- **Rückmeldung Windows offen:** start.bat (erster Start, zweiter Start bei laufendem partAtlas, nach `git pull`), Ordner umbenennen
+  mit offener Datei, nur andere Schreibung bei Ordner und Modell.
 
 ## Weg zu 1.0 (Anwender, 16.10.2026)
 
