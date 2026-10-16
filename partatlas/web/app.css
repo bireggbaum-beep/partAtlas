@@ -72,6 +72,12 @@ button, input, select { font: inherit; color: inherit; }
 .eintrag.aktiv { background: var(--accent-soft); color: var(--accent); }
 .eintrag em { font-style: normal; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
 .eintrag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Ordnername im Baum bearbeiten (F2): das Feld sitzt genau dort, wo der Name stand. */
+.baum-bearbeiten { cursor: default; }
+.baum-bearbeiten > span { flex: 1; display: flex; align-items: center; min-width: 0; }
+.baum-name { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--accent);
+             border-radius: 3px; padding: 0 4px; margin: -1px 0; outline: none; }
+#kontext kbd { float: right; margin-left: 16px; font: 11px var(--mono); color: var(--ink-3); }
 /* Unterüberschrift in Bereinigen: was man aufräumt, und wo Aufbewahrtes liegt — zwei Arten von Arbeit, nicht eine Liste. */
 .sk-gruppe { padding: 8px 6px 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
 .sk-gruppe:first-child { padding-top: 2px; }

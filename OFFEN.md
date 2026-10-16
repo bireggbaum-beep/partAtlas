@@ -67,7 +67,20 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
    wird Teil davon; Backup als ZIP mit Zeilen je Inhalt (auch `vault/gcode`, `vault/quellen`, `vault/anhaenge`), Inhaltsverzeichnis,
    Wiederherstellen, letzte 2 behalten, Erinnerung nach 30 Tagen. In Bereinigen nur ein Hinweis mit Link dorthin.
 3. **Ordner umbenennen und verschieben** — Vorgabe des Anwenders (16.10.2026): so nah wie möglich am gewohnten Verhalten von
-   Windows-Explorer und Linux-Dateimanagern, nichts Unerwartetes. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
+   Windows-Explorer und Linux-Dateimanagern, nichts Unerwartetes. Entschieden (16.10.): alle Unterordner im Baum zeigen (ohne Modelle
+   grau, versteckte nicht); auf eine andere Platte: ablehnen mit Hinweis; gleichnamiger Ordner am Ziel: ablehnen (Zusammenführen nach
+   1.0); Löschen bleibt „aus dem Katalog entfernen“; Bibliotheksordner selbst nicht umbenennen/verschieben; ein Ordner zur Zeit.
+   **Paket 1 Umbenennen (0.98.0):** Server `Katalog.ordner_bewegen(id, eltern, name)` für Umbenennen und Verschieben (Verschieben dort
+   schon fertig, Oberfläche folgt in Paket 2): Windows-Regeln überall (`dateien.ordnername_pruefen`, auch für „Ordner anlegen“), auf der
+   Platte ein Schritt nie ersetzend (`dateien.ordner_umbenennen`: unter Linux Ziel per mkdir reserviert, sonst ersetzte rename einen
+   leeren Ordner still; nur andere Schreibung über Zwischennamen), in derselben Transaktion Orte, `zuletzt_ort` und gemerkte Suchen
+   nachgezogen; scheitert das, geht der Ordner zurück; vorher Sicherung (wenn Modelle darin); nicht während des Einlesens, die
+   Hintergrundarbeit hält kurz an. Route `POST /api/ordner/bewegen`. Oberfläche: Rechtsklick › Umbenennen (F2), Feld im Baum,
+   Enter/Klick daneben übernimmt, Esc bricht ab, Ablehnung → Meldung und Feld bleibt offen; „Rückgängig“ in der Meldung und Strg+Z;
+   F2 ohne Ordner im Fokus benennt das gezeigte Modell um. test_ordner 15/15 (Gegenproben fallen), test_ordner_ui 5/5 (drei
+   Gegenproben fallen), test_schutz 28/28 (zwei Einträge in ERLAUBT), test_verwalten 76/76, test_api 86/86.
+   Nicht geprüft: andere Platte (hier nur ein Dateisystem), Windows (offene Datei → PermissionError → Meldung; andere Schreibung).
+   **Offen:** Paket 2 Verschieben (Ziehen im Baum, Rechtsklick › Verschieben nach …), Paket 3 Neuer Ordner im Baum und alle Ordner zeigen. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
    Auf der Platte samt allen Modellorten, Sicherung vorher, nie überschreiben. Aufwand 3.
 4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
    README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag

@@ -1124,6 +1124,23 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         i = K().ordner_inhalt(id)
         return {**i, "andere": i["andere"][:50], "andere_n": len(i["andere"])}
 
+    @app.post("/api/ordner/bewegen")
+    def ordner_bewegen(d: dict = Depends(json_koerper)):
+        """Ordner umbenennen ({id, name}) oder verschieben ({id, eltern}). Nicht während eines Einlesens: es hat die Pfade schon
+        gesammelt und hielte danach alles darin für verschwunden. Die Hintergrundarbeit hält kurz an und läuft danach weiter."""
+        s = zustand["scanner"]
+        if s.status.get("laeuft"):
+            raise KatalogFehler("Gerade läuft das Einlesen. Benenne oder verschiebe den Ordner, wenn es fertig ist.")
+        hintergrund = s.worker.status.get("laeuft")
+        if hintergrund:
+            s.worker.abbrechen()
+            s.worker.warten(BEENDEN_S)
+        try:
+            return K().ordner_bewegen(d.get("id", ""), d.get("eltern"), d.get("name"))
+        finally:
+            if hintergrund or s.hat_offenes():
+                s.starten(nur_cad=True)
+
     @app.post("/api/ordner/loeschen")
     def ordner_loeschen(d: dict = Depends(json_koerper)):
         return K().ordner_loeschen(d.get("id", ""), d.get("tags") or (), d.get("sammlungen") or ())

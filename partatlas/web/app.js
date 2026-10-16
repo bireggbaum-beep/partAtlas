@@ -27,6 +27,8 @@ window.addEventListener("unhandledrejection", (e) => fehlerMelden(e.reason?.stac
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Ordner wie im Dateimanager (umbenennen im Baum, Rückgängig). Oben, weil das Zeichnen des Baums schon beim Start danach fragt.
+const ordnerAktion = { letzte: null, bearbeitet: null };
 const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
   ohneEntwuerfe: localStorageLesen("ohneEntwuerfe") === "1",
@@ -336,7 +338,8 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
   if (zustand.gruppierung === "ordner") {      // die Wurzeln sind jetzt bekannt: die Basis kann sich geändert haben
     if (zustand.roh) listeAnwenden();
   }
-  abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
+  // Während ein Name im Baum bearbeitet wird, bleibt der Baum stehen: eine Live-Meldung zeichnete das Feld sonst unter den Fingern weg.
+  if (!ordnerAktion.bearbeitet) abgleichen($("#ordner"), `<div class="baum">${ordner.map((w) => zweig(w, 0)).join("")}</div>`);
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
   zeichneHinweisLeiste();
@@ -2132,6 +2135,7 @@ document.addEventListener("contextmenu", (e) => {
     const istWurzel = eintrag.dataset.wurzel !== undefined;
     // Wie in VS Code: „Im Dateimanager zeigen“ für jeden Ordner. Löschen nur für Unterordner; die Wurzel wird nur entfernt.
     menu.innerHTML = `<button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
+      + (istWurzel ? "" : `<button type="button" data-km="ordner-umbenennen">Umbenennen <kbd>F2</kbd></button>`)
       + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`
                    : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner aus dem Katalog entfernen …</button>`);
     kontextMenu.ziel = { ordner: { id: eintrag.dataset.ordner, name: eintrag.dataset.wurzelName || eintrag.dataset.ordner.split("/").pop() },
@@ -2779,6 +2783,17 @@ document.addEventListener("keydown", async (e) => {
   }
   const tippt = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || $("#dialog").open;
   if (e.key === "/" && !tippt) { e.preventDefault(); $("#suche").focus(); }
+  // F2 wie im Dateimanager: was den Fokus hat, wird umbenannt — ein Ordner im Baum, sonst das gezeigte Modell.
+  if (e.key === "F2" && !tippt && !document.querySelector("dialog[open]")) {
+    e.preventDefault();
+    const f = document.activeElement?.closest?.(".eintrag[data-ordner]");
+    if (f) ordnerUmbenennenStart(f.dataset.ordner);
+    else if (zustand.angezeigt && zustand.ansicht !== "papierkorb") umbenennen(zustand.angezeigt);
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !tippt && !document.querySelector("dialog[open]") && ordnerAktion.letzte) {
+    e.preventDefault();
+    ordnerRueckgaengig();
+  }
   if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !tippt && !$("#dialog").open && $("#i-galerie")?.matches(":hover")) {
     e.preventDefault();
     galerieBlaettern(e.key === "ArrowRight" ? 1 : -1);
@@ -3555,6 +3570,81 @@ function backupLive(m) {
   backupZeigen();
 }
 
+// ---------------------------------------------------------------- Ordner wie im Dateimanager
+// Umbenennen direkt im Baum (F2 oder Rechtsklick): Enter oder ein Klick daneben übernimmt, Esc bricht ab; eine Ablehnung (Name vergeben,
+// verbotenes Zeichen) meldet sich und lässt das Feld offen — wie im Explorer. Danach „Rückgängig“ in der Meldung und Strg+Z.
+
+function ordnerIdErsetzen(alt, neu) {      // der gewählte und die aufgeklappten Ordner folgen dem neuen Namen
+  const ersetze = (x) => x === alt ? neu : x.startsWith(alt + "/") ? neu + x.slice(alt.length) : x;
+  if (zustand.ordner) zustand.ordner = ersetze(zustand.ordner);
+  zustand.offen = new Set([...zustand.offen].map(ersetze));
+  localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));
+}
+
+async function ordnerBewegen(id, ziel, text) {
+  const r = await api("/api/ordner/bewegen", { method: "POST", body: { id, ...ziel } });
+  if (r.id === r.vorher) return r;
+  ordnerIdErsetzen(r.vorher, r.id);
+  const altName = r.vorher.split("/").pop(), altEltern = r.vorher.slice(0, r.vorher.lastIndexOf("/"));
+  ordnerAktion.letzte = { id: r.id, zurueck: "name" in ziel ? { name: altName } : { eltern: altEltern } };
+  toast(text(r), { aktionen: [["Rückgängig", ordnerRueckgaengig]], dauer: 8000 });
+  await ladeSeite();
+  neuLaden();
+  return r;
+}
+
+async function ordnerRueckgaengig() {
+  const l = ordnerAktion.letzte;
+  if (!l) return;
+  ordnerAktion.letzte = null;
+  try {
+    const r = await api("/api/ordner/bewegen", { method: "POST", body: { id: l.id, ...l.zurueck } });
+    ordnerIdErsetzen(r.vorher, r.id);
+    toast("Rückgängig gemacht.");
+  } catch (e) { toast(e.message); }
+  await ladeSeite();
+  neuLaden();
+}
+
+function ordnerUmbenennenStart(id, vorschlag) {
+  const knopf = document.querySelector(`.eintrag[data-ordner="${CSS.escape(id)}"]`);
+  if (!knopf || knopf.dataset.wurzel !== undefined) return;
+  const alt = id.split("/").pop();
+  const zeile = document.createElement("div");
+  zeile.className = "eintrag baum-bearbeiten";
+  zeile.style.cssText = knopf.style.cssText;
+  zeile.innerHTML = `<span><span class="pfeil"></span><input type="text" class="baum-name" spellcheck="false" aria-label="Neuer Name für ${esc(alt)}"></span>`;
+  const feld = zeile.querySelector("input");
+  feld.value = vorschlag ?? alt;
+  ordnerAktion.bearbeitet = id;
+  knopf.replaceWith(zeile);
+  $("#ordner")._html = null;          // der Baum ist von Hand geändert: das nächste Zeichnen muss ihn abgleichen, auch bei gleichem Inhalt
+  feld.focus();
+  feld.select();
+  let fertig = false;
+  const ende = async (uebernehmen) => {
+    if (fertig) return;
+    fertig = true;
+    const name = feld.value.trim();
+    ordnerAktion.bearbeitet = null;
+    if (!uebernehmen || name === alt) return ladeSeite();
+    try {
+      await ordnerBewegen(id, { name }, (r) => `„${alt}“ umbenannt in „${r.id.split("/").pop()}“.`);
+    } catch (err) {
+      toast(err.message, { dauer: 6000 });
+      await ladeSeite();
+      ordnerUmbenennenStart(id, feld.value);          // weiter im Feld, mit dem, was getippt war
+    }
+  };
+  feld.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") { e.preventDefault(); ende(true); }
+    if (e.key === "Escape") { e.preventDefault(); ende(false); }
+  });
+  feld.addEventListener("blur", () => ende(true));
+  for (const art of ["click", "mousedown", "dblclick"]) feld.addEventListener(art, (e) => e.stopPropagation());
+}
+
 async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }
 }
@@ -3612,6 +3702,7 @@ async function kontextAktion(k, knopf) {
     const o = kontextMenu.ziel.ordner;
     if (k === "wurzel-weg") return wurzelEntfernen(kontextMenu.ziel.wurzel);
     if (k === "ordner-zeigen") return ordnerZeigen(o.id);
+    if (k === "ordner-umbenennen") return ordnerUmbenennenStart(o.id);
     if (k === "ordner-weg") return ordnerLoeschen(o.id, o.name);
     return;
   }

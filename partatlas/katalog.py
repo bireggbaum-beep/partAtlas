@@ -11,6 +11,7 @@ Ohne Ort fehlt sie. Beides wird abgeleitet, nicht gespeichert.
 """
 import hashlib
 import io
+import logging
 import os
 import re
 import threading
@@ -20,6 +21,8 @@ from . import archiv, dateien, formate, sicherung, tags
 from .suche import Suchindex
 from .bestand import (VARIANTE, BRAUCHT, DATEI, HAT_DATEI, VORSCHAU_ARTEN, HAT_TAG, IN_SAMMLUNG, MATERIAL, MATERIALIEN, MODELL, SAMMLUNG,
                       TAG, VORGESEHEN, WURZEL)
+
+log = logging.getLogger("partatlas")
 
 
 class KatalogFehler(Exception):
@@ -846,9 +849,10 @@ class Katalog:
         return liste
 
     def ordner_anlegen(self, eltern_id, name):
-        name = (name or "").strip()
-        if not name or any(c in name for c in '/\\\0') or name.startswith("."):
-            raise KatalogFehler("Ungültiger Ordnername.")
+        try:
+            name = dateien.ordnername_pruefen(name)
+        except ValueError as e:
+            raise KatalogFehler(str(e))
         wid, _, eltern = self._ordner_pfad(eltern_id)
         ziel = os.path.join(eltern, name)
         if os.path.isdir(ziel) and not os.path.islink(ziel):
@@ -859,6 +863,81 @@ class Katalog:
             raise KatalogFehler("Dort liegt schon eine Datei mit diesem Namen.")
         os.makedirs(ziel)
         return f"{eltern_id.rstrip('/')}/{name}"
+
+    def ordner_bewegen(self, ordner_id, eltern_id=None, name=None):
+        """Einen Unterordner umbenennen (`name`) oder verschieben (`eltern_id`) — wie im Dateimanager, mit allem, was darin liegt (auch
+        Bilder, PDFs …). Auf der Platte ein einziger Schritt (`dateien.ordner_umbenennen`, nie ersetzend), danach in derselben
+        Transaktion die Orte aller Modelle darin, die zuletzt bekannten Orte fehlender Dateien und gemerkte Suchen auf diesen Ordner:
+        Tags, Drucke, Baugruppen bleiben, weil sie am Modell hängen. Scheitert das Nachziehen, geht der Ordner zurück.
+        Gibt {"id", "vorher"} zurück: die neue Kennung und die alte (für „Rückgängig“)."""
+        wid, wpfad, quelle = self._ordner_pfad(ordner_id)
+        rel = ordner_id.partition("/")[2].strip("/")
+        if not rel:
+            raise KatalogFehler("Der Bibliotheksordner selbst lässt sich hier nicht umbenennen oder verschieben. Im Dateimanager geht es; "
+                                "danach den Ordner in partAtlas neu hinzufügen.")
+        if not os.path.isdir(quelle) or os.path.islink(quelle):
+            raise KatalogFehler("Diesen Ordner gibt es auf der Platte nicht mehr.")
+        alt_name = rel.rsplit("/", 1)[-1]
+        alt_eltern = ordner_id.rstrip("/").rsplit("/", 1)[0]
+        try:
+            name = alt_name if name is None else dateien.ordnername_pruefen(name)
+        except ValueError as e:
+            raise KatalogFehler(str(e))
+        eltern_id = (alt_eltern if eltern_id is None else eltern_id).rstrip("/")
+        zwid, _, eltern = self._ordner_pfad(eltern_id)
+        neu_rel = "/".join(t for t in (eltern_id.partition("/")[2].strip("/"), name) if t)
+        neu_id = f"{zwid}/{neu_rel}"
+        if neu_id == ordner_id.rstrip("/"):
+            return {"id": neu_id, "vorher": neu_id}
+        if not os.path.isdir(eltern):
+            raise KatalogFehler("Den Zielordner gibt es auf der Platte nicht mehr.")
+        rq = os.path.realpath(quelle)
+        re_ = os.path.realpath(eltern)
+        if re_ == rq or re_.startswith(rq + os.sep):
+            raise KatalogFehler("Der Zielordner ist ein Unterordner dieses Ordners — dorthin lässt er sich nicht verschieben.")
+        ziel = os.path.join(eltern, name)
+        if os.path.lexists(ziel) and not os.path.samefile(ziel, quelle):
+            raise KatalogFehler(f"Dort gibt es schon {'einen Ordner' if os.path.isdir(ziel) else 'eine Datei'} „{name}“. "
+                                f"Benenne zuerst einen der beiden um.")
+        if os.stat(quelle).st_dev != os.stat(eltern).st_dev:
+            raise KatalogFehler("Das Ziel liegt auf einer anderen Platte. Dorthin würde der Ordner kopiert und das Original gelöscht — das "
+                                "tut partAtlas nicht. Verschiebe ihn im Dateimanager; partAtlas erkennt die Modelle beim nächsten Einlesen wieder.")
+
+        def umziehen(ort):
+            if ort and ort.get("wurzel") == wid and (ort.get("pfad") == rel or ort.get("pfad", "").startswith(rel + "/")):
+                return {**ort, "wurzel": zwid, "pfad": neu_rel + ort["pfad"][len(rel):]}
+            return None
+        dateien_alle = self.db.list_nodes(DATEI, include_deleted=True, readonly=True)
+        betroffen = {h: d for h, d in dateien_alle.items()
+                     if any(umziehen(o) for o in d.get("orte") or []) or umziehen(d.get("zuletzt_ort"))}
+        if betroffen:
+            umbenannt = eltern_id == alt_eltern
+            self._sichern_vor("ordner-umbenennen" if umbenannt else "ordner-verschieben",
+                              f"Vor dem {'Umbenennen' if umbenannt else 'Verschieben'} des Ordners „{alt_name}“")
+        with self.db.transaction():          # niemand schreibt, während Platte und Katalog auseinander sind
+            try:
+                dateien.ordner_umbenennen(quelle, ziel)
+            except dateien.ZielBelegt:
+                raise KatalogFehler(f"Dort gibt es schon einen Ordner „{name}“. Benenne zuerst einen der beiden um.")
+            except PermissionError:
+                raise KatalogFehler("Der Ordner oder eine Datei darin ist in einem anderen Programm geöffnet. Schliesse es und versuche es noch einmal.")
+            try:
+                for h, d in betroffen.items():
+                    neu = {}
+                    if any(umziehen(o) for o in d.get("orte") or []):
+                        neu["orte"] = [umziehen(o) or o for o in d["orte"]]
+                    if umziehen(d.get("zuletzt_ort")):
+                        neu["zuletzt_ort"] = umziehen(d["zuletzt_ort"])
+                    self.db.update_node(DATEI, h, neu)
+                for sid, sm in self.db.list_nodes(SAMMLUNG, include_deleted=True, readonly=True).items():
+                    o = (sm.get("regel") or {}).get("ordner") or ""
+                    if o == ordner_id.rstrip("/") or o.startswith(ordner_id.rstrip("/") + "/"):
+                        self.db.update_node(SAMMLUNG, sid, {"regel": {**sm["regel"], "ordner": neu_id + o[len(ordner_id.rstrip("/")):]}})
+            except BaseException:
+                dateien.ordner_umbenennen(ziel, quelle)     # Platte zurück; die Transaktion verwirft den Katalog
+                raise
+        log.info("Ordner %s → %s (%d Dateien im Katalog nachgezogen)", ordner_id, neu_id, len(betroffen))
+        return {"id": neu_id, "vorher": ordner_id.rstrip("/")}
 
     def ordner_inhalt(self, ordner_id):
         """Was in einem Ordner liegt, damit der Anwender vor dem Löschen sieht, was passiert: Modelle, die ganz darin liegen

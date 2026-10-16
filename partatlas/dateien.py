@@ -137,3 +137,58 @@ def freier_name(ziel):
     while os.path.lexists(f"{stamm} ({n}){ext}"):
         n += 1
     return f"{stamm} ({n}){ext}"
+
+
+# Die Regeln von Windows gelten überall: so bleiben die Ordner zwischen Windows und Linux tragbar, und ein Name, den der Explorer
+# ablehnt, lehnt auch partAtlas ab — mit demselben Sinn im Satz.
+_VERBOTEN = set('\\/:*?"<>|')
+_RESERVIERT = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+
+
+def ordnername_pruefen(name):
+    """Der bereinigte Name (Leerzeichen aussen weg, wie im Explorer) oder ValueError mit einem Satz für den Anwender."""
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Der Name darf nicht leer sein.")
+    if any(c in _VERBOTEN or ord(c) < 32 for c in name):
+        raise ValueError('Ein Ordnername darf keines dieser Zeichen enthalten: \\ / : * ? " < > |')
+    if name.startswith("."):
+        raise ValueError("Ein Name mit einem Punkt vorn wäre ein versteckter Ordner — partAtlas zeigt solche nicht.")
+    if name.endswith("."):
+        raise ValueError("Ein Ordnername darf nicht mit einem Punkt enden.")
+    if name.split(".")[0].strip().upper() in _RESERVIERT:
+        raise ValueError(f"„{name}“ ist unter Windows als Name reserviert.")
+    if len(name) > 255:
+        raise ValueError("Der Name ist zu lang (höchstens 255 Zeichen).")
+    return name
+
+
+def ordner_umbenennen(quelle, ziel):
+    """Ein Verzeichnis in einem Schritt umbenennen oder verschieben (dasselbe Dateisystem), ohne je etwas zu ersetzen.
+
+    `os.rename` ersetzt unter Linux ein leeres Zielverzeichnis still; darum reserviert `mkdir` das Ziel erst (scheitert, wenn es
+    da ist) und `rename` ersetzt dann nur diesen eigenen, leeren Platzhalter. Unter Windows scheitert `rename` an einem vorhandenen
+    Ziel von selbst. Nur andere Schreibung (`halter` → `Halter`) auf einem Dateisystem, das sie nicht unterscheidet: über einen
+    Zwischennamen daneben."""
+    if os.path.lexists(ziel) and os.path.samefile(quelle, ziel):
+        zwischen = os.path.join(os.path.dirname(quelle), f".{os.path.basename(ziel)}.partatlas-umbenennen")
+        os.rename(quelle, zwischen)
+        try:
+            os.rename(zwischen, ziel)
+        except OSError:
+            os.rename(zwischen, quelle)
+            raise
+    elif os.name == "nt":
+        os.rename(quelle, ziel)
+    else:
+        try:
+            os.mkdir(ziel)
+        except FileExistsError:
+            raise ZielBelegt(ziel)
+        try:
+            os.rename(quelle, ziel)
+        except OSError:
+            os.rmdir(ziel)
+            raise
+    _verzeichnis_sichern(os.path.dirname(os.path.abspath(ziel)))
+    _verzeichnis_sichern(os.path.dirname(os.path.abspath(quelle)))
