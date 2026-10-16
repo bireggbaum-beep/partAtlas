@@ -111,8 +111,11 @@ async def oberflaeche(port):
             for (let i = 0; i < 20; i++) { liveAenderung({ ref: "x" }); await new Promise((r) => setTimeout(r, 50)); }   // eine Änderung alle 50 ms, 1 s lang
             const waehrend = n;
             n = 0; clearTimeout(liveZeit); liveZeit = null; letztesLiveLaden = 0; liveAenderung({ ref: "y" });
-            await new Promise((r) => setTimeout(r, 60));
-            const sofort = n;           // die erste Änderung nach einer Ruhepause lädt gleich, nicht erst nach LIVE_SCAN_MS
+            // Die erste Änderung nach einer Ruhepause lädt gleich, nicht erst nach LIVE_SCAN_MS (400 ms). Bis 300 ms nachfragen statt fest
+            // 60 ms warten: „gleich“ ist ein Zeitgeber mit 0 ms, der unter Last später dran kommt (fiel einmal, 13.10.2026).
+            const t0 = Date.now();
+            while (n === 0 && Date.now() - t0 < 300) await new Promise((r) => setTimeout(r, 10));
+            const sofort = n;
             await new Promise((r) => setTimeout(r, 600));
             const mit = zustand.modelle.length;
             const g = einlesen.gemeldet;

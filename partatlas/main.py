@@ -7,6 +7,7 @@ Ohne Passwort lauscht er nur auf 127.0.0.1 — lieber unbrauchbar als offen
 (wie pDMS). Zugriff aus dem Heimnetz kommt mit dem Passwort (offen).
 """
 import asyncio
+import errno
 import functools
 import json
 import logging
@@ -254,6 +255,22 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.exception_handler(KeyError)
     async def fehlt(request, e):
         return JSONResponse({"fehler": f"Nicht gefunden: {e}"}, status_code=404)
+
+    # Was sonst schiefgeht, sah der Anwender als „Fehler 500“. Jetzt ein Satz, mit dem er etwas anfangen kann; den ganzen Stapel schreibt
+    # uvicorn weiter ins Protokoll. Ob davor schon etwas geändert war, sagt der Satz nicht — das weiss nur die Stelle, an der es geschah.
+    @app.exception_handler(Exception)
+    async def unerwartet(request, e):
+        if isinstance(e, OSError) and e.errno == errno.ENOSPC:
+            text = "Die Platte ist voll. Mach Platz frei und versuche es noch einmal."
+        elif isinstance(e, PermissionError):
+            text = ("partAtlas darf dort nicht schreiben, oder eine Datei ist in einem anderen Programm geöffnet. "
+                    "Schliesse das Programm und versuche es noch einmal.")
+        elif isinstance(e, FileNotFoundError):
+            text = ("Eine Datei oder ein Ordner ist nicht mehr da — vielleicht ausserhalb von partAtlas verschoben oder gelöscht. "
+                    "Einlesen (⟳ bei „Bibliothek“) bringt den Katalog auf den Stand.")
+        else:
+            text = f"Das ging nicht ({type(e).__name__}: {e})."
+        return JSONResponse({"fehler": text + " Einzelheiten stehen im Protokoll (Einstellungen › Einlesen › Protokoll)."}, status_code=500)
 
     # ---------------------------------------------------------------- Stand
 

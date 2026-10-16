@@ -931,14 +931,17 @@ class Katalog:
             if ort and ort.get("wurzel") == wid and (ort.get("pfad") == rel or ort.get("pfad", "").startswith(rel + "/")):
                 return {**ort, "wurzel": zwid, "pfad": neu_rel + ort["pfad"][len(rel):]}
             return None
-        dateien_alle = self.db.list_nodes(DATEI, include_deleted=True, readonly=True)
-        betroffen = {h: d for h, d in dateien_alle.items()
-                     if any(umziehen(o) for o in d.get("orte") or []) or umziehen(d.get("zuletzt_ort"))}
-        if betroffen:
+        def betroffene():
+            return {h: d for h, d in self.db.list_nodes(DATEI, include_deleted=True, readonly=True).items()
+                    if any(umziehen(o) for o in d.get("orte") or []) or umziehen(d.get("zuletzt_ort"))}
+        if betroffene():
             umbenannt = eltern_id == alt_eltern
             self._sichern_vor("ordner-umbenennen" if umbenannt else "ordner-verschieben",
                               f"Vor dem {'Umbenennen' if umbenannt else 'Verschieben'} des Ordners „{alt_name}“")
         with self.db.transaction():          # niemand schreibt, während Platte und Katalog auseinander sind
+            # Erst unter der Sperre lesen, was nachzuziehen ist: davor gelesen, überschriebe das Nachziehen eine Änderung, die ein anderer
+            # Vorgang (etwa ein gleichzeitig verschobenes Modell) in der Zwischenzeit an denselben Orten gemacht hat.
+            betroffen = betroffene()
             try:
                 dateien.ordner_umbenennen(quelle, ziel)
             except dateien.ZielBelegt:

@@ -35,6 +35,21 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   Neue Suite `test_bereinigen_ui.py` 2/2 (geht über alle Einträge der Seitenleiste — eine neue Ansicht ohne Erklärung fällt), zwei
   Gegenproben fallen; test_ansicht_ui 3/3 (einmal 2/3 im ersten Lauf, danach zweimal 3/3 — flatterhaft, nicht verfolgt). Handbuch nachgezogen.
 
+## Qualitätsdurchgang vor 1.0 (16.10.2026)
+
+Liste (mit dem Anwender): (1) alle Suiten ausser test_ui, (2) flatterhafte Prüfungen, (3) eigene Änderungen kritisch lesen,
+(4) Oberfläche auf Konsistenz, (5) Fehlerwege, (6) README für Fremde aus frischem Klon, (7) Abhängigkeiten festlegen (Anwender
+entscheidet), (8) Liste „nicht geprüft“ für 1.0 in KONZEPT. test_ui komplett erst unmittelbar vor `main`.
+- (1) alle 30 Suiten grün (Stand 0.98.3).
+- (2) test_ui „Ruhepause“: wartete fest 60 ms auf einen 0-ms-Zeitgeber; jetzt bis 300 ms nachfragen (< 400 ms, unterscheidet weiter).
+  Gezielt (`ui_ruhepause.py` im Scratchpad, liest das JS wörtlich aus test_ui): 3/3, unter Volllast aller Kerne 5/5; Gegenprobe
+  (Laden erst nach LIVE_SCAN_MS) fällt. test_ansicht_ui schon in 0.98.2 festgemacht.
+- (3) gefunden: `ordner_bewegen` las die betroffenen Dateien vor der Sperre — ein gleichzeitiger Schreibvorgang an denselben Orten
+  wäre überschrieben worden. Jetzt unter der Sperre gelesen (kein eigener Test: Wettlauf nicht verlässlich nachstellbar).
+- (5) unerwartete Fehler zeigten „Fehler 500“. Jetzt `unerwartet` in main.py: Platte voll / keine Berechtigung oder gesperrt / Datei weg
+  in einem Satz, sonst Art und Text, immer mit Hinweis aufs Protokoll (0.98.4). Neue Suite test_fehler 4/4, Gegenprobe fällt;
+  test_api 86/86 (`unerwartet` in BEWUSST_ASYNC).
+
 ## Weg zu 1.0 (Anwender, 16.10.2026)
 
 Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währenddessen 1. Massstab Qualität. Reihenfolge:

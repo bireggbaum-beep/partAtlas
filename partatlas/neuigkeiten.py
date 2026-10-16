@@ -8,6 +8,8 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.98.4", ["Geht etwas Unerwartetes schief (Platte voll, Datei in einem anderen Programm geöffnet, Datei ausserhalb verschoben), sagt partAtlas "
+                "in einem Satz, was los ist, statt nur „Fehler 500“."]),
     ("0.98.3", ["Umbenennen überall wie im Explorer: Klick auf den Namen eines schon gewählten Ordners oder Modells (nicht Doppelklick) — oder F2 — "
                 "öffnet ein Feld direkt am Namen. Bei Modellen bleibt die Endung. Das kleine Fenster zum Umbenennen gibt es nicht mehr.",
                 "Auch das Umbenennen eines Modells lässt sich mit „Rückgängig“ oder Strg+Z zurücknehmen."]),
