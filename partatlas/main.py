@@ -22,7 +22,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 import numpy as np
@@ -1390,6 +1390,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         return {"ok": True, "programm": next(p["name"] for p in liste if p["pfad"] == pfad)}
 
     # ---------------------------------------------------------------- Oberfläche
+
+    @app.get("/handbuch")
+    def handbuch():
+        # Weiterleitung statt Auslieferung: die Bilder liegen relativ zur Seite (bilder/…), der Browser braucht deren Ordner als Basis.
+        return RedirectResponse("/web/handbuch/index.html")
 
     @app.get("/")
     def start():

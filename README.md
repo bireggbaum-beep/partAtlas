@@ -4,7 +4,7 @@ Ein Katalog für deine 3D-Druck-Sammlung. partAtlas liest deine Ordner ein (STL,
 3D-Ansicht und hält fest, was du daraus machst: Tags, Sammlungen, Baugruppen mit Stückliste, Drucke mit Ergebnis und Einstellungen.
 Es läuft auf deinem Rechner im Browser, ohne Konto und ohne Internet. Deine Dateien bleiben, wo sie sind — partAtlas kopiert sie nicht
 und löscht in deinen Ordnern nie etwas. Gebaut auf [flatgraph](https://github.com/bireggbaum-beep/flatgraphdb); führend für die
-Entwicklung ist `KONZEPT.md`, die Bedienung beschreibt `handbuch.html`.
+Entwicklung ist `KONZEPT.md`, die Bedienung beschreibt das Handbuch (in partAtlas: **?** links unten oder **F1**; Datei `partatlas/web/handbuch/index.html`).
 
 ## Installieren und starten — Windows
 

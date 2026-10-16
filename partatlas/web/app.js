@@ -2867,6 +2867,8 @@ document.addEventListener("keydown", async (e) => {
   }
   const tippt = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || $("#dialog").open;
   if (e.key === "/" && !tippt) { e.preventDefault(); $("#suche").focus(); }
+  // F1 wie überall unter Windows und Linux: die Hilfe — hier das Handbuch, beim Kapitel zur jetzigen Ansicht.
+  if (e.key === "F1") { e.preventDefault(); handbuchOeffnen(); }
   // F2 wie im Dateimanager: was den Fokus hat, wird umbenannt — ein Ordner im Baum, sonst das gezeigte Modell.
   if (e.key === "F2" && !tippt && !document.querySelector("dialog[open]")) {
     e.preventDefault();
@@ -3776,6 +3778,13 @@ function ordnerUmbenennenStart(id, vorschlag) {
   feld.addEventListener("blur", () => ende(true));
   for (const art of ["click", "mousedown", "dblclick"]) feld.addEventListener(art, (e) => e.stopPropagation());
 }
+
+// Das Handbuch (web/handbuch/) in einem neuen Tab, beim Kapitel zur jetzigen Ansicht, wenn es eines gibt.
+function handbuchOeffnen() {
+  const kapitel = BEREINIGEN.includes(zustand.ansicht) ? "bereinigen" : zustand.baugruppe ? "baugruppen" : "";
+  window.open(`/handbuch${kapitel ? "#" + kapitel : ""}`, "_blank", "noopener");
+}
+document.addEventListener("click", (e) => { if (e.target.closest?.("#handbuch")) handbuchOeffnen(); });
 
 async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }

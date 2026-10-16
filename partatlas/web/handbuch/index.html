@@ -90,6 +90,18 @@ td:first-child { white-space: nowrap; }
 .st { display: inline-block; font-size: 12px; font-weight: 600; padding: 0 8px; border-radius: 99px; border: 1px solid currentColor; }
 .st.ok { color: var(--ok); } .st.soon { color: var(--soon); } .st.no { color: var(--no); }
 
+/* Bilder aus der Oberfläche (werkzeuge/handbuch_bilder.py): je Motiv hell und dunkel, gezeigt passend zum Hell/Dunkel des Handbuchs. */
+figure.bild { margin: 16px 0 21px; }
+figure.bild img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.bild .dunkel { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bild .hell { display: none; }
+  :root:not([data-theme="light"]) .bild .dunkel { display: block; }
+}
+:root[data-theme="dark"] .bild .hell { display: none; }
+:root[data-theme="dark"] .bild .dunkel { display: block; }
+
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
   nav.side { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
@@ -102,7 +114,7 @@ td:first-child { white-space: nowrap; }
 <div class="layout">
 
 <nav class="side" id="nav">
-  <div class="brand">partAtlas<small>Handbuch · Fassung 0.20</small></div>
+  <div class="brand">partAtlas<small id="fassung">Handbuch</small></div>
 
   <div class="navgroup"><h6>Einstieg</h6>
     <a href="#ueberblick">Überblick</a>
@@ -425,6 +437,10 @@ td:first-child { white-space: nowrap; }
 <script>
 (function () {
   var root = document.documentElement;
+  // Die Fassung von partAtlas, wenn das Handbuch aus dem laufenden Programm kommt (als Datei geöffnet: ohne).
+  fetch('/api/stand').then(function (r) { return r.json(); })
+    .then(function (d) { if (d.version) document.getElementById('fassung').textContent = 'Handbuch · Fassung ' + d.version; })
+    .catch(function () {});
   try { var t = localStorage.getItem('theme'); if (t) root.setAttribute('data-theme', t); } catch (e) {}
   document.getElementById('theme').addEventListener('click', function () {
     var dunkel = root.getAttribute('data-theme') === 'dark' ||

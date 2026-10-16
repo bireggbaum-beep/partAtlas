@@ -8,6 +8,7 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.98.5", ["Das Handbuch ist jetzt in partAtlas: der Knopf „?“ links unten oder F1 öffnet es in einem neuen Tab — in Bereinigen gleich beim passenden Kapitel."]),
     ("0.98.4", ["Geht etwas Unerwartetes schief (Platte voll, Datei in einem anderen Programm geöffnet, Datei ausserhalb verschoben), sagt partAtlas "
                 "in einem Satz, was los ist, statt nur „Fehler 500“."]),
     ("0.98.3", ["Umbenennen überall wie im Explorer: Klick auf den Namen eines schon gewählten Ordners oder Modells (nicht Doppelklick) — oder F2 — "

@@ -131,7 +131,13 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
 4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
    README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag
    „mit echten Dateien nicht geprüft“.
-5. **Handbuch (HTML; PDF später)** — zuletzt, wenn die Oberfläche steht. `handbuch.html` ist seit 0.53 nicht nachgezogen (fehlen u. a.
+5. **Handbuch — Paket H1 Gerüst (0.98.5):** `partatlas/web/handbuch/index.html` (vorher `handbuch.html` im Repo), `/handbuch` leitet
+   dorthin; Knopf „?“ in der Leiste links und F1 (in Bereinigen und Baugruppen beim passenden Kapitel); Fassung im Handbuch aus
+   `/api/stand`. Bilder: `werkzeuge/handbuch_bilder.py` (Demo-Sammlung, Drucke, Tags, Sammlung, gemerkte Suche, Baugruppe; je Motiv
+   hell und dunkel als WebP, roter Rahmen um die gemeinte Stelle); im Handbuch `<figure class="bild">` mit `.hell`/`.dunkel`, folgt dem
+   Hell/Dunkel des Handbuchs. test_handbuch 4/4 (Bilder da und gepaart, Kapitel-Verweise, „?“, F1), vier Gegenproben fallen.
+   **Offen H2:** Inhalt Kapitel für Kapitel an der laufenden App, Motive dazu.
+   Ursprünglicher Plan: **Handbuch (HTML; PDF später)** — zuletzt, wenn die Oberfläche steht. `handbuch.html` ist seit 0.53 nicht nachgezogen (fehlen u. a.
    Tags verwalten, Varianten, gemerkte Suchen, Archiv bis 0.96, Backup) und **in der App nicht erreichbar**. Geplant: Kapitel für Kapitel
    an der laufenden App prüfen; Eintrag „Handbuch“ in der App (Server liefert es aus, neuer Tab, ohne Internet), mit Prüfung;
    **Screenshots per Skript** (`werkzeuge/`, Demo-Sammlung, Chromium/Playwright, hell und dunkel, roter Rahmen um die gemeinte Stelle,
