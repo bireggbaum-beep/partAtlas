@@ -8,6 +8,8 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.98.1", ["Ordner verschieben: einen Ordner im Baum auf einen anderen ziehen oder Rechtsklick › Verschieben nach … — mit allem, was darin liegt. "
+                "Beim Ziehen klappt ein zugeklappter Ordner nach kurzem Verweilen auf. Rückgängig wie beim Umbenennen."]),
     ("0.98.0", ["Ordner umbenennen wie im Dateimanager: Rechtsklick auf einen Ordner › Umbenennen oder F2 — der Name wird direkt im Baum bearbeitet, "
                 "Enter übernimmt, Esc bricht ab. Alles im Ordner geht mit; Tags, Drucke und Baugruppen bleiben.",
                 "Rückgängig mit dem Knopf in der Meldung oder Strg+Z. F2 auf einem Modell benennt das Modell um."]),

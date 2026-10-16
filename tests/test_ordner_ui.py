@@ -1,5 +1,6 @@
 """Ordner im Baum wie im Dateimanager: Umbenennen per Rechtsklick oder F2 direkt im Baum, Enter übernimmt, Esc bricht ab, eine Ablehnung
-lässt das Feld offen; Rückgängig mit Strg+Z. Die Regeln selbst prüft test_ordner."""
+lässt das Feld offen; Rückgängig mit Strg+Z. Verschieben per Ziehen auf einen anderen Ordner oder Rechtsklick › Verschieben nach …
+Die Regeln selbst prüft test_ordner."""
 import os
 import socket
 import subprocess
@@ -20,6 +21,8 @@ if __name__ == "__main__":
     samm = os.path.join(tmp, "3D")
     os.makedirs(os.path.join(samm, "Projekt"))
     muster.stl_binaer(os.path.join(samm, "Projekt", "Teil.stl"), 10, 20, 30)
+    os.makedirs(os.path.join(samm, "Ziel"))
+    muster.stl_binaer(os.path.join(samm, "Ziel", "Anderes.stl"), 12, 20, 30)
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
@@ -29,7 +32,7 @@ if __name__ == "__main__":
     try:
         warte(lambda: abfrage(port, "/api/zaehler") is not None)
         wid = abfrage(port, "/api/wurzeln", {"pfad": samm})["id"]
-        warte(lambda: len(abfrage(port, "/api/modelle")) == 1)
+        warte(lambda: len(abfrage(port, "/api/modelle")) == 2)
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
             pg = b.new_page()
@@ -71,6 +74,28 @@ if __name__ == "__main__":
             pg.locator(".baum-name").press("Escape")
             pg.wait_for_selector(ordner, timeout=5000)
             check("Esc bricht ab: nichts geändert", pg.locator(".baum-name").count() == 0 and os.path.isdir(os.path.join(samm, "Projekt")))
+
+            # -- Verschieben: Ziehen auf einen anderen Ordner
+            pg.drag_and_drop(ordner, f'.eintrag[data-ordner="{wid}/Ziel"]')
+            warte(lambda: os.path.isdir(os.path.join(samm, "Ziel", "Projekt")), 10)
+            check("Ziehen auf einen Ordner verschiebt den Ordner dorthin, mit Meldung und „Rückgängig“",
+                  os.path.isfile(os.path.join(samm, "Ziel", "Projekt", "Teil.stl")) and not os.path.exists(os.path.join(samm, "Projekt"))
+                  and "verschoben nach „Ziel“" in pg.inner_text("#toast") and "Rückgängig" in pg.inner_text("#toast"))
+            pg.click("#toast button")
+            warte(lambda: os.path.isdir(os.path.join(samm, "Projekt")), 10)
+            check("„Rückgängig“ in der Meldung: wieder am alten Ort", os.path.isfile(os.path.join(samm, "Projekt", "Teil.stl")))
+
+            # -- Verschieben: Rechtsklick › Verschieben nach …
+            pg.wait_for_selector(ordner, timeout=10000)
+            pg.click(ordner, button="right")
+            pg.click('[data-km="ordner-verschieben"]')
+            pg.wait_for_selector("#ordner-ziel")
+            ziele = pg.eval_on_selector_all("#ordner-ziel option", "l => l.map((o) => o.value)")
+            check("Verschieben nach …: Auswahl ohne den Ordner selbst", f"{wid}/Ziel" in ziele and f"{wid}/Projekt" not in ziele)
+            pg.select_option("#ordner-ziel", f"{wid}/Ziel")
+            pg.click('#dialog button[value="ja"]')
+            warte(lambda: os.path.isdir(os.path.join(samm, "Ziel", "Projekt")), 10)
+            check("… und OK verschiebt", os.path.isfile(os.path.join(samm, "Ziel", "Projekt", "Teil.stl")))
             b.close()
     finally:
         server.terminate()

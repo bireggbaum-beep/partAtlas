@@ -356,7 +356,7 @@ function zweig(k, tiefe) {
   const aktiv = zustand.ordner === k.id ? "aktiv" : "";
   const ort = tiefe === 0 && zustand.doppelteWurzeln?.has(k.name)
     ? `<small class="wz-ort">${esc((k.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || (k.pfad || ""))}</small>` : "";
-  let html = `<button class="eintrag ${aktiv}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
+  let html = `<button class="eintrag ${aktiv}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
     <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}</span><em>${k.anzahl}</em></button>`;
   if (hatKinder && offen) html += k.kinder.map((c) => zweig(c, tiefe + 1)).join("");
   return html;
@@ -1357,8 +1357,9 @@ async function loeschenViele(modelle) {
 
 // ---------------------------------------------------------------- Ordner wählen, Archive
 
-async function ordnerWahl(titel, hinweis, vorwahl = "") {
-  const liste = await api("/api/verzeichnisse");
+async function ordnerWahl(titel, hinweis, vorwahl = "", ohne = null) {
+  // `ohne`: ein Ordner, der verschoben wird — er selbst und seine Unterordner sind kein Ziel.
+  const liste = (await api("/api/verzeichnisse")).filter((v) => !ohne || (v.id !== ohne && !v.id.startsWith(ohne + "/")));
   const a = await dialog(`<h2>${esc(titel)}</h2><p class="dim">${esc(hinweis)}</p>
     <select id="ordner-ziel">${liste.map((v) => `<option value="${esc(v.id)}" ${v.id === vorwahl ? "selected" : ""}>${esc(v.name)}${v.pfad ? " / " + esc(v.pfad) : ""}</option>`).join("")}</select>
     <label>Neuer Unterordner darin: <input type="text" id="ordner-neu" placeholder="optional"></label>
@@ -2135,7 +2136,8 @@ document.addEventListener("contextmenu", (e) => {
     const istWurzel = eintrag.dataset.wurzel !== undefined;
     // Wie in VS Code: „Im Dateimanager zeigen“ für jeden Ordner. Löschen nur für Unterordner; die Wurzel wird nur entfernt.
     menu.innerHTML = `<button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
-      + (istWurzel ? "" : `<button type="button" data-km="ordner-umbenennen">Umbenennen <kbd>F2</kbd></button>`)
+      + (istWurzel ? "" : `<button type="button" data-km="ordner-umbenennen">Umbenennen <kbd>F2</kbd></button>
+                           <button type="button" data-km="ordner-verschieben">Verschieben nach …</button>`)
       + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`
                    : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner aus dem Katalog entfernen …</button>`);
     kontextMenu.ziel = { ordner: { id: eintrag.dataset.ordner, name: eintrag.dataset.wurzelName || eintrag.dataset.ordner.split("/").pop() },
@@ -2859,14 +2861,17 @@ let gezogen = null;          // {art: "modell"|"ws", id}
 
 document.addEventListener("dragstart", (e) => {
   const k = e.target.closest?.(".karte, .zeile-l, .zeile-k"), w = e.target.closest?.("[data-ws]");
-  if (k) { gezogen = { art: "modell", id: k.dataset.id }; k.classList.add("ziehen"); }
+  const o = e.target.closest?.(".baum .eintrag[data-ordner][draggable]");
+  if (o) { gezogen = { art: "ordner", id: o.dataset.ordner }; o.classList.add("ziehen"); e.dataTransfer.effectAllowed = "move"; }
+  else if (k) { gezogen = { art: "modell", id: k.dataset.id }; k.classList.add("ziehen"); }
   else if (w) gezogen = { art: "ws", id: w.dataset.ws };
   else return;
-  e.dataTransfer.effectAllowed = "copyMove";
+  if (gezogen.art !== "ordner") e.dataTransfer.effectAllowed = "copyMove";
   e.dataTransfer.setData("text/plain", gezogen.id);
 });
 document.addEventListener("dragend", () => {
   gezogen = null;
+  clearTimeout(ordnerAufklappen.zeit);
   document.querySelectorAll(".ziehen, .ziehziel").forEach((x) => x.classList.remove("ziehen", "ziehziel"));
 });
 
@@ -2875,6 +2880,12 @@ const gezogene = () => (zustand.auswahl.has(gezogen.id) ? [...zustand.auswahl] :
 
 function ablageZiel(el) {
   if (!gezogen || !el?.closest) return null;
+  if (gezogen.art === "ordner") {
+    // Ein Ordner geht in einen anderen Ordner — nicht in sich selbst, nicht in einen eigenen Unterordner, nicht dorthin, wo er schon liegt.
+    const o = el.closest(".baum .eintrag[data-ordner]");
+    const z = o?.dataset.ordner, g = gezogen.id;
+    return z && z !== g && !z.startsWith(g + "/") && z !== g.slice(0, g.lastIndexOf("/")) ? o : null;
+  }
   const bg = el.closest("#baugruppen [data-baugruppe]");
   if (bg && gezogen.art === "modell") return bg;
   const o = el.closest("[data-ordner]");
@@ -2887,8 +2898,18 @@ function ablageZiel(el) {
   if (k && k.dataset.id !== gezogen.id && (zustand.sammlung || zustand.ansicht === "warteschlange")) return k;
   return null;
 }
+// Wie im Explorer: verweilt man beim Ziehen über einem zugeklappten Ordner, klappt er auf.
+function ordnerAufklappen(z) {
+  const id = z?.dataset?.ordner;
+  if (ordnerAufklappen.id === id) return;
+  ordnerAufklappen.id = id;
+  clearTimeout(ordnerAufklappen.zeit);
+  if (!id || !z.querySelector(".pfeil.zu")) return;
+  ordnerAufklappen.zeit = setTimeout(() => { zustand.offen.add(id); localStorageSchreiben("offen", JSON.stringify([...zustand.offen])); ladeSeite(); }, 800);
+}
 document.addEventListener("dragover", (e) => {
   const z = ablageZiel(e.target);
+  if (gezogen) ordnerAufklappen(z);
   if (!z) return;
   e.preventDefault();
   document.querySelectorAll(".ziehziel").forEach((x) => x !== z && x.classList.remove("ziehziel"));
@@ -2900,7 +2921,9 @@ document.addEventListener("drop", async (e) => {
   e.preventDefault();
   const g = gezogen;
   try {
-    if (z.dataset.baugruppe) {
+    if (g.art === "ordner") {
+      await ordnerBewegen(g.id, { eltern: z.dataset.ordner }, (r) => `„${g.id.split("/").pop()}“ verschoben nach „${ordnerName(z.dataset.ordner)}“.`);
+    } else if (z.dataset.baugruppe) {
       await api(`/api/baugruppen/${z.dataset.baugruppe}/positionen`, { method: "POST", body: { refs: gezogene().map((x) => `MODEL_ASSET/${x}`) } });
       toast("Zur Baugruppe hinzugefügt.");
     } else if (z.dataset.ordner) {
@@ -3593,6 +3616,17 @@ async function ordnerBewegen(id, ziel, text) {
   return r;
 }
 
+const ordnerName = (id) => id.includes("/") ? id.split("/").pop() : (zustand.wurzelNamen?.get(id) || id);
+
+async function ordnerVerschiebenNach(id) {
+  const ziel = await ordnerWahl(`„${id.split("/").pop()}“ verschieben nach …`, "Der Ordner geht mit allem, was darin liegt. Modelle behalten Tags, Drucke und Baugruppen.",
+    id.slice(0, id.lastIndexOf("/")), id);
+  if (!ziel) return;
+  try {
+    await ordnerBewegen(id, { eltern: ziel }, () => `„${id.split("/").pop()}“ verschoben nach „${ordnerName(ziel)}“.`);
+  } catch (e) { toast(e.message, { dauer: 6000 }); }
+}
+
 async function ordnerRueckgaengig() {
   const l = ordnerAktion.letzte;
   if (!l) return;
@@ -3703,6 +3737,7 @@ async function kontextAktion(k, knopf) {
     if (k === "wurzel-weg") return wurzelEntfernen(kontextMenu.ziel.wurzel);
     if (k === "ordner-zeigen") return ordnerZeigen(o.id);
     if (k === "ordner-umbenennen") return ordnerUmbenennenStart(o.id);
+    if (k === "ordner-verschieben") return ordnerVerschiebenNach(o.id);
     if (k === "ordner-weg") return ordnerLoeschen(o.id, o.name);
     return;
   }

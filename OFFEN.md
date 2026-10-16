@@ -80,7 +80,11 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
    F2 ohne Ordner im Fokus benennt das gezeigte Modell um. test_ordner 15/15 (Gegenproben fallen), test_ordner_ui 5/5 (drei
    Gegenproben fallen), test_schutz 28/28 (zwei Einträge in ERLAUBT), test_verwalten 76/76, test_api 86/86.
    Nicht geprüft: andere Platte (hier nur ein Dateisystem), Windows (offene Datei → PermissionError → Meldung; andere Schreibung).
-   **Offen:** Paket 2 Verschieben (Ziehen im Baum, Rechtsklick › Verschieben nach …), Paket 3 Neuer Ordner im Baum und alle Ordner zeigen. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
+   **Paket 2 Verschieben (0.98.1):** Ordner im Baum ziehbar (nicht die Bibliotheksordner); Ablage nur auf einen anderen Ordner, nicht in
+   sich selbst, nicht in eigene Unterordner, nicht dorthin, wo er schon liegt; nach 0,8 s Verweilen klappt ein zugeklappter Ordner auf
+   (wie im Explorer). Rechtsklick › „Verschieben nach …“ (Auswahl ohne den Ordner und seine Unterordner, mit „Neuer Unterordner darin“).
+   Meldung „„X“ verschoben nach „Y““ mit Rückgängig, Strg+Z. test_ordner_ui 9/9 (+4, zwei Gegenproben fallen).
+   **Offen:** Paket 3 Neuer Ordner im Baum und alle Ordner zeigen. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
    Auf der Platte samt allen Modellorten, Sicherung vorher, nie überschreiben. Aufwand 3.
 4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
    README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag
@@ -329,6 +333,19 @@ falsch zeichnen), eine Prüfung mit Chromium ohne WebGL.
 **Desktop-App (Gespräch 9.10.2026, noch kein Ticket):** Ziel ein echtes Programm mit Updates wie VS Code. Richtung Tauri
 (Browser-App-Modus und Electron vom Anwender verworfen). Erstes Risiko: WebGL unter WebKitGTK auf Manjaro — vorher mit Epiphany
 (nutzt WebKitGTK) prüfen. Kein .deb/macOS; Windows-Installer + AppImage; PyInstaller `onedir`; freier Port.
+
+## Nach 1.0 zuerst: Versionsverlauf je Modell (Anwender, 16.10.2026: „hoch relevant“)
+
+Anlass: ein Kollege des Anwenders („warum ist partAtlas nicht wie git für Druckmodelle?“). Die Lücke heute: wird eine Datei am selben Ort
+neu gespeichert, bleibt das Modell (Tags, Drucke, Baugruppen), aber der **vorherige Inhalt ist weg** — ausser er wurde gedruckt (Kopie in
+`vault/quellen`). Entwurf, Vorbild Dropbox/Time Machine, nicht git:
+- automatisch: ändert sich der Inhalt am selben Ort, kommt der alte Inhalt in den Bestand (nach Fingerabdruck, jeder Inhalt einmal);
+- Reiter „Versionen“ im Inspektor: Datum, Grösse, Masse, Vorschaubild, „gedruckt“ wenn ein Druck daran hängt;
+- „Diese Fassung wiederherstellen“ als Kopie daneben (`Halter (Fassung 3.10.).stl`), nie über die jetzige Datei;
+- später Vergleich: Masse/Volumen nebeneinander, beide Fassungen übereinander in der 3D-Ansicht.
+Nicht: echtes git darunter (Binärdateien, fremde Abhängigkeit), Commits/Branches/Texte von Hand. Dagegen: Platz (50-MB-STEP × 10 =
+500 MB) → Regeln einstellbar (letzte n Fassungen, Grenze in MB); das Backup des Bestands wird grösser; neue Zeile in backup.ZEILEN.
+Aufwand 3–4. Erkennung „geändert am selben Ort“ gibt es schon (scan.py, „Dieselbe Datei neu gespeichert“).
 
 ## Später, nach 1.0: Ideen aus anderen Werkzeugen (Anwender, 16.10.2026)
 
