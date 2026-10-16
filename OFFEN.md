@@ -26,9 +26,23 @@ Entwurf `backup.py` liegt im Scratchpad dieser Sitzung (nicht im Repo).
   dass jedes Modell wirklich fehlt), `/api/fehlende[?neu=1]`, `/api/fehlende/entscheiden`. Entwürfe gehen weiter still in den Papierkorb.
   Im Browser durchgespielt (Ordner „Drohne“, 51 Dateien, weggenommen → Fenster → alle ins Archiv; Ordner zurück → alle 51 von selbst
   zurück im Katalog). Neue Suite `test_fehlende.py` 9/9, drei Gegenproben fallen.
-- **Paket 3 (Bereinigen neu gegliedert) nicht gebaut** — Sparvariante auf Wunsch des Anwenders (Limit). Offen: Aufräumen als Gruppe mit
-  Datei fehlt · Gleiche Datei (heute „Duplikate“) · Nicht unterscheidbar (gleicher Name, anderer Inhalt — neue Ansicht, nach Namen
-  gruppiert) · Unlesbar; darunter Archiv und Papierkorb; je Ansicht Erklärung und Aktionen.
+- **Paket 3 Bereinigen neu gegliedert (0.96.0, 16.10.2026):** Seitenleiste in zwei Gruppen — **Aufräumen** (Datei fehlt · Gleiche Datei,
+  vorher „Duplikate“ · Unlesbar · Vorschläge, vorher „Aufräumen“) und **Aufbewahrt** (Archiv · Papierkorb). Regel: jede Ansicht unter
+  Bereinigen sagt oben in der Leiste über der Liste, was sie zeigt und was ihre Aktionen tun, ob etwas verloren geht (`BEREINIGEN_TEXT` in
+  `app.js`; Papierkorb und Datei fehlt mit eigenen Zeilen, Vorschläge mit eigener Fläche); leere Ansichten mit eigenem Satz. Inspektor ›
+  Datei: jeder Ort mit 📂 zum Ordner (der Weg, eine überzählige Kopie zu löschen; nur Pfade des Modells, `aufraeumen.pfad_von`).
+  **„Nicht unterscheidbar“ (gleicher Name, anderer Inhalt) bewusst nicht gebaut** (Anwender: weglassen, bis es jemanden stört).
+  Neue Suite `test_bereinigen_ui.py` 2/2 (geht über alle Einträge der Seitenleiste — eine neue Ansicht ohne Erklärung fällt), zwei
+  Gegenproben fallen; test_ansicht_ui 3/3 (einmal 2/3 im ersten Lauf, danach zweimal 3/3 — flatterhaft, nicht verfolgt). Handbuch nachgezogen.
+
+## Weg zu 1.0 (Anwender, 16.10.2026)
+
+Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währenddessen 1. Massstab Qualität. Reihenfolge:
+1. ~~Bereinigen Paket 3~~ (0.96.0).
+2. **Backup & Wiederherstellung** als ein Reiter in den Einstellungen (KONZEPT §3.3a): der vorhandene Reiter „Automatische Sicherung“
+   wird Teil davon; Backup als ZIP mit Zeilen je Inhalt (auch `vault/gcode`, `vault/quellen`, `vault/anhaenge`), Inhaltsverzeichnis,
+   Wiederherstellen, letzte 2 behalten, Erinnerung nach 30 Tagen. In Bereinigen nur ein Hinweis mit Link dorthin.
+3. Ordner-Operationen prüfen (was fehlt noch?), Qualitätsdurchgang, Handbuch, alle Suiten, test_ui komplett, 1.0.
 
 ## Stand: 0.95.7 auf `main` (12.10.2026, für den Tester)
 

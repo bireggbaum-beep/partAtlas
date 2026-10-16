@@ -8,6 +8,9 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.96.0", ["Bereinigen ist neu gegliedert: oben „Aufräumen“ (Datei fehlt, Gleiche Datei, Unlesbar, Vorschläge), darunter „Aufbewahrt“ "
+                "(Archiv, Papierkorb). Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.",
+                "„Duplikate“ heisst jetzt „Gleiche Datei“. Im Inspektor unter Datei öffnet ein Klick auf einen Ort den Ordner — dort löschst du eine überzählige Kopie."]),
     ("0.95.7", ["Kaufteile: Ein selbst angelegtes Kaufteil (etwa mit Tippfehler) lässt sich in der Auswahl „Kaufteile hinzufügen“ mit „löschen“ entfernen — "
                 "sofern es in keiner Baugruppe steckt. Die mitgelieferten Normteile bleiben."]),
     ("0.95.6", ["Beim ersten Start nach einem Update erscheint dieses Fenster mit dem, was neu ist. Ein Klick auf die Fassung oben links zeigt es wieder."]),

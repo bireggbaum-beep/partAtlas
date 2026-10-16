@@ -72,6 +72,9 @@ button, input, select { font: inherit; color: inherit; }
 .eintrag.aktiv { background: var(--accent-soft); color: var(--accent); }
 .eintrag em { font-style: normal; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
 .eintrag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Unterüberschrift in Bereinigen: was man aufräumt, und wo Aufbewahrtes liegt — zwei Arten von Arbeit, nicht eine Liste. */
+.sk-gruppe { padding: 8px 6px 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.sk-gruppe:first-child { padding-top: 2px; }
 .pfeil { display: inline-block; width: 12px; color: var(--ink-3); }
 .gestrichelt { width: 100%; background: none; border: 1px dashed var(--line-strong); border-radius: var(--radius);
                padding: 4px 6px; color: var(--ink-3); font: 12.5px var(--mono); text-align: left; cursor: pointer; margin-top: 4px; }
@@ -760,6 +763,8 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .i-tags input { width: 89px; border-radius: 13px; }
 .i-tafel > .i-label { margin: var(--s4) 0 var(--s2); }
 .ort { padding: var(--s1) 0; }
+.ort-zeigen { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: var(--radius); cursor: pointer; padding: var(--s1) 4px; margin: 0 -4px; }
+.ort-zeigen:hover { background: var(--panel-2); color: var(--ink); }
 /* Drucke */
 .d-oben { margin: 0 0 var(--s4); }
 .druck { padding: var(--s3) var(--s4); margin-bottom: var(--s4); }

@@ -65,7 +65,7 @@ function zeichneAufraeumen() {
   }).join("");
   const gewaehlt = afGewaehlt();
   abgleichen($("#aufraeumen"), `<div class="af-kopf">
-      <h2>Aufräumen</h2>
+      <h2>Vorschläge zum Aufräumen</h2>
       <p>${n ? `Vorschläge: <b>${mb(gesamt)}</b> in ${anzahl(n)} ${n === 1 ? "Modell" : "Modellen"}.` : "Nichts vorzuschlagen."}
         partAtlas löscht hier nichts: du entscheidest je Datei und löschst sie selbst im Dateimanager (📂). „Behalten“ heisst: nicht mehr
         vorschlagen.</p>

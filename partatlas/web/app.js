@@ -549,7 +549,11 @@ function zeichneLeer() {
     leer.textContent = zustand.ansicht === "papierkorb"
       ? (Object.values(zustand.korbWeitere || {}).some((l) => l.length) ? "Keine Modelle im Papierkorb." : "Der Papierkorb ist leer.")
       : zustand.ansicht === "archiv" ? "Das Archiv ist leer. Was nicht mehr gebraucht wird, aber nicht verloren gehen soll, legt man hier ab: Rechtsklick › Ins Archiv."
-      : (zustand.filterTeile ? "Keine Treffer." : "Noch keine Modelle in diesem Ordner.");
+      : zustand.filterTeile ? "Keine Treffer."
+      : zustand.ansicht === "fehlt" ? "Keine Datei fehlt. Verschwindet beim Einlesen eine, fragt partAtlas am Ende, was mit dem Modell geschehen soll."
+      : zustand.ansicht === "duplikate" ? "Keine Datei liegt doppelt."
+      : zustand.ansicht === "unlesbar" ? "Alle Dateien liessen sich lesen."
+      : "Noch keine Modelle in diesem Ordner.";
   }
 }
 
@@ -1284,6 +1288,21 @@ document.addEventListener("click", async (e) => {
   if (typeof ladeBaugruppenLeiste === "function") ladeBaugruppenLeiste();
 });
 
+// Jede Ansicht unter Bereinigen sagt oben, was man sieht und was die Aktionen tun — ob etwas verloren geht, soll man nicht raten müssen.
+// Papierkorb und Datei fehlt haben eigene Zeilen (mit Knöpfen), Vorschläge eine eigene Fläche (aufraeumen.js).
+const BEREINIGEN_TEXT = {
+  duplikate: (n) => `⧉ ${anzahl(n)} ${n === 1 ? "Modell liegt" : "Modelle liegen"} mit gleichem Inhalt an mehreren Orten. Jedes ist
+    <i>ein</i> Modell: Tags, Drucke und Baugruppen gelten für alle Kopien. Die Orte stehen im Inspektor unter <b>Datei</b>, mit 📂 zum
+    Ordner. Eine überzählige Kopie löschst du im Dateimanager — das Modell bleibt mit den übrigen, nichts geht verloren.`,
+  unlesbar: (n) => `✕ ${anzahl(n)} ${n === 1 ? "Datei konnte" : "Dateien konnte"} partAtlas nicht lesen — beschädigt, unvollständig
+    heruntergeladen oder in einer Form, die es nicht kennt. Sie stehen im Katalog, aber ohne Masse und Vorschaubild; den Grund nennt der
+    Inspektor. <b>Was hilft:</b> im Programm öffnen und am selben Ort neu speichern — beim nächsten Einlesen liest partAtlas sie neu, das
+    Modell bleibt dasselbe. Nicht mehr gebraucht: Rechtsklick › Ins Archiv oder Löschen.`,
+  archiv: (n) => `🗄 ${anzahl(n)} ${n === 1 ? "Modell ruht" : "Modelle ruhen"} im Archiv: nicht in Liste, Suche, Zählern und Sammlungen,
+    aber mit allem, was daran hängt — Drucke, Baugruppen, Tags, Anhänge. <b>Zurückholen</b> (Rechtsklick oder im Inspektor) stellt ein
+    Modell wieder in den Katalog. Kam es ins Archiv, weil seine Datei fehlte, kehrt es von selbst zurück, sobald die Datei wieder auftaucht.`,
+};
+
 function zeichneHinweisLeiste() {
   const entf = zustand.entfernteWurzeln || [];
   const zeilen = [];
@@ -1296,9 +1315,13 @@ function zeichneHinweisLeiste() {
         ${w.vorhanden ? `<button class="knopf klein" data-wurzel-zurueck="${esc(w.id)}">Wieder hinzufügen</button>` : ""}</div>`);
     }
   } else if (zustand.ansicht === "fehlt" && zustand.modelle.length) {
-    zeilen.push(`<div class="pk-zeile"><span>⚠ ${anzahl(zustand.modelle.length)} ${zustand.modelle.length === 1 ? "Modell, dessen Datei" : "Modelle, deren Datei"} nicht mehr
-      gefunden wird. Entscheide je Modell oder für alle: ins Archiv, behalten oder löschen.</span>
+    const n = zustand.modelle.length;
+    zeilen.push(`<div class="pk-zeile"><span>⚠ ${anzahl(n)} ${n === 1 ? "Modell, dessen Datei" : "Modelle, deren Datei"} nicht mehr gefunden
+      ${n === 1 ? "wird" : "werden"}. <b>Ins Archiv:</b> das Modell ruht und kommt von selbst zurück, sobald die Datei wieder auftaucht.
+      <b>Behalten:</b> es bleibt ohne Datei im Katalog. <b>Löschen:</b> in den Papierkorb, von dort zurückholbar.</span>
       <button class="knopf klein akzent" data-fehlende-entscheiden>Entscheiden …</button></div>`);
+  } else if (BEREINIGEN_TEXT[zustand.ansicht] && zustand.modelle.length) {
+    zeilen.push(`<div class="pk-zeile"><span>${BEREINIGEN_TEXT[zustand.ansicht](zustand.modelle.length)}</span></div>`);
   } else if (zustand.hatWurzeln === false && zustand.katalogLeer === false) {
     zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben im Katalog, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du unter Bereinigen › Papierkorb zurück." : ""}</span>
       <button class="knopf klein" id="wurzel-neu-4">Ordner hinzufügen …</button></div>`);
@@ -1317,6 +1340,11 @@ document.addEventListener("click", async (e) => {
     } catch (err) { toast(err.message); }
   }
   if (e.target.closest("#wurzel-neu-4")) wurzelNeu();
+  const ort = e.target.closest("[data-ort-zeigen]");
+  if (ort && zustand.angezeigt) {
+    try { await api(`/api/modelle/${encodeURIComponent(zustand.angezeigt)}/im_ordner`, { method: "POST", body: { pfad: ort.dataset.ortZeigen } }); }
+    catch (err) { toast(err.message); }
+  }
 });
 
 
@@ -1397,7 +1425,9 @@ async function waehle(id, live = false) {
     ["Dateigrösse", m.groesse ? esc(zahl(m.groesse / 1024, 0)) + " KB" : "–"],
     ["Eingelesen", m.eingelesen ? new Date(m.eingelesen).toLocaleDateString("de-DE") : "–"],
   ];
-  const orte = (papierkorb ? m.papierkorb_ablage : m.orte).map((o) => `<div class="ort">${esc(o.absolut || o.pfad)}</div>`).join("") || '<div class="dim">–</div>';
+  // Je Ort 📂 zum Ordner: bei gleicher Datei an mehreren Orten der Weg, eine Kopie im Dateimanager zu löschen.
+  const orte = (papierkorb ? m.papierkorb_ablage : m.orte).map((o) => papierkorb || m.fehlt || !o.absolut ? `<div class="ort">${esc(o.absolut || o.pfad)}</div>`
+    : `<button class="ort ort-zeigen" data-ort-zeigen="${esc(o.absolut)}" title="Im Ordner zeigen">📂 ${esc(o.absolut)}</button>`).join("") || '<div class="dim">–</div>';
   const quelle = `<div class="zeile quelle"><span>Quelle</span><span>${m.quelle_url
     ? `<a href="${esc(m.quelle_url)}" target="_blank" rel="noopener noreferrer">${esc(m.quelle_url.replace(/^https?:\/\//, "").slice(0, 32))}…</a>` : "–"}
     ${papierkorb ? "" : `<button class="knopf" id="quelle-aendern" title="Quelle ändern">✎</button>`}</span></div>`;
@@ -2949,7 +2979,7 @@ function einlesenMelden(m) {
   const weg = (m.entfernt || 0) - (m.aufgeraeumt || 0);
   if (weg > 0) { teile.push(`${anzahl(weg)} nicht mehr da`); if (!m.fehlt_neu) ziele.push(["Datei fehlt", "fehlt"]); }
   if (m.unlesbar) { teile.push(`${anzahl(m.unlesbar)} unlesbar`); ziele.push(["Unlesbar", "unlesbar"]); }
-  if (m.kopien) { teile.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Kopie" : "Kopien"} mit gleichem Inhalt`); ziele.push(["Duplikate", "duplikate"]); }
+  if (m.kopien) { teile.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Kopie" : "Kopien"} mit gleichem Inhalt`); ziele.push(["Gleiche Datei", "duplikate"]); }
   if (m.nicht_erreichbar?.length) teile.push(`nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)`);
   toast(teile.join(" · "), { dauer: teile.length > 1 || ziele.length > 1 ? 9000 : 4500,
                 aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });
