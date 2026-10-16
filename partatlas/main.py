@@ -842,7 +842,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         for art in programme.ARTEN:
             p = programme.programm_fuer(art, e, gefunden)
             prog[art] = p and {**p, "automatisch": not (gewaehlt.get(art) and p["pfad"] == gewaehlt[art])}
-        return {"auto_tags": True, "scan_beim_start": False, **e, "gilt": B().standard(), "materialien": K().materialien(),
+        return {"auto_tags": True, "scan_beim_start": False, **e, "bestand_pfad": zustand["bestand"].wurzel, "gilt": B().standard(), "materialien": K().materialien(),
                 "pdf": {**PDF_STANDARD, **(e.get("pdf") or {})}, "programm": prog}
 
     @app.put("/api/einstellungen")
@@ -1254,6 +1254,15 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             raise KatalogFehler("Es ist noch kein Zielordner gewählt.")
         try:
             programme.mit_system(ziel)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True}
+
+    @app.post("/api/bestand/zeigen")
+    def bestand_zeigen():
+        """Der Bestand im Dateimanager — damit der Anwender ihn in sein eigenes Backup aufnehmen kann."""
+        try:
+            programme.mit_system(zustand["bestand"].wurzel)
         except (OSError, subprocess.SubprocessError) as e:
             raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
         return {"ok": True}

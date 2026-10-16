@@ -238,7 +238,7 @@ Sammlungen, Baugruppen, Drucke, Tags und eigene Kaufteile gehen beim Löschen eb
 sich seit 0.57 unter Bereinigen › Papierkorb einzeln oder je Art zurückholen (`papierkorb.py`, `tests/test_papierkorb.py`); die Fotos
 eines Drucks bleiben dabei im Vault. Nicht gezeigt werden Tags ohne Zuordnung und leere Drucke vom Haken „gedruckt“.
 
-### 3.3a Backup & Wiederherstellung — Zielbild (8.10.2026, vom Anwender entschieden; „Automatische Sicherung“ gebaut in 0.60, Backup erstellen in 0.97)
+### 3.3a Backup & Wiederherstellung — Zielbild (8.10.2026, vom Anwender entschieden; „Automatische Sicherung“ gebaut in 0.60; Backup erstellen gebaut in 0.97, in 1.0 ausgeblendet — kommt nach 1.0 mit dem Wiederherstellen)
 
 Vorbild pDMS, aber aufgeräumter. Ein eigener Reiter **„Backup & Wiederherstellung“** im Einstellungsdialog; was er tut, muss ohne
 Vorwissen klar sein. Drei Dinge, die nicht verwechselt werden dürfen:

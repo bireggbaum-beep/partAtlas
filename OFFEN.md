@@ -50,12 +50,24 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
    Zielordner (Dialog des Rechners, sonst Pfad eintippen), Zeilen mit Grösse, Summe, Behalten, Fortschritt im Reiter und unten links.
    Zeilen und Zielordner gelten sofort (nicht erst mit „Speichern“ — „Backup erstellen“ braucht sie). test_backup 19/19 (vier
    Gegenproben fallen), test_backup_ui 3/3 (Gegenprobe fällt), test_schutz 28/28 (drei Einträge in ERLAUBT), test_api 86/86.
-   Nicht gemessen: grosser Bestand (Zeit, Grösse; Windows). **Offen:** Paket 2 Wiederherstellen aus dem ZIP (ersetzt den Katalog,
+   Nicht gemessen: grosser Bestand (Zeit, Grösse; Windows).
+   **Entscheid 16.10.2026 (Anwender): Backup und Wiederherstellen nach 1.0, als ein Ganzes** — der Anwender hat einen eigenen
+   Backup-Ablauf; ein „Backup erstellen“ ohne Gegenstück wäre in 1.0 eine halbe Funktion. **0.97.1:** der ZIP-Teil ist im Reiter
+   ausgeblendet (kein `#ein-backup`; Code in `app.js` und `backup.py`, Routen und test_backup bleiben); stattdessen „Dein Katalog in
+   deinem Backup“: Pfad des Bestands, „Ordner zeigen“ (`/api/bestand/zeigen`), Hinweis, ihn ins eigene Backup aufzunehmen.
+   test_backup_ui entfernt (prüfte die ausgeblendete Oberfläche; Stand in Commit 943f46f — beim Einblenden zurückholen).
+   **Entwurf Wiederherstellen (nach 1.0, mit dem Anwender besprochen):** nie über den jetzigen Bestand, immer ein neuer Bestand
+   daneben; Wechsel umkehrbar (Band „Zurück zum vorherigen“), den alten löscht partAtlas nie; Modelldateien nur in einen neuen, leeren
+   Ordner (ausdrücklich gefragt, voller Pfad), je Ordner aus dem Backup: auspacken / liegen schon dort (Prüfung per Fingerabdruck) /
+   nur Katalog; vorher ZIP ganz prüfen (Prüfsummen, Fassung, Platz); Arbeitsordner, erst am Ende umbenennen. Braucht: Bestand im
+   Betrieb wechseln und sich merken, welcher gilt. Zusammenführen zweier Kataloge: frühestens danach (Kennungen kollidieren, Regeln je
+   Art nötig; Aufwand 5). **Offen (alt):** Paket 2 Wiederherstellen aus dem ZIP (ersetzt den Katalog,
    vorher Sicherung; Wurzelordner auf dem neuen Rechner neu zuordnen; Vorschaubilder neu erzeugen, wenn sie nicht dabei waren),
    Paket 3 Erinnerung nach 30 Tagen und Hinweis in Bereinigen. Ursprünglicher Plan: als ein Reiter in den Einstellungen (KONZEPT §3.3a): der vorhandene Reiter „Automatische Sicherung“
    wird Teil davon; Backup als ZIP mit Zeilen je Inhalt (auch `vault/gcode`, `vault/quellen`, `vault/anhaenge`), Inhaltsverzeichnis,
    Wiederherstellen, letzte 2 behalten, Erinnerung nach 30 Tagen. In Bereinigen nur ein Hinweis mit Link dorthin.
-3. **Ordner umbenennen und verschieben** (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
+3. **Ordner umbenennen und verschieben** — Vorgabe des Anwenders (16.10.2026): so nah wie möglich am gewohnten Verhalten von
+   Windows-Explorer und Linux-Dateimanagern, nichts Unerwartetes. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
    Auf der Platte samt allen Modellorten, Sicherung vorher, nie überschreiben. Aufwand 3.
 4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
    README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag

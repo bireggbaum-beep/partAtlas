@@ -8,9 +8,8 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
-    ("0.97.0", ["Backup: In den Einstellungen unter „Backup & Wiederherstellung“ legt „Backup erstellen“ eine ZIP-Datei in einen Ordner deiner Wahl — "
-                "Katalog und, wie du es einstellst, Modelldateien, eigene Bilder, Anhänge und G-Code. Je Zeile steht die Grösse; die letzten zwei bleiben liegen.",
-                "Das Wiederherstellen aus einem Backup folgt in einer der nächsten Fassungen."]),
+    ("0.97.1", ["Einstellungen › Backup & Wiederherstellung zeigt, wo dein Katalog liegt (Tags, Drucke, Baugruppen, Notizen …), mit „Ordner zeigen“ — "
+                "nimm diesen Ordner in dein eigenes Backup auf."]),
     ("0.96.0", ["Bereinigen ist neu gegliedert: oben „Aufräumen“ (Datei fehlt, Gleiche Datei, Unlesbar, Vorschläge), darunter „Aufbewahrt“ "
                 "(Archiv, Papierkorb). Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.",
                 "„Duplikate“ heisst jetzt „Gleiche Datei“. Im Inspektor unter Datei öffnet ein Klick auf einen Ort den Ordner — dort löschst du eine überzählige Kopie."]),

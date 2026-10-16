@@ -654,12 +654,15 @@ async function einstellungen() {
       <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>
 `],
     ["sicherung", "Backup & Wiederherstellung", `
-      <p class="dim">Drei Dinge schützen deine Daten: das <b>Backup</b> gegen Plattenschaden und für den Umzug auf einen anderen Rechner,
-        die <b>automatische Sicherung</b> gegen eigene Fehlgriffe, der <b>Papierkorb</b> gegen einen Klick zu schnell.</p>
-      <div class="i-titel">BACKUP (ZIP)</div>
-      <p class="dim">Katalog und — wie du es einstellst — Modelldateien und Bilder in einer Datei, in einem Ordner deiner Wahl. Am besten
-        einer, den dein eigenes Backup (Cloud, NAS, externe Platte) ohnehin mitnimmt.</p>
-      <div id="ein-backup"><p class="dim">…</p></div>
+      <p class="dim">In partAtlas schützen die <b>automatische Sicherung</b> gegen eigene Fehlgriffe und der <b>Papierkorb</b> gegen einen
+        Klick zu schnell. Gegen Plattenschaden und für den Umzug auf einen anderen Rechner hilft dein eigenes Backup — wenn der Katalog darin ist.</p>
+      <div class="i-titel">DEIN KATALOG IN DEINEM BACKUP</div>
+      <p>Tags, Drucke, Baugruppen, Sammlungen, Notizen, Anhänge und eigene Bilder liegen nicht bei deinen Modelldateien, sondern im
+        Bestand von partAtlas:</p>
+      <div class="bk-ziel"><code>${esc(e.bestand_pfad || "")}</code><button type="button" class="knopf klein" id="ein-bestand-zeigen">Ordner zeigen</button></div>
+      <p class="dim">Nimm diesen Ordner in dein eigenes Backup auf (Sicherungsprogramm, Cloud, NAS). Sonst bringt es nach einem Plattenschaden
+        die Dateien zurück, aber nicht die Arbeit in partAtlas. Kopiert dein Backup, während partAtlas läuft, ist das kein Problem: im
+        Unterordner <code>sicherungen</code> liegt jeder automatische Stand in sich stimmig.</p>
       <div class="i-titel">AUTOMATISCHE SICHERUNG (NUR DATENBANK)</div>
       <p class="dim">Sichert die Datenbank — Modelle, Tags, Drucke, Baugruppen, Sammlungen, Ordner — beim Start und vor jeder Massenaktion.
         Nicht enthalten: Bilder und deine Modelldateien. Liegt auf demselben Rechner: kein Ersatz für ein Backup.</p>

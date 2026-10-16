@@ -3420,6 +3420,9 @@ document.addEventListener("click", async (e) => {
   if (e.target.closest("#ein-sichern")) {
     try { await api("/api/sicherungen", { method: "POST" }); toast("Gesichert."); sicherungenZeigen(); } catch (err) { toast(err.message); }
   }
+  if (e.target.closest("#ein-bestand-zeigen")) {
+    try { await api("/api/bestand/zeigen", { method: "POST" }); } catch (err) { toast(err.message); }
+  }
   if (e.target.closest("#ein-sicherungen-zeigen")) {
     try { await api("/api/sicherungen/zeigen", { method: "POST" }); } catch (err) { toast(err.message); }
   }
@@ -3465,10 +3468,11 @@ document.addEventListener("click", async (e) => {
 });
 new MutationObserver(() => {
   if (document.getElementById("ein-sicherungen")?.textContent.trim() === "…") sicherungenZeigen();
-  if (document.getElementById("ein-backup")?.textContent.trim() === "…") backupZeigen();
+  if (document.getElementById("ein-backup")?.textContent.trim() === "…") backupZeigen();      // ausgeblendet bis nach 1.0 (OFFEN.md)
 }).observe(document.getElementById("dialog"), { childList: true, subtree: true });
 
-// Backup als ZIP (KONZEPT §3.3a): Stand, Zielordner, je Zeile was hinein kommt mit Grösse, Erstellen mit Fortschritt. Die Zeilen und
+// Backup als ZIP (KONZEPT §3.3a) — in 1.0 ausgeblendet (kein #ein-backup im Reiter): ohne Wiederherstellen wäre es eine halbe Funktion.
+// Kommt nach 1.0 zusammen mit dem Wiederherstellen zurück (OFFEN.md). Stand, Zielordner, je Zeile was hinein kommt mit Grösse, Erstellen mit Fortschritt. Die Zeilen und
 // Grössen rechnet der Server (backup.py); hier wird nur gezeigt und umgeschaltet.
 const BK_GROESSE = (b) => b >= 1e9 ? `${zahl(b / 1e9, 1)} GB` : b >= 1e6 ? `${zahl(b / 1e6, 0)} MB` : `${zahl((b || 0) / 1e3, 0)} kB`;
 function bkVor(iso) {
