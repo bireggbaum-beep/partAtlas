@@ -8,6 +8,9 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("0.98.3", ["Umbenennen überall wie im Explorer: Klick auf den Namen eines schon gewählten Ordners oder Modells (nicht Doppelklick) — oder F2 — "
+                "öffnet ein Feld direkt am Namen. Bei Modellen bleibt die Endung. Das kleine Fenster zum Umbenennen gibt es nicht mehr.",
+                "Auch das Umbenennen eines Modells lässt sich mit „Rückgängig“ oder Strg+Z zurücknehmen."]),
     ("0.98.2", ["Neuer Ordner: Rechtsklick auf einen Ordner › Neuer Ordner — er heisst „Neuer Ordner“ und steht gleich zum Umbenennen offen, wie im Explorer.",
                 "Der Ordnerbaum zeigt jetzt alle Unterordner, auch leere und solche ohne Modelle (grau, ohne Zahl). Ordner, die du ausserhalb anlegst, "
                 "erscheinen mit dem nächsten Einlesen."]),

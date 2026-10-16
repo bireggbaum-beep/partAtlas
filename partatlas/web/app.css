@@ -78,6 +78,10 @@ button, input, select { font: inherit; color: inherit; }
 .baum-bearbeiten > span { flex: 1; display: flex; align-items: center; min-width: 0; }
 .baum-name { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--accent);
              border-radius: 3px; padding: 0 4px; margin: -1px 0; outline: none; }
+/* Das Namensfeld zum Umbenennen eines Modells: über der Seite, genau auf dem Namen (umbenennen in app.js). */
+.namens-feld { position: fixed; z-index: 60; box-sizing: border-box; padding: 1px 3px; color: var(--ink); background: var(--panel);
+               border: 1px solid var(--accent); border-radius: 3px; outline: none; box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); }
+.mehr .menu kbd { float: right; margin-left: 16px; font: 11px var(--mono); color: var(--ink-3); }
 #kontext kbd { float: right; margin-left: 16px; font: 11px var(--mono); color: var(--ink-3); }
 /* Unterüberschrift in Bereinigen: was man aufräumt, und wo Aufbewahrtes liegt — zwei Arten von Arbeit, nicht eine Liste. */
 .sk-gruppe { padding: 8px 6px 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }

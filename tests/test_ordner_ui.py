@@ -109,6 +109,56 @@ if __name__ == "__main__":
             pg.wait_for_selector(neu, timeout=10000)
             check("Umbenannt; im Baum grau und ohne Zahl, weil ohne Modelle", os.path.isdir(os.path.join(samm, "Teile"))
                   and "ohne-modelle" in pg.get_attribute(neu, "class") and pg.inner_text(f"{neu} em") == "")
+
+            # -- Langsamer zweiter Klick auf den gewählten Ordner: Namensfeld; ein Doppelklick nicht
+            teile = f'.eintrag[data-ordner="{wid}/Teile"]'
+            pg.click(teile)
+            pg.wait_for_selector(f"{teile}.aktiv", timeout=5000)
+            time.sleep(0.8)
+            pg.dblclick(teile)
+            time.sleep(0.9)
+            check("Doppelklick auf den gewählten Ordner öffnet kein Namensfeld", pg.locator(".baum-name").count() == 0)
+            time.sleep(0.8)
+            pg.click(teile)
+            pg.wait_for_selector(".baum-name", timeout=3000)
+            check("Langsamer zweiter Klick auf den gewählten Ordner öffnet das Namensfeld", pg.locator(".baum-name").input_value() == "Teile")
+            pg.locator(".baum-name").press("Escape")
+            pg.wait_for_selector(teile, timeout=5000)
+            time.sleep(0.5)                        # der Baum zeichnet sich nach Esc neu; sonst träfe der nächste Klick noch „Teile“
+
+            # -- Modell: langsamer zweiter Klick auf den Namen, Feld an Ort und Stelle, Endung bleibt; Rückgängig mit Strg+Z
+            pg.click(f'.eintrag[data-ordner="{wid}/Ziel"]')
+            karte = '.karte:has-text("Anderes")'
+            pg.wait_for_selector(karte, timeout=10000)
+            pg.click(f"{karte} .bild, {karte} .text >> nth=0")
+            time.sleep(0.8)
+            pg.click(f"{karte} .name")
+            pg.wait_for_selector(".namens-feld", timeout=3000)
+            feld = pg.locator(".namens-feld")
+            check("Langsamer Klick auf den Namen eines gewählten Modells: Feld mit dem Namen ohne Endung, kein Fenster",
+                  feld.input_value() == "Anderes" and not pg.evaluate("document.querySelector('#dialog').open"))
+            feld.fill("Anderes v2")
+            feld.press("Enter")
+            warte(lambda: os.path.isfile(os.path.join(samm, "Ziel", "Anderes v2.stl")), 10)
+            check("Enter: Datei auf der Platte umbenannt, Endung geblieben, Meldung mit „Rückgängig“",
+                  os.path.isfile(os.path.join(samm, "Ziel", "Anderes v2.stl")) and "Rückgängig" in pg.inner_text("#toast"))
+            pg.evaluate("document.activeElement?.blur()")
+            pg.keyboard.press("Control+z")
+            warte(lambda: os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")), 10)
+            check("Strg+Z: Modell wieder unter altem Namen", os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")))
+
+            # -- F2 auf dem gezeigten Modell; verbotenes Zeichen lässt das Feld offen
+            time.sleep(0.5)
+            pg.keyboard.press("F2")
+            pg.wait_for_selector(".namens-feld", timeout=3000)
+            pg.locator(".namens-feld").fill("a?b")
+            pg.locator(".namens-feld").press("Enter")
+            time.sleep(0.8)
+            check("F2 auf dem Modell; verbotenes Zeichen: Meldung, Feld bleibt offen mit dem Getippten",
+                  pg.locator(".namens-feld").count() == 1 and pg.locator(".namens-feld").input_value() == "a?b"
+                  and "Dateiname darf keines dieser Zeichen" in pg.inner_text("#toast"))
+            pg.locator(".namens-feld").press("Escape")
+            check("Esc: Feld weg, Datei unverändert", pg.locator(".namens-feld").count() == 0 and os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")))
             b.close()
     finally:
         server.terminate()

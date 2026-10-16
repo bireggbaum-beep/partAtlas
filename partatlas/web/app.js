@@ -1460,7 +1460,7 @@ async function waehle(id, live = false) {
           <div class="mehr"><button type="button" class="hv-btn" id="mehr-knopf" title="Weitere Aktionen" aria-label="Weitere Aktionen">⋯</button>
           <div class="menu" id="mehr-menu" hidden>
             ${m.fehlt || m.fehler ? "" : `${oeffnenMitEintraege(m, prog)}<hr>`}
-            <button id="umbenennen">Umbenennen …</button>
+            <button id="umbenennen">Umbenennen <kbd>F2</kbd></button>
             <button id="verschieben">In anderen Ordner verschieben …</button>
             <button id="gal-plus-menu">Bild hinzufügen …</button>
             <hr><button id="loeschen" class="gefahr">Löschen …</button>
@@ -2396,16 +2396,95 @@ $("#dialog-inhalt").addEventListener("input", (e) => {
   if (e.target.id === "endgueltig-wort") $("#endgueltig-ja").disabled = e.target.value.trim().toLowerCase() !== "entfernen";
 });
 
-async function umbenennen(id) {
-  const m = await api(`/api/modelle/${id}`);
-  const antwort = await dialog(`<h2>Umbenennen</h2><p class="dim">Die Datei wird auf der Platte umbenannt, die Endung bleibt.</p>
-    <input type="text" id="neuer-name" value="${esc(m.name)}">
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Umbenennen</button></div>`);
-  if (antwort !== "ja") return;
-  const name = $("#neuer-name").value;
-  await aendern(id, { name });
-  waehle(id);
+// ---------------------------------------------------------------- Umbenennen an Ort und Stelle (wie im Explorer)
+// Ein Feld genau über dem Namen — in der Kachel, der Zeile, den Karten oder oben im Inspektor; markiert ist der Name ohne Endung (die
+// bleibt). Enter oder ein Klick daneben übernimmt, Esc bricht ab, eine Ablehnung meldet sich und lässt das Feld offen. Das Feld liegt
+// über der Seite und folgt seinem Namen beim Rollen: das virtuelle Raster zeichnet Kacheln neu, ein Feld darin ginge dabei verloren.
+const NAMEN_IN = [".karte[data-id=\"ID\"] .name", ".zeile-k[data-id=\"ID\"] .k-name", ".zeile-l[data-id=\"ID\"] > span:nth-child(3)",
+                  "#inspektor[data-id=\"ID\"] .i-name"];
+const NAMEN_SELEKTOR = ".karte .name, .zeile-k .k-name, .zeile-l > span:nth-child(3), #inspektor .i-name";
+const sichtbar = (el) => { const b = el?.getBoundingClientRect(); return b && b.width > 0 && b.bottom > 0 && b.top < innerHeight; };
+
+async function umbenennen(id, el, vorschlag) {
+  const muster = el ? NAMEN_IN.find((x) => el.matches(x.replace(/\[data-id="ID"\]/, "").trim())) : null;
+  const wo = muster ? muster.replace("ID", CSS.escape(id))
+    : NAMEN_IN.map((x) => x.replace("ID", CSS.escape(id))).find((x) => sichtbar(document.querySelector(x)));
+  if (!wo) return;
+  const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${encodeURIComponent(id)}`);
+  const alt = m.name;
+  const ziel = () => document.querySelector(wo);
+  const feld = document.createElement("input");
+  feld.type = "text";
+  feld.className = "namens-feld";
+  feld.spellcheck = false;
+  feld.setAttribute("aria-label", `Neuer Name für ${alt}`);
+  feld.value = vorschlag ?? alt;
+  const stil = getComputedStyle(ziel());
+  feld.style.font = stil.font;
+  const legen = () => {
+    const z = ziel();
+    if (!z || !sichtbar(z)) { feld.style.visibility = "hidden"; return; }
+    const b = z.getBoundingClientRect();
+    Object.assign(feld.style, { visibility: "", left: `${b.left - 3}px`, top: `${b.top - 2}px`, width: `${Math.max(b.width + 6, 140)}px`, height: `${b.height + 4}px` });
+  };
+  document.body.append(feld);
+  legen();
+  addEventListener("scroll", legen, true);
+  addEventListener("resize", legen);
+  feld.focus();
+  feld.select();
+  let fertig = false;
+  const ende = async (uebernehmen) => {
+    if (fertig) return;
+    fertig = true;
+    removeEventListener("scroll", legen, true);
+    removeEventListener("resize", legen);
+    const name = feld.value.trim();
+    feld.remove();
+    if (!uebernehmen || name === alt) return;
+    try {
+      await api(`/api/modelle/${encodeURIComponent(id)}`, { method: "PATCH", body: { name } });
+      ordnerAktion.letzte = { rueck: () => api(`/api/modelle/${encodeURIComponent(id)}`, { method: "PATCH", body: { name: alt } }) };
+      toast(`„${alt}“ umbenannt in „${name}“.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+      if (zustand.angezeigt === id) { zustand.angezeigt = null; waehle(id); }
+    } catch (err) {
+      toast(err.message, { dauer: 6000 });
+      umbenennen(id, ziel(), name);          // weiter im Feld, mit dem, was getippt war
+    }
+  };
+  feld.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") { e.preventDefault(); ende(true); }
+    if (e.key === "Escape") { e.preventDefault(); ende(false); }
+  });
+  feld.addEventListener("blur", () => ende(true));
+  for (const art of ["click", "mousedown", "dblclick", "pointerdown"]) feld.addEventListener(art, (e) => e.stopPropagation());
 }
+
+// Langsamer zweiter Klick wie im Explorer: ein Klick auf den Namen eines schon gewählten Eintrags (Ordner im Baum, Modell in der Liste
+// oder oben im Inspektor) öffnet nach einer Pause das Namensfeld. Ein Doppelklick, Ziehen oder eine Taste dazu brechen ab; der erste Klick
+// auf einen nicht gewählten Eintrag wählt ihn nur.
+const langsam = { zeit: 0, ziel: null };
+document.addEventListener("pointerdown", (e) => {
+  clearTimeout(langsam.zeit);
+  langsam.ziel = null;
+  if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || zustand.ansicht === "papierkorb") return;
+  const o = e.target.closest?.(".baum .eintrag[data-ordner]:not([data-wurzel])");
+  if (o) {
+    if (o.classList.contains("aktiv") && !e.target.closest(".pfeil")) langsam.ziel = { ordner: o.dataset.ordner };
+    return;
+  }
+  const n = e.target.closest?.(NAMEN_SELEKTOR);
+  const id = n && (n.closest("[data-id]")?.dataset.id || $("#inspektor").dataset.id);
+  if (id && zustand.auswahl.size <= 1 && (zustand.gewaehlt === id || n.closest("#inspektor")) && zustand.angezeigt === id) langsam.ziel = { id, n };
+}, true);
+document.addEventListener("click", (e) => {
+  const z = langsam.ziel;
+  langsam.ziel = null;
+  if (!z || e.detail > 1) return;
+  langsam.zeit = setTimeout(() => (z.ordner ? ordnerUmbenennenStart(z.ordner) : umbenennen(z.id, z.n.isConnected ? z.n : null)), 500);
+}, true);
+for (const art of ["dblclick", "dragstart", "keydown"]) document.addEventListener(art, () => clearTimeout(langsam.zeit), true);
 
 async function wurzelNeu() {
   $("#import-menu").hidden = true;
@@ -2797,7 +2876,7 @@ document.addEventListener("keydown", async (e) => {
   }
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !tippt && !document.querySelector("dialog[open]") && ordnerAktion.letzte) {
     e.preventDefault();
-    ordnerRueckgaengig();
+    rueckgaengig();
   }
   if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !tippt && !$("#dialog").open && $("#i-galerie")?.matches(":hover")) {
     e.preventDefault();
@@ -3398,7 +3477,7 @@ async function kontextMenu(e, id) {
       ["entwurf1", m.entwurf ? "✎ Kein Entwurf mehr" : "✎ Als Entwurf markieren"],
       ["-"], ["baugruppe", "🧩 Zu Baugruppe …"], ["sammlung", "▤ Zu Sammlung …"],
       ...(da ? [["vorschau-berechnen", "Vorschaubild berechnen"]] : []),
-      ["-"], ["umbenennen", "Umbenennen …"], ["verschieben", "In anderen Ordner verschieben …"], ["ins-archiv", "🗄 Ins Archiv"],
+      ["-"], ["umbenennen", "Umbenennen"], ["verschieben", "In anderen Ordner verschieben …"], ["ins-archiv", "🗄 Ins Archiv"],
       ["-"], ["loeschen", "Löschen …", "gefahr"]];
   }
   eintraege = eintraege.filter(([k]) => ab2(k));
@@ -3612,8 +3691,12 @@ async function ordnerBewegen(id, ziel, text) {
   if (r.id === r.vorher) return r;
   ordnerIdErsetzen(r.vorher, r.id);
   const altName = r.vorher.split("/").pop(), altEltern = r.vorher.slice(0, r.vorher.lastIndexOf("/"));
-  ordnerAktion.letzte = { id: r.id, zurueck: "name" in ziel ? { name: altName } : { eltern: altEltern } };
-  toast(text(r), { aktionen: [["Rückgängig", ordnerRueckgaengig]], dauer: 8000 });
+  const zurueck = "name" in ziel ? { name: altName } : { eltern: altEltern };
+  ordnerAktion.letzte = { rueck: async () => {
+    const z = await api("/api/ordner/bewegen", { method: "POST", body: { id: r.id, ...zurueck } });
+    ordnerIdErsetzen(z.vorher, z.id);
+  } };
+  toast(text(r), { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
   await ladeSeite();
   neuLaden();
   return r;
@@ -3642,13 +3725,13 @@ async function ordnerVerschiebenNach(id) {
   } catch (e) { toast(e.message, { dauer: 6000 }); }
 }
 
-async function ordnerRueckgaengig() {
+// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen) — Knopf in der Meldung und Strg+Z.
+async function rueckgaengig() {
   const l = ordnerAktion.letzte;
   if (!l) return;
   ordnerAktion.letzte = null;
   try {
-    const r = await api("/api/ordner/bewegen", { method: "POST", body: { id: l.id, ...l.zurueck } });
-    ordnerIdErsetzen(r.vorher, r.id);
+    await l.rueck();
     toast("Rückgängig gemacht.");
   } catch (e) { toast(e.message); }
   await ladeSeite();

@@ -16,6 +16,8 @@ from schutz_inventur import inventur
 
 # (Datei, Funktion, Aufruf) → warum das nichts des Anwenders gefährdet
 ERLAUBT = {
+    ("katalog.py", "Katalog.umbenennen", "os.rename"): "nur andere Schreibung derselben Datei (samefile geprüft) — unter Windows hielte "
+                                                       "dateien.verschiebe das Ziel für belegt; ersetzt nichts",
     ("dateien.py", "ordner_umbenennen", "os.rename"): "Ordner des Anwenders umbenennen/verschieben auf Wunsch (Rechtsklick, F2, Ziehen) — "
                                                       "nie ersetzend: Ziel vorher mit mkdir reserviert bzw. unter Windows scheitert rename am Ziel",
     ("dateien.py", "ordner_umbenennen", "os.rmdir"): "nur der eigene, eben angelegte leere Platzhalter, wenn das Umbenennen scheitert",

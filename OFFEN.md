@@ -92,7 +92,16 @@ Freiheit für Entscheidungen; vor einer Iteration höchstens 3 Fragen, währendd
    test_ordner 18/18 (+3), test_ordner_ui 11/11 (+2), je eine Gegenprobe fällt (Baum ohne Platte, ohne Nummer, ohne Grau, ohne Lesen
    nach dem Einlesen). test_scan 110, api 86, verwalten 76, schutz 28, suche 28, bereinigen_ui 2 grün.
    **test_ansicht_ui flatterte** (2/3, auch vor dieser Änderung): `/api/neuigkeiten` (seit 0.95.6 beim Start) kam mal nach dem
-   Ansichtswechsel und zählte mit — in der Prüfung jetzt ausgenommen, dreimal 3/3. **Ordner damit fertig für 1.0.** (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
+   Ansichtswechsel und zählte mit — in der Prüfung jetzt ausgenommen, dreimal 3/3. **Ordner damit fertig für 1.0.**
+   **Umbenennen überall an Ort und Stelle (0.98.3, Anwender: „das kleine Fenster ist nicht konsistent“):** Modelle über ein Feld genau
+   auf dem Namen (Kachel, Liste, Karten, Inspektor; `umbenennen(id, el)` in app.js — das Feld liegt fixed über der Seite und folgt dem
+   Namen beim Rollen, weil das virtuelle Raster Kacheln neu zeichnet), Name ohne Endung markiert. Langsamer zweiter Klick wie im Explorer
+   (Ordner und Modelle: Klick auf den Namen eines schon gewählten Eintrags → nach 0,5 s das Feld; Doppelklick, Ziehen, Taste brechen ab).
+   Rückgängig/Strg+Z jetzt allgemein (`rueckgaengig`), auch für Modelle. Server: Dateinamen nach denselben Windows-Regeln
+   (`ordnername_pruefen(name, "Dateiname")`), nur andere Schreibung einer Datei per os.rename (samefile). test_ordner_ui 18/18 (+7, vier
+   Gegenproben fallen), test_schutz 28/28 (+1 ERLAUBT), test_verwalten 76/76, test_api 86/86, test_ordner 18/18.
+   Nicht umgestellt (keine Dateien, daher kein Explorer-Vorbild): Umbenennen von Sammlungen, gemerkten Suchen, Tags, Baugruppen — dort
+   weiter ein kleines Fenster. (vor Iteration 1 zugesagt; heute gibt es nur „Ordner anlegen“ und „aus dem Katalog entfernen“).
    Auf der Platte samt allen Modellorten, Sicherung vorher, nie überschreiben. Aufwand 3.
 4. **Qualitätsdurchgang:** alle Suiten, test_ui komplett, flatterhafte Prüfungen festmachen (test_ui „Ruhepause 60 ms“, test_ansicht_ui),
    README für Fremde (Installation). Echte Dateien aus Bambu Studio und Anycubic Slicer Next vom Anwender, sonst steht im Vertrag

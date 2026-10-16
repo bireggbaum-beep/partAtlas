@@ -793,9 +793,10 @@ class Katalog:
     def umbenennen(self, mid, name):
         """Wie im 3MF Katalog: der Name ist der Dateiname, die Endung bleibt.
         Jeder Ort wird umbenannt; nichts wird überschrieben."""
-        name = (name or "").strip()
-        if not name or any(c in name for c in '/\\\0') or name in (".", ".."):
-            raise KatalogFehler("Ungültiger Name.")
+        try:
+            name = dateien.ordnername_pruefen(name, "Dateiname")
+        except ValueError as e:
+            raise KatalogFehler(str(e))
         h = self.datei_von(mid)
         d = self.db.get_node(ref(DATEI, h))
         erledigt, neue_orte = [], []
@@ -804,7 +805,12 @@ class Katalog:
                 alt = self.absoluter_pfad(o)
                 ext = os.path.splitext(alt)[1]
                 ziel = os.path.join(os.path.dirname(alt), name + ext)
-                if ziel != alt:
+                if ziel != alt and os.path.lexists(ziel) and os.path.samefile(alt, ziel):
+                    # Nur andere Schreibung (halter → Halter) auf einem Dateisystem, das sie nicht unterscheidet (Windows): dieselbe
+                    # Datei, rename ändert nur den Namen — `verschiebe` hielte das Ziel für belegt.
+                    os.rename(alt, ziel)
+                    erledigt.append((ziel, alt))
+                elif ziel != alt:
                     dateien.verschiebe(alt, ziel)
                     erledigt.append((ziel, alt))
                 rel = o["pfad"].rsplit("/", 1)[0] + "/" if "/" in o["pfad"] else ""

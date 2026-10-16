@@ -145,17 +145,19 @@ _VERBOTEN = set('\\/:*?"<>|')
 _RESERVIERT = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
 
-def ordnername_pruefen(name):
-    """Der bereinigte Name (Leerzeichen aussen weg, wie im Explorer) oder ValueError mit einem Satz für den Anwender."""
+def ordnername_pruefen(name, art="Ordnername"):
+    """Der bereinigte Name (Leerzeichen aussen weg, wie im Explorer) oder ValueError mit einem Satz für den Anwender. `art`: „Ordnername“
+    oder „Dateiname“ (ohne Endung), für den Satz."""
     name = (name or "").strip()
     if not name:
         raise ValueError("Der Name darf nicht leer sein.")
     if any(c in _VERBOTEN or ord(c) < 32 for c in name):
-        raise ValueError('Ein Ordnername darf keines dieser Zeichen enthalten: \\ / : * ? " < > |')
+        raise ValueError(f'Ein {art} darf keines dieser Zeichen enthalten: \\ / : * ? " < > |')
     if name.startswith("."):
-        raise ValueError("Ein Name mit einem Punkt vorn wäre ein versteckter Ordner — partAtlas zeigt solche nicht.")
+        raise ValueError(f"Ein Name mit einem Punkt vorn wäre {'ein versteckter Ordner' if art == 'Ordnername' else 'eine versteckte Datei'} "
+                         f"— partAtlas zeigt solche nicht.")
     if name.endswith("."):
-        raise ValueError("Ein Ordnername darf nicht mit einem Punkt enden.")
+        raise ValueError(f"Ein {art} darf nicht mit einem Punkt enden.")
     if name.split(".")[0].strip().upper() in _RESERVIERT:
         raise ValueError(f"„{name}“ ist unter Windows als Name reserviert.")
     if len(name) > 255:
