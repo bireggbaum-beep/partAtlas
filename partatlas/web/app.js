@@ -2220,6 +2220,8 @@ function programmKnoepfe(m, programmDaten) {
     // Gar kein Programm dieser Art eingerichtet: der Knopf bleibt da, gedämpft, und führt in die Einstellungen —
     // sonst findet niemand heraus, warum er fehlt. (Kann nur das Format nicht, bleibt er weg.)
     if (programmDaten.programme.some((p) => p.art === a)) return "";
+    // Ein Format, das kein Programm dieser Art je öffnet (FCStd im Slicer), bekommt auch keinen gedämpften Knopf: einrichten liesse sich nichts.
+    if (programmDaten.moeglich && !(programmDaten.moeglich[a] || []).includes(m.format)) return "";
     const name = programmDaten.arten?.[a] || a;
     return `<button type="button" class="hv-btn leer" data-hv-einrichten="1" data-hv-art="${a}" title="Noch kein ${esc(name)} eingerichtet — in den Einstellungen wählen" aria-label="${esc(name)} einrichten">${HV_ICONS[a]}</button>`;
   }).join("");

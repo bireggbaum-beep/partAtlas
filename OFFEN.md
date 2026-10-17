@@ -4,6 +4,16 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.1 (17.10.2026, Rückmeldung des Testers: „bei FCStd wird der Slicer zum Öffnen angeboten, das geht gar nicht“)
+
+Ursache: ein Programm, das man unter Einstellungen › Programme selbst wählt (`programme.eintrag_fuer`, `eigene`), bekam **alle fünf Formate**,
+auch einen Slicer FCStd — erkannte Slicer (BEKANNT) nannten es nie. Der Hauptknopf nimmt für FCStd zwar das CAD, aber „Öffnen mit …“,
+Rechtsklick und der Slicer-Knopf boten den Slicer an. Jetzt `formate_fuer`: bekanntes Programm → seine Liste, unbekannter Slicer → alle
+ausser FCStd, CAD → alle; auch ältere gespeicherte Einträge mit allen Formaten werden so gelesen. Der gedämpfte Knopf „noch kein Slicer
+eingerichtet“ erscheint für FCStd nicht mehr (`/api/programme` liefert `moeglich` je Art). test_api 90/90 (+4), neue Suite
+test_programme_ui 3/3; Gegenproben fallen (drei im Server, eine in der Oberfläche). STEP bleibt im Slicer wählbar (Bambu, Orca, Prusa,
+Anycubic lesen es), Standard bleibt das CAD.
+
 ## Stand: 1.0.0 auf `main` (16.10.2026, für den Tester)
 
 Der Katalog ist fertig. Seit 0.95.7: Bereinigen neu gegliedert, jede Ansicht erklärt sich (0.96); Hinweis „Dein Katalog in deinem

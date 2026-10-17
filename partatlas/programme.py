@@ -123,12 +123,33 @@ def erkennen():
     return ergebnis
 
 
+def formate_fuer(name, art, vorgabe=None):
+    """Welche Formate ein Programm öffnet. Ein bekanntes Programm: seine Liste aus BEKANNT. Ein unbekanntes: bei einem CAD alle, bei einem
+    Slicer alle ausser den CAD-Formaten, die ein Slicer nie lesen kann (FCStd; Tester, 17.10.2026: „bei FCStd wird der Slicer angeboten,
+    das geht gar nicht“). Vorher bekam jedes vom Anwender gewählte Programm alle Formate, auch ein Slicer FCStd."""
+    for n, _, formate, _, _, _ in BEKANNT:
+        if n == name:
+            return list(formate)
+    basis = list(vorgabe) if vorgabe else list(FORMATE)
+    return [f for f in basis if art != SLICER or f != "fcstd"]
+
+
+def moegliche_formate():
+    """Je Art die Formate, die irgendein bekanntes Programm dieser Art öffnen kann — wofür es sich also lohnt, ein Programm einzurichten
+    (für den gedämpften Knopf „noch kein Slicer eingerichtet“: bei FCStd gibt es keinen Slicer, den man einrichten könnte)."""
+    aus = {art: [] for art in ARTEN}
+    for _, art, formate, _, _, _ in BEKANNT:
+        aus[art] += [f for f in formate if f not in aus[art]]
+    aus[CAD] += [f for f in FORMATE if f not in aus[CAD]]          # ein selbst gewähltes CAD kann alles
+    return aus
+
+
 def eigene(einstellungen):
     # Einträge aus früheren Fassungen („slicer“ seit 0.6, „programme“): sie bleiben gültig,
     # bis der Anwender in den Einstellungen selbst ein Programm wählt.
     roh = [{**s, "art": SLICER} for s in einstellungen.get("slicer", [])] + einstellungen.get("programme", [])
-    return [{**_eintrag(s["name"], s.get("art") if s.get("art") in ARTEN else CAD, s.get("formate") or FORMATE,
-                        s["pfad"]), "eigen": True}
+    return [{**_eintrag(s["name"], s.get("art") if s.get("art") in ARTEN else CAD,
+                        formate_fuer(s["name"], s.get("art") if s.get("art") in ARTEN else CAD, s.get("formate")), s["pfad"]), "eigen": True}
             for s in roh if s.get("pfad") and os.path.isfile(s["pfad"])]
 
 
@@ -138,12 +159,12 @@ def eintrag_fuer(pfad, art):
     echt = os.path.basename(os.path.realpath(pfad)).lower()
     for name, _, _, programme, _, _ in BEKANNT:
         if echt.rsplit(".", 1)[0] in {x.lower() for x in programme}:
-            return {**_eintrag(name, art, FORMATE, pfad), "eigen": True}
+            return {**_eintrag(name, art, formate_fuer(name, art), pfad), "eigen": True}
     stamm = os.path.basename(pfad.rstrip("/\\"))
     for ende in (".AppImage", ".appimage", ".exe", ".app"):
         if stamm.endswith(ende):
             stamm = stamm[: -len(ende)]
-    return {**_eintrag(stamm, art, FORMATE, pfad), "eigen": True}
+    return {**_eintrag(stamm, art, formate_fuer(stamm, art), pfad), "eigen": True}
 
 
 def programm_fuer(art, einstellungen, erkannt=None):

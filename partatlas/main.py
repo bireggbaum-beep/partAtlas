@@ -1117,7 +1117,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.get("/api/programme")
     def programme_liste():
         liste, std = _programme()
-        return {"programme": liste, "standard": std, "arten": programme.ARTEN}
+        return {"programme": liste, "standard": std, "arten": programme.ARTEN, "moeglich": programme.moegliche_formate()}
 
     @app.post("/api/programme/waehlen")
     def programm_waehlen(koerper: dict = Depends(json_koerper)):

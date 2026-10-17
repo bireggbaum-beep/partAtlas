@@ -161,6 +161,28 @@ if __name__ == "__main__":
         wahl = _prog.standard([{"art": "slicer", "formate": _prog.FORMATE, "pfad": "/slicer"},
                                {"art": "cad", "formate": ("fcstd",), "pfad": "/cad"}])
         check("Standard: FCStd geht ins CAD, auch wenn ein eigener Slicer alle Formate beansprucht", wahl["fcstd"] == "/cad")
+        # Ein vom Anwender gewählter Slicer (Einstellungen › Programme) beansprucht FCStd nicht: er kennt es nicht (Tester, 17.10.2026).
+        import tempfile as _tmp
+        ordner_p = _tmp.mkdtemp()
+
+        def programm_datei(name):
+            pfad = os.path.join(ordner_p, name)
+            open(pfad, "w").write("#!/bin/sh\n")
+            os.chmod(pfad, 0o755)
+            return pfad
+        bekannt = _prog.eintrag_fuer(programm_datei("orca-slicer"), "slicer")
+        fremd_slicer = _prog.eintrag_fuer(programm_datei("mein-slicer"), "slicer")
+        fremd_cad = _prog.eintrag_fuer(programm_datei("mein-cad"), "cad")
+        check("Gewählter Slicer: nie FCStd (bekannt wie unbekannt), ein gewähltes CAD alles",
+              "fcstd" not in bekannt["formate"] and "fcstd" not in fremd_slicer["formate"] and "stl" in fremd_slicer["formate"]
+              and "3mf" in fremd_slicer["formate"] and set(fremd_cad["formate"]) == set(_prog.FORMATE))
+        check("Auch ein älterer, gespeicherter Eintrag mit allen Formaten behält FCStd nicht im Slicer",
+              "fcstd" not in _prog.eigene({"programme": [{"name": "alt", "art": "slicer", "pfad": programm_datei("alt"),
+                                                         "formate": list(_prog.FORMATE)}]})[0]["formate"])
+        check("Standard mit einem gewählten Slicer: FCStd bekommt keinen Slicer",
+              _prog.standard([fremd_slicer])["fcstd"] is None and _prog.standard([fremd_slicer])["stl"] == fremd_slicer["pfad"])
+        check("Die Oberfläche erfährt, was möglich ist: kein Slicer für FCStd, ein CAD für alles",
+              "fcstd" not in prog["moeglich"]["slicer"] and "stl" in prog["moeglich"]["slicer"] and "fcstd" in prog["moeglich"]["cad"])
         check("3MF: FreeCAD steht zur Wahl, Standard bleibt der Slicer",
               "3mf" in next(p["formate"] for p in prog["programme"] if p["name"] == "FreeCAD") and fc not in (prog["standard"]["3mf"],))
         haken = next(m for m in liste if m["name"] == "Haken")
