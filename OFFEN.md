@@ -429,6 +429,18 @@ Aufwand insgesamt 4–5:
 3. **Installer** (1–2): Windows-Installer, Linux AppImage; Programm im Startmenü. Kein .deb, kein macOS.
 4. **Updates** (2): Tauri-Updater — braucht einen Signaturschlüssel und einen Ort für die Fassungen (Vorschlag: GitHub-Releases);
    unter Windows wahrscheinlich Codesignatur gegen SmartScreen (Kosten). Bis dahin: Windows zuerst (der Anwender testet dort), Linux danach.
+**Entschieden (17.10.2026): Linux als AppImage, nicht Flatpak.** Gründe: der Tauri-Bundler baut es mit `tauri build` und der Tauri-Updater kann
+AppImage selbst aktualisieren; keine Sandbox (partAtlas startet Slicer/FreeCAD und `xdg-open`, liest beliebige Ordner, zeigt zenity/kdialog,
+erkennt AppImages — in einem Flatpak wäre dafür Zugriff aufs Home, `flatpak-spawn --host` und Portale nötig, `programme.py` und
+`dateidialog.py` wären anzufassen: Aufwand 3–4 statt 1); der Tester: „AppImage laufen zuverlässiger, Flatpaks sind distributionsabhängig,
+wie eine Sandbox und grösser“. Flatpak nur, wenn jemand es verlangt. Bauen später in GitHub Actions (`tauri-action`: Windows-Installer und
+AppImage aus einer Workflow-Datei). Bekannte AppImage-Fallen: braucht `libfuse2` auf neueren Ubuntu-Fassungen; Tauri-Darstellungsprobleme
+mit EGL/NVIDIA/Wayland (Umgebungsvariablen) — der Tester mit alter Grafikkarte zeigt sie früh.
+**Grösse (17.10.2026, gemessen und angegeben):** partAtlas mit Python per PyInstaller `onedir` (Linux, feste Paketfassungen, läuft, meldet
+1.0.1): 93 MB entpackt, **38 MB gepackt**; numpy ≈ 41 MB (mit `numpy.libs`), Pillow ≈ 15 MB, Python ≈ 10 MB, Oberfläche samt three.js und
+Handbuch 3 MB. Starter: `runpy.run_module("partatlas", run_name="__main__")`, weil `__main__.py` relative Importe nutzt. Angabe des Anwenders
+zum 3MF Katalog (mit STEP-Vorschau): Linux 95 MB, Windows 27 MB. Unsere **Schätzung** (nicht gemessen): Windows-Installer ≈ 40–50 MB, Linux-
+AppImage ≈ 80–110 MB (Webview gepackt ≈ 40–70 MB). Abspecken (numpy) erst, wenn die Grösse jemanden stört.
 Offen: Wo liegen die Fassungen (Vorschlag GitHub-Releases)? Ein Rechner mit Rust-Werkzeugen und Bildschirm ist nötig (der Cloud-Container
 hat keinen Bildschirm, WebView2 gibt es nur unter Windows); ob sich hier ein Linux-Spike bauen lässt, ist ungeprüft.
 
