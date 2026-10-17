@@ -452,7 +452,9 @@ Wenn, dann STEP weiter zuletzt und im Hintergrund, und auf einer alten Maschine 
 **Rückmeldung des Testers (17.10.2026, alte Maschine, Manjaro):** der 3MF Katalog 0.15.4 (AppImage) las 5 793 Dateien (stl, 3mf, stp)
 über eine Stunde bei fast 100 % CPU, nach geschätzt 2–3 % abgebrochen; danach beendete er sich von selbst, auch nach Neustart. partAtlas
 „funktioniert anders, besser und viel schneller“. Ursache beim 3MF Katalog unbekannt (Vermutung: STEP-Vorschau beim Einlesen). Zu holen: die
-Zeit von partAtlas für denselben Ordner (Protokollzeile „Lauf … fertig in … s“) als Messwert. Der 3MF Katalog hat Filamentverwaltung, kann
+Zeit von partAtlas für denselben Ordner (Protokollzeile „Lauf … fertig in … s“) als Messwert. **Nachtrag 17.10.:** der Tester hat denselben
+Ordner (5 793 Dateien) mit partAtlas schon eingelesen: es ging, dauerte, „aber nicht so lang“, lief robust, und der Rechner blieb bedienbar
+— „deutlich besser gelöst“. Die Dauer in Minuten fehlt weiter. Der 3MF Katalog hat Filamentverwaltung, kann
 kein FCStd.
 Offen: Wo liegen die Fassungen (Vorschlag GitHub-Releases)? Ein Rechner mit Rust-Werkzeugen und Bildschirm ist nötig (der Cloud-Container
 hat keinen Bildschirm, WebView2 gibt es nur unter Windows); ob sich hier ein Linux-Spike bauen lässt, ist ungeprüft.
