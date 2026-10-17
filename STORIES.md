@@ -26,6 +26,14 @@ Der rote Faden läuft durch alle vier: **dasselbe Modell, von der Ankunft bis
 zur letzten Fassung und dem letzten Druck.** Fehlt er irgendwo, wirkt
 partAtlas wie ein Nachschlagewerk statt wie ein Werkzeug.
 
+**Gewichtung nach dem Tester (17.10.2026):** Verwalten und Entwickeln zählen
+am meisten; Drucken reicht ihm über „Öffnen in …“ und die Schnelltasten. Sein
+Alltag: Er baut Dinge, die aus viel mehr als Druckteilen bestehen. Das
+gedruckte Teil (z. B. eine Schleifwalze) ist nur eine Komponente, und es
+entwickelt sich weiter: optimiert, oder als Variante (längere Walze nach Norm).
+Die Frage ist also nicht „welche Fassung dieser Datei“, sondern
+**„welche Fassung oder Variante gehört in welches Ganze“.**
+
 ## Geschichten
 
 Stand: **ja** = geht durchgehend · **Lücke** = geht mit benannter Lücke ·
