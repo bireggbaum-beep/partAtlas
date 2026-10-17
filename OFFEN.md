@@ -441,6 +441,19 @@ mit EGL/NVIDIA/Wayland (Umgebungsvariablen) — der Tester mit alter Grafikkarte
 Handbuch 3 MB. Starter: `runpy.run_module("partatlas", run_name="__main__")`, weil `__main__.py` relative Importe nutzt. Angabe des Anwenders
 zum 3MF Katalog (mit STEP-Vorschau): Linux 95 MB, Windows 27 MB. Unsere **Schätzung** (nicht gemessen): Windows-Installer ≈ 40–50 MB, Linux-
 AppImage ≈ 80–110 MB (Webview gepackt ≈ 40–70 MB). Abspecken (numpy) erst, wenn die Grösse jemanden stört.
+**Messung STEP/Open CASCADE (17.10.2026, hier gemessen, Linux, ungeprüft an echten CAD-Dateien):** das Python-Paket `cadquery-ocp` ist riesig
+(746 MB entpackt mit allem, was es zum Laden braucht — VTK ≈ 300 MB, Bildbibliotheken, `OCP.so` 152 MB —, gepackt 79–123 MB); die
+Open-CASCADE-Module, die STEP lesen, vernetzen und STL schreiben (TKDESTEP, TKMesh, TKDESTL und ihre Abhängigkeiten) sind 66 MB entpackt,
+**13–17 MB gepackt**; `occt-import-js` (WebAssembly, LGPL-2.1, in der Oberfläche) 7,3 MB, **3,0 MB gepackt**. Funktion mit einem selbst
+geschriebenen Teil (Rundungen, Bohrungen): OCP 844 Dreiecke in 0,02 s, WASM 1 260 Dreiecke in 0,5 s, Maße 60 × 40 × 20 mm, Volumen
+passend. **Nicht geprüft:** echte CAD-Exporte, Zusammenbauten mit Farben, grosse Dateien; die STEP-Dateien der Demo-Sammlung sind
+Attrappen. Folge: Open CASCADE einbinden ist klein genug (WASM Aufwand ≈ 3, Rust-Hülle ≥ 4); FreeCAD wäre dann nur Fallback (FCStd).
+Wenn, dann STEP weiter zuletzt und im Hintergrund, und auf einer alten Maschine prüfen.
+**Rückmeldung des Testers (17.10.2026, alte Maschine, Manjaro):** der 3MF Katalog 0.15.4 (AppImage) las 5 793 Dateien (stl, 3mf, stp)
+über eine Stunde bei fast 100 % CPU, nach geschätzt 2–3 % abgebrochen; danach beendete er sich von selbst, auch nach Neustart. partAtlas
+„funktioniert anders, besser und viel schneller“. Ursache beim 3MF Katalog unbekannt (Vermutung: STEP-Vorschau beim Einlesen). Zu holen: die
+Zeit von partAtlas für denselben Ordner (Protokollzeile „Lauf … fertig in … s“) als Messwert. Der 3MF Katalog hat Filamentverwaltung, kann
+kein FCStd.
 Offen: Wo liegen die Fassungen (Vorschlag GitHub-Releases)? Ein Rechner mit Rust-Werkzeugen und Bildschirm ist nötig (der Cloud-Container
 hat keinen Bildschirm, WebView2 gibt es nur unter Windows); ob sich hier ein Linux-Spike bauen lässt, ist ungeprüft.
 
