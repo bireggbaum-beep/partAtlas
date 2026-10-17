@@ -7,6 +7,24 @@ markiert.
 
 ---
 
+## 0. Massstab
+
+Ein Werkzeug, das alle Funktionen hat, die man ernsthaft braucht, ohne
+grosse Worte (Vorbild im Geist: die Zeiterfassung von dynamicG).
+
+- **Nichts behaupten, was nicht stimmt.** Handbuch, Neuigkeiten und
+  Roadmap nennen nur, was gemessen oder getestet ist; Vermutungen heissen
+  Vermutungen.
+- **Funktionen kommen aus echtem Bedarf** von Anwendern, nicht aus einer
+  Vergleichstabelle mit anderen Katalogen.
+- **Die Teile hängen zusammen.** Eine Funktion zählt erst, wenn sie mit den
+  übrigen zusammenspielt (Verschieben zieht gespeicherte Suchen mit,
+  „Rückgängig“ gilt überall gleich).
+- **Weder abgespeckt noch überladen:** eine schöne Oberfläche, unter der die
+  Funktion ernst gemeint ist.
+
+---
+
 ## 1. Worum es geht
 
 partAtlas ist ein **Demo-Pilot für flatgraph** (`bireggbaum-beep/flatgraphdb`):
