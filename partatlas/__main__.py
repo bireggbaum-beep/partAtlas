@@ -6,7 +6,7 @@ import threading
 
 import uvicorn
 
-from . import dateidialog
+from . import dateidialog, starter
 from .bestand import standard_ort
 from .main import erstelle_app
 from .version import VERSION
@@ -27,6 +27,15 @@ if __name__ == "__main__":
     sys.excepthook = lambda t, v, tb: logging.getLogger("partatlas").critical("Unbehandelter Fehler", exc_info=(t, v, tb))
     logging.getLogger("partatlas").info("partAtlas %s gestartet, Bestand %s", VERSION, ort)
     port = int(os.environ.get("PARTATLAS_PORT", "8765"))
+    # Starter-Betrieb (gepackte Einzeldatei, PARTATLAS_STARTER=1): Läuft schon ein partAtlas, wird nur der Browser geöffnet. Sonst startet
+    # der Server, öffnet den Browser und beendet sich, wenn keine Seite mehr offen ist.
+    STARTER = os.environ.get("PARTATLAS_STARTER") == "1"
+    if STARTER:
+        if starter.laeuft_partatlas(port):
+            logging.getLogger("partatlas").info("partAtlas läuft schon auf Port %d — nur der Browser wird geöffnet", port)
+            starter.browser_oeffnen(f"http://127.0.0.1:{port}/")
+            sys.exit(0)
+        port = starter.freier_port(port)
     print(f"partAtlas: http://127.0.0.1:{port}")
     # Nur localhost, solange es kein Passwort gibt (KONZEPT §2).
     # log_config=None: uvicorn richtet sein eigenes Protokoll nicht ein; seine Fehlermeldungen (etwa eine Anfrage, die mit 500 endet) gehen
@@ -40,6 +49,10 @@ if __name__ == "__main__":
             # partAtlas gleich danach wieder endete (Protokoll des Anwenders, 7.10.2026).
             if self.started:
                 logging.getLogger("partatlas").info("partAtlas nimmt Anfragen an: http://127.0.0.1:%d", port)
+                if STARTER:
+                    starter.beenden_wenn_leer(self, app, float(os.environ.get("PARTATLAS_ERSTER_BESUCH", starter.ERSTER_BESUCH_S)),
+                                              float(os.environ.get("PARTATLAS_NACHFRIST", starter.NACHFRIST_S)))
+                    starter.browser_oeffnen(f"http://127.0.0.1:{port}/")
         def handle_exit(self, sig, frame):
             # Beim Beenden wartet uvicorn, bis jede Verbindung von selbst endet — die Live-Meldungen eines offenen Tabs (/api/live) enden
             # nie. partAtlas liess sich dann nur abschiessen (nachgestellt am 7.10.2026), und das Abbrechen eines laufenden Einlesens wurde

@@ -5,3 +5,5 @@ src-tauri/gen/
 build-dienst/
 archiv/
 *.tar.gz
+build-einzeldatei/
+dist-einzeldatei/

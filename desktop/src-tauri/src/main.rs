@@ -65,7 +65,7 @@ fn warten_bis_bereit(port: u16, grenze: Duration) -> bool {
 /// schickt der Kern ihm dann SIGKILL. Unter Windows übernimmt das später ein Job-Objekt.
 fn kind_starten(pfad: std::path::PathBuf, port: u16) -> std::io::Result<Child> {
     let mut befehl = Command::new(pfad);
-    befehl.env("PARTATLAS_PORT", port.to_string());
+    befehl.env("PARTATLAS_PORT", port.to_string()).env("PARTATLAS_STARTER", "0");
     #[cfg(target_os = "linux")]
     {
         use std::os::unix::process::CommandExt;

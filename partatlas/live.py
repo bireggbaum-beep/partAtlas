@@ -25,6 +25,11 @@ class Verteiler:
     def binden(self, schleife):
         self._schleife = schleife
 
+    def verbunden(self):
+        """Wie viele Seiten gerade eine Live-Verbindung halten (der Starter beendet partAtlas, wenn es keine mehr gibt)."""
+        with self._sperre:
+            return len(self._schlangen)
+
     def antwortzeit(self, frist=5.0):
         """Wie lange die Ereignisschleife des Servers braucht, um eine Kleinigkeit zu erledigen (ms), oder None, wenn sie in `frist` Sekunden
         nicht antwortet — dann steckt der Server fest (etwas blockiert die Schleife). Für das Protokoll."""
