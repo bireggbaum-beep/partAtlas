@@ -4,6 +4,24 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Desktop, Wende (23.10.2026): Einzeldatei mit Starter statt Tauri-Fenster (Tester auf Manjaro, Firefox)
+
+Rückmeldungen des Testers zum Tauri-Spike: das AppImage (mit mitgelieferter Webansicht) zeigte ein schwarzes Fenster und **hängte beim zweiten
+Start den ganzen Rechner auf** (sehr alte Grafikkarte, Mesa). Das Archiv mit der System-Webansicht (webkitgtk-4.1) und Software-OpenGL
+(`LIBGL_ALWAYS_SOFTWARE=1`, `WEBKIT_DISABLE_DMABUF_RENDERER=1`) lief, mit 3D-Ansicht, 9 083 Modellen. Offen blieben: Handbuch (jetzt im eigenen
+Fenster), **Anhänge (Bilder/PDF) in Baugruppen** (WebKitGTK ohne PDF-Betrachter), **gepackter Server rechnet keine neuen Vorschaubilder**
+(PyInstaller ohne `multiprocessing.freeze_support()`: jeder Hilfsprozess startete einen zweiten Server, „Adresse belegt“; nachgestellt), und
+„Vorschaubild berechnen“ lässt das alte Bild verschwinden, bis das neue da ist (in der Git-Fassung nicht aufgefallen, weil dort das Berechnen
+gelingt; **bleibt zu beheben: altes Bild behalten bis das neue da ist**).
+Der Tester meinte eigentlich: **eine Datei anklicken, der Standardbrowser öffnet partAtlas** (wie eine PWA). Das ist gebaut:
+`partatlas/starter.py` (PARTATLAS_STARTER=1: Browser öffnen, laufendes partAtlas nur öffnen, beenden wenn 45 s keine Seite mehr verbunden
+ist oder nach 120 s kein Browser kam; läuft das Einlesen, bleibt der Server), `desktop/launch.py` (Starter als Standard, `freeze_support`),
+`desktop/bauen-einzeldatei.sh` (PyInstaller onefile, 40 MB), Action `einzeldatei.yml` (Artefakt `partAtlas-Linux`). test_starter 8/8, Gegenproben fallen.
+Das Tauri-Fenster bleibt auf dem Branch (`desktop-fenster.yml`, nur von Hand; Tauri setzt PARTATLAS_STARTER=0), eventuell für Windows.
+**Nicht gebaut, entschieden nein:** AppImage (kein Vorteil gegenüber der Einzeldatei, braucht FUSE). **Offen:** Menüeintrag mit Symbol
+(Skript `installieren.sh` oder die Datei legt ihn selbst an), Selbstaktualisierung (Starter prüft GitHub Releases), Windows-`.exe`, Handbuch
+und README zum Start der Einzeldatei.
+
 ## Desktop-Programm, Schritt 1: Spike (23.10.2026, Ordner `desktop/`)
 
 Anwender: **Fokus Manjaro** (der Tester hat nur das), Windows erst danach — nicht testbar, solange nur Manjaro da ist.
