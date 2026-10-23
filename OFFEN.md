@@ -4,6 +4,14 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.1 auf `main` (23.10.2026, für den Tester)
+
+Rückmeldung des Testers umgesetzt: FCStd wird in keinem Slicer mehr angeboten (Einzelheiten unten, Abschnitt 1.0.1). Dazu Dokumente ohne
+Programmänderung: KONZEPT §0 (Massstab), `STORIES.md` (Nutzungsprofile und Geschichten, Entwurf). Rückweg auf 1.0.0: Zweig `fassung-1.0.0`.
+Vor dem Push: alle 33 Suiten ausser test_ui grün, **test_ui komplett 70/70**.
+**Offen:** wie bei 1.0.0 (Windows-Rückmeldung, echte Slicer-Dateien) und die Ordnergrössen des Testers (Bestand 264 MB, vermutet: Sicherungen).
+**Als Nächstes:** Desktop-Programm mit Tauri (Spike, AppImage; Tester arbeitet unter Manjaro — webkit2gtk-Problem prüfen, `PKGBUILD` als Ersatz).
+
 ## 1.0.1 (17.10.2026, Rückmeldung des Testers: „bei FCStd wird der Slicer zum Öffnen angeboten, das geht gar nicht“)
 
 Ursache: ein Programm, das man unter Einstellungen › Programme selbst wählt (`programme.eintrag_fuer`, `eigene`), bekam **alle fünf Formate**,
