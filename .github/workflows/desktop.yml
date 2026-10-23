@@ -1,5 +1,6 @@
 # Baut das Desktop-Programm für Manjaro und legt es als Artefakt zum Herunterladen ab. Gebaut wird auf Ubuntu 22.04, weil ein
-# AppImage nur auf Systemen läuft, deren C-Bibliothek mindestens so neu ist wie die des Baurechners.
+# Programm nur auf Systemen läuft, deren C-Bibliothek mindestens so neu ist wie die des Baurechners; die Webansicht kommt zur
+# Laufzeit vom Zielsystem (webkit2gtk-4.1).
 name: Desktop
 
 on:
@@ -8,7 +9,7 @@ on:
     paths: ["desktop/**", "partatlas/**", "requirements.txt", ".github/workflows/desktop.yml"]
 
 jobs:
-  appimage:
+  manjaro:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
