@@ -1,0 +1,27 @@
+# Baut partAtlas als eine einzelne Datei zum Anklicken (Linux). Gebaut wird auf Ubuntu 22.04, weil ein Programm nur auf Systemen läuft,
+# deren C-Bibliothek mindestens so neu ist wie die des Baurechners (Manjaro ist neuer).
+name: Einzeldatei
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["desktop/launch.py", "desktop/bauen-einzeldatei.sh", "partatlas/**", "requirements.txt", ".github/workflows/einzeldatei.yml"]
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Python-Pakete
+        run: python -m pip install -r requirements.txt pyinstaller
+      - name: Bauen
+        env:
+          PYTHON: python
+        run: ./desktop/bauen-einzeldatei.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: partAtlas-Linux
+          path: desktop/dist-einzeldatei/partatlas
+          if-no-files-found: error
