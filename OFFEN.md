@@ -4,6 +4,19 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Desktop-Programm, Schritt 1: Spike (23.10.2026, Ordner `desktop/`)
+
+Anwender: **Fokus Manjaro** (der Tester hat nur das), Windows erst danach — nicht testbar, solange nur Manjaro da ist.
+Gebaut: Tauri 2-Hülle (`desktop/src-tauri/src/main.rs`) startet den Server (PyInstaller-onedir, `desktop/launch.py`) als Kindprozess auf einem freien
+Port, wartet bis er antwortet, zeigt ihn im Fenster; beim Beenden wird der Server beendet, unter Linux auch bei hartem Ende (PDEATHSIG).
+`desktop/bauen.sh` baut alles (PyInstaller, dann `tauri build`) zu einem **AppImage (114,6 MiB)**, Fassung aus `partatlas/version.py`.
+Gemessen hier (Ubuntu 24.04, Xvfb): Fenster zeigt partAtlas 1.0.1, Server läuft, Bestand wird angelegt. **Nicht geprüft: Manjaro.** Bekannte Risiken
+(aus Erfahrungsberichten, nicht gemessen): das AppImage bringt webkit2gtk mit, auf Arch/Manjaro kann das zu weissem Fenster oder Absturz führen
+(EGL); Ersatz wäre ein `PKGBUILD` mit der Webansicht des Systems.
+**Bekannte Lücken im Spike:** F1/„?“ (Handbuch öffnet in neuem Tab: `window.open`), Links nach aussen, Ziehen von Dateien aus dem Dateimanager
+(`dragDropEnabled: false`, ungetestet), einzelne Instanz, Fenstergrösse merken, Updater, Windows. Zum Tester kommt es über GitHub Actions
+(AppImage als Artefakt) — noch nicht gebaut.
+
 ## Stand: 1.0.1 auf `main` (23.10.2026, für den Tester)
 
 Rückmeldung des Testers umgesetzt: FCStd wird in keinem Slicer mehr angeboten (Einzelheiten unten, Abschnitt 1.0.1). Dazu Dokumente ohne
