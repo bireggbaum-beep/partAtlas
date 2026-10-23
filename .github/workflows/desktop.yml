@@ -29,6 +29,11 @@ jobs:
         run: ./desktop/bauen.sh
       - uses: actions/upload-artifact@v4
         with:
+          name: partAtlas-Linux-Systemwebansicht
+          path: desktop/partatlas-linux-*.tar.gz
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
           name: partAtlas-AppImage
           path: desktop/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error

@@ -15,3 +15,10 @@ npm install --no-audit --no-fund
 # Fassung aus partatlas/version.py in die Tauri-Einstellungen, damit Programm und Server dieselbe Zahl tragen
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
 npx tauri build
+
+# Ohne Installer und ohne mitgelieferte Webansicht (webkit2gtk): das Programm nimmt die des Systems. Für Arch/Manjaro, wo die
+# mitgelieferte nicht zum Grafiktreiber passt. Entpacken, dann ./partatlas-fenster
+rm -rf archiv && mkdir -p archiv/partatlas
+cp src-tauri/target/release/partatlas-desktop archiv/partatlas/partatlas-fenster
+cp -r src-tauri/dienst archiv/partatlas/dienst
+tar -C archiv -czf "partatlas-linux-$VERSION.tar.gz" partatlas

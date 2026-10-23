@@ -21,7 +21,12 @@ fn dienst_pfad(app: &tauri::AppHandle) -> std::path::PathBuf {
         return p.into();
     }
     let name = if cfg!(windows) { "partatlas.exe" } else { "partatlas" };
-    app.path().resource_dir().expect("kein Ressourcenordner").join("dienst").join("partatlas").join(name)
+    // Neben dem Programm (entpacktes Archiv ohne Installer) zuerst, sonst im Ressourcenordner des Installers.
+    let neben = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("dienst").join("partatlas").join(name)));
+    match neben {
+        Some(p) if p.exists() => p,
+        _ => app.path().resource_dir().expect("kein Ressourcenordner").join("dienst").join("partatlas").join(name),
+    }
 }
 
 fn warten_bis_bereit(port: u16, grenze: Duration) -> bool {
@@ -55,6 +60,14 @@ fn kind_starten(pfad: std::path::PathBuf, port: u16) -> std::io::Result<Child> {
 }
 
 fn main() {
+    // Die Webansicht (webkit2gtk) zeichnet sonst auf manchen Linux-Rechnern (Arch/Manjaro, Nvidia) ein schwarzes Fenster oder hängt die
+    // Grafik auf. Wer die Werte selbst gesetzt hat, behält sie.
+    #[cfg(target_os = "linux")]
+    for (name, wert) in [("WEBKIT_DISABLE_DMABUF_RENDERER", "1")] {
+        if std::env::var_os(name).is_none() {
+            std::env::set_var(name, wert);
+        }
+    }
     let app = tauri::Builder::default()
         .setup(|app| {
             let port = freier_port();

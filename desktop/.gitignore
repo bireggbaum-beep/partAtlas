@@ -3,3 +3,5 @@ src-tauri/target/
 src-tauri/dienst/
 src-tauri/gen/
 build-dienst/
+archiv/
+*.tar.gz
