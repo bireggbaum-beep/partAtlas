@@ -61,13 +61,12 @@ fn kind_starten(pfad: std::path::PathBuf, port: u16) -> std::io::Result<Child> {
 
 fn main() {
     // Die Webansicht (webkit2gtk) zeichnet sonst auf manchen Linux-Rechnern (Arch/Manjaro, alte Grafikkarten) ein schwarzes Fenster oder
-    // hängt den ganzen Rechner auf. Darum zeichnet das Programm vorerst mit dem Prozessor und fasst die Grafikkarte nicht an. Wer es
+    // hängt den ganzen Rechner auf. Darum zeichnet das Programm vorerst über den Prozessor (Software-OpenGL, WebGL und die 3D-Ansicht bleiben) und fasst die Grafikkarte nicht an. Wer es
     // schneller will: PARTATLAS_GRAFIK=schnell setzen. Werte, die jemand selbst gesetzt hat, bleiben.
     #[cfg(target_os = "linux")]
     if std::env::var("PARTATLAS_GRAFIK").as_deref() != Ok("schnell") {
         for (name, wert) in [
             ("WEBKIT_DISABLE_DMABUF_RENDERER", "1"),
-            ("WEBKIT_DISABLE_COMPOSITING_MODE", "1"),
             ("LIBGL_ALWAYS_SOFTWARE", "1"),
         ] {
             if std::env::var_os(name).is_none() {
