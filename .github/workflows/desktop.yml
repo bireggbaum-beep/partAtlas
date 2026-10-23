@@ -1,4 +1,4 @@
-# Baut das Desktop-Programm (Linux-AppImage) und legt es als Artefakt zum Herunterladen ab. Gebaut wird auf Ubuntu 22.04, weil ein
+# Baut das Desktop-Programm für Manjaro und legt es als Artefakt zum Herunterladen ab. Gebaut wird auf Ubuntu 22.04, weil ein
 # AppImage nur auf Systemen läuft, deren C-Bibliothek mindestens so neu ist wie die des Baurechners.
 name: Desktop
 
@@ -25,15 +25,9 @@ jobs:
       - name: Bauen
         env:
           PYTHON: python
-          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: ./desktop/bauen.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: partAtlas-Linux-Systemwebansicht
+          name: partAtlas-Manjaro
           path: desktop/partatlas-linux-*.tar.gz
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: partAtlas-AppImage
-          path: desktop/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
