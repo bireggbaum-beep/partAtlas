@@ -7,7 +7,8 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use tauri::{Manager, RunEvent};
+use tauri::webview::NewWindowResponse;
+use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 struct Dienst(Mutex<Option<Child>>);
 
@@ -26,6 +27,25 @@ fn dienst_pfad(app: &tauri::AppHandle) -> std::path::PathBuf {
     match neben {
         Some(p) if p.exists() => p,
         _ => app.path().resource_dir().expect("kein Ressourcenordner").join("dienst").join("partatlas").join(name),
+    }
+}
+
+/// Was die Seite in einem neuen Tab öffnen will, hat im Programmfenster keinen Tab: das Handbuch bekommt ein eigenes Fenster,
+/// alles andere (etwa ein PDF-Export) geht an das Standardprogramm des Systems.
+fn neues_fenster(app: &tauri::AppHandle, url: tauri::Url) {
+    if url.path().starts_with("/handbuch") {
+        let app = app.clone();
+        // Fenster nicht im Aufruf der Webansicht selbst bauen, sonst wartet sie auf sich selbst.
+        std::thread::spawn(move || {
+            let nr = app.webview_windows().len();
+            let _ = WebviewWindowBuilder::new(&app, format!("handbuch-{nr}"), WebviewUrl::External(url))
+                .title("partAtlas Handbuch")
+                .inner_size(1100.0, 860.0)
+                .build();
+        });
+    } else {
+        let aufruf = if cfg!(windows) { ("cmd", vec!["/C", "start", ""]) } else if cfg!(target_os = "macos") { ("open", vec![]) } else { ("xdg-open", vec![]) };
+        let _ = Command::new(aufruf.0).args(aufruf.1).arg(url.as_str()).spawn();
     }
 }
 
@@ -78,7 +98,17 @@ fn main() {
         .setup(|app| {
             let port = freier_port();
             let kind = kind_starten(dienst_pfad(app.handle()), port);
-            let fenster = app.get_webview_window("main").expect("kein Fenster");
+            let handle = app.handle().clone();
+            let fenster = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                .title("partAtlas")
+                .inner_size(1500.0, 920.0)
+                .min_inner_size(1000.0, 600.0)
+                .disable_drag_drop_handler()
+                .on_new_window(move |url, _| {
+                    neues_fenster(&handle, url);
+                    NewWindowResponse::Deny
+                })
+                .build()?;
             match kind {
                 Ok(k) => {
                     app.manage(Dienst(Mutex::new(Some(k))));
