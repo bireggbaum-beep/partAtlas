@@ -22,9 +22,31 @@ export function webglMoeglich() {
   } catch { return false; }
 }
 
+// Zeichnet WebGL über den Prozessor (llvmpipe, SwiftShader, „Software“)? Dann kostet jedes Bild ein Vielfaches, und Kantenglättung
+// vervielfacht es noch einmal.
+let softwareGl = null;
+function laeuftAufProzessor() {
+  if (softwareGl !== null) return softwareGl;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    const info = gl && gl.getExtension("WEBGL_debug_renderer_info");
+    const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
+    softwareGl = /llvmpipe|swiftshader|software|softpipe/i.test(name);
+  } catch { softwareGl = false; }
+  return softwareGl;
+}
+
+// Ab so vielen Dreiecken wird nicht mehr geglättet, auch auf einer Grafikkarte.
+const GLAETTEN_BIS_DREIECKE = 100000;
+// Dauert ein Bild beim Bewegen länger, sinkt die Auflösung (nie unter MIN_FAKTOR); steht die Ansicht still, kommt ein scharfes Bild.
+const LANGSAM_MS = 90;
+const MIN_FAKTOR = 0.4;
+const SCHARF_NACH_MS = 250;
+
 export function schliessen() {
   if (!aktiv) return;
   cancelAnimationFrame(aktiv.rahmen);
+  clearTimeout(aktiv.scharf);
   aktiv.beobachter.disconnect();
   aktiv.steuerung.dispose();
   aktiv.geometrie.dispose();
@@ -45,12 +67,15 @@ export function zeige(behaelter, puffer, farbe, beiAbbruch = () => {}) {
   const breite = behaelter.clientWidth, hoehe = behaelter.clientHeight;
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const glaetten = puffer.byteLength / 36 <= GLAETTEN_BIS_DREIECKE && !laeuftAufProzessor();   // 9 Werte je Dreieck, je 4 Byte
+    renderer = new THREE.WebGLRenderer({ antialias: glaetten, alpha: true });
   } catch (e) {
     abgebrochen = true;
     throw e;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const basis = Math.min(window.devicePixelRatio, 2);
+  let faktor = 1;                                  // 1 = volle Auflösung; kleiner, solange das Bewegen zu langsam ist
+  renderer.setPixelRatio(basis);
   renderer.setSize(breite, hoehe);
   behaelter.appendChild(renderer.domElement);
 
@@ -102,6 +127,7 @@ export function zeige(behaelter, puffer, farbe, beiAbbruch = () => {}) {
     renderer.setSize(b, h);
     kamera.aspect = b / h;
     kamera.updateProjectionMatrix();
+    planen();
   });
   beobachter.observe(behaelter);
 
@@ -112,27 +138,68 @@ export function zeige(behaelter, puffer, farbe, beiAbbruch = () => {}) {
     beiAbbruch();
   };
   renderer.domElement.addEventListener("webglcontextlost", verloren);
-  aktiv = { renderer, steuerung, geometrie, material, beobachter, verloren, rahmen: 0 };
-  const schleife = () => {
-    aktiv.rahmen = requestAnimationFrame(schleife);
+  aktiv = { renderer, steuerung, geometrie, material, beobachter, verloren, rahmen: 0, scharf: 0 };
+
+  // Gezeichnet wird nur, wenn sich etwas ändert (Drehen, Trägheit, Zoom, automatisches Drehen), nicht in einer Dauerschleife:
+  // eine ruhende Ansicht kostet nichts. OrbitControls meldet jede Änderung der Kamera mit „change“.
+  let geplant = false, letzte = 0, gleitend = 0, seitWechsel = 0;
+  const einstellen = (f) => {
+    faktor = f;
+    renderer.setPixelRatio(basis * f);
+  };
+  const planen = () => {
+    if (geplant || !aktiv) return;
+    geplant = true;
+    aktiv.rahmen = requestAnimationFrame(zeichnen);
+  };
+  const zeichnen = (t) => {
+    geplant = false;
+    clearTimeout(aktiv.scharf);
+    // Die Zeit zwischen zwei Bildern in Folge misst, wie schwer die Ansicht dem Rechner fällt.
+    const dt = letzte ? t - letzte : 0;
+    letzte = t;
+    if (dt > 0 && dt < 2000) {
+      gleitend = gleitend ? gleitend * 0.6 + dt * 0.4 : dt;
+      seitWechsel++;
+      if (gleitend > LANGSAM_MS && faktor > MIN_FAKTOR && seitWechsel >= 3) {
+        einstellen(Math.max(MIN_FAKTOR, faktor * 0.75));
+        gleitend = 0;
+        seitWechsel = 0;
+      }
+    }
     steuerung.update();
     renderer.render(szene, kamera);
+    // Bleibt nichts mehr zu tun, kommt (nach einer kurzen Pause) ein Bild in voller Auflösung.
+    aktiv.scharf = setTimeout(() => {
+      if (geplant) return;
+      letzte = 0;
+      gleitend = 0;
+      if (faktor < 1) {
+        einstellen(1);
+        renderer.render(szene, kamera);
+      }
+    }, SCHARF_NACH_MS);
   };
-  schleife();
+  steuerung.addEventListener("change", planen);
+  planen();
 
   return {
     zuruecksetzen() {
       kamera.position.copy(start);
       steuerung.target.copy(ziel);
       steuerung.autoRotate = true;
+      planen();
     },
-    drehen(an) { steuerung.autoRotate = an; },
+    drehen(an) { steuerung.autoRotate = an; planen(); },
+    qualitaet() { return faktor; },
     // Die Ansicht, wie sie gerade steht, als PNG — ohne das Raster am Boden. Gleich nach dem Zeichnen gelesen: ohne
     // preserveDrawingBuffer ist der Puffer nur bis zum nächsten Bild gültig.
     bild() {
       raster.visible = false;
+      if (faktor < 1) renderer.setPixelRatio(basis);      // das gespeicherte Bild immer in voller Auflösung
       renderer.render(szene, kamera);
       const url = renderer.domElement.toDataURL("image/png");
+      if (faktor < 1) renderer.setPixelRatio(basis * faktor);
       raster.visible = true;
       return url;
     },

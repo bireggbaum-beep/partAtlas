@@ -8,6 +8,9 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.2", ["3D-Ansicht: Sie zeichnet nur noch, wenn sich etwas bewegt — eine ruhende Ansicht kostet den Rechner nichts mehr. Fällt einem "
+               "langsamen Rechner das Bewegen schwer (grosse Modelle, Grafik über den Prozessor), sinkt beim Drehen die Auflösung und wird wieder "
+               "scharf, sobald du loslässt. Grosse Modelle werden nicht mehr geglättet."]),
     ("1.0.1", ["FreeCAD-Dateien (FCStd) werden nicht mehr im Slicer angeboten — dort lassen sie sich nicht öffnen. Das galt vorher für einen Slicer, "
                "den du selbst unter Einstellungen › Programme gewählt hast; sie gehen nur noch ins CAD."]),
     ("1.0.0", ["Handbuch in partAtlas: Knopf „?“ links unten oder F1 öffnet es — neu geschrieben, mit Bildern der Oberfläche und Kapiteln zu "
