@@ -45,7 +45,7 @@ der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellu
 
 Das KI-Bild des Anwenders (312 × 327 px, weisser Hintergrund) ist freigestellt (`web/spule.png`, 125 KB, Schatten als weicher Schwarzton) und hat eine Maske für die Wicklung
 (`web/spule-wicklung.png`, 17 KB). `lager.js` `lgSpule(farbe, breite)` legt den Farbwert per CSS über die Maske und multipliziert ihn mit dem Bild (`mix-blend-mode: multiply`); sehr
-dunkle Farben werden aufgehellt, ohne Farbe ein helles Grau. Eingebaut an Karte (50 px, statt des Kürzels), Bildfeld im Formular (64 px) und leerem Lager (150 px). Entscheidung
+dunkle Farben werden aufgehellt, ohne Farbe ein helles Grau. Eingebaut an Karte (50 px, statt des Kürzels), Bildfeld im Formular (120 px) und leerem Lager (150 px). Entscheidung
 des Anwenders: **Grösse so lassen**, bei Bedarf des Testers später grösser (60–64 px auf der Karte). Bekannt: schwarze Spule hebt sich auf dunklem Grund nur schwach ab; ein
 farbiger Pixelrand unten an der Wicklung. Die Skripte zum Freistellen liegen nicht im Repo (Scratchpad: `spule_png.py`); bei einer Änderung am Bild neu erzeugen.
 Auf `main` mit der nächsten Fassung (1.0.4), samt Eintrag unter „Neu in dieser Fassung“.
