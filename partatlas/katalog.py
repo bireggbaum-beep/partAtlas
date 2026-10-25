@@ -56,7 +56,9 @@ class Katalog:
         self._material_nachziehen()
         self._vault_nachziehen()
         from .drucke import Drucke
+        from .lager import Lager
         self.drucke = Drucke(self)
+        self.lager = Lager(self)
         from .anhaenge import Anhaenge
         self.anhaenge = Anhaenge(self)
 

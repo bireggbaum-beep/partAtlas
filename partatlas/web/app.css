@@ -1307,3 +1307,24 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .neu li { margin: 3px 0; }
 .waehler .w-weg { padding: 0; background: none; border: 0; color: var(--ink-3); font: inherit; text-decoration: underline; cursor: pointer; }
 .waehler .w-weg:hover { color: var(--danger, #c0392b); }
+
+/* Filamentlager (lager.js) */
+.lg { width: min(780px, 90vw); display: flex; flex-direction: column; gap: var(--s3); }
+.lg h2 { margin: 0; }
+.lg-leiste { display: flex; align-items: center; gap: var(--s4); }
+.lg-liste { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); max-height: 52vh; overflow-y: auto; }
+.lg-zeile { display: grid; grid-template-columns: 18px minmax(0, 1fr) 90px 64px 78px auto auto; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); }
+.lg-zeile + .lg-zeile { border-top: 1px solid var(--line); }
+.lg-zeile.archiv { opacity: 0.6; }
+.lg-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-name .dim { display: block; font-size: var(--fs-meta); }
+.lg-rest { height: 8px; border-radius: 99px; background: var(--plate); overflow: hidden; }
+.lg-rest i { display: block; height: 100%; background: var(--good); border-radius: 99px; }
+.lg-rest.knapp i { background: var(--warn); } .lg-rest.leer i { background: var(--crit); }
+.lg-g, .lg-preis { text-align: right; white-space: nowrap; }
+.lg-zeile .farbpunkt { width: 14px; height: 14px; box-shadow: 0 0 0 1px var(--line-strong); }
+.lg-form { display: grid; gap: var(--s3); }
+.lg-form label, .lg-farbe { display: grid; grid-template-columns: 190px 1fr; align-items: center; gap: var(--s3); }
+.lg-form input[type="number"] { width: 110px; }
+.lg-zeile .knopf-text { text-decoration: none; font-size: 15px; padding: 2px 4px; }
+dialog:has(.lg) { max-width: min(820px, 94vw); }

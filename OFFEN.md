@@ -28,7 +28,7 @@ ob alle Teile ihn nutzen, ist ungeprüft).
 - **erledigt (1.0.2):** Farbschema C Filament als Vorgabe, A und B wählbar; Atlas-Zeichen in Kopf und Tab (später gegen das Zeichen mit den drei Scheiben tauschen); Handbuchbilder neu
 - **erledigt (1.0.2):** Druckzeit aus Cura-G-Code (Orca, Prusa, Bambu gingen schon); „Vorschaubild berechnen“ behält das alte Bild — war schon so, kein Fehler
 
-**Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): Spulenliste (2) → Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
+**Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): **Spulenliste gebaut (Branch, 25.10.):** `lager.py`, `lager.js`, Rail-Knopf „Filamentlager“, Spule anlegen (auch mehrere gleiche)/bearbeiten/ablegen statt löschen; test_lager 11/11, test_lager_ui 10/10, Gegenproben fallen — noch nicht auf `main`, kommt mit der nächsten Fassung samt Handbuch und Neuigkeiten. Weiter:  Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
 
 **Programm zum Anklicken (Tester auf Manjaro, Firefox, AppImage-Manager)** — Einzeldatei mit Starter ist gebaut (Action `einzeldatei.yml`), offen:
 Lebenszyklus (Beenden-Knopf mit Rückfrage bei laufender Arbeit, kein unsichtbarer Server; Systemmenü-Symbol als eigener Schritt, Aufwand 3–4; Fortsetzen nach Beenden prüfen) ·
