@@ -3,14 +3,15 @@ Filamentlager: die Spulen, die der Anwender hat (nach dem 3MF Katalog Manager, d
 
 Eine Spule (`MATERIAL_SPOOL`) trägt Material, Hersteller, Farbe, Durchmesser, Start- und Restgewicht, Preis, Lagerort und Notiz.
 Das Restgewicht stimmt, soweit der Anwender es pflegt; abgezogen wird erst, wenn ein Druck die Spule nennt (drucke.py).
-Eine leere Spule wird archiviert, nicht gelöscht: partAtlas löscht hier nichts, und der Verbrauch alter Drucke bleibt nachvollziehbar.
+Eine Spule ist kein Modell: sie lässt sich löschen (Anwender 25.10.2026), mit Rückgängig — der Knoten geht in den Papierkorb des Graphen und kommt zurück.
+Ein Bild an der Spule liegt wie die Fotos im Vault. `reicht` beantwortet „Reicht das Filament?“ für den Bedarf eines geslicten Projekts.
 """
 import re
 
 from .bestand import SPULE
 from .katalog import KatalogFehler, jetzt, ref
 
-FELDER = ("material", "hersteller", "farbname", "farbe", "ort", "durchmesser", "start_g", "rest_g", "preis", "notiz", "archiviert")
+FELDER = ("material", "hersteller", "farbname", "farbe", "ort", "durchmesser", "start_g", "rest_g", "preis", "notiz")
 MAX_ANZAHL = 20
 VORGABE_START_G = 1000.0
 
@@ -58,8 +59,6 @@ def pruefen(felder):
         neu["rest_g"] = round(_zahl(felder["rest_g"], "Rest", 0, 20000, " g"), 1)
     if "preis" in felder:
         neu["preis"] = None if felder["preis"] in (None, "") else round(_zahl(felder["preis"], "Preis", 0, 10000), 2)
-    if "archiviert" in felder:
-        neu["archiviert"] = bool(felder["archiviert"])
     return neu
 
 
@@ -69,9 +68,9 @@ class Lager:
         self.db = katalog.db
 
     def liste(self):
-        """Alle Spulen, nach Material und Farbe sortiert; die archivierten stehen mit `archiviert` dabei."""
+        """Alle Spulen, nach Material und Farbe sortiert."""
         aus = [{"id": sid, **d} for sid, d in self.db.list_nodes(SPULE, readonly=True).items()]
-        aus.sort(key=lambda s: (bool(s.get("archiviert")), s.get("material", ""), s.get("farbname", ""), s["id"]))
+        aus.sort(key=lambda s: (s.get("material", ""), s.get("farbname", ""), s["id"]))
         return aus
 
     def _spule(self, sid):
@@ -98,7 +97,6 @@ class Lager:
         for k in ("hersteller", "farbname", "farbe", "ort", "notiz"):
             daten.setdefault(k, "")
         daten.setdefault("preis", None)
-        daten.setdefault("archiviert", False)
         if daten["rest_g"] > daten["start_g"]:
             raise KatalogFehler("Der Rest kann nicht grösser sein als die volle Spule.")
         ids = []
@@ -127,4 +125,126 @@ class Lager:
         daten = {k: vorlage.get(k) for k in ("material", "hersteller", "farbname", "farbe", "durchmesser", "start_g", "preis", "ort", "notiz")}
         daten.update(eigen)
         daten["rest_g"] = daten["start_g"]
-        return self.anlegen({k: v for k, v in daten.items() if v is not None}, anzahl)
+        ids = self.anlegen({k: v for k, v in daten.items() if v is not None}, anzahl)
+        if vorlage.get("bild"):
+            with self.db.transaction():
+                for i in ids:
+                    self.db.update_node(SPULE, i, {"bild": vorlage["bild"]})
+        return ids
+
+    def loeschen(self, sid):
+        self._spule(sid)
+        with self.db.transaction():
+            self.db.soft_delete(SPULE, sid)
+
+    def wiederherstellen(self, sid):
+        """Das Rückgängig nach dem Löschen."""
+        if self.db.get_node_raw(ref(SPULE, sid)) is None:
+            raise KatalogFehler("Diese Spule gibt es nicht mehr.")
+        with self.db.transaction():
+            self.db.restore_node(SPULE, sid)
+
+    # ------------------------------------------------------------ Bild
+
+    def bild_setzen(self, sid, daten):
+        """Ein Foto der Spule (PNG, JPG, WebP bis 5 MB); es ersetzt das bisherige, das im Vault bleibt (Nachkaufen teilt es sich)."""
+        self._spule(sid)
+        if len(daten) > MAX_BILD:
+            raise KatalogFehler("Bild grösser als 5 MB.")
+        k, rel = self.k.bild_ablegen(self.k.png_aus(daten), f"spule_{sid}")
+        with self.db.transaction():
+            self.db.update_node(SPULE, sid, {"bild": {"k": k, "datei": rel}})
+        return k
+
+    def bild_entfernen(self, sid):
+        self._spule(sid)
+        with self.db.transaction():
+            self.db.update_node(SPULE, sid, {"bild": None})
+
+    def bild_pfad(self, sid):
+        d = self.db.get_node(ref(SPULE, sid), readonly=True) or self.db.get_node_raw(ref(SPULE, sid)) or {}
+        b = d.get("bild")
+        return self.k.b.pfad(*b["datei"].split("/")) if b else None
+
+    # ------------------------------------------------------------ Reicht das Filament?
+
+    @staticmethod
+    def bedarf_aus_platten(platten):
+        """[{typ, farbe, g}] aus den Platten eines geslicten 3MF, gleiche Filamente zusammengezählt; leer, wenn die Datei keine Mengen kennt."""
+        summe = {}
+        for p in platten or []:
+            for f in p.get("filamente") or []:
+                if not f.get("g"):
+                    continue
+                k = ((f.get("typ") or "").strip(), (f.get("farbe") or "").lower()[:7])
+                summe[k] = summe.get(k, 0) + f["g"]
+        return [{"typ": t, "farbe": c, "g": round(g, 2)} for (t, c), g in summe.items()]
+
+    def reicht(self, bedarf, frei=None):
+        """Für jedes Filament des Projekts (`[{typ, farbe, g}]`, über alle Platten zusammengezählt): welche Spule reicht?
+
+        Gleiches Material und ähnliche Farbe (3MF Katalog). Ergebnis je Filament: `reicht` (eine Spule hat genug), `wechsel` (nur mit einer zweiten
+        Spule), `reicht_nicht` (mit `fehlt_g`), `unklar` (keine passende Spule oder kein Bedarf bekannt). `frei` {Spule: Rest}: was schon für
+        andere vorgesehen ist, ist abgezogen — so zählt eine Spule nicht doppelt, auch nicht über mehrere Modelle der Warteschlange hinweg."""
+        spulen = self.liste()
+        if frei is None:
+            frei = {s["id"]: s["rest_g"] for s in spulen}
+        info = {s["id"]: s for s in spulen}
+        aus = []
+        for f in sorted(bedarf, key=lambda f: -(f.get("g") or 0)):
+            g = f.get("g")
+            eintrag = {"typ": f.get("typ"), "farbe": f.get("farbe"), "bedarf_g": g, "spulen": [], "fehlt_g": 0}
+            if not g or not f.get("typ"):
+                aus.append({**eintrag, "status": "unklar", "grund": "Bedarf nicht bekannt"})
+                continue
+            pass_ = sorted((s for s in spulen if _gleiches_material(s["material"], f["typ"]) and frei.get(s["id"], 0) > 0),
+                           key=lambda s: (_farbabstand(s.get("farbe"), f.get("farbe")), -frei[s["id"]]))
+            pass_ = [s for s in pass_ if _farbabstand(s.get("farbe"), f.get("farbe")) <= FARB_GRENZE]
+            if not pass_:
+                aus.append({**eintrag, "status": "unklar", "grund": "Keine passende Spule"})
+                continue
+            ganz = next((s for s in pass_ if frei[s["id"]] >= g), None)
+            if ganz:
+                frei[ganz["id"]] -= g
+                aus.append({**eintrag, "status": "reicht", "spulen": [_kurz(info[ganz["id"]], g)]})
+                continue
+            noetig, genommen = g, []
+            for s in pass_:
+                nimm = min(frei[s["id"]], noetig)
+                genommen.append(_kurz(info[s["id"]], nimm))
+                frei[s["id"]] -= nimm
+                noetig -= nimm
+                if noetig <= 0:
+                    break
+            aus.append({**eintrag, "status": "wechsel" if noetig <= 0 else "reicht_nicht", "spulen": genommen, "fehlt_g": round(max(noetig, 0), 2)})
+        schlimmst = max((a["status"] for a in aus), key=ENGE.index, default="unklar")
+        return {"filamente": aus, "status": schlimmst if aus else "unklar"}
+
+
+MAX_BILD = 5 * 1024 * 1024
+FARB_GRENZE = 110          # Abstand zweier Farben (RGB, 0 bis 441), bis zu dem eine Spule als „ähnliche Farbe“ gilt
+ENGE = ["reicht", "wechsel", "unklar", "reicht_nicht"]      # vom Besten zum Schlimmsten; der Gesamtstatus ist der schlimmste
+
+
+def _gleiches_material(a, b):
+    norm = lambda t: re.sub(r"[^a-z0-9+]", "", (t or "").lower())
+    return norm(a) == norm(b)
+
+
+def _rgb(h):
+    if not isinstance(h, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?", h):
+        return None
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def _farbabstand(a, b):
+    """0 für gleiche Farben, 441 für Schwarz gegen Weiss; fehlt eine Farbe, gilt sie als passend (Abstand 60), damit sie nicht ausschliesst."""
+    x, y = _rgb(a), _rgb(b)
+    if x is None or y is None:
+        return 60
+    return sum((p - q) ** 2 for p, q in zip(x, y)) ** 0.5
+
+
+def _kurz(s, g):
+    return {"id": s["id"], "material": s["material"], "hersteller": s.get("hersteller", ""), "farbname": s.get("farbname", ""), "farbe": s.get("farbe", ""),
+            "ort": s.get("ort", ""), "rest_g": s["rest_g"], "nimmt_g": round(g, 2)}

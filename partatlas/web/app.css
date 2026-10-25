@@ -1372,3 +1372,23 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .lg-leiste input[type="search"] { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; }
 .lg-tabelle td { white-space: nowrap; }
 body.im-lager #inspektor > * { visibility: hidden; }
+
+/* Reicht das Filament? (Inspektor) und das Symbol in der Warteschlange */
+.rf .rf-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); padding: var(--s3) 0; }
+.rf .rf-zeile + .rf-zeile { border-top: 1px solid var(--line); }
+.rf-detail { flex-basis: 100%; font-size: var(--fs-meta); }
+.rf-marke { font: 500 11px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; border-radius: 99px; padding: 1px 8px; }
+.rf-marke.reicht { background: color-mix(in oklch, var(--good) 18%, transparent); color: var(--good); }
+.rf-marke.wechsel { background: color-mix(in oklch, var(--warn) 20%, transparent); color: var(--warn); }
+.rf-marke.reicht_nicht { background: color-mix(in oklch, var(--crit) 18%, transparent); color: var(--crit); }
+.rf-marke.unklar { background: var(--plate); color: var(--ink-3); }
+.rf-fuss { padding-top: var(--s3); border-top: 1px solid var(--line); font-size: var(--fs-meta); }
+.ws-reicht { width: 9px; height: 9px; border-radius: 50%; flex: none; margin: 0 var(--s2); background: var(--ink-3); }
+.ws-reicht.reicht { background: var(--good); } .ws-reicht.wechsel { background: var(--warn); } .ws-reicht.reicht_nicht { background: var(--crit); }
+
+.lg-bild { flex: none; width: 38px; height: 38px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line-strong); }
+.lf-bild { position: relative; display: grid; place-items: center; min-height: 92px; border: 1px dashed var(--line-strong); border-radius: var(--radius); cursor: pointer; padding: var(--s3); }
+.lf-bild:hover, .lf-bild:focus-visible { border-color: var(--accent); outline: none; }
+.lf-bild img { max-width: 100%; max-height: 140px; border-radius: var(--radius); }
+.lf-bild .knopf { position: absolute; top: 6px; right: 6px; }
+.lf-bildhinweis { margin: 0; color: var(--crit); font-size: var(--fs-meta); }

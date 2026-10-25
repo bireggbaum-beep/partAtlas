@@ -9,6 +9,7 @@
 // Seitenleiste, Filter bei den Menüs. In Phase 2 genügt PHASE = 2.
 const PHASE = Number(new URLSearchParams(location.search).get("phase")) || 1;   // ?phase=2: zum Testen und Vorzeigen
 document.documentElement.dataset.phase = PHASE;
+const REICHT_TEXT = { reicht: "reicht", wechsel: "reicht mit Spulenwechsel", reicht_nicht: "reicht nicht", unklar: "unklar" };   // „Reicht das Filament?“ (reichtTeil)
 const ab2 = (k) => PHASE >= 2 || !["ws", "warteschlange"].includes(k);
 
 // Fehler in der Oberfläche kommen ins Protokoll des Servers (partatlas.log): im Browser sieht sie sonst nur, wer die Konsole offen hat.
@@ -322,7 +323,7 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
     : `<button class="eintrag ${zustand.sammlung === x.id ? "aktiv" : ""}" data-sammlung="${esc(x.id)}"><span>${esc(x.name)}</span><em>${x.anzahl}</em></button>`).join("")
     || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`);
   abgleichen($("#ws-liste"), ws.map((m, i) =>
-    `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b><span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
+    `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b>${m.reicht ? `<i class="ws-reicht ${m.reicht}" title="Filament: ${REICHT_TEXT[m.reicht]}"></i>` : ""}<span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
   for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "archiv", "warteschlange"]) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
@@ -1425,7 +1426,23 @@ async function waehle(id, live = false) {
     ...(zeit ? [["Druckzeit", esc(dauer(zeit)) + ` <small class="dim">${zeitQuelle}</small>`]] : []),
     ...(m.platten.length > 1 ? [["Druckplatten", m.platten.length]] : []),
   ];
-  const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><span>${liste.map((f) =>
+  // „Reicht das Filament?“ (lager.py): je Filament des geslicten Projekts, ob eine Spule aus dem Lager reicht — wie im 3MF Katalog, ohne etwas abzubuchen.
+function reichtTeil(m) {
+  if (!m.reicht) return "";
+  const spule = (s) => `${esc([s.hersteller, s.farbname].filter(Boolean).join(" ") || s.material)} · Rest ${zahl(s.rest_g, 0)} g${s.ort ? ` · ${esc(s.ort)}` : ""}`;
+  const zeilen = m.reicht.filamente.map((f) => {
+    const detail = f.status === "reicht" ? `Spule: ${spule(f.spulen[0])}`
+      : f.status === "wechsel" ? `Spulenwechsel nötig: ${f.spulen.map((s) => `${zahl(s.nimmt_g, 1)} g von ${spule(s)}`).join(" + ")}`
+      : f.status === "reicht_nicht" ? `Es fehlen ${zahl(f.fehlt_g, 1)} g${f.spulen.length ? ` (vorhanden: ${f.spulen.map(spule).join(" + ")})` : ""}`
+      : esc(f.grund || "");
+    return `<div class="rf-zeile"><span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span><b>${esc(f.typ || "?")}</b> ${zahl(f.bedarf_g, 1)} g
+      <span class="rf-marke ${f.status}">${REICHT_TEXT[f.status]}</span><span class="dim rf-detail">${detail}</span></div>`;
+  }).join("");
+  return `<div class="i-titel">REICHT DAS FILAMENT?</div><div class="i-karte rf">${zeilen}
+    <div class="rf-fuss dim">Gleiches Material und ähnliche Farbe, über alle Platten. Es wird nichts abgebucht. <button type="button" class="knopf-text" id="zum-lager">Zum Lager</button></div></div>`;
+}
+
+const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><span>${liste.map((f) =>
     `<span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")} ${zahl(f.g, 1)} g`).join("<br>")}</span></div>`;
   const platten = rw?.filament?.length ? filamentZeile("Filament", rw.filament)
     : m.platten.map((p) => filamentZeile(m.platten.length > 1 ? `Platte ${p.nr}` : "Filament", p.filamente)).join("");
@@ -1494,6 +1511,7 @@ async function waehle(id, live = false) {
       </div>`}
     <div class="i-titel">ZUM DRUCKEN</div>
     <div class="i-karte">${drucken.map(zeile).join("")}${platten}</div>
+    ${papierkorb ? "" : reichtTeil(m)}
     ${papierkorb ? "" : materialTeil(m, materialien)}
     ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
     <div class="i-gruppe"><span class="i-label">Tags</span>
@@ -2668,6 +2686,7 @@ $("#gruppierung").value = zustand.gruppierung;
   if (k) return waehleEines(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
   if (ansicht) return navigiere(() => { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
+  if (t.closest("#zum-lager")) return navigiere(() => { Object.assign(zustand, { ansicht: "lager", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   if (t.closest("#lager")) return navigiere(() => { Object.assign(zustand, { ansicht: "lager", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const rail = t.closest("[data-rail]");
   if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });

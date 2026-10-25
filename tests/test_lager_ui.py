@@ -25,6 +25,12 @@ if __name__ == "__main__":
     server = subprocess.Popen([sys.executable, "-m", "partatlas"], env=umgebung, cwd=tmp, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         warte(lambda: abfrage(port, "/api/zaehler") is not None)
+        samm = os.path.join(tmp, "3D")
+        os.makedirs(samm)
+        muster.dreimf(os.path.join(samm, "Paar.3mf"))
+        abfrage(port, "/api/wurzeln", {"pfad": samm})
+        warte(lambda: len(abfrage(port, "/api/modelle")) == 1)
+        mid = abfrage(port, "/api/modelle")[0]["id"]
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
             pg = b.new_page(viewport={"width": 1500, "height": 850})
@@ -92,15 +98,38 @@ if __name__ == "__main__":
             pg.screenshot(path=BILD)
             pg.click('[data-lg-ansicht="dashboard"]')
 
-            pg.click(".lg-karte >> nth=0 >> [data-lg-ablegen]")
+            pg.click(".lg-karte >> nth=0 >> [data-lg-loeschen]")
             pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 3")
-            pg.click('[data-lg-filter="abgelegt"]')
-            check("Ablegen: die Spule verschwindet, unter „Abgelegt“ ist sie gedämpft zu finden",
-                  pg.locator(".lg-karte.abgelegt").count() == 1)
-            pg.click(".lg-karte.abgelegt [data-lg-ablegen]")
-            pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 0")
-            pg.click('[data-lg-filter="abgelegt"]')
-            check("Wieder ins Lager: vier Spulen sind wieder da", pg.locator(".lg-karte").count() == 4)
+            check("Löschen: die Spule ist weg, die Meldung bietet „Rückgängig“", "Rückgängig" in pg.inner_text("#toast"))
+            pg.click("#toast button")
+            pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 4")
+            check("Rückgängig: alle vier Spulen sind wieder da", pg.locator(".lg-karte").count() == 4)
+
+            # -- Bild an der Spule
+            import io
+            from PIL import Image
+            png = io.BytesIO()
+            Image.new("RGB", (60, 60), "#cc3333").save(png, "PNG")
+            pg.click(".lg-karte >> nth=0 >> [data-lg-bearbeiten]")
+            pg.wait_for_selector("#lf-bilddatei", state="attached")
+            pg.set_input_files("#lf-bilddatei", {"name": "spule.txt", "mimeType": "text/plain", "buffer": b"kein bild"})
+            check("Eine Textdatei als Bild: Hinweis unter dem Bildfeld, kein Bild gewählt", "Nur PNG, JPG oder WebP" in pg.inner_text("#lf-bildhinweis") and pg.locator("#lf-bild img").count() == 0)
+            pg.set_input_files("#lf-bilddatei", {"name": "gross.png", "mimeType": "image/png", "buffer": b"0" * (5 * 1024 * 1024 + 1)})
+            check("Über 5 MB: Hinweis, kein Bild gewählt", "5 MB" in pg.inner_text("#lf-bildhinweis") and pg.locator("#lf-bild img").count() == 0)
+            pg.set_input_files("#lf-bilddatei", {"name": "spule.png", "mimeType": "image/png", "buffer": png.getvalue()})
+            check("Ein PNG: Vorschau im Bildfeld, der Hinweis ist weg", pg.locator("#lf-bild img").count() == 1 and pg.evaluate("document.querySelector('#lf-bildhinweis').hidden"))
+            pg.click("[data-lg-speichern]")
+            pg.wait_for_selector(".lg-karte .lg-bild")
+            check("Gespeichert: die Karte zeigt das Foto statt des Kürzels", pg.locator(".lg-karte .lg-bild").count() == 1)
+            pg.click(".lg-karte:has(.lg-bild) [data-lg-bearbeiten]")
+            pg.click("[data-lg-bildweg]")
+            pg.keyboard.press("Escape")
+            check("Bild entfernen, dann Escape: nichts ändert sich, das Foto bleibt", pg.locator(".lg-karte .lg-bild").count() == 1)
+            pg.click(".lg-karte:has(.lg-bild) [data-lg-bearbeiten]")
+            pg.click("[data-lg-bildweg]")
+            pg.click("[data-lg-speichern]")
+            pg.wait_for_function("document.querySelectorAll('.lg-karte .lg-bild').length === 0")
+            check("Bild entfernen und speichern: wieder das Kürzel", pg.locator(".lg-karte .lg-bild").count() == 0)
 
             pg.click("[data-lg-neu]")
             pg.fill("#lf-material", "PLA")
@@ -113,6 +142,27 @@ if __name__ == "__main__":
             pg.click('[data-rail="katalog"]')
             pg.wait_for_selector("#raster:not([hidden])")
             check("Zurück in den Katalog: das Lager ist weg, der Knopf nicht mehr aktiv", pg.evaluate("document.querySelector('#lager-seite').hidden") and pg.locator("#lager.aktiv").count() == 0)
+
+            # -- Reicht das Filament? im Inspektor und in der Warteschlange (das 3MF braucht PETG schwarz 12,5 g und PLA weiss 3,25 g)
+            for x in abfrage(port, "/api/spulen")["spulen"]:
+                abfrage(port, f"/api/spulen/{x['id']}", methode="DELETE")
+            abfrage(port, "/api/spulen", {"felder": {"material": "PETG", "farbe": "#000000", "start_g": 1000, "hersteller": "Prusament", "ort": "Regal 1"}})
+            abfrage(port, "/api/warteschlange", {"modelle": [mid]})
+            pg.goto(f"http://127.0.0.1:{port}/?phase=2")
+            pg.wait_for_selector(".karte")
+            pg.click(".karte >> nth=0")
+            pg.wait_for_selector(".rf")
+            check("Inspektor „Reicht das Filament?“: PETG reicht mit Spule und Ort, PLA ist unklar (keine passende Spule)",
+                  "reicht" in pg.inner_text(".rf-zeile >> nth=0").lower() and "Prusament" in pg.inner_text(".rf") and "Regal 1" in pg.inner_text(".rf")
+                  and "Keine passende Spule" in pg.inner_text(".rf") and pg.locator(".rf-marke.reicht").count() == 1 and pg.locator(".rf-marke.unklar").count() == 1)
+            pg.screenshot(path=BILD.replace("lager.png", "reicht.png"))
+            pg.wait_for_selector("#ws-liste li")
+            check("Warteschlange: der Punkt vor dem Modell ist unklar (grau), weil das PLA fehlt", pg.locator("#ws-liste .ws-reicht").count() == 1
+                  and "unklar" in pg.get_attribute("#ws-liste .ws-reicht", "title"))
+            abfrage(port, "/api/spulen", {"felder": {"material": "PLA", "farbe": "#ffffff", "start_g": 1000}})
+            pg.goto(f"http://127.0.0.1:{port}/?phase=2")
+            pg.wait_for_selector("#ws-liste .ws-reicht")
+            check("Mit weisser PLA-Spule: der Punkt in der Warteschlange wird grün", "reicht" in pg.get_attribute("#ws-liste .ws-reicht", "title") and "ws-reicht reicht" in pg.get_attribute("#ws-liste .ws-reicht", "class"))
             b.close()
     finally:
         server.terminate()

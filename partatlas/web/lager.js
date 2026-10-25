@@ -1,6 +1,6 @@
 // Filamentlager (lager.py) — die Seite „Lager“, nach dem Material Manager des 3MF Katalog Managers (Handbuch „Der Material Manager“):
 // Kennzahlen, Suche, Filter „Niedrig“/„Leer“, Dashboard (Karten) oder sortierbare Liste, Formular als Seitenfenster rechts, Nachkaufen.
-// Leere Spulen werden abgelegt (archiviert), nicht gelöscht: partAtlas löscht hier nichts.
+// Eine Spule ist kein Modell: sie lässt sich löschen (mit Rückgängig). Ein Foto der Spule ist optional (PNG, JPG, WebP bis 5 MB).
 
 const lg = { daten: null, suche: "", filter: new Set(), ansicht: localStorageLesen("lager-ansicht") || "dashboard", sort: { spalte: "material", richtung: 1 },
              form: null, neu: new Set() };
@@ -27,14 +27,13 @@ async function ladeLager() {
 
 function lgSichtbar() {
   const q = lg.suche.trim().toLowerCase();
-  const abgelegt = lg.filter.has("abgelegt"), stufen = ["niedrig", "leer"].filter((f) => lg.filter.has(f));
-  return lg.daten.spulen.filter((s) => !!s.archiviert === abgelegt
-    && (!stufen.length || stufen.includes(lgStatus(s)))
+  const stufen = ["niedrig", "leer"].filter((f) => lg.filter.has(f));
+  return lg.daten.spulen.filter((s) => (!stufen.length || stufen.includes(lgStatus(s)))
     && (!q || [s.material, s.hersteller, s.farbname, s.ort, s.notiz].some((t) => (t || "").toLowerCase().includes(q))));
 }
 
 function lgKennzahlen() {
-  const aktiv = lg.daten.spulen.filter((s) => !s.archiviert);
+  const aktiv = lg.daten.spulen;
   const knapp = aktiv.filter((s) => lgStatus(s) !== "vorraetig").length;
   const orte = new Set(aktiv.map((s) => (s.ort || "").trim()).filter(Boolean)).size;
   const rest = aktiv.reduce((a, s) => a + s.rest_g, 0);
@@ -43,8 +42,8 @@ function lgKennzahlen() {
 
 function lgKarte(s) {
   const st = lgStatus(s), name = [s.hersteller, s.farbname].filter(Boolean).join(" · ");
-  return `<article class="lg-karte ${s.archiviert ? "abgelegt" : ""} ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
-    <div class="lg-kopf"><span class="lg-kuerzel">${lgKuerzel(s.material)}</span>
+  return `<article class="lg-karte ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
+    <div class="lg-kopf">${s.bild ? `<img class="lg-bild" src="/api/spulen/${esc(s.id)}/bild?k=${esc(s.bild.k)}" alt="">` : `<span class="lg-kuerzel">${lgKuerzel(s.material)}</span>`}
       <div><b>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span>` : ""}${esc(s.material)}</b><span class="dim">${esc(name) || "&nbsp;"}</span></div></div>
     <div class="lg-reihe">${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : "<span></span>"}<span class="lg-marke ${st}">${LG_STATUS[st]}</span></div>
     <div class="lg-reihe"><span class="mono">${lgG(s.rest_g)}</span><span class="dim">${Math.round(lgAnteil(s) * 100)} %</span></div>
@@ -52,7 +51,7 @@ function lgKarte(s) {
     <div class="lg-reihe lg-klein dim"><span>${s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : ""}</span><span>${lgEuro(s.preis)}</span></div>
     <div class="lg-aktionen"><button type="button" class="knopf-text" data-lg-nachkaufen="${esc(s.id)}">＋ Nachkaufen</button>
       <span><button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten" aria-label="Spule bearbeiten">✎</button>
-      <button type="button" class="knopf-text" data-lg-ablegen="${esc(s.id)}" title="${s.archiviert ? "Wieder ins Lager" : "Ablegen (leer oder nicht mehr da)"}" aria-label="${s.archiviert ? "Wieder ins Lager" : "Spule ablegen"}">${s.archiviert ? "↺" : "✕"}</button></span></div>
+      <button type="button" class="knopf-text" data-lg-loeschen="${esc(s.id)}" title="Löschen" aria-label="Spule löschen">✕</button></span></div>
   </article>`;
 }
 
@@ -71,14 +70,14 @@ function lgTabelle(liste) {
   const kopf = LG_SPALTEN.map(([k, t]) => `<th><button type="button" data-lg-sort="${k}" aria-label="Sortieren nach ${t}">${t}${lg.sort.spalte === k ? (lg.sort.richtung > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("");
   const zeilen = lgSortiert(liste).map((s) => {
     const st = lgStatus(s);
-    return `<tr class="${s.archiviert ? "abgelegt" : ""} ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
+    return `<tr class="${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
       <td><b>${esc(s.material)}</b></td><td>${esc(s.hersteller)}</td><td>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span> ` : ""}${esc(s.farbname)}</td>
       <td>${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : ""}</td><td>${s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : ""}</td>
       <td><span class="mono">${lgG(s.rest_g)}</span> <span class="dim">${Math.round(lgAnteil(s) * 100)} %</span><div class="lg-balken ${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div></td>
       <td class="mono">${lgEuro(s.preis)}</td><td><span class="lg-marke ${st}">${LG_STATUS[st]}</span></td>
       <td class="lg-tab-akt"><button type="button" class="knopf-text" data-lg-nachkaufen="${esc(s.id)}" title="Nachkaufen" aria-label="Nachkaufen">＋</button>
         <button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten" aria-label="Spule bearbeiten">✎</button>
-        <button type="button" class="knopf-text" data-lg-ablegen="${esc(s.id)}" title="${s.archiviert ? "Wieder ins Lager" : "Ablegen"}" aria-label="${s.archiviert ? "Wieder ins Lager" : "Spule ablegen"}">${s.archiviert ? "↺" : "✕"}</button></td></tr>`;
+        <button type="button" class="knopf-text" data-lg-loeschen="${esc(s.id)}" title="Löschen" aria-label="Spule löschen">✕</button></td></tr>`;
   }).join("");
   return `<table class="lg-tabelle"><thead><tr>${kopf}<th></th></tr></thead><tbody>${zeilen}</tbody></table>`;
 }
@@ -92,7 +91,7 @@ function zeichneLager() {
     <div class="lg-zahlen">${lgKennzahlen().map(([t, v, k]) => `<div class="lg-zahl ${k || ""}"><span>${t}</span><b>${v}</b></div>`).join("")}</div>
     <div class="lg-leiste">
       <input id="lg-suche" type="search" placeholder="Material, Hersteller, Lagerort durchsuchen …" value="${esc(lg.suche)}" aria-label="Lager durchsuchen">
-      ${["niedrig", "leer", "abgelegt"].map((f) => `<button type="button" class="knopf ${lg.filter.has(f) ? "aktiv" : ""}" data-lg-filter="${f}" aria-pressed="${lg.filter.has(f)}">${{ niedrig: "Niedrig", leer: "Leer", abgelegt: "Abgelegt" }[f]}</button>`).join("")}
+      ${["niedrig", "leer"].map((f) => `<button type="button" class="knopf ${lg.filter.has(f) ? "aktiv" : ""}" data-lg-filter="${f}" aria-pressed="${lg.filter.has(f)}">${{ niedrig: "Niedrig", leer: "Leer" }[f]}</button>`).join("")}
       <span class="segment"><button type="button" data-lg-ansicht="dashboard" class="${lg.ansicht === "dashboard" ? "an" : ""}">Dashboard</button><button type="button" data-lg-ansicht="liste" class="${lg.ansicht === "liste" ? "an" : ""}">Liste</button></span>
       <span class="lg-luecke"></span>
       <button type="button" class="knopf akzent" data-lg-neu>＋ Spule anlegen</button>
@@ -114,12 +113,16 @@ function lgFormZu() {
 
 function lgFormZeigen(spule, vorlage = null) {
   const neu = !spule, w = spule || vorlage || { durchmesser: 1.75, start_g: lg.daten.rolle_g };
-  lg.form = { id: spule?.id || null, farbe: w.farbe || "" };
+  lg.form = { id: spule?.id || null, farbe: w.farbe || "", datei: null, bildWeg: false, bild: spule?.bild || (vorlage?.bild ? null : null) };
   const d = lg.daten, anzahl = (id, liste) => `<datalist id="${id}">${[...new Set(liste.filter(Boolean))].map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`;
   const wert = (v) => esc(v ?? "");
   $("#lager-form").innerHTML = `
     <header><h3>${neu ? "Spule anlegen" : "Spule bearbeiten"}</h3><button type="button" class="knopf" data-lg-formzu aria-label="Schliessen">✕</button></header>
     <div class="lf-koerper">
+      <div class="i-titel">BILD</div>
+      <div class="lf-bild" id="lf-bild" tabindex="0" role="button" aria-label="Bild wählen oder hierher ziehen">${lgBildFeld()}</div>
+      <input type="file" id="lf-bilddatei" accept="image/png,image/jpeg,image/webp" hidden>
+      <p class="lf-bildhinweis" id="lf-bildhinweis" hidden></p>
       <div class="i-titel">IDENTIFIKATION</div>
       <label>Material<input id="lf-material" list="lf-material-liste" value="${wert(w.material)}" maxlength="30" placeholder="Material" autocomplete="off"></label>
       <label>Hersteller<input id="lf-hersteller" list="lf-hersteller-liste" value="${wert(w.hersteller)}" maxlength="60" placeholder="Hersteller" autocomplete="off"></label>
@@ -147,6 +150,36 @@ function lgFormZeigen(spule, vorlage = null) {
   $("#lf-material").focus();
 }
 
+function lgBildFeld() {
+  const f = lg.form;
+  const url = f.datei ? f.vorschau : (f.bild && !f.bildWeg ? `/api/spulen/${f.id}/bild?k=${f.bild.k}` : "");
+  return url ? `<img src="${esc(url)}" alt="Foto der Spule"><button type="button" class="knopf" data-lg-bildweg aria-label="Bild entfernen">✕</button>`
+    : `<span class="dim">Bild hierher ziehen oder klicken</span>`;
+}
+
+function lgBildWaehlen(datei) {
+  const hinweis = $("#lf-bildhinweis");
+  const fehler = !datei ? "" : !["image/png", "image/jpeg", "image/webp"].includes(datei.type) ? "Nur PNG, JPG oder WebP."
+    : datei.size > 5 * 1024 * 1024 ? "Das Bild ist grösser als 5 MB." : "";
+  hinweis.hidden = !fehler;
+  hinweis.textContent = fehler;
+  if (!datei || fehler) return;
+  if (lg.form.vorschau) URL.revokeObjectURL(lg.form.vorschau);
+  Object.assign(lg.form, { datei, vorschau: URL.createObjectURL(datei), bildWeg: false });
+  $("#lf-bild").innerHTML = lgBildFeld();
+}
+
+// Das Bild wird mit „Speichern“ übernommen, nicht gleich beim Wählen: Escape lässt alles, wie es war.
+async function lgBildSpeichern(ids) {
+  const f = lg.form;
+  for (const id of ids) {
+    if (f.datei) {
+      const r = await fetch(`/api/spulen/${id}/bild`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: f.datei });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).fehler || `Fehler ${r.status}`);
+    } else if (f.bildWeg && f.bild) await api(`/api/spulen/${id}/bild`, { method: "DELETE" });
+  }
+}
+
 function lgFormBalken() {
   const start = parseFloat($("#lf-start")?.value), rest = parseFloat($("#lf-rest")?.value);
   const anteil = start > 0 && rest >= 0 ? Math.max(0, Math.min(1, rest / start)) : 0;
@@ -165,10 +198,11 @@ async function lgSpeichern() {
   const werte = lgFormWerte();
   try {
     let ids = [];
-    if (lg.form.id) await api(`/api/spulen/${lg.form.id}`, { method: "PATCH", body: werte });
+    if (lg.form.id) { await api(`/api/spulen/${lg.form.id}`, { method: "PATCH", body: werte }); await lgBildSpeichern([lg.form.id]); }
     else {
       const anzahl = Number($("#lf-anzahl").value) || 1;
       ({ ids } = await api("/api/spulen", { method: "POST", body: { felder: werte, anzahl } }));
+      await lgBildSpeichern(ids);
       toast(anzahl === 1 ? "Spule angelegt." : `${anzahl} Spulen angelegt.`);
     }
     lgFormZu();
@@ -205,12 +239,11 @@ async function lgNachkaufen(sid) {
   } catch (e) { toast(e.message); }
 }
 
-async function lgAblegen(sid) {
-  const s = lg.daten.spulen.find((x) => x.id === sid), ab = !s.archiviert;
+async function lgLoeschen(sid) {
   try {
-    await api(`/api/spulen/${sid}`, { method: "PATCH", body: { archiviert: ab } });
+    await api(`/api/spulen/${sid}`, { method: "DELETE" });
     await ladeLager();
-    toast(ab ? "Spule abgelegt." : "Spule wieder im Lager.", ab ? { aktionen: [["Rückgängig", () => lgAblegen(sid)]] } : {});
+    toast("Spule gelöscht.", { aktionen: [["Rückgängig", async () => { await api(`/api/spulen/${sid}/zurueck`, { method: "POST" }); await ladeLager(); }]] });
   } catch (e) { toast(e.message); }
 }
 
@@ -225,13 +258,15 @@ document.addEventListener("click", (e) => {
     if (hol("data-lg-neu")) return lgFormZeigen(null);
     if ((b = hol("data-lg-bearbeiten"))) return lgFormZeigen(lg.daten.spulen.find((s) => s.id === b.dataset.lgBearbeiten));
     if ((b = hol("data-lg-nachkaufen"))) return lgNachkaufen(b.dataset.lgNachkaufen);
-    if ((b = hol("data-lg-ablegen"))) return lgAblegen(b.dataset.lgAblegen);
+    if ((b = hol("data-lg-loeschen"))) return lgLoeschen(b.dataset.lgLoeschen);
     if ((b = hol("data-lg-filter"))) { lg.filter.has(b.dataset.lgFilter) ? lg.filter.delete(b.dataset.lgFilter) : lg.filter.add(b.dataset.lgFilter); return zeichneLager(); }
     if ((b = hol("data-lg-ansicht"))) { lg.ansicht = b.dataset.lgAnsicht; localStorageSchreiben("lager-ansicht", lg.ansicht); return zeichneLager(); }
     if ((b = hol("data-lg-sort"))) {
       lg.sort = { spalte: b.dataset.lgSort, richtung: lg.sort.spalte === b.dataset.lgSort ? -lg.sort.richtung : 1 };
       return zeichneLager();
     }
+    if (hol("data-lg-bildweg")) { Object.assign(lg.form, { datei: null, bildWeg: true }); $("#lf-bild").innerHTML = lgBildFeld(); return; }
+    if (t.closest("#lf-bild")) return $("#lf-bilddatei").click();
     if (hol("data-lg-formzu")) return lgFormZu();
     if (hol("data-lg-speichern")) return lgSpeichern();
     if ((b = hol("data-lg-anzahl"))) { const f = $("#lf-anzahl"); f.value = Math.max(1, Math.min(20, (Number(f.value) || 1) + Number(b.dataset.lgAnzahl))); return; }
@@ -261,3 +296,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && lg.form && !$("#dialog").open) { e.preventDefault(); lgFormZu(); }
   if (e.key === "Enter" && lg.form && e.target.closest?.("#lager-form") && e.target.matches("input:not([type=color])")) { e.preventDefault(); lgSpeichern(); }
 });
+
+document.addEventListener("change", (e) => { if (e.target.id === "lf-bilddatei") { lgBildWaehlen(e.target.files[0]); e.target.value = ""; } });
+document.addEventListener("dragover", (e) => { if (e.target.closest?.("#lf-bild")) { e.preventDefault(); e.stopPropagation(); } });
+document.addEventListener("drop", (e) => {
+  if (!e.target.closest?.("#lf-bild")) return;
+  e.preventDefault(); e.stopPropagation();
+  lgBildWaehlen(e.dataTransfer.files[0]);
+}, true);
+document.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.id === "lf-bild") { e.preventDefault(); e.stopPropagation(); $("#lf-bilddatei").click(); } }, true);
