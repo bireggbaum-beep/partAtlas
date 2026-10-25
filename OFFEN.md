@@ -4,6 +4,89 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.2 auf `main` (25.10.2026, für den Tester)
+
+Neu: Farbschema **Filament** (Blaugrün, Vorgabe) mit **Messing** und **Blaupause** zur Probe (Einstellungen › Ansicht, gemerkt im Browser; später bleibt eines),
+Atlas-Zeichen vor dem Namen und im Tab, „Katalog“ aus dem Titel; 3D-Ansicht zeichnet nur bei Bewegung und senkt bei Last die Auflösung (test_viewer_ui 7/7);
+Cura-G-Code: Druckzeit wird gelesen (test_slicer 14/14); Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.1`.
+**Nicht auf `main`:** die Desktop-Arbeit (`desktop/`, `partatlas/starter.py`, Actions, Tauri-Fenster, Einzeldatei, Starter-Betrieb) liegt nur auf dem Branch
+`ccr-212cc51e-yf8m3p` — Anwender 25.10.2026: „keinerlei App-Aktivitäten“ in diesem Update. Die Aufgabenliste unten nennt, was erledigt ist (das alte Bild beim
+Berechnen war kein Fehler von partAtlas, sondern ein Verlust im gepackten Fenster-Programm).
+
+## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
+
+**Nächstes sichtbares Update für den Tester (Fassung 1.0.2 → `main`)** — Stand: gebaut / offen
+- gebaut auf dem Branch: 3D-Ansicht zeichnet nur bei Bewegung, senkt bei Last die Auflösung (1.0.2); Titel ohne „Katalog“
+- **erledigt (1.0.2):** Farbschema C Filament als Vorgabe, A und B wählbar; Atlas-Zeichen in Kopf und Tab (später gegen das Zeichen mit den drei Scheiben tauschen); Handbuchbilder neu
+- **erledigt (1.0.2):** Druckzeit aus Cura-G-Code (Orca, Prusa, Bambu gingen schon); „Vorschaubild berechnen“ behält das alte Bild — war schon so, kein Fehler
+
+**Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): Spulenliste (2) → Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
+
+**Programm zum Anklicken (Tester auf Manjaro, Firefox, AppImage-Manager)** — Einzeldatei mit Starter ist gebaut (Action `einzeldatei.yml`), offen:
+Lebenszyklus (Beenden-Knopf mit Rückfrage bei laufender Arbeit, kein unsichtbarer Server; Systemmenü-Symbol als eigener Schritt, Aufwand 3–4; Fortsetzen nach Beenden prüfen) ·
+AppImage mit Starter, Menüeintrag, Symbol (2) · Aktualisierung über GitHub Releases (2) · Handbuch/README zum Start (1) · Windows-.exe und Installer (nicht prüfbar, bis ein Windows-Tester da ist) ·
+Tauri-Fenster liegt zurückgestellt auf dem Branch.
+
+**Entwickeln (Versionen, Varianten)** — Konzept offen, braucht den Tester (STORIES.md durchgehen, drei Fragen zum Ablauf der Walzen): „gilt“ und „ersetzt durch“ als kleinster Anfang (2); „Wo wird es verwendet?“ (2–3); Versionsverlauf je Modell (3–4)
+
+**Sichern** — Backup als ZIP und sicheres Wiederherstellen (4–5, ausgeblendet gebaut); Grösse des Bestands: Ordnergrössen vom Tester abwarten (`sicherungen`, `vault`, `datenbank`, `thumbs`, `netz`), dann entscheiden (weniger behalten oder harte Verweise, 2–3)
+
+**Formate** — STEP/FCStd ohne FreeCAD: Entscheidung Geometriekern, Spike mit 3–4 echten Dateien (3–4) · 7z/rar entpacken (fremde Pakete)
+
+**Wartet auf den Tester** — Windows: start.bat, Ordner mit offener Datei umbenennen, nur Gross-/Kleinschreibung · echte Dateien aus Bambu Studio und Anycubic Slicer Next · Dauer des Einlesens bei 5 793 Dateien (Protokollzeile) · Firefox/Einzeldatei ausprobieren
+
+**Später (Ideen, nur bei echtem Bedarf)** — G-Code-Vorschau, Messen/Schnitt, mehr Formate (IGES, AMF, PLY, glTF), Name/Markensuche, G-Code-Ordner mit Zuordnung (3)
+
+## Filament, Drucker, G-Code nach dem 3MF Katalog (Anwender 25.10.2026) — nur Entwurf, nichts gebaut
+
+Drucker des Testers: Bambu A1 Mini, Anycubic Kobra 2 → **Moonraker entfällt** (Kobra 2 ohne Klipper, A1 Mini ist Bambu). Budget: nur Stücke mit Aufwand 1–2.
+Vorlage (gelesen in `Bexxs75/3mf-katalog-manager`, README): **Spule** = Material, Hersteller, Farbname, Farbwert (Palette oder Hex), Lagerort, Durchmesser,
+Startgewicht und Rest (0,1 g), Preis, optional Bild; mehrere gleiche Spulen auf einmal, „Nachkaufen“ (1–20 volle Spulen); Karten mit Bestandsbalken
+und sortierbare Liste mit Statusfiltern, Doppelklick öffnet das Formular; Autovervollständigung für Material/Hersteller/Ort. **Drucker** mit AMS/CFS/MMU/ACE,
+jeder Drucker hat einen Spulenhalter; Spule per Ziehen in ein Fach. **„Reicht das Filament?“** am 3MF: Bedarf gegen Spulen mit passendem Material und
+ähnlicher Farbe, drei Ausgänge (reicht / reicht nach Spulenwechsel / reicht nicht, mit fehlender Menge), nennt die passende Spule und ob sie geladen ist.
+Druckprotokoll getrennt vom Status, mehrere Versuche je Modell. Resin: eigener Schalter, nicht in der Prüfung.
+Stücke (Aufwand): 7 Druckdauer aus dem G-Code (1) · 1 Spulenliste (2) · 2 Spule am Druck wählen, Rest abziehen (2) · 3 „Reicht das Filament?“ am Modell (1) ·
+4 Filamentkosten (1–2) · 5 Drucker klein: Name, Düse, Bauraum (2) · 6 „Passt auf den Drucker?“ Masse gegen Bauraum (1). Erste Runde: 7 und 1–3; zweite: 5, 6.
+Bewusst nicht: Resin, AMS-Fächer, G-Code-Ordner mit Zuordnung (3), Druckeranbindung.
+
+## Zeichen, Farben, Titel (Anwender 25.10.2026)
+
+„Katalog“ aus dem Titel genommen (Kopfzeile zeigt nur PARTATLAS und die Fassung). Zeichen und Farbschema: Vorschlagsseite
+(Artefakt, drei Richtungen A Messing / B Blaupause / C Filament neben der heutigen, dazu drei Zeichen: Raster, Würfel, Atlas) — **Entscheidung des Anwenders offen**.
+Die heutigen Farben sind aus dem 3MF Katalog übernommen (Kopf von `app.css`).
+
+## Desktop, Wende (23.10.2026): Einzeldatei mit Starter statt Tauri-Fenster (Tester auf Manjaro, Firefox)
+
+Rückmeldungen des Testers zum Tauri-Spike: das AppImage (mit mitgelieferter Webansicht) zeigte ein schwarzes Fenster und **hängte beim zweiten
+Start den ganzen Rechner auf** (sehr alte Grafikkarte, Mesa). Das Archiv mit der System-Webansicht (webkitgtk-4.1) und Software-OpenGL
+(`LIBGL_ALWAYS_SOFTWARE=1`, `WEBKIT_DISABLE_DMABUF_RENDERER=1`) lief, mit 3D-Ansicht, 9 083 Modellen. Offen blieben: Handbuch (jetzt im eigenen
+Fenster), **Anhänge (Bilder/PDF) in Baugruppen** (WebKitGTK ohne PDF-Betrachter), **gepackter Server rechnet keine neuen Vorschaubilder**
+(PyInstaller ohne `multiprocessing.freeze_support()`: jeder Hilfsprozess startete einen zweiten Server, „Adresse belegt“; nachgestellt), und
+„Vorschaubild berechnen“ lässt das alte Bild verschwinden, bis das neue da ist (in der Git-Fassung nicht aufgefallen, weil dort das Berechnen
+gelingt; **bleibt zu beheben: altes Bild behalten bis das neue da ist**).
+Der Tester meinte eigentlich: **eine Datei anklicken, der Standardbrowser öffnet partAtlas** (wie eine PWA). Das ist gebaut:
+`partatlas/starter.py` (PARTATLAS_STARTER=1: Browser öffnen, laufendes partAtlas nur öffnen, beenden wenn 45 s keine Seite mehr verbunden
+ist oder nach 120 s kein Browser kam; läuft das Einlesen, bleibt der Server), `desktop/launch.py` (Starter als Standard, `freeze_support`),
+`desktop/bauen-einzeldatei.sh` (PyInstaller onefile, 40 MB), Action `einzeldatei.yml` (Artefakt `partAtlas-Linux`). test_starter 8/8, Gegenproben fallen.
+Das Tauri-Fenster bleibt auf dem Branch (`desktop-fenster.yml`, nur von Hand; Tauri setzt PARTATLAS_STARTER=0), eventuell für Windows.
+**Nicht gebaut, entschieden nein:** AppImage (kein Vorteil gegenüber der Einzeldatei, braucht FUSE). **Offen:** Menüeintrag mit Symbol
+(Skript `installieren.sh` oder die Datei legt ihn selbst an), Selbstaktualisierung (Starter prüft GitHub Releases), Windows-`.exe`, Handbuch
+und README zum Start der Einzeldatei.
+
+## Desktop-Programm, Schritt 1: Spike (23.10.2026, Ordner `desktop/`)
+
+Anwender: **Fokus Manjaro** (der Tester hat nur das), Windows erst danach — nicht testbar, solange nur Manjaro da ist.
+Gebaut: Tauri 2-Hülle (`desktop/src-tauri/src/main.rs`) startet den Server (PyInstaller-onedir, `desktop/launch.py`) als Kindprozess auf einem freien
+Port, wartet bis er antwortet, zeigt ihn im Fenster; beim Beenden wird der Server beendet, unter Linux auch bei hartem Ende (PDEATHSIG).
+`desktop/bauen.sh` baut alles (PyInstaller, dann `tauri build`) zu einem **AppImage (114,6 MiB)**, Fassung aus `partatlas/version.py`.
+Gemessen hier (Ubuntu 24.04, Xvfb): Fenster zeigt partAtlas 1.0.1, Server läuft, Bestand wird angelegt. **Nicht geprüft: Manjaro.** Bekannte Risiken
+(aus Erfahrungsberichten, nicht gemessen): das AppImage bringt webkit2gtk mit, auf Arch/Manjaro kann das zu weissem Fenster oder Absturz führen
+(EGL); Ersatz wäre ein `PKGBUILD` mit der Webansicht des Systems.
+**Bekannte Lücken im Spike:** F1/„?“ (Handbuch öffnet in neuem Tab: `window.open`), Links nach aussen, Ziehen von Dateien aus dem Dateimanager
+(`dragDropEnabled: false`, ungetestet), einzelne Instanz, Fenstergrösse merken, Updater, Windows. Zum Tester kommt es über GitHub Actions
+(AppImage als Artefakt) — noch nicht gebaut.
+
 ## Stand: 1.0.1 auf `main` (23.10.2026, für den Tester)
 
 Rückmeldung des Testers umgesetzt: FCStd wird in keinem Slicer mehr angeboten (Einzelheiten unten, Abschnitt 1.0.1). Dazu Dokumente ohne

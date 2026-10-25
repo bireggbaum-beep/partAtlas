@@ -71,6 +71,9 @@ if __name__ == "__main__":
     g = slicer.aus_gcode(g2)
     check("G-Code (PrusaSlicer): Konfiguration am Ende, Gewicht und Zeit", g["werte"]["perimeters"] == "2"
           and g["kopf"] == {"gewicht_g": 7.5, "dauer_s": 2710})
+    g3 = os.path.join(tmp, "cura.gcode")
+    open(g3, "w").write(";FLAVOR:Marlin\n;TIME:6666\n;Filament used: 2.5m\n;Layer height: 0.2\nG28\nG1 X10 Y10\n")
+    check("G-Code (Cura): die Druckzeit steht als „;TIME:“ in Sekunden im Kopf", slicer.aus_gcode(g3)["kopf"] == {"dauer_s": 6666})
     gross = os.path.join(tmp, "gross.gcode")
     kopf, rumpf, schluss = ORCA_GCODE.split("G28\nG1 X10 Y10\n")[0], "G1 X1 Y1\n" * 400000, ORCA_GCODE.split("G1 X10 Y10\n")[1]
     open(gross, "w").write(kopf + rumpf + schluss)

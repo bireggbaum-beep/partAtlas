@@ -169,12 +169,18 @@ def aus_gcode(pfad, grenze=4 << 20):
                                (r"; filament used \[g\] = ([\d.]+)", "gewicht_g"),
                                (r"; model printing time: ([^;\n]+?)(?:;|$)", "zeit"),
                                (r"; estimated printing time \(normal mode\) = (.+)", "zeit"),
-                               (r"; total estimated time: (.+)", "zeit")):
+                               (r"; total estimated time: (.+)", "zeit"),
+                               (r"^;TIME:(\d+)", "sekunden")):         # Cura (und was darauf aufbaut): die Druckzeit in Sekunden im Kopf
         m = re.search(muster, text, re.M)
         if m and schluessel not in kopf:
             kopf[schluessel] = m.group(1).strip()
     if "zeit" in kopf:
         kopf["dauer_s"] = dauer_s(kopf.pop("zeit"))
+    if "sekunden" in kopf:
+        kopf.setdefault("dauer_s", int(kopf["sekunden"]) or None)
+        del kopf["sekunden"]
+    if kopf.get("dauer_s") is None:
+        kopf.pop("dauer_s", None)
     if "gewicht_g" in kopf:
         kopf["gewicht_g"] = float(kopf["gewicht_g"])
     return {"slicer": slicer, "werte": werte, "kopf": kopf}

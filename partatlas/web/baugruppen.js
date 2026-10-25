@@ -613,6 +613,10 @@ async function einstellungen() {
       <div class="i-titel">ROLLENGRÖSSE</div>
       <label>Gramm je Rolle <input type="number" id="ein-rolle" min="100" max="10000" step="50" value="${e.gilt.rolle_g}" style="width:90px"></label>`],
     ["ansicht", "Ansicht", `
+      <div class="i-titel">FARBSCHEMA</div>
+      <div class="kachelgroesse">${[["c", "Filament"], ["a", "Messing"], ["b", "Blaupause"]].map(([k, t]) =>
+        `<label><input type="radio" name="ein-farbe" value="${k}" ${(document.documentElement.dataset.farbe || "c") === k ? "checked" : ""}> ${t}</label>`).join("")}</div>
+      <p class="dim">Zur Probe drei Schemata, hell und dunkel wie gewohnt über ◐. Später bleibt eines. Gilt für diesen Browser und wirkt sofort.</p>
       <div class="i-titel">KACHELN</div>
       <div class="kachelgroesse">${[["klein", "Klein"], ["mittel", "Mittel"], ["gross", "Gross"]].map(([k, t]) =>
         `<label><input type="radio" name="ein-kachelgroesse" value="${k}" ${zustand.kachelGroesse === k ? "checked" : ""}> ${t}</label>`).join("")}</div>
