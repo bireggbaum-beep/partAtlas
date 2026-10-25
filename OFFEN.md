@@ -27,6 +27,15 @@ Vierte Wahl unter Einstellungen › Ansicht: Palette von libadwaita (GTK 4) — 
 sich weiter vom 3MF Katalog zu lösen. Ein Bild dazu nur, wenn der Anwender es will (Aufwand 2–3 für Rundung und Abstände, `--radius` ist ein einziger Wert,
 ob alle Teile ihn nutzen, ist ungeprüft).
 
+## Spulenbild im Lager (25.10.2026, auf dem Branch, nicht auf `main`)
+
+Das KI-Bild des Anwenders (312 × 327 px, weisser Hintergrund) ist freigestellt (`web/spule.png`, 125 KB, Schatten als weicher Schwarzton) und hat eine Maske für die Wicklung
+(`web/spule-wicklung.png`, 17 KB). `lager.js` `lgSpule(farbe, breite)` legt den Farbwert per CSS über die Maske und multipliziert ihn mit dem Bild (`mix-blend-mode: multiply`); sehr
+dunkle Farben werden aufgehellt, ohne Farbe ein helles Grau. Eingebaut an Karte (50 px, statt des Kürzels), Bildfeld im Formular (64 px) und leerem Lager (150 px). Entscheidung
+des Anwenders: **Grösse so lassen**, bei Bedarf des Testers später grösser (60–64 px auf der Karte). Bekannt: schwarze Spule hebt sich auf dunklem Grund nur schwach ab; ein
+farbiger Pixelrand unten an der Wicklung. Die Skripte zum Freistellen liegen nicht im Repo (Scratchpad: `spule_png.py`); bei einer Änderung am Bild neu erzeugen.
+Auf `main` mit der nächsten Fassung (1.0.4), samt Eintrag unter „Neu in dieser Fassung“.
+
 ## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
 
 **Nächstes sichtbares Update für den Tester (Fassung 1.0.2 → `main`)** — Stand: gebaut / offen
