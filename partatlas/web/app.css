@@ -1328,7 +1328,6 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .lg-kopf { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
 .lg-kopf > div { display: flex; flex-direction: column; min-width: 0; }
 .lg-kopf .dim { font-size: var(--fs-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lg-kuerzel { flex: none; min-width: 38px; text-align: center; font: 500 11px var(--mono); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 4px; color: var(--ink-2); background: var(--panel-2); }
 .farbpunkt { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 0 1px var(--line-strong); vertical-align: baseline; }
 .lg-reihe { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); }
 .lg-klein { font-size: var(--fs-meta); border-top: 1px solid var(--line); padding-top: var(--s3); }
@@ -1399,3 +1398,12 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .lager-form input:not([type="color"]):not([type="file"]), .lager-form select, .lg-nachkauf input, .d-abbuchen select {
   background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 8px; font: inherit; }
 .lager-form input:focus-visible, .lager-form select:focus-visible, .lg-nachkauf input:focus-visible, .d-abbuchen select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Die Spule als Bild, Wicklung per Farbwert eingefärbt (lager.js, lgSpule) */
+.lg-spule { position: relative; display: inline-block; flex: none; aspect-ratio: 312 / 327; isolation: isolate; line-height: 0; }
+.lg-spule img { width: 100%; height: 100%; display: block; }
+.lg-spule i { position: absolute; inset: 0; background: var(--w); mix-blend-mode: multiply;
+  -webkit-mask: url("/web/spule-wicklung.png") center / 100% 100% no-repeat; mask: url("/web/spule-wicklung.png") center / 100% 100% no-repeat; }
+.lg-leerlager { display: flex; flex-direction: column; align-items: center; gap: var(--s4); padding: var(--s6) 0; }
+.lg-leerlager .lg-leer { padding: 0; text-align: center; max-width: 46ch; }
+.lf-bild { gap: var(--s3); }

@@ -39,6 +39,9 @@ if __name__ == "__main__":
             pg.click("#lager")
             pg.wait_for_selector(".lg-zahlen")
             zahlen = lambda: [pg.inner_text(f".lg-zahl:nth-child({i}) b") for i in (1, 2, 3, 4)]
+            check("Leeres Lager: die Spule als Bild, der Hinweis und der Knopf „Spule anlegen“ darunter",
+                  pg.locator(".lg-leerlager .lg-spule img").count() == 1 and pg.eval_on_selector(".lg-leerlager .lg-spule img", "e => e.complete && e.naturalWidth > 100")
+                  and pg.locator(".lg-leerlager [data-lg-neu]").count() == 1)
             check("Der Knopf in der Leiste öffnet die Seite Lager: vier Kennzahlen, leer; Hinweis statt Karten",
                   zahlen() == ["0", "0 g", "0", "0"] and "Noch keine Spulen" in pg.inner_text("#lager-seite")
                   and pg.evaluate("document.querySelector('#raster').hidden") and pg.locator("#lager.aktiv").count() == 1)
@@ -58,6 +61,10 @@ if __name__ == "__main__":
             pg.wait_for_selector(".lg-karte")
             check("Hinzufügen: zwei Karten, das Seitenfenster ist zu, die neuen sind hervorgehoben",
                   pg.locator(".lg-karte").count() == 2 and pg.evaluate("document.querySelector('#lager-form').hidden") and pg.locator(".lg-karte.neu").count() == 2)
+            check("Auf jeder Karte steht die Spule als Bild, die Wicklung in der Farbe der Spule (#1a8a99 vom Hex-Feld)",
+                  pg.locator(".lg-karte .lg-spule").count() == 2
+                  and pg.eval_on_selector(".lg-karte .lg-spule", "e => getComputedStyle(e).getPropertyValue('--w').trim()") != ""
+                  and pg.eval_on_selector(".lg-karte .lg-spule i", "e => getComputedStyle(e).mixBlendMode") == "multiply")
             check("Kennzahlen: 2 Spulen, 2.000 g, 1 Lagerplatz, nichts niedrig", zahlen() == ["2", "2.000 g", "1", "0"])
             check("Karte: Material, Hersteller · Farbname, Lagerort, Status Vorrätig, 100 %, Durchmesser und Preis",
                   all(w in pg.inner_text(".lg-karte >> nth=0") for w in ("PETG", "Filamentwerk Süd · Petrol", "Regal B1", "VORRÄTIG", "100 %", "1,75 mm", "24,90")))
@@ -121,11 +128,11 @@ if __name__ == "__main__":
             pg.click(".lg-karte >> nth=0 >> [data-lg-bearbeiten]")
             pg.wait_for_selector("#lf-bilddatei", state="attached")
             pg.set_input_files("#lf-bilddatei", {"name": "spule.txt", "mimeType": "text/plain", "buffer": b"kein bild"})
-            check("Eine Textdatei als Bild: Hinweis unter dem Bildfeld, kein Bild gewählt", "Nur PNG, JPG oder WebP" in pg.inner_text("#lf-bildhinweis") and pg.locator("#lf-bild img").count() == 0)
+            check("Eine Textdatei als Bild: Hinweis unter dem Bildfeld, kein Bild gewählt", "Nur PNG, JPG oder WebP" in pg.inner_text("#lf-bildhinweis") and pg.locator('#lf-bild img[alt="Foto der Spule"]').count() == 0)
             pg.set_input_files("#lf-bilddatei", {"name": "gross.png", "mimeType": "image/png", "buffer": b"0" * (5 * 1024 * 1024 + 1)})
-            check("Über 5 MB: Hinweis, kein Bild gewählt", "5 MB" in pg.inner_text("#lf-bildhinweis") and pg.locator("#lf-bild img").count() == 0)
+            check("Über 5 MB: Hinweis, kein Bild gewählt", "5 MB" in pg.inner_text("#lf-bildhinweis") and pg.locator('#lf-bild img[alt="Foto der Spule"]').count() == 0)
             pg.set_input_files("#lf-bilddatei", {"name": "spule.png", "mimeType": "image/png", "buffer": png.getvalue()})
-            check("Ein PNG: Vorschau im Bildfeld, der Hinweis ist weg", pg.locator("#lf-bild img").count() == 1 and pg.evaluate("document.querySelector('#lf-bildhinweis').hidden"))
+            check("Ein PNG: Vorschau im Bildfeld, der Hinweis ist weg", pg.locator('#lf-bild img[alt="Foto der Spule"]').count() == 1 and pg.evaluate("document.querySelector('#lf-bildhinweis').hidden"))
             pg.click("[data-lg-speichern]")
             pg.wait_for_selector(".lg-karte .lg-bild")
             check("Gespeichert: die Karte zeigt das Foto statt des Kürzels", pg.locator(".lg-karte .lg-bild").count() == 1)

@@ -8,6 +8,7 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.4", ["Im Lager steht jetzt eine Spule vor jeder Karte — die Wicklung hat die Farbe der Spule, auch im leeren Lager und im Formular als Platzhalter."]),
     ("1.0.3", ["Neu: das Lager. Das Spulensymbol in der Leiste links öffnet deine Spulen — mit Rest, Preis und Lagerort, als Karten oder Liste, mit Suche und Filter. Spulen "
                "anlegen (auch mehrere gleiche), bearbeiten, nachkaufen und löschen.",
                "Ein viertes Farbschema zur Probe: „GNOME“ (Einstellungen › Ansicht), mit den Farben von GTK 4.",

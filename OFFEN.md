@@ -4,6 +4,11 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.4 auf `main` (25.10.2026, für den Tester)
+
+Neu: die **Spule im Lager** (Bild vor jeder Karte, Wicklung in der Farbe der Spule; auch im Formular und im leeren Lager). Handbuchbilder des Lagers neu. Rückweg: Zweig `fassung-1.0.3`.
+**Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).
+
 ## Stand: 1.0.3 auf `main` (25.10.2026, für den Tester)
 
 Neu: das **Lager** (Spulen: Karten und Liste, Suche, Filter, Formular, Nachkaufen, Löschen mit Rückgängig, Bild), **„Reicht das Filament?“** im Inspektor und als Punkt in der
@@ -26,6 +31,15 @@ Vierte Wahl unter Einstellungen › Ansicht: Palette von libadwaita (GTK 4) — 
 à la GTK 4“; die Formen (grössere Rundung, mehr Luft, Schalter statt Häkchen, flache Kopfleiste) gehören dazu, sind aber **nicht gebaut** und dienen später dazu,
 sich weiter vom 3MF Katalog zu lösen. Ein Bild dazu nur, wenn der Anwender es will (Aufwand 2–3 für Rundung und Abstände, `--radius` ist ein einziger Wert,
 ob alle Teile ihn nutzen, ist ungeprüft).
+
+## Spulenbild im Lager (25.10.2026, auf dem Branch, nicht auf `main`)
+
+Das KI-Bild des Anwenders (312 × 327 px, weisser Hintergrund) ist freigestellt (`web/spule.png`, 125 KB, Schatten als weicher Schwarzton) und hat eine Maske für die Wicklung
+(`web/spule-wicklung.png`, 17 KB). `lager.js` `lgSpule(farbe, breite)` legt den Farbwert per CSS über die Maske und multipliziert ihn mit dem Bild (`mix-blend-mode: multiply`); sehr
+dunkle Farben werden aufgehellt, ohne Farbe ein helles Grau. Eingebaut an Karte (50 px, statt des Kürzels), Bildfeld im Formular (64 px) und leerem Lager (150 px). Entscheidung
+des Anwenders: **Grösse so lassen**, bei Bedarf des Testers später grösser (60–64 px auf der Karte). Bekannt: schwarze Spule hebt sich auf dunklem Grund nur schwach ab; ein
+farbiger Pixelrand unten an der Wicklung. Die Skripte zum Freistellen liegen nicht im Repo (Scratchpad: `spule_png.py`); bei einer Änderung am Bild neu erzeugen.
+Auf `main` mit der nächsten Fassung (1.0.4), samt Eintrag unter „Neu in dieser Fassung“.
 
 ## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
 

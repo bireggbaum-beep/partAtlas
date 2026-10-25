@@ -11,7 +11,17 @@ const lgG = (x) => `${zahl(x, 1)} g`;
 const lgAnteil = (s) => (s.start_g ? Math.max(0, Math.min(1, s.rest_g / s.start_g)) : 0);
 const lgStatus = (s) => (s.rest_g <= 0 ? "leer" : lgAnteil(s) <= NIEDRIG_BIS ? "niedrig" : "vorraetig");
 const LG_STATUS = { vorraetig: "Vorrätig", niedrig: "Niedrig", leer: "Leer" };
-const lgKuerzel = (m) => esc(String(m || "").replace(/[^A-Za-z0-9+-]/g, "").slice(0, 4).toUpperCase());
+
+// Die Spule als Bild (spule.png, freigestellt) mit der Wicklung in der Farbe der Spule: über die Maske spule-wicklung.png liegt der Farbwert und wird mit dem
+// Bild multipliziert (CSS). Sehr dunkle Farben werden aufgehellt, damit Rillen und Form sichtbar bleiben; ohne Farbe ein helles Grau.
+function lgSpule(farbe, breite = 50) {
+  const m = /^#([0-9a-f]{6})$/i.exec(farbe || "");
+  const n = m ? parseInt(m[1], 16) : 0xd0d0d4;
+  const r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const hell = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  const ton = hell < 0.26 ? `rgb(${Math.round(70 + r * 0.2)}, ${Math.round(70 + g * 0.2)}, ${Math.round(76 + b * 0.2)})` : `#${(n | 0x1000000).toString(16).slice(1)}`;
+  return `<span class="lg-spule" style="--w:${ton};width:${breite}px" aria-hidden="true"><img src="/web/spule.png" alt=""><i></i></span>`;
+}
 
 function zeigeLager(an) {
   if (an) for (const s of ["#tagleiste", "#raster", "#listenkopf", "#stapel", "#pk-leiste", "#filterzeile", "#leer", "#pfad", "#aufraeumen", "#bg-ansicht"]) $(s).hidden = true;
@@ -43,7 +53,7 @@ function lgKennzahlen() {
 function lgKarte(s) {
   const st = lgStatus(s), name = [s.hersteller, s.farbname].filter(Boolean).join(" · ");
   return `<article class="lg-karte ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
-    <div class="lg-kopf">${s.bild ? `<img class="lg-bild" src="/api/spulen/${esc(s.id)}/bild?k=${esc(s.bild.k)}" alt="">` : `<span class="lg-kuerzel">${lgKuerzel(s.material)}</span>`}
+    <div class="lg-kopf">${s.bild ? `<img class="lg-bild" src="/api/spulen/${esc(s.id)}/bild?k=${esc(s.bild.k)}" alt="">` : lgSpule(s.farbe, 50)}
       <div><b>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span>` : ""}${esc(s.material)}</b><span class="dim">${esc(name) || "&nbsp;"}</span></div></div>
     <div class="lg-reihe">${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : "<span></span>"}<span class="lg-marke st-${st}">${LG_STATUS[st]}</span></div>
     <div class="lg-reihe"><span class="mono">${lgG(s.rest_g)}</span><span class="dim">${Math.round(lgAnteil(s) * 100)} %</span></div>
@@ -96,7 +106,8 @@ function zeichneLager() {
       <span class="lg-luecke"></span>
       <button type="button" class="knopf akzent" data-lg-neu>＋ Spule anlegen</button>
     </div>
-    ${leer ? `<p class="lg-leer">Noch keine Spulen. Lege deine Spulen an, dann weiss partAtlas, was du hast und was reicht.</p>`
+    ${leer ? `<div class="lg-leerlager">${lgSpule("", 150)}<p class="lg-leer">Noch keine Spulen. Lege deine Spulen an, dann weiss partAtlas, was du hast und was reicht.</p>
+        <button type="button" class="knopf akzent" data-lg-neu>＋ Spule anlegen</button></div>`
       : !liste.length ? `<p class="lg-leer">Keine Spulen für diese Auswahl.</p>`
       : lg.ansicht === "liste" ? lgTabelle(liste) : `<div class="lg-karten">${lgSortiert(liste).map(lgKarte).join("")}</div>`}`;
   if (merk) { const f = $("#lg-suche"); f.focus(); f.setSelectionRange(...merk); }
@@ -154,7 +165,7 @@ function lgBildFeld() {
   const f = lg.form;
   const url = f.datei ? f.vorschau : (f.bild && !f.bildWeg ? `/api/spulen/${f.id}/bild?k=${f.bild.k}` : "");
   return url ? `<img src="${esc(url)}" alt="Foto der Spule"><button type="button" class="knopf" data-lg-bildweg aria-label="Bild entfernen">✕</button>`
-    : `<span class="dim">Bild hierher ziehen oder klicken</span>`;
+    : `${lgSpule(f.farbe, 64)}<span class="dim">Bild hierher ziehen oder klicken</span>`;
 }
 
 function lgBildWaehlen(datei) {
