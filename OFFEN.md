@@ -4,6 +4,11 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.4 auf `main` (25.10.2026, für den Tester)
+
+Neu: die **Spule im Lager** (Bild vor jeder Karte, Wicklung in der Farbe der Spule; auch im Formular und im leeren Lager). Handbuchbilder des Lagers neu. Rückweg: Zweig `fassung-1.0.3`.
+**Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).
+
 ## Stand: 1.0.3 auf `main` (25.10.2026, für den Tester)
 
 Neu: das **Lager** (Spulen: Karten und Liste, Suche, Filter, Formular, Nachkaufen, Löschen mit Rückgängig, Bild), **„Reicht das Filament?“** im Inspektor und als Punkt in der
