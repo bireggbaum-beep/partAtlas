@@ -4,6 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.3 auf `main` (25.10.2026, für den Tester)
+
+Neu: das **Lager** (Spulen: Karten und Liste, Suche, Filter, Formular, Nachkaufen, Löschen mit Rückgängig, Bild), **„Reicht das Filament?“** im Inspektor und als Punkt in der
+Warteschlange (die im Programm weiter ausgeblendet ist), **Abbuchen** beim Anlegen eines Drucks, **Materialkosten**; Farbschema **GNOME** zur Wahl; Handbuch-Kapitel „Lager“.
+Rückweg: Zweig `fassung-1.0.2`. **Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).
+
 ## Stand: 1.0.2 auf `main` (25.10.2026, für den Tester)
 
 Neu: Farbschema **Filament** (Blaugrün, Vorgabe) mit **Messing** und **Blaupause** zur Probe (Einstellungen › Ansicht, gemerkt im Browser; später bleibt eines),
