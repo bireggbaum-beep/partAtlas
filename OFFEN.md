@@ -4,6 +4,25 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Filament, Drucker, G-Code nach dem 3MF Katalog (Anwender 25.10.2026) — nur Entwurf, nichts gebaut
+
+Drucker des Testers: Bambu A1 Mini, Anycubic Kobra 2 → **Moonraker entfällt** (Kobra 2 ohne Klipper, A1 Mini ist Bambu). Budget: nur Stücke mit Aufwand 1–2.
+Vorlage (gelesen in `Bexxs75/3mf-katalog-manager`, README): **Spule** = Material, Hersteller, Farbname, Farbwert (Palette oder Hex), Lagerort, Durchmesser,
+Startgewicht und Rest (0,1 g), Preis, optional Bild; mehrere gleiche Spulen auf einmal, „Nachkaufen“ (1–20 volle Spulen); Karten mit Bestandsbalken
+und sortierbare Liste mit Statusfiltern, Doppelklick öffnet das Formular; Autovervollständigung für Material/Hersteller/Ort. **Drucker** mit AMS/CFS/MMU/ACE,
+jeder Drucker hat einen Spulenhalter; Spule per Ziehen in ein Fach. **„Reicht das Filament?“** am 3MF: Bedarf gegen Spulen mit passendem Material und
+ähnlicher Farbe, drei Ausgänge (reicht / reicht nach Spulenwechsel / reicht nicht, mit fehlender Menge), nennt die passende Spule und ob sie geladen ist.
+Druckprotokoll getrennt vom Status, mehrere Versuche je Modell. Resin: eigener Schalter, nicht in der Prüfung.
+Stücke (Aufwand): 7 Druckdauer aus dem G-Code (1) · 1 Spulenliste (2) · 2 Spule am Druck wählen, Rest abziehen (2) · 3 „Reicht das Filament?“ am Modell (1) ·
+4 Filamentkosten (1–2) · 5 Drucker klein: Name, Düse, Bauraum (2) · 6 „Passt auf den Drucker?“ Masse gegen Bauraum (1). Erste Runde: 7 und 1–3; zweite: 5, 6.
+Bewusst nicht: Resin, AMS-Fächer, G-Code-Ordner mit Zuordnung (3), Druckeranbindung.
+
+## Zeichen, Farben, Titel (Anwender 25.10.2026)
+
+„Katalog“ aus dem Titel genommen (Kopfzeile zeigt nur PARTATLAS und die Fassung). Zeichen und Farbschema: Vorschlagsseite
+(Artefakt, drei Richtungen A Messing / B Blaupause / C Filament neben der heutigen, dazu drei Zeichen: Raster, Würfel, Atlas) — **Entscheidung des Anwenders offen**.
+Die heutigen Farben sind aus dem 3MF Katalog übernommen (Kopf von `app.css`).
+
 ## Desktop, Wende (23.10.2026): Einzeldatei mit Starter statt Tauri-Fenster (Tester auf Manjaro, Firefox)
 
 Rückmeldungen des Testers zum Tauri-Spike: das AppImage (mit mitgelieferter Webansicht) zeigte ein schwarzes Fenster und **hängte beim zweiten
