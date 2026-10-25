@@ -95,6 +95,7 @@ class Drucke:
         self.k = katalog
         self.db = katalog.db
         self._alte_haken_umziehen()
+        self._gcode_nachziehen()
 
     # ------------------------------------------------------------ Lesen
 
@@ -150,7 +151,9 @@ class Drucke:
             ref_werte = ({"druck": referenz, "gewicht_g": rd.get("gewicht_g"), "dauer_s": rd.get("dauer_s"),
                           "filament": rd.get("filament") or []} if rd else None)
             neu = {"drucke_n": sum(1 for d in drucke if d.get("ergebnis") in ZAEHLT),
-                   "gedruckt": any(d.get("ergebnis") == "gut" for d in drucke), "ref_werte": ref_werte}
+                   "gedruckt": any(d.get("ergebnis") == "gut" for d in drucke), "ref_werte": ref_werte,
+                   # Wie viele Drucke einen G-Code oder ein Projekt tragen: die Kachel zeigt „G-Code“, ohne bei jedem Modell nachzuschlagen.
+                   "gcode_n": sum(1 for i in self._ids_von(mid) if self.db.get_connected(ref(DRUCK, i), rel_type=AUSGEFUEHRT))}
             if any(m.get(k) != v for k, v in neu.items()):
                 self.db.update_node(MODELL, mid, neu)
 
@@ -369,6 +372,8 @@ class Drucke:
         with self.db.transaction():
             for kid, _ in self.db.get_connected_edges(ref(DRUCK, did), rel_type=AUSGEFUEHRT):
                 self.db.delete_edge(kid)
+        with self.db.transaction():                    # erst nach dem Lösen: sonst zählt nachziehen die Kante noch mit
+            self.nachziehen(self._modelle_von(did))
 
     def einstellungen(self, did):
         """{slicer, wichtig, alle} der Datei am Druck."""
@@ -394,6 +399,13 @@ class Drucke:
         return {"gleich": not diff, "unterschiede": diff}
 
     # ------------------------------------------------------------ Umzug
+
+    def _gcode_nachziehen(self):
+        """Bestände vor 1.0.5: Modelle mit Drucken bekommen `gcode_n`. Schreibt nur, wenn so ein Modell da ist."""
+        alt = [mid for mid, m in self.db.list_nodes(MODELL, readonly=True).items() if m.get("drucke_n") and m.get("gcode_n") is None]
+        if alt:
+            with self.db.transaction():
+                self.nachziehen(alt)
 
     def _alte_haken_umziehen(self):
         """Bestände vor 0.19: der Haken „gedruckt“ war ein Feld. Jeder wird zu

@@ -32,6 +32,15 @@ Vierte Wahl unter Einstellungen › Ansicht: Palette von libadwaita (GTK 4) — 
 sich weiter vom 3MF Katalog zu lösen. Ein Bild dazu nur, wenn der Anwender es will (Aufwand 2–3 für Rundung und Abstände, `--radius` ist ein einziger Wert,
 ob alle Teile ihn nutzen, ist ungeprüft).
 
+## G-Code-Zeichen und Schriftzug (25.10.2026, Wunsch des Testers; auf dem Branch, nicht auf `main`)
+
+Kachel (und Spalte „G-Code“ in der Liste, per Spaltenmenü wählbar): ein kleines Zeichen „G-Code“, wenn zum Modell **irgendwo** ein G-Code gehört — an einem Druck angehängt
+(Feld `gcode_n` am Modell, wie `drucke_n` in `Drucke.nachziehen` geführt, Umzug alter Bestände in `_gcode_nachziehen`) oder weil das 3MF schon geslict ist (Platten). Ohne
+Zahlen und Farben (Anwender: „sonst verwirrend“). Ein Klick wählt das Modell und öffnet Reiter Drucke bzw. Slicer. Suche `gcode:ja` / `gcode:nein`. Der Schriftzug oben heisst
+„partAtlas“ (Tester und Anwender: besser lesbar als „PARTATLAS“). test_drucke 42/42, test_gcode_ui 6/6, Gegenproben fallen. **Offen (Entscheidung Anwender):** die Überschneidung
+der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellungen je Druck): Vorschlag Slicer → „In der Datei“, Drucke = was passiert ist, dazu ein Knopf
+„Aus der Datei als Druck anlegen“ (Aufwand 1–2). Handbuchbilder zeigen noch „PARTATLAS“ — beim nächsten Push alle neu erzeugen (`python werkzeuge/handbuch_bilder.py`).
+
 ## Spulenbild im Lager (25.10.2026, auf dem Branch, nicht auf `main`)
 
 Das KI-Bild des Anwenders (312 × 327 px, weisser Hintergrund) ist freigestellt (`web/spule.png`, 125 KB, Schatten als weicher Schwarzton) und hat eine Maske für die Wicklung
