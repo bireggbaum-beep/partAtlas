@@ -4,6 +4,31 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
+
+**Nächstes sichtbares Update für den Tester (Fassung 1.0.2 → `main`)** — Stand: gebaut / offen
+- gebaut auf dem Branch: 3D-Ansicht zeichnet nur bei Bewegung, senkt bei Last die Auflösung (1.0.2); Titel ohne „Katalog“
+- offen: **Farbschema C Filament als Vorgabe, dazu A und B wählbar** (Einstellungen › Ansicht, für eine Probezeit; Aufwand 2) und **Atlas-Zeichen** in Kopf und Tab (1; später gegen das Zeichen mit den drei Scheiben tauschen); Handbuchbilder neu erzeugen
+- offen: **Druckdauer aus dem G-Code lesen** (1) · **„Vorschaubild berechnen“ behält das alte Bild, bis das neue da ist** (1)
+- vor dem Push: `neuigkeiten.py`, alle Suiten, test_ui komplett
+
+**Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): Spulenliste (2) → Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
+
+**Programm zum Anklicken (Tester auf Manjaro, Firefox, AppImage-Manager)** — Einzeldatei mit Starter ist gebaut (Action `einzeldatei.yml`), offen:
+Lebenszyklus (Beenden-Knopf mit Rückfrage bei laufender Arbeit, kein unsichtbarer Server; Systemmenü-Symbol als eigener Schritt, Aufwand 3–4; Fortsetzen nach Beenden prüfen) ·
+AppImage mit Starter, Menüeintrag, Symbol (2) · Aktualisierung über GitHub Releases (2) · Handbuch/README zum Start (1) · Windows-.exe und Installer (nicht prüfbar, bis ein Windows-Tester da ist) ·
+Tauri-Fenster liegt zurückgestellt auf dem Branch.
+
+**Entwickeln (Versionen, Varianten)** — Konzept offen, braucht den Tester (STORIES.md durchgehen, drei Fragen zum Ablauf der Walzen): „gilt“ und „ersetzt durch“ als kleinster Anfang (2); „Wo wird es verwendet?“ (2–3); Versionsverlauf je Modell (3–4)
+
+**Sichern** — Backup als ZIP und sicheres Wiederherstellen (4–5, ausgeblendet gebaut); Grösse des Bestands: Ordnergrössen vom Tester abwarten (`sicherungen`, `vault`, `datenbank`, `thumbs`, `netz`), dann entscheiden (weniger behalten oder harte Verweise, 2–3)
+
+**Formate** — STEP/FCStd ohne FreeCAD: Entscheidung Geometriekern, Spike mit 3–4 echten Dateien (3–4) · 7z/rar entpacken (fremde Pakete)
+
+**Wartet auf den Tester** — Windows: start.bat, Ordner mit offener Datei umbenennen, nur Gross-/Kleinschreibung · echte Dateien aus Bambu Studio und Anycubic Slicer Next · Dauer des Einlesens bei 5 793 Dateien (Protokollzeile) · Firefox/Einzeldatei ausprobieren
+
+**Später (Ideen, nur bei echtem Bedarf)** — G-Code-Vorschau, Messen/Schnitt, mehr Formate (IGES, AMF, PLY, glTF), Name/Markensuche, G-Code-Ordner mit Zuordnung (3)
+
 ## Filament, Drucker, G-Code nach dem 3MF Katalog (Anwender 25.10.2026) — nur Entwurf, nichts gebaut
 
 Drucker des Testers: Bambu A1 Mini, Anycubic Kobra 2 → **Moonraker entfällt** (Kobra 2 ohne Klipper, A1 Mini ist Bambu). Budget: nur Stücke mit Aufwand 1–2.
