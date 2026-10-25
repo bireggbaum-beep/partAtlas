@@ -113,11 +113,11 @@ Kopie: `PARTATLAS_QUELLE=/pfad/zur/kopie python tests/…`.
 
 ## Zurück auf eine frühere Fassung
 
-Jede Fassung, die auf `main` kam, lässt sich wieder holen. Der Stand vor 1.0.1 liegt im Zweig `fassung-1.0.0`, der vor 1.0 in `fassung-0.95.7`, der vor 0.95 in
+Jede Fassung, die auf `main` kam, lässt sich wieder holen. Der Stand vor 1.0.2 liegt im Zweig `fassung-1.0.1`, der vor 1.0.1 in `fassung-1.0.0`, der vor 1.0 in `fassung-0.95.7`, der vor 0.95 in
 `fassung-0.55.0`. partAtlas beenden (Strg+C im Fenster), dann im Ordner `partAtlas`:
 
 ```bash
-git fetch origin && git checkout fassung-1.0.0   # die alte Fassung
+git fetch origin && git checkout fassung-1.0.1   # die alte Fassung
 ./start.sh                                         # Windows: .venv\Scripts\python -m partatlas (start.bat gibt es dort noch nicht)
 git checkout main                                  # später wieder zur neuen
 ```

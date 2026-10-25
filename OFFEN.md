@@ -4,13 +4,21 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.2 auf `main` (25.10.2026, für den Tester)
+
+Neu: Farbschema **Filament** (Blaugrün, Vorgabe) mit **Messing** und **Blaupause** zur Probe (Einstellungen › Ansicht, gemerkt im Browser; später bleibt eines),
+Atlas-Zeichen vor dem Namen und im Tab, „Katalog“ aus dem Titel; 3D-Ansicht zeichnet nur bei Bewegung und senkt bei Last die Auflösung (test_viewer_ui 7/7);
+Cura-G-Code: Druckzeit wird gelesen (test_slicer 14/14); Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.1`.
+**Nicht auf `main`:** die Desktop-Arbeit (`desktop/`, `partatlas/starter.py`, Actions, Tauri-Fenster, Einzeldatei, Starter-Betrieb) liegt nur auf dem Branch
+`ccr-212cc51e-yf8m3p` — Anwender 25.10.2026: „keinerlei App-Aktivitäten“ in diesem Update. Die Aufgabenliste unten nennt, was erledigt ist (das alte Bild beim
+Berechnen war kein Fehler von partAtlas, sondern ein Verlust im gepackten Fenster-Programm).
+
 ## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
 
 **Nächstes sichtbares Update für den Tester (Fassung 1.0.2 → `main`)** — Stand: gebaut / offen
 - gebaut auf dem Branch: 3D-Ansicht zeichnet nur bei Bewegung, senkt bei Last die Auflösung (1.0.2); Titel ohne „Katalog“
-- offen: **Farbschema C Filament als Vorgabe, dazu A und B wählbar** (Einstellungen › Ansicht, für eine Probezeit; Aufwand 2) und **Atlas-Zeichen** in Kopf und Tab (1; später gegen das Zeichen mit den drei Scheiben tauschen); Handbuchbilder neu erzeugen
-- offen: **Druckdauer aus dem G-Code lesen** (1) · **„Vorschaubild berechnen“ behält das alte Bild, bis das neue da ist** (1)
-- vor dem Push: `neuigkeiten.py`, alle Suiten, test_ui komplett
+- **erledigt (1.0.2):** Farbschema C Filament als Vorgabe, A und B wählbar; Atlas-Zeichen in Kopf und Tab (später gegen das Zeichen mit den drei Scheiben tauschen); Handbuchbilder neu
+- **erledigt (1.0.2):** Druckzeit aus Cura-G-Code (Orca, Prusa, Bambu gingen schon); „Vorschaubild berechnen“ behält das alte Bild — war schon so, kein Fehler
 
 **Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): Spulenliste (2) → Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
 

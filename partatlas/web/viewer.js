@@ -146,6 +146,8 @@ export function zeige(behaelter, puffer, farbe, beiAbbruch = () => {}) {
   const einstellen = (f) => {
     faktor = f;
     renderer.setPixelRatio(basis * f);
+    // Die Trägheit klingt pro Bild ab: bei einem Bild pro Sekunde dauerte das Ausklingen Minuten. Wer langsam zeichnet, dreht ohne Trägheit.
+    steuerung.enableDamping = f >= 1;
   };
   const planen = () => {
     if (geplant || !aktiv) return;
