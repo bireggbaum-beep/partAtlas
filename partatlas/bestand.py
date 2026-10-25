@@ -39,6 +39,7 @@ PROFIL = "PRINT_PROFILE"         # die Einstellungen dazu, Kennung = Hash der no
 AUSGEFUEHRT = "EXECUTED_GCODE"   # Druck ─→ G-Code
 BASIERT_AUF = "BASED_ON_PROFILE" # G-Code ─→ Profil
 GESLICED_AUS = "SLICED_FROM"     # G-Code ─→ Datei (PART_GEOMETRY), deren Kopie im Vault liegt
+SPULE = "MATERIAL_SPOOL"         # eine Filamentspule im Lager (lager.py), KONZEPT §6
 SAMMLUNG = "COLLECTION"
 IN_SAMMLUNG = "IN_COLLECTION"
 # Texte ab so vielen Zeichen liegen als Datei in vault_text/ und werden erst

@@ -56,7 +56,9 @@ class Katalog:
         self._material_nachziehen()
         self._vault_nachziehen()
         from .drucke import Drucke
+        from .lager import Lager
         self.drucke = Drucke(self)
+        self.lager = Lager(self)
         from .anhaenge import Anhaenge
         self.anhaenge = Anhaenge(self)
 
@@ -340,6 +342,11 @@ class Katalog:
             raise KatalogFehler("FreeCAD-Dokumente liest partAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).")
         self.db.update_node(DATEI, h, {"cad": "ausstehend", "cad_fehler": None, "vorschau_wunsch": True})
         return "freecad"
+
+    def _reicht_von(self, d):
+        """„Reicht das Filament?“ für ein geslictes 3MF (Platten mit Mengen); sonst None. Siehe lager.py."""
+        bedarf = self.lager.bedarf_aus_platten((d or {}).get("platten"))
+        return self.lager.reicht(bedarf) if bedarf else None
 
     def vorschau_datei(self, h):
         """Bestes Vorschaubild als Pfad: aus der Datei vor berechnet."""
@@ -663,7 +670,7 @@ class Katalog:
             **kurz, "papierkorb": papierkorb, "orte": orte,
             "volumen_cm3": d.get("volumen_cm3"), "dreiecke": d.get("dreiecke"),
             "objekte": d.get("objekte"), "titel": d.get("titel"), "designer": d.get("designer"),
-            "platten": d.get("platten") or [], "fehler_text": d.get("fehler"), "cad_fehler": d.get("cad_fehler"),
+            "platten": d.get("platten") or [], "reicht": self._reicht_von(d), "fehler_text": d.get("fehler"), "cad_fehler": d.get("cad_fehler"),
             "quelle_url": m.get("quelle_url"), "eingelesen": d.get("eingelesen"),
             "papierkorb_ablage": d.get("papierkorb", []),
             "zuletzt": self._zuletzt_absolut(d.get("zuletzt_ort")) if kurz["fehlt"] else None,
@@ -1417,6 +1424,18 @@ class Katalog:
 
     def warteschlange(self):
         return self.modelle(ansicht="warteschlange")
+
+    def warteschlange_mit_reicht(self):
+        """Die Warteschlange, dazu je Modell, ob das Filament reicht — von oben nach unten mit dem gemeinsamen Bedarf: eine Spule, die für
+        das erste Modell vorgesehen ist, steht dem zweiten nicht mehr zur Verfügung. Nichts wird abgebucht (3MF Katalog)."""
+        frei = {x["id"]: x["rest_g"] for x in self.lager.liste()}
+        aus = self.warteschlange()
+        for x in aus:
+            h = self.datei_von(x["id"])
+            d = self.db.get_node(ref(DATEI, h), readonly=True) if h else None
+            bedarf = self.lager.bedarf_aus_platten((d or {}).get("platten"))
+            x["reicht"] = self.lager.reicht(bedarf, frei)["status"] if bedarf else None
+        return aus
 
     def in_warteschlange(self, mid):
         m = self.db.get_node(ref(MODELL, mid), readonly=True)

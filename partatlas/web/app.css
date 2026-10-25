@@ -1,7 +1,7 @@
 /* Masse und Schriften aus dem 3MF Katalog Manager (src/styles/theme.css, MIT, © 2026 Bexxs75) — die Oberfläche soll dem Anwender vertraut
    sein. Schriften: Barlow / IBM Plex Mono, wenn installiert; sonst Systemschrift.
-   Farben sind eigene Schemata (25.10.2026, Probezeit): C Filament ist die Vorgabe und steht in den ersten beiden Blöcken, A Messing und
-   B Blaupause überschreiben sie über `data-farbe` am Seitenanfang (Einstellungen › Ansicht, gemerkt in diesem Browser). Hell/Dunkel bleibt
+   Farben sind eigene Schemata (25.10.2026, Probezeit): C Filament ist die Vorgabe und steht in den ersten beiden Blöcken, A Messing, B Blaupause und
+   D GNOME überschreiben sie über `data-farbe` am Seitenanfang (Einstellungen › Ansicht, gemerkt in diesem Browser). Hell/Dunkel bleibt
    `data-app`. Schrift auf Akzent und Akzent als Schrift erreichen überall mindestens 4,5 : 1. Gewählt wird später eines; die anderen entfallen. */
 
 [data-app] {
@@ -51,6 +51,25 @@
   --ink: oklch(0.95 0.01 250); --ink-2: oklch(0.82 0.03 255); --ink-3: oklch(0.74 0.035 255);
   --accent: oklch(0.79 0.12 215); --accent-ink: oklch(0.2 0.05 240); --accent-soft: oklch(0.33 0.06 235);
   --plate: oklch(0.215 0.048 262); --plate-2: oklch(0.26 0.05 262);
+}
+/* D GNOME: Palette von libadwaita (GTK 4) — weiches Graphit und fast Weiss, Akzent GNOME-Blau. Nur die Farben; die Formen bleiben. */
+[data-farbe="d"][data-app] {
+  --bg: #fafafb; --panel: #ffffff; --panel-2: #f6f5f4;
+  --line: #deddda; --line-strong: #c0bfbc;
+  --ink: #2d2d33; --ink-2: #504e55; --ink-3: #6a6870;
+  --accent: #1b6bcf; --accent-ink: #ffffff; --accent-soft: #eaf1fc;
+  --plate: #ebebeb; --plate-2: #f1f1f1;
+  --good: #1a7a4f; --warn: #9a6a00; --crit: #c01c28;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+[data-farbe="d"][data-app="dark"] {
+  --bg: #242424; --panel: #303030; --panel-2: #383838;
+  --line: #454545; --line-strong: #5e5c64;
+  --ink: #ffffff; --ink-2: #deddda; --ink-3: #a6a5a2;
+  --accent: #78aeed; --accent-ink: #1a1a1a; --accent-soft: #2f3f57;
+  --plate: #1e1e1e; --plate-2: #2a2a2a;
+  --good: #57d68d; --warn: #f5c211; --crit: #ff7b63;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 :root {
   /* Maßsystem — siehe KONZEPT „Gestaltungsregeln“. Alle Abstände und Masse kommen aus der Fibonacci-Reihe;
@@ -1288,3 +1307,95 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .neu li { margin: 3px 0; }
 .waehler .w-weg { padding: 0; background: none; border: 0; color: var(--ink-3); font: inherit; text-decoration: underline; cursor: pointer; }
 .waehler .w-weg:hover { color: var(--danger, #c0392b); }
+
+/* Lager (lager.js): die Seite, ihre Karten und das Formular als Seitenfenster */
+.lager-seite { flex: 1; overflow-y: auto; padding: 14px 18px 60px; display: flex; flex-direction: column; gap: var(--s4); }
+.lg-titel { margin: 0; font-size: 16px; }
+.lg-zahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s4); }
+.lg-zahl { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s3) var(--s4); display: flex; flex-direction: column; gap: 2px; }
+.lg-zahl span { font: var(--fs-label) var(--mono); letter-spacing: 0.08em; color: var(--ink-3); text-transform: uppercase; }
+.lg-zahl b { font-size: 24px; }
+.lg-zahl.warn b { color: var(--warn); }
+.lg-leiste { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.lg-leiste input[type="search"] { flex: 1 1 260px; max-width: 420px; }
+.lg-leiste .knopf.aktiv { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.lg-luecke { flex: 1; }
+.lg-leer { color: var(--ink-3); padding: var(--s5) 0; }
+.lg-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s4); }
+.lg-karte { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
+.lg-karte.abgelegt, tr.abgelegt { opacity: 0.6; }
+.lg-karte.neu, tr.neu { outline: 2px solid var(--good); outline-offset: -2px; }
+.lg-kopf { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.lg-kopf > div { display: flex; flex-direction: column; min-width: 0; }
+.lg-kopf .dim { font-size: var(--fs-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-kuerzel { flex: none; min-width: 38px; text-align: center; font: 500 11px var(--mono); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 4px; color: var(--ink-2); background: var(--panel-2); }
+.farbpunkt { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 0 1px var(--line-strong); vertical-align: baseline; }
+.lg-reihe { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); }
+.lg-klein { font-size: var(--fs-meta); border-top: 1px solid var(--line); padding-top: var(--s3); }
+.lg-ort { font: var(--fs-label) var(--mono); border: 1px solid var(--line); border-radius: var(--radius); padding: 1px 7px; background: var(--panel-2); }
+.lg-marke { font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; border-radius: 99px; padding: 2px 9px; }
+.lg-marke.st-vorraetig { background: color-mix(in oklch, var(--good) 18%, transparent); color: var(--good); }
+.lg-marke.st-niedrig { background: color-mix(in oklch, var(--warn) 20%, transparent); color: var(--warn); }
+.lg-marke.st-leer { background: color-mix(in oklch, var(--crit) 18%, transparent); color: var(--crit); }
+.lg-balken { height: 6px; border-radius: 99px; background: var(--plate); overflow: hidden; }
+.lg-balken i { display: block; height: 100%; background: var(--good); border-radius: 99px; }
+.lg-balken.st-niedrig i { background: var(--warn); } .lg-balken.st-leer i { background: var(--crit); }
+.lg-aktionen { display: flex; justify-content: space-between; align-items: center; }
+.lg-aktionen .knopf-text, .lg-tab-akt .knopf-text { text-decoration: none; font-size: 13px; padding: 2px 5px; }
+.lg-tabelle { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.lg-tabelle th { text-align: left; font: var(--fs-label) var(--mono); letter-spacing: 0.08em; color: var(--ink-3); text-transform: uppercase; border-bottom: 1px solid var(--line); padding: 0; }
+.lg-tabelle th button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; padding: var(--s3) var(--s4); }
+.lg-tabelle td { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); vertical-align: middle; }
+.lg-tabelle tr:last-child td { border-bottom: 0; }
+.lg-tabelle .lg-balken { width: 120px; margin-top: 3px; }
+.lg-tab-akt { white-space: nowrap; text-align: right; }
+
+.lager-form { position: fixed; top: 44px; right: 0; bottom: 0; width: min(377px, 100vw); z-index: 30; background: var(--panel); border-left: 1px solid var(--line-strong);
+              box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.lager-form header { display: flex; justify-content: space-between; align-items: center; padding: var(--s4) var(--s5); border-bottom: 1px solid var(--line); }
+.lager-form h3 { margin: 0; font-size: 15px; }
+.lf-koerper { flex: 1; overflow-y: auto; padding: var(--s4) var(--s5); display: flex; flex-direction: column; gap: var(--s3); }
+.lf-koerper label, .lf-farbe, .lf-anzahl { display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-meta); color: var(--ink-2); }
+.lf-koerper input { width: 100%; }
+.lf-zwei { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.lf-hex { display: flex; gap: var(--s3); align-items: center; margin-top: var(--s3); }
+.lf-hex input[type="color"] { width: 36px; height: 30px; padding: 0; flex: none; }
+.lf-hex input[type="text"], .lf-hex input:not([type]) { width: 110px; }
+.lf-anzahl > div { display: flex; gap: var(--s3); }
+.lf-anzahl input { text-align: center; }
+.lf-prozent { font-size: var(--fs-meta); color: var(--good); }
+.lager-form footer { padding: var(--s4) var(--s5); border-top: 1px solid var(--line); }
+.lager-form footer .knopf { width: 100%; justify-content: center; padding: 8px; }
+.lg-nachkauf { display: grid; gap: var(--s3); min-width: 280px; }
+.lg-nachkauf label { display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-meta); color: var(--ink-2); }
+
+.lg-leiste input[type="search"] { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; }
+.lg-tabelle td { white-space: nowrap; }
+body.im-lager #inspektor > * { visibility: hidden; }
+
+/* Reicht das Filament? (Inspektor) und das Symbol in der Warteschlange */
+.rf .rf-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); padding: var(--s3) 0; }
+.rf .rf-zeile + .rf-zeile { border-top: 1px solid var(--line); }
+.rf-detail { flex-basis: 100%; font-size: var(--fs-meta); }
+.rf-marke { font: 500 11px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; border-radius: 99px; padding: 1px 8px; }
+.rf-marke.reicht { background: color-mix(in oklch, var(--good) 18%, transparent); color: var(--good); }
+.rf-marke.wechsel { background: color-mix(in oklch, var(--warn) 20%, transparent); color: var(--warn); }
+.rf-marke.reicht_nicht { background: color-mix(in oklch, var(--crit) 18%, transparent); color: var(--crit); }
+.rf-marke.unklar { background: var(--plate); color: var(--ink-3); }
+.rf-fuss { padding-top: var(--s3); border-top: 1px solid var(--line); font-size: var(--fs-meta); }
+.ws-reicht { width: 9px; height: 9px; border-radius: 50%; flex: none; margin: 0 var(--s2); background: var(--ink-3); }
+.ws-reicht.reicht { background: var(--good); } .ws-reicht.wechsel { background: var(--warn); } .ws-reicht.reicht_nicht { background: var(--crit); }
+
+.lg-bild { flex: none; width: 38px; height: 38px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line-strong); }
+.lf-bild { position: relative; display: grid; place-items: center; min-height: 92px; border: 1px dashed var(--line-strong); border-radius: var(--radius); cursor: pointer; padding: var(--s3); }
+.lf-bild:hover, .lf-bild:focus-visible { border-color: var(--accent); outline: none; }
+.lf-bild img { max-width: 100%; max-height: 140px; border-radius: var(--radius); }
+.lf-bild .knopf { position: absolute; top: 6px; right: 6px; }
+.lf-bildhinweis { margin: 0; color: var(--crit); font-size: var(--fs-meta); }
+.rf-kosten { padding: var(--s3) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); }
+.d-abbuchen { display: flex; flex-direction: column; gap: 3px; }
+.d-abbuchen select { width: 100%; }
+.d-abbuchen p { margin: 0; min-height: 1.2em; }
+.lager-form input:not([type="color"]):not([type="file"]), .lager-form select, .lg-nachkauf input, .d-abbuchen select {
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 8px; font: inherit; }
+.lager-form input:focus-visible, .lager-form select:focus-visible, .lg-nachkauf input:focus-visible, .d-abbuchen select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

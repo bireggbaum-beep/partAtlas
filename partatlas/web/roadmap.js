@@ -7,6 +7,7 @@ const ROADMAP = [
     ["Ordnen wie im Dateimanager", "Ordner anlegen, umbenennen, verschieben; Modelle umbenennen direkt am Namen; Rückgängig mit Strg+Z."],
     ["Baugruppen", "Stückliste mit Mengen und Kaufteilen, Notizen und Anhänge, Filament und Druckzeit über alle Ebenen, als PDF."],
     ["Drucke festhalten", "Wann, womit, wie es wurde — mit Foto und G-Code. Einstellungen in Worten, zwei Drucke im Vergleich."],
+    ["Filament-Lager", "Spulen erfassen, nachkaufen, beim Druck abziehen, Kosten — und vorher wissen: reicht das Filament?"],
     ["Aufräumen ohne Risiko", "Fehlende und doppelte Dateien, Archiv, Papierkorb, automatische Sicherungen — partAtlas löscht in deinen Ordnern nichts."],
   ]],
   ["Als Nächstes", "naechst", [
@@ -15,7 +16,6 @@ const ROADMAP = [
     ["Warteschlange", "Was als Nächstes gedruckt wird, in einer Reihenfolge, die du ziehen kannst. Gebaut, aber noch ausgeblendet."],
   ]],
   ["Später", "spaeter", [
-    ["Filament-Lager", "Spulen und Fächer erfassen, abbuchen, Kosten je Druck — und vorher wissen: reicht das Filament?"],
     ["Drucker anbinden", "Moonraker, PrusaLink und Bambu im Heimnetz; Temperatur- und Verlaufskurven am Druck."],
     ["Mehrere Drucker", "Prüfen, welcher Drucker passt, eine gemeinsame Warteschlange, STL mit deinen Referenzeinstellungen slicen."],
     ["Zugriff aus dem Heimnetz", "Mit Passwort, damit auch Tablet und Handy mitmachen. Bis dahin bleibt partAtlas bewusst nur auf diesem Rechner."],

@@ -664,7 +664,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.get("/api/warteschlange")
     @am_stueck
     def warteschlange():
-        return K().warteschlange()
+        return K().warteschlange_mit_reicht()
 
     @app.post("/api/warteschlange")
     def warteschlange_dazu(koerper: dict = Depends(json_koerper)):
@@ -776,6 +776,54 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def druck_weg(did: str):
         K().drucke.loeschen(did)
         return {"ok": True}
+
+    # ---------------------------------------------------------------- Filamentlager (lager.py)
+
+    @app.get("/api/spulen")
+    def spulen():
+        e = zustand["bestand"].einstellungen()
+        return {"spulen": K().lager.liste(), "materialien": K().materialien(), "rolle_g": e.get("rolle_g") or 1000}
+
+    @app.get("/api/spulen/passend")
+    def spule_passend(typ: str = "", farbe: str = "", g: float = 0):
+        """Die Spule, die zu Material, Farbe und Verbrauch passt (Vorbelegung beim Abbuchen), oder null."""
+        return {"spule": K().lager.vorschlag(typ, farbe or None, g or None)}
+
+    @app.post("/api/spulen")
+    def spule_neu(d: dict = Depends(json_koerper)):
+        return {"ids": K().lager.anlegen(d.get("felder"), d.get("anzahl", 1))}
+
+    @app.post("/api/spulen/{sid}/nachkaufen")
+    def spule_nachkaufen(sid: str, d: dict = Depends(json_koerper)):
+        return {"ids": K().lager.nachkaufen(sid, d.get("anzahl", 1), d.get("felder"))}
+
+    @app.patch("/api/spulen/{sid}")
+    def spule_aendern(sid: str, koerper: dict = Depends(json_koerper)):
+        K().lager.aendern(sid, koerper)
+        return {"ok": True}
+
+    @app.delete("/api/spulen/{sid}")
+    def spule_weg(sid: str):
+        K().lager.loeschen(sid)
+        return {"ok": True}
+
+    @app.post("/api/spulen/{sid}/zurueck")
+    def spule_zurueck(sid: str):
+        K().lager.wiederherstellen(sid)
+        return {"ok": True}
+
+    @app.post("/api/spulen/{sid}/bild")
+    def spule_bild_dazu(sid: str, roh: bytes = Depends(roh_koerper)):
+        return {"k": K().lager.bild_setzen(sid, roh)}
+
+    @app.delete("/api/spulen/{sid}/bild")
+    def spule_bild_weg(sid: str):
+        K().lager.bild_entfernen(sid)
+        return {"ok": True}
+
+    @app.get("/api/spulen/{sid}/bild")
+    def spule_bild(sid: str):
+        return _bild_antwort(K().lager.bild_pfad(sid))
 
     @app.post("/api/drucke/{did}/referenz")
     def druck_referenz(did: str, d: dict = Depends(json_koerper)):

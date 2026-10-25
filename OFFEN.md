@@ -4,6 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.3 auf `main` (25.10.2026, für den Tester)
+
+Neu: das **Lager** (Spulen: Karten und Liste, Suche, Filter, Formular, Nachkaufen, Löschen mit Rückgängig, Bild), **„Reicht das Filament?“** im Inspektor und als Punkt in der
+Warteschlange (die im Programm weiter ausgeblendet ist), **Abbuchen** beim Anlegen eines Drucks, **Materialkosten**; Farbschema **GNOME** zur Wahl; Handbuch-Kapitel „Lager“.
+Rückweg: Zweig `fassung-1.0.2`. **Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).
+
 ## Stand: 1.0.2 auf `main` (25.10.2026, für den Tester)
 
 Neu: Farbschema **Filament** (Blaugrün, Vorgabe) mit **Messing** und **Blaupause** zur Probe (Einstellungen › Ansicht, gemerkt im Browser; später bleibt eines),
@@ -13,6 +19,14 @@ Cura-G-Code: Druckzeit wird gelesen (test_slicer 14/14); Handbuchbilder neu. Rü
 `ccr-212cc51e-yf8m3p` — Anwender 25.10.2026: „keinerlei App-Aktivitäten“ in diesem Update. Die Aufgabenliste unten nennt, was erledigt ist (das alte Bild beim
 Berechnen war kein Fehler von partAtlas, sondern ein Verlust im gepackten Fenster-Programm).
 
+## Schema D „GNOME“ (25.10.2026, nur auf dem Branch, kommt mit dem nächsten Update)
+
+Vierte Wahl unter Einstellungen › Ansicht: Palette von libadwaita (GTK 4) — fast Weiss `#fafafb` / Graphit `#242424`, Akzent GNOME-Blau
+(`#1b6bcf` hell, `#78aeed` dunkel). **Nur Farben**, Lesbarkeit gerechnet (Schrift und Akzent mindestens 4,5 : 1). Der Anwender meinte „ganz modernes UI-Design
+à la GTK 4“; die Formen (grössere Rundung, mehr Luft, Schalter statt Häkchen, flache Kopfleiste) gehören dazu, sind aber **nicht gebaut** und dienen später dazu,
+sich weiter vom 3MF Katalog zu lösen. Ein Bild dazu nur, wenn der Anwender es will (Aufwand 2–3 für Rundung und Abstände, `--radius` ist ein einziger Wert,
+ob alle Teile ihn nutzen, ist ungeprüft).
+
 ## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
 
 **Nächstes sichtbares Update für den Tester (Fassung 1.0.2 → `main`)** — Stand: gebaut / offen
@@ -20,7 +34,7 @@ Berechnen war kein Fehler von partAtlas, sondern ein Verlust im gepackten Fenste
 - **erledigt (1.0.2):** Farbschema C Filament als Vorgabe, A und B wählbar; Atlas-Zeichen in Kopf und Tab (später gegen das Zeichen mit den drei Scheiben tauschen); Handbuchbilder neu
 - **erledigt (1.0.2):** Druckzeit aus Cura-G-Code (Orca, Prusa, Bambu gingen schon); „Vorschaubild berechnen“ behält das alte Bild — war schon so, kein Fehler
 
-**Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): Spulenliste (2) → Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
+**Filament und Drucker nach dem 3MF Katalog** (Abschnitt unten): **Etappe 1 gebaut (Branch, 25.10.):** die **Seite „Lager“** (Rail-Knopf, wie Aufräumen eine eigene Ansicht): Kennzahlen, Suche, Filter Niedrig/Leer/Abgelegt, Dashboard und sortierbare Liste, Doppelklick bearbeitet, Formular als Seitenfenster (Farbwert Palette + Hex + Farbwähler, Anzahl −/+, Balken), **Nachkaufen**, Ablegen statt Löschen mit Rückgängig, neue Einträge kurz grün umrandet. `lager.py`, `lager.js`; test_lager 14/14, test_lager_ui 16/16, Gegenproben fallen. **Dazu gebaut (25.10.):** Spulen werden **gelöscht** (mit Rückgängig, nicht abgelegt — Anwender), **Bild an der Spule** (PNG/JPG/WebP ≤ 5 MB, mit „Speichern“ übernommen, Nachkaufen teilt es), **„Reicht das Filament?“** im Inspektor (3MF mit Platten; gleiches Material, ähnliche Farbe; reicht / mit Spulenwechsel / reicht nicht mit fehlender Menge / unklar; Spule und Ort genannt) und als **Punkt in der Warteschlange** (von oben nach unten mit gemeinsamem Bedarf, eine Spule zählt nicht doppelt). test_lager 28/28, test_lager_ui 25/25, Gegenproben fallen. **Beobachtet:** die Warteschlange ist im Programm ausgeblendet (`data-ab-phase=2`, nur mit `?phase=2`) — so vorgefunden; ob sie sichtbar werden soll, entscheidet der Anwender. **Auch gebaut:** Abbuchen beim Anlegen eines Drucks (Spule wird nach Material, Farbe und Verbrauch vorgeschlagen, abgezogen nur nach Wahl, nie unter 0; der Druck merkt sich Spule, Menge, Kosten; keine automatische Rückbuchung beim Löschen) und Materialkosten (Gewicht × Preis je g der zugeteilten Spule, am Modell im Block „Reicht das Filament?“, am Druck als Chip). test_lager 35/35, test_lager_ui 28/28. **Entschieden (Anwender 25.10.):** keine Drucker/Fächer — der Tester hat einen Anycubic mit selbstgebautem Abroller (4 Spulen) und wechselt von Hand; der einfache Weg „eine Spule am Halter“ gilt auch für die A1 Mini. Fächer nur, wenn er sie vermisst. **Parität (ohne Resin, Druckervielfalt, Anbindung) damit erreicht.** Offen bis `main`: Handbuch-Kapitel, „Neu in dieser Fassung“, Warteschlange sichtbar machen? (Entscheidung Anwender). Anwender 25.10.: **kein Resin**, **keine Drucker-Vielfalt** (Vorlagen, Anbindung). Noch nicht auf `main`; kommt mit Handbuch und Neuigkeiten. Weiter:  Spule am Druck, Rest abziehen (2) → „Reicht das Filament?“ (1) → Kosten (1–2); Drucker klein (2) → „Passt auf den Drucker?“ (1)
 
 **Programm zum Anklicken (Tester auf Manjaro, Firefox, AppImage-Manager)** — Einzeldatei mit Starter ist gebaut (Action `einzeldatei.yml`), offen:
 Lebenszyklus (Beenden-Knopf mit Rückfrage bei laufender Arbeit, kein unsichtbarer Server; Systemmenü-Symbol als eigener Schritt, Aufwand 3–4; Fortsetzen nach Beenden prüfen) ·
@@ -36,6 +50,28 @@ Tauri-Fenster liegt zurückgestellt auf dem Branch.
 **Wartet auf den Tester** — Windows: start.bat, Ordner mit offener Datei umbenennen, nur Gross-/Kleinschreibung · echte Dateien aus Bambu Studio und Anycubic Slicer Next · Dauer des Einlesens bei 5 793 Dateien (Protokollzeile) · Firefox/Einzeldatei ausprobieren
 
 **Später (Ideen, nur bei echtem Bedarf)** — G-Code-Vorschau, Messen/Schnitt, mehr Formate (IGES, AMF, PLY, glTF), Name/Markensuche, G-Code-Ordner mit Zuordnung (3)
+
+## Parität Material Manager (3MF Katalog, gelesen 25.10.2026 in `docs/benutzerhandbuch/BENUTZERHANDBUCH.md` und den Bildern 08, 09, 10, 22, 25, 26, 27, 12, 24)
+
+Anwender: **in der ersten Iteration funktionale Parität**. Meine erste Spulenliste (Fenster, lager.js) ist nur ein Teil davon und wird zur Seite umgebaut.
+Der Material Manager ist eine **eigene Seite** (zweites Symbol links), nicht ein Fenster: oben Schalter Filament | Resin; vier Kennzahlen (Spulen gesamt,
+Restbestand gesamt, belegte Lagerplätze, niedrig/leer); Suchfeld (Material, Hersteller, Lagerort), Filter „Niedrig“ und „Leer“, Umschalter Dashboard | Liste,
+Knopf „＋ Spule anlegen“. **Dashboard:** Karte je Spule mit Material-Kürzel, Farbpunkt, Hersteller · Farbname, Lagerort-Marke, Status (VORRÄTIG grün /
+NIEDRIG orange / LEER rot), Rest in g mit Balken und Prozent, Durchmesser, Preis, „＋ Nachkaufen“, Stift, ✕. **Liste:** sortierbare Spalten Material,
+Hersteller, Farbe, Lagerort, ⌀, Bestand (Balken), Preis, Status. Doppelklick auf Karte/Zeile = Bearbeiten. **Formular** als Seitenfenster rechts: Bild (ziehen
+oder klicken, PNG/JPG/WebP ≤ 5 MB), Material, Hersteller, Farbname (Autovorschläge), Farbwert (Palette mit 16 Feldern + Hex-Feld), Anzahl Spulen mit −/+,
+Lagerort, Durchmesser, Preis, Ursprungsgewicht, Restgewicht mit Balken und Prozent; Gewichte auf 0,1 g. **Nachkaufen:** kleines Fenster, Anzahl 1–20, Menge/Preis/
+Ort anpassbar, übernimmt Art, Material, Hersteller, Farbe, Farbwert, Bild, Durchmesser; neue Einträge kurz grün umrandet. **Resin:** eigene Ansicht (Flaschen, ml,
+„− Verbrauch“, nie unter 0, kein Durchmesser), zählt nicht bei „Reicht das Filament?“ und den Kosten. **Drucker** (rechte Spalte, Printer Manager): Drucker
+Filament oder Resin (danach fest), Name, Hersteller, Modell, Düse, Bauraum X×Y×Z; **Einheiten** aus Vorlagen (Bambu AMS / AMS lite / AMS HT, Creality CFS, Prusa MMU3,
+Anycubic ACE Pro, Spulenhalter) oder eigene mit Fachzahl; jeder Filament-Drucker hat einen Spulenhalter; Spule **auf ein Fach ziehen** oder Fach anklicken und wählen,
+„Herausnehmen“ bringt sie an den **Stammplatz** zurück; Resin-Drucker haben eine Harzwanne. **Reicht das Filament?** (Detailseite, für gesliceste 3MF, über alle Platten):
+je Filament **reicht / reicht mit Spulenwechsel / reicht nicht (mit fehlender Menge) / unklar**, nennt die Spule mit Rest und wo sie steckt; die **Warteschlange**
+zeigt dasselbe als Symbol und rechnet von oben nach unten mit dem gemeinsamen Bedarf; nichts wird dabei abgebucht. **Abbuchen:** nur nach Bestätigung im Dialog „Neue
+Drucke“ (Verbrauch in g, vorgeschlagene Spule = die im Drucker eingelegte, vorgeschlagenes Modell über den Dateinamen); mit Modell entsteht ein Druckprotokoll-Eintrag.
+Materialkosten je Modell aus Gewicht × Preis. **Moonraker** (Druckerverlauf lesen) entfällt für die Drucker des Testers (A1 Mini, Kobra 2).
+Stücke (Aufwand): Seite mit Kennzahlen, Filtern, Dashboard/Liste, Formular, Nachkaufen (4–5) · Bild an der Spule (1) · Drucker mit Einheiten und Fächern, einlegen/herausnehmen (4) ·
+Reicht das Filament? mit Warteschlange (3) · Abbuchen mit Bestätigung und Druckeintrag (2–3) · Materialkosten (1) · Resin (2).
 
 ## Filament, Drucker, G-Code nach dem 3MF Katalog (Anwender 25.10.2026) — nur Entwurf, nichts gebaut
 

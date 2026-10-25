@@ -8,6 +8,11 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.3", ["Neu: das Lager. Das Spulensymbol in der Leiste links öffnet deine Spulen — mit Rest, Preis und Lagerort, als Karten oder Liste, mit Suche und Filter. Spulen "
+               "anlegen (auch mehrere gleiche), bearbeiten, nachkaufen und löschen.",
+               "Ein viertes Farbschema zur Probe: „GNOME“ (Einstellungen › Ansicht), mit den Farben von GTK 4.",
+               "„Reicht das Filament?“ im Inspektor eines geslicten 3MF: je Filament, ob eine Spule reicht, mit der Spule und dem Lagerort — oder was fehlt. "
+               "Beim Anlegen eines Drucks lässt sich der Verbrauch von einer Spule abziehen; die Materialkosten stehen im Inspektor und am Druck."]),
     ("1.0.2", ["Neue Farben und ein Zeichen: Das Atlas-Zeichen steht vor dem Namen, „Katalog“ ist aus dem Titel. Das Schema „Filament“ (Blaugrün) ist "
                "die Vorgabe; unter Einstellungen › Ansicht lassen sich zur Probe „Messing“ und „Blaupause“ wählen, hell und dunkel wie gewohnt.",
                "3D-Ansicht: Sie zeichnet nur noch, wenn sich etwas bewegt — eine ruhende Ansicht kostet den Rechner nichts mehr. Fällt einem "

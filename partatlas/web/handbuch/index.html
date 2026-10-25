@@ -128,6 +128,7 @@ figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; 
     <a href="#inspektor">Der Inspektor</a>
     <a href="#drucke">Drucke</a>
     <a href="#baugruppen">Baugruppen</a>
+    <a href="#lager">Lager (Filament)</a>
   </div>
   <div class="navgroup"><h6>Pflege</h6>
     <a href="#ordner">Ordner</a>
@@ -338,6 +339,42 @@ figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; 
   </ul>
 </section>
 
+<section id="lager">
+  <h2>Lager (Filament)</h2>
+  <p>Das <b>Lager</b> hält fest, welche Spulen du hast und wie viel auf jeder noch drauf ist. Du öffnest es mit dem Spulensymbol in der Leiste links.
+  Daraus beantwortet partAtlas „Reicht das Filament?“ für ein Projekt und zieht beim Anlegen eines Drucks den Verbrauch ab.</p>
+  <figure class="bild"><img class="hell" src="bilder/lager-hell.webp" alt="Das Lager: Kennzahlen, Suche, Filter und die Spulen als Karten." width="1440" height="860" loading="lazy"><img class="dunkel" src="bilder/lager-dunkel.webp" alt="Das Lager: Kennzahlen, Suche, Filter und die Spulen als Karten." width="1440" height="860" loading="lazy"><figcaption>Das Lager: Kennzahlen, Suche, Filter und die Spulen als Karten.</figcaption></figure>
+  <ul>
+    <li><b>Kennzahlen:</b> Spulen gesamt, Restbestand gesamt, belegte Lagerplätze und wie viele Spulen niedrig oder leer sind.</li>
+    <li><b>Status:</b> <b>Vorrätig</b>, <b>Niedrig</b> (höchstens ein Fünftel der vollen Spule übrig) oder <b>Leer</b>. Die Knöpfe „Niedrig“ und „Leer“ zeigen nur diese; die Suche findet Material, Hersteller, Farbe und Lagerort.</li>
+    <li><b>Dashboard oder Liste:</b> Karten oder eine Tabelle, die du nach jeder Spalte sortierst. Ein Doppelklick auf eine Karte oder Zeile bearbeitet die Spule.</li>
+  </ul>
+  <figure class="bild"><img class="hell" src="bilder/lager_formular-hell.webp" alt="Eine Spule anlegen oder bearbeiten: das Formular öffnet rechts." width="1440" height="860" loading="lazy"><img class="dunkel" src="bilder/lager_formular-dunkel.webp" alt="Eine Spule anlegen oder bearbeiten: das Formular öffnet rechts." width="1440" height="860" loading="lazy"><figcaption>Eine Spule anlegen oder bearbeiten: das Formular öffnet rechts.</figcaption></figure>
+  <ul>
+    <li><b>Spule anlegen:</b> Material, Hersteller, Farbname und Farbwert (Palette, Farbwähler oder Hex), Durchmesser, Gewicht der vollen Spule, Rest, Preis, Lagerort, Notiz und optional ein <b>Bild</b> (PNG, JPG oder WebP bis 5 MB, per Klick oder Ziehen). Die <b>Anzahl</b> legt mehrere gleiche Spulen an, jede mit eigenem Rest.</li>
+    <li><b>Nachkaufen:</b> auf der Karte „＋ Nachkaufen“. Neue, volle Spulen mit denselben Angaben; Anzahl, Menge, Preis und Lagerort kannst du anpassen.</li>
+    <li><b>Löschen:</b> das ✕ löscht die Spule, „Rückgängig“ in der Meldung holt sie zurück. Eine Spule ist kein Modell; partAtlas löscht dabei keine deiner Dateien.</li>
+  </ul>
+  <h3>Reicht das Filament?</h3>
+  <p>Bei einem geslicten 3MF zeigt der Inspektor unter „Reicht das Filament?“ je Filament, ob eine Spule aus dem Lager reicht: gleiches Material, ähnliche Farbe,
+  über alle Platten zusammengezählt.</p>
+  <ul>
+    <li><b>reicht:</b> eine Spule hat genug; sie wird mit Rest und Lagerort genannt.</li>
+    <li><b>reicht mit Spulenwechsel:</b> nur mit einer zweiten Spule; beide stehen da.</li>
+    <li><b>reicht nicht:</b> mit der fehlenden Menge.</li>
+    <li><b>unklar:</b> keine passende Spule, oder die Datei kennt keine Mengen.</li>
+  </ul>
+  <p>Dieselbe Spule zählt nicht doppelt. Die <b>Warteschlange</b> zeigt vor jedem Modell einen Punkt (grün, gelb, rot, grau) und rechnet von oben nach unten mit dem gemeinsamen Bedarf.
+  Dabei wird nichts abgebucht.</p>
+  <h3>Abbuchen und Kosten</h3>
+  <ul>
+    <li><b>Beim Anlegen eines Drucks</b> (＋ Druck) wählst du unter „Von Spule abziehen“ eine Spule; vorgeschlagen wird die passende. Ohne deine Wahl wird nichts abgezogen. Der Rest sinkt nie unter 0, und der Druck merkt sich Spule, Menge und Kosten.</li>
+    <li>Löschst du einen Druck, wird nichts zurückgebucht: Den Rest einer Spule korrigierst du dort von Hand.</li>
+    <li><b>Materialkosten</b> stehen im Inspektor unter „Reicht das Filament?“ (Gewicht mal Preis je Gramm der zugeteilten Spule) und am Druck.</li>
+  </ul>
+  <div class="hinweis">partAtlas kennt keine Drucker und keine Fächer. Welche Spule gerade am Drucker hängt, hältst du über den Lagerort („am Drucker“) fest. Resin gibt es nicht.</div>
+</section>
+
 <section id="ordner">
   <h2>Ordner</h2>
   <p>Die Ordner links unter „Bibliothek“ sind deine Ordner auf der Platte, und sie verhalten sich wie im Explorer oder Dateimanager.
@@ -413,7 +450,7 @@ figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; 
   <table>
     <tr><th>Reiter</th><th>Inhalt</th></tr>
     <tr><td>Vorgaben</td><td>Standardmaterial, Standardfarbe und Rollengrösse — was gilt, wenn ein Druckteil keine Angabe hat.</td></tr>
-    <tr><td>Ansicht</td><td>Farbschema (Filament, Messing, Blaupause, zur Probe), Kachelgrösse, Dateiformat auf dem Vorschaubild, welche Zeilen unter dem Namen stehen.</td></tr>
+    <tr><td>Ansicht</td><td>Farbschema (Filament, Messing, Blaupause, GNOME, zur Probe), Kachelgrösse, Dateiformat auf dem Vorschaubild, welche Zeilen unter dem Namen stehen.</td></tr>
     <tr><td>Einlesen</td><td>Tags aus dem Dateinamen, wann Vorschaubilder berechnet werden, Einlesen beim Start, FreeCAD-Dokumente über FreeCAD einlesen (fragt vorher: ein FreeCAD-Dokument kann Programmcode enthalten), das Protokoll im Dateimanager.</td></tr>
     <tr><td>Backup &amp; Wiederherstellung</td><td>Wo dein Katalog liegt (fürs eigene Backup), die automatischen Sicherungen mit „Zurückholen …“, wie viele behalten werden, „Jetzt sichern“.</td></tr>
     <tr><td>PDF-Export</td><td>Was die Stückliste einer Baugruppe als PDF enthält.</td></tr>
@@ -488,8 +525,8 @@ figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; 
     <tr><td>Bereinigen, Archiv, Papierkorb, automatische Sicherungen</td><td><span class="st ok">da</span></td></tr>
     <tr><td>Versionsverlauf je Modell (frühere Fassungen einer Datei)</td><td><span class="st soon">als Nächstes</span></td></tr>
     <tr><td>Backup als ZIP und Wiederherstellen in partAtlas</td><td><span class="st soon">nach 1.0</span></td></tr>
-    <tr><td>Drucker anbinden (Moonraker, Bambu), Warteschlange, „Nochmal drucken“</td><td><span class="st soon">später</span></td></tr>
-    <tr><td>Filamentlager und Kosten je Druck</td><td><span class="st soon">später</span></td></tr>
+    <tr><td>Drucker anbinden (Moonraker, Bambu), Warteschlange sichtbar, „Nochmal drucken“</td><td><span class="st soon">später</span></td></tr>
+    <tr><td>Filamentlager: Spulen, „Reicht das Filament?“, Abbuchen und Kosten je Druck</td><td><span class="st ok">da</span></td></tr>
     <tr><td>7z und RAR entpacken, Passwort für den Zugriff im Heimnetz</td><td><span class="st no">offen</span></td></tr>
   </table>
   <p>Was fehlt oder falsch ist, sag es: ein Bildschirmfoto und ein Satz dazu genügen.</p>
