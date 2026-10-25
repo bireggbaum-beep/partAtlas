@@ -1,7 +1,7 @@
 /* Masse und Schriften aus dem 3MF Katalog Manager (src/styles/theme.css, MIT, © 2026 Bexxs75) — die Oberfläche soll dem Anwender vertraut
    sein. Schriften: Barlow / IBM Plex Mono, wenn installiert; sonst Systemschrift.
-   Farben sind eigene Schemata (25.10.2026, Probezeit): C Filament ist die Vorgabe und steht in den ersten beiden Blöcken, A Messing und
-   B Blaupause überschreiben sie über `data-farbe` am Seitenanfang (Einstellungen › Ansicht, gemerkt in diesem Browser). Hell/Dunkel bleibt
+   Farben sind eigene Schemata (25.10.2026, Probezeit): C Filament ist die Vorgabe und steht in den ersten beiden Blöcken, A Messing, B Blaupause und
+   D GNOME überschreiben sie über `data-farbe` am Seitenanfang (Einstellungen › Ansicht, gemerkt in diesem Browser). Hell/Dunkel bleibt
    `data-app`. Schrift auf Akzent und Akzent als Schrift erreichen überall mindestens 4,5 : 1. Gewählt wird später eines; die anderen entfallen. */
 
 [data-app] {
@@ -51,6 +51,25 @@
   --ink: oklch(0.95 0.01 250); --ink-2: oklch(0.82 0.03 255); --ink-3: oklch(0.74 0.035 255);
   --accent: oklch(0.79 0.12 215); --accent-ink: oklch(0.2 0.05 240); --accent-soft: oklch(0.33 0.06 235);
   --plate: oklch(0.215 0.048 262); --plate-2: oklch(0.26 0.05 262);
+}
+/* D GNOME: Palette von libadwaita (GTK 4) — weiches Graphit und fast Weiss, Akzent GNOME-Blau. Nur die Farben; die Formen bleiben. */
+[data-farbe="d"][data-app] {
+  --bg: #fafafb; --panel: #ffffff; --panel-2: #f6f5f4;
+  --line: #deddda; --line-strong: #c0bfbc;
+  --ink: #2d2d33; --ink-2: #504e55; --ink-3: #6a6870;
+  --accent: #1b6bcf; --accent-ink: #ffffff; --accent-soft: #eaf1fc;
+  --plate: #ebebeb; --plate-2: #f1f1f1;
+  --good: #1a7a4f; --warn: #9a6a00; --crit: #c01c28;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+[data-farbe="d"][data-app="dark"] {
+  --bg: #242424; --panel: #303030; --panel-2: #383838;
+  --line: #454545; --line-strong: #5e5c64;
+  --ink: #ffffff; --ink-2: #deddda; --ink-3: #a6a5a2;
+  --accent: #78aeed; --accent-ink: #1a1a1a; --accent-soft: #2f3f57;
+  --plate: #1e1e1e; --plate-2: #2a2a2a;
+  --good: #57d68d; --warn: #f5c211; --crit: #ff7b63;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 :root {
   /* Maßsystem — siehe KONZEPT „Gestaltungsregeln“. Alle Abstände und Masse kommen aus der Fibonacci-Reihe;

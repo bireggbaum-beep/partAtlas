@@ -13,6 +13,14 @@ Cura-G-Code: Druckzeit wird gelesen (test_slicer 14/14); Handbuchbilder neu. Rü
 `ccr-212cc51e-yf8m3p` — Anwender 25.10.2026: „keinerlei App-Aktivitäten“ in diesem Update. Die Aufgabenliste unten nennt, was erledigt ist (das alte Bild beim
 Berechnen war kein Fehler von partAtlas, sondern ein Verlust im gepackten Fenster-Programm).
 
+## Schema D „GNOME“ (25.10.2026, nur auf dem Branch, kommt mit dem nächsten Update)
+
+Vierte Wahl unter Einstellungen › Ansicht: Palette von libadwaita (GTK 4) — fast Weiss `#fafafb` / Graphit `#242424`, Akzent GNOME-Blau
+(`#1b6bcf` hell, `#78aeed` dunkel). **Nur Farben**, Lesbarkeit gerechnet (Schrift und Akzent mindestens 4,5 : 1). Der Anwender meinte „ganz modernes UI-Design
+à la GTK 4“; die Formen (grössere Rundung, mehr Luft, Schalter statt Häkchen, flache Kopfleiste) gehören dazu, sind aber **nicht gebaut** und dienen später dazu,
+sich weiter vom 3MF Katalog zu lösen. Ein Bild dazu nur, wenn der Anwender es will (Aufwand 2–3 für Rundung und Abstände, `--radius` ist ein einziger Wert,
+ob alle Teile ihn nutzen, ist ungeprüft).
+
 ## Aufgabenliste (25.10.2026) — Aufwand 1–5, Budget: Stücke mit 1–2 zuerst
 
 **Nächstes sichtbares Update für den Tester (Fassung 1.0.2 → `main`)** — Stand: gebaut / offen
