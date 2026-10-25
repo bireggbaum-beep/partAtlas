@@ -39,6 +39,16 @@ if __name__ == "__main__":
               r.status_code == 400 and next(x for x in c.get("/api/spulen").json()["spulen"] if x["id"] == sid)["rest_g"] == 1000)
         check("Eine Spule, die es nicht gibt, meldet sich in einem Satz", c.patch("/api/spulen/sp_99999", json={"rest_g": 1}).status_code == 400)
 
+        neu = c.post(f"/api/spulen/{sid}/nachkaufen", json={"anzahl": 2, "felder": {"preis": "22,50", "ort": "Regal 3", "start_g": 750}}).json()["ids"]
+        alle = {x["id"]: x for x in c.get("/api/spulen").json()["spulen"]}
+        check("Nachkaufen: zwei neue, volle Spulen mit Material, Hersteller, Farbe der Vorlage und angepasstem Preis, Ort und Menge",
+              len(neu) == 2 and all(alle[i]["material"] == "PETG" and alle[i]["hersteller"] == "Prusament" and alle[i]["farbe"] == "#1a1a1a"
+                                    and alle[i]["rest_g"] == 750 == alle[i]["start_g"] and alle[i]["preis"] == 22.5 and alle[i]["ort"] == "Regal 3" for i in neu)
+              and alle[sid]["ort"] == "Regal 2" and alle[sid]["preis"] == 24.9)
+        check("Nachkaufen ohne Anpassung übernimmt Menge, Preis und Ort der Vorlage",
+              (lambda i: (lambda a: a[i]["ort"] == "Regal 2" and a[i]["start_g"] == 1000 and a[i]["preis"] == 24.9)({x["id"]: x for x in c.get("/api/spulen").json()["spulen"]}))(
+                  c.post(f"/api/spulen/{sid}/nachkaufen", json={"anzahl": 1}).json()["ids"][0]))
+        check("Nachkaufen einer unbekannten Spule meldet sich in einem Satz", c.post("/api/spulen/sp_99999/nachkaufen", json={"anzahl": 1}).status_code == 400)
         c.patch(f"/api/spulen/{sid}", json={"archiviert": True})
         liste = c.get("/api/spulen").json()["spulen"]
         check("Archivierte Spule bleibt in der Liste, steht aber hinten", liste[-1]["id"] == sid and liste[-1]["archiviert"] is True)
@@ -48,5 +58,5 @@ if __name__ == "__main__":
         check("Die Auswahl der Materialien kommt mit (Grundbestand)", "PLA" in m and "PETG" in m)
 
     with TestClient(erstelle_app(bestand, prozesse=1)) as c2:
-        check("Nach einem Neustart sind alle Spulen noch da", len(c2.get("/api/spulen").json()["spulen"]) == 4)
+        check("Nach einem Neustart sind alle Spulen noch da", len(c2.get("/api/spulen").json()["spulen"]) == 7)
     muster.ende()

@@ -222,6 +222,10 @@ async function ladeModelle() {
     zeigeAufraeumen(zustand.ansicht === "aufraeumen");
     if (zustand.ansicht === "aufraeumen") return ladeAufraeumen();
   }
+  if (typeof zeigeLager === "function") {                   // das Lager ist wie Aufräumen eine eigene Fläche (lager.js)
+    zeigeLager(zustand.ansicht === "lager");
+    if (zustand.ansicht === "lager") return ladeLager();
+  }
   const p = new URLSearchParams({ ...filterJetzt(), leiste: 1 });
   // Nur die Antwort auf die neueste Anfrage zählt. Bei 9 000 Modellen dauert eine Liste Sekunden; kam eine ältere nach einer neueren an,
   // zeigte sie einen anderen Stand (etwa die Kacheln eines anderen Ordners) als den, den die Oberfläche zu zeigen glaubte.
@@ -374,8 +378,10 @@ function markiereAnsicht() {
   document.querySelectorAll(".sektion").forEach((s) => s.classList.toggle("hat-wahl", !!hat[s.dataset.sektion]));
   document.querySelectorAll("[data-ansicht]").forEach((b) =>
     b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tags.size && !zustand.material.size && !zustand.format && !zustand.sammlung));
+  const imLager = zustand.ansicht === "lager";
   document.querySelectorAll(".rail-btn[data-rail]").forEach((b) =>
-    b.classList.toggle("aktiv", (b.dataset.rail === "bereinigen") === bereinigt));
+    b.classList.toggle("aktiv", !imLager && (b.dataset.rail === "bereinigen") === bereinigt));
+  $("#lager")?.classList.toggle("aktiv", imLager);
 }
 
 // Die Leiste über dem Raster: Material und Format als Chips (wenige Werte, die
@@ -531,7 +537,7 @@ function zeichneLeer() {
   const leer = $("#leer");
   const erst = zustand.hatWurzeln === false && zustand.katalogLeer !== false;
   document.body.classList.toggle("erststart", erst);
-  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen";      // Aufräumen hat seine eigene Fläche
+  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen" || zustand.ansicht === "lager";      // Aufräumen hat seine eigene Fläche
   if (leer.hidden) return;
   const scan = zustand.scan;
   if (erst) {
@@ -1006,7 +1012,7 @@ function waehleAus(id, bereich, { dazu = true, mitGewaehltem = false } = {}) {
 function tastaturAuswahl(e) {
   const strg = e.ctrlKey || e.metaKey;
   const n = zustand.modelle.length;
-  if (!n || zustand.ansicht === "aufraeumen" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
+  if (!n || zustand.ansicht === "aufraeumen" || zustand.ansicht === "lager" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
   // Auf einem Knopf gehören Enter und Leertaste dem Knopf.
   const knopf = document.activeElement?.closest?.("button, a, summary, [contenteditable]");
   if (strg && e.key.toLowerCase() === "a" && !e.altKey) {
@@ -2662,6 +2668,7 @@ $("#gruppierung").value = zustand.gruppierung;
   if (k) return waehleEines(k.dataset.id);
   const ansicht = t.closest("[data-ansicht]");
   if (ansicht) return navigiere(() => { Object.assign(zustand, { ansicht: ansicht.dataset.ansicht, ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
+  if (t.closest("#lager")) return navigiere(() => { Object.assign(zustand, { ansicht: "lager", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const rail = t.closest("[data-rail]");
   if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const ordner = t.closest("[data-ordner]");
@@ -3223,7 +3230,7 @@ function liveWorker(m) {
 // neue eingefügt — in jeder Ansicht, ohne dass man sie wechseln muss (KONZEPT §3.4). Ansichten mit eigener Reihenfolge oder Auswahl
 // (Neu, Warteschlange, Sammlung, Papierkorb, Baugruppe) laden weiter ganz, sie sind klein.
 const nach = { refs: new Set(), zeit: null, unterwegs: false, seite: 0 };
-const nachreichbar = () => !zustand.sammlung && !zustand.baugruppe && !["neu", "warteschlange", "papierkorb", "aufraeumen"].includes(zustand.ansicht);
+const nachreichbar = () => !zustand.sammlung && !zustand.baugruppe && !["neu", "warteschlange", "papierkorb", "aufraeumen", "lager"].includes(zustand.ansicht);
 // Was eine Kachel an eine andere Stelle bringt oder in eine andere Gruppe: dann Liste neu ordnen, sonst nur austauschen.
 const lage = (x) => JSON.stringify([x.name, x.gewicht_g, x.masse, x.angelegt, x.entwurf, x.format, x.material, x.ordner, x.fehlt, x.fehler, x.drucke_n, x.gedruckt]);
 

@@ -118,3 +118,13 @@ class Lager:
         if neu:
             with self.db.transaction():
                 self.db.update_node(SPULE, sid, neu)
+
+    def nachkaufen(self, sid, anzahl, felder=None):
+        """Eine Spule nachgekauft, die es schon gibt: `anzahl` neue, volle Spulen mit Material, Hersteller, Farbe und Durchmesser der Vorlage;
+        Menge, Preis und Lagerort lassen sich dabei anpassen (3MF Katalog: „Nachkaufen“). Die Vorlage bleibt, wie sie ist."""
+        vorlage = self._spule(sid)
+        eigen = pruefen({k: v for k, v in (felder or {}).items() if k in ("start_g", "preis", "ort")})
+        daten = {k: vorlage.get(k) for k in ("material", "hersteller", "farbname", "farbe", "durchmesser", "start_g", "preis", "ort", "notiz")}
+        daten.update(eigen)
+        daten["rest_g"] = daten["start_g"]
+        return self.anlegen({k: v for k, v in daten.items() if v is not None}, anzahl)

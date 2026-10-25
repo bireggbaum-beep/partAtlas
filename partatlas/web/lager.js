@@ -1,139 +1,263 @@
-// Filamentlager (lager.py): die Spulen des Anwenders in einem Fenster, wie der „Material Manager“ des 3MF Katalog Managers.
-// Liste mit Rest und Wert, dazu ein Formular zum Anlegen und Ändern. Leere Spulen werden archiviert, nicht gelöscht.
+// Filamentlager (lager.py) — die Seite „Lager“, nach dem Material Manager des 3MF Katalog Managers (Handbuch „Der Material Manager“):
+// Kennzahlen, Suche, Filter „Niedrig“/„Leer“, Dashboard (Karten) oder sortierbare Liste, Formular als Seitenfenster rechts, Nachkaufen.
+// Leere Spulen werden abgelegt (archiviert), nicht gelöscht: partAtlas löscht hier nichts.
 
-const lager = { daten: null, leere: false, form: null, offen: false };
+const lg = { daten: null, suche: "", filter: new Set(), ansicht: localStorageLesen("lager-ansicht") || "dashboard", sort: { spalte: "material", richtung: 1 },
+             form: null, neu: new Set() };
+const NIEDRIG_BIS = 0.2;                 // bis zu so viel Rest (Anteil der vollen Spule) gilt eine Spule als niedrig
 
-const lgEuro = (x) => `${Number(x).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+const lgEuro = (x) => (x == null ? "" : Number(x).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const lgG = (x) => `${zahl(x, 1)} g`;
 const lgAnteil = (s) => (s.start_g ? Math.max(0, Math.min(1, s.rest_g / s.start_g)) : 0);
-const lgStand = (s) => (s.rest_g <= 0 ? "leer" : lgAnteil(s) <= 0.1 ? "knapp" : "voll");
+const lgStatus = (s) => (s.rest_g <= 0 ? "leer" : lgAnteil(s) <= NIEDRIG_BIS ? "niedrig" : "vorraetig");
+const LG_STATUS = { vorraetig: "Vorrätig", niedrig: "Niedrig", leer: "Leer" };
+const lgKuerzel = (m) => esc(String(m || "").replace(/[^A-Za-z0-9+-]/g, "").slice(0, 4).toUpperCase());
 
-function lgSumme(spulen) {
-  const aktiv = spulen.filter((s) => !s.archiviert);
-  const kg = aktiv.reduce((a, s) => a + s.rest_g, 0) / 1000;
-  const wert = aktiv.reduce((a, s) => a + (s.preis != null && s.start_g ? s.preis * (s.rest_g / s.start_g) : 0), 0);
-  return { n: aktiv.length, kg, wert, ohnePreis: aktiv.some((s) => s.preis == null) };
+function zeigeLager(an) {
+  if (an) for (const s of ["#tagleiste", "#raster", "#listenkopf", "#stapel", "#pk-leiste", "#filterzeile", "#leer", "#pfad", "#aufraeumen", "#bg-ansicht"]) $(s).hidden = true;
+  $("#lager-seite").hidden = !an;
+  document.body.classList.toggle("im-lager", an);
+  if (!an) lgFormZu();
 }
 
-function lgZeile(s) {
-  const stand = lgStand(s);
-  const name = [s.hersteller, s.farbname].filter(Boolean).join(" ");
-  return `<div class="lg-zeile ${s.archiviert ? "archiv" : ""}" data-lg-id="${esc(s.id)}">
-    ${tupfer(s.farbe, s.farbname || "")}
-    <div class="lg-name"><b>${esc(s.material)}</b>${name ? ` · ${esc(name)}` : ""}
-      <span class="dim">${[s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : "", s.ort].filter(Boolean).map(esc).join(" · ")}</span></div>
-    <div class="lg-rest ${stand}" title="${zahl(s.rest_g, 1)} von ${zahl(s.start_g, 0)} g"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div>
-    <span class="lg-g mono">${zahl(s.rest_g, 0)} g</span>
-    <span class="lg-preis dim">${s.preis != null ? lgEuro(s.preis) : ""}</span>
-    <button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten">✎</button>
-    <button type="button" class="knopf-text" data-lg-archiv="${esc(s.id)}" title="${s.archiviert ? "Wieder aktivieren" : "Als leer ablegen"}">${s.archiviert ? "↺" : "▣"}</button>
-  </div>`;
+async function ladeLager() {
+  try { lg.daten = await api("/api/spulen"); } catch (e) { return toast(e.message); }
+  zeichneLager();
 }
 
-function lgListe() {
-  const d = lager.daten, summe = lgSumme(d.spulen);
-  const sichtbar = d.spulen.filter((s) => lager.leere || !s.archiviert);
-  const archiviert = d.spulen.length - summe.n;
-  return `<div class="lg">
-    <h2>Filamentlager</h2>
-    <p class="dim">${summe.n ? `${summe.n} ${summe.n === 1 ? "Spule" : "Spulen"} · ${zahl(summe.kg, 2)} kg Rest · Wert ${lgEuro(summe.wert)}${summe.ohnePreis ? " (ohne Spulen ohne Preis)" : ""}` : "Noch keine Spulen. Lege deine Spulen an, dann weiss partAtlas, was du hast."}</p>
+function lgSichtbar() {
+  const q = lg.suche.trim().toLowerCase();
+  const abgelegt = lg.filter.has("abgelegt"), stufen = ["niedrig", "leer"].filter((f) => lg.filter.has(f));
+  return lg.daten.spulen.filter((s) => !!s.archiviert === abgelegt
+    && (!stufen.length || stufen.includes(lgStatus(s)))
+    && (!q || [s.material, s.hersteller, s.farbname, s.ort, s.notiz].some((t) => (t || "").toLowerCase().includes(q))));
+}
+
+function lgKennzahlen() {
+  const aktiv = lg.daten.spulen.filter((s) => !s.archiviert);
+  const knapp = aktiv.filter((s) => lgStatus(s) !== "vorraetig").length;
+  const orte = new Set(aktiv.map((s) => (s.ort || "").trim()).filter(Boolean)).size;
+  const rest = aktiv.reduce((a, s) => a + s.rest_g, 0);
+  return [["Spulen gesamt", zahl(aktiv.length, 0)], ["Restbestand gesamt", `${zahl(rest, 0)} g`], ["Belegte Lagerplätze", zahl(orte, 0)], ["Niedrig / leer", zahl(knapp, 0), knapp ? "warn" : ""]];
+}
+
+function lgKarte(s) {
+  const st = lgStatus(s), name = [s.hersteller, s.farbname].filter(Boolean).join(" · ");
+  return `<article class="lg-karte ${s.archiviert ? "abgelegt" : ""} ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
+    <div class="lg-kopf"><span class="lg-kuerzel">${lgKuerzel(s.material)}</span>
+      <div><b>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span>` : ""}${esc(s.material)}</b><span class="dim">${esc(name) || "&nbsp;"}</span></div></div>
+    <div class="lg-reihe">${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : "<span></span>"}<span class="lg-marke ${st}">${LG_STATUS[st]}</span></div>
+    <div class="lg-reihe"><span class="mono">${lgG(s.rest_g)}</span><span class="dim">${Math.round(lgAnteil(s) * 100)} %</span></div>
+    <div class="lg-balken ${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div>
+    <div class="lg-reihe lg-klein dim"><span>${s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : ""}</span><span>${lgEuro(s.preis)}</span></div>
+    <div class="lg-aktionen"><button type="button" class="knopf-text" data-lg-nachkaufen="${esc(s.id)}">＋ Nachkaufen</button>
+      <span><button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten" aria-label="Spule bearbeiten">✎</button>
+      <button type="button" class="knopf-text" data-lg-ablegen="${esc(s.id)}" title="${s.archiviert ? "Wieder ins Lager" : "Ablegen (leer oder nicht mehr da)"}" aria-label="${s.archiviert ? "Wieder ins Lager" : "Spule ablegen"}">${s.archiviert ? "↺" : "✕"}</button></span></div>
+  </article>`;
+}
+
+const LG_SPALTEN = [["material", "Material"], ["hersteller", "Hersteller"], ["farbname", "Farbe"], ["ort", "Lagerort"], ["durchmesser", "⌀"], ["rest_g", "Bestand"], ["preis", "Preis"], ["status", "Status"]];
+function lgSortiert(liste) {
+  const { spalte, richtung } = lg.sort;
+  const wert = (s) => (spalte === "status" ? ["leer", "niedrig", "vorraetig"].indexOf(lgStatus(s)) : s[spalte]);
+  return [...liste].sort((a, b) => {
+    const x = wert(a), y = wert(b);
+    if (x == null || x === "") return y == null || y === "" ? 0 : 1;
+    if (y == null || y === "") return -1;
+    return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), "de")) * richtung;
+  });
+}
+function lgTabelle(liste) {
+  const kopf = LG_SPALTEN.map(([k, t]) => `<th><button type="button" data-lg-sort="${k}" aria-label="Sortieren nach ${t}">${t}${lg.sort.spalte === k ? (lg.sort.richtung > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("");
+  const zeilen = lgSortiert(liste).map((s) => {
+    const st = lgStatus(s);
+    return `<tr class="${s.archiviert ? "abgelegt" : ""} ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
+      <td><b>${esc(s.material)}</b></td><td>${esc(s.hersteller)}</td><td>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span> ` : ""}${esc(s.farbname)}</td>
+      <td>${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : ""}</td><td>${s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : ""}</td>
+      <td><span class="mono">${lgG(s.rest_g)}</span> <span class="dim">${Math.round(lgAnteil(s) * 100)} %</span><div class="lg-balken ${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div></td>
+      <td class="mono">${lgEuro(s.preis)}</td><td><span class="lg-marke ${st}">${LG_STATUS[st]}</span></td>
+      <td class="lg-tab-akt"><button type="button" class="knopf-text" data-lg-nachkaufen="${esc(s.id)}" title="Nachkaufen" aria-label="Nachkaufen">＋</button>
+        <button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten" aria-label="Spule bearbeiten">✎</button>
+        <button type="button" class="knopf-text" data-lg-ablegen="${esc(s.id)}" title="${s.archiviert ? "Wieder ins Lager" : "Ablegen"}" aria-label="${s.archiviert ? "Wieder ins Lager" : "Spule ablegen"}">${s.archiviert ? "↺" : "✕"}</button></td></tr>`;
+  }).join("");
+  return `<table class="lg-tabelle"><thead><tr>${kopf}<th></th></tr></thead><tbody>${zeilen}</tbody></table>`;
+}
+
+function zeichneLager() {
+  if (!lg.daten) return;
+  const liste = lgSichtbar(), leer = !lg.daten.spulen.length;
+  const merk = document.activeElement?.id === "lg-suche" ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  $("#lager-seite").innerHTML = `
+    <h2 class="lg-titel">Lager</h2>
+    <div class="lg-zahlen">${lgKennzahlen().map(([t, v, k]) => `<div class="lg-zahl ${k || ""}"><span>${t}</span><b>${v}</b></div>`).join("")}</div>
     <div class="lg-leiste">
-      <button type="button" class="knopf akzent" data-lg-neu>＋ Spule</button>
-      ${archiviert ? `<label><input type="checkbox" data-lg-leere ${lager.leere ? "checked" : ""}> Abgelegte zeigen (${archiviert})</label>` : ""}
+      <input id="lg-suche" type="search" placeholder="Material, Hersteller, Lagerort durchsuchen …" value="${esc(lg.suche)}" aria-label="Lager durchsuchen">
+      ${["niedrig", "leer", "abgelegt"].map((f) => `<button type="button" class="knopf ${lg.filter.has(f) ? "aktiv" : ""}" data-lg-filter="${f}" aria-pressed="${lg.filter.has(f)}">${{ niedrig: "Niedrig", leer: "Leer", abgelegt: "Abgelegt" }[f]}</button>`).join("")}
+      <span class="segment"><button type="button" data-lg-ansicht="dashboard" class="${lg.ansicht === "dashboard" ? "an" : ""}">Dashboard</button><button type="button" data-lg-ansicht="liste" class="${lg.ansicht === "liste" ? "an" : ""}">Liste</button></span>
+      <span class="lg-luecke"></span>
+      <button type="button" class="knopf akzent" data-lg-neu>＋ Spule anlegen</button>
     </div>
-    <div class="lg-liste">${sichtbar.length ? sichtbar.map(lgZeile).join("") : `<p class="dim">${summe.n ? "Keine abgelegten Spulen." : ""}</p>`}</div>
-    <div class="knoepfe"><button class="knopf" value="ok">Schliessen</button></div>
-  </div>`;
+    ${leer ? `<p class="lg-leer">Noch keine Spulen. Lege deine Spulen an, dann weiss partAtlas, was du hast und was reicht.</p>`
+      : !liste.length ? `<p class="lg-leer">Keine Spulen für diese Auswahl.</p>`
+      : lg.ansicht === "liste" ? lgTabelle(liste) : `<div class="lg-karten">${lgSortiert(liste).map(lgKarte).join("")}</div>`}`;
+  if (merk) { const f = $("#lg-suche"); f.focus(); f.setSelectionRange(...merk); }
 }
 
-function lgForm() {
-  const f = lager.form, d = lager.daten, neu = !f.id;
-  const wert = (k, v = "") => esc(f.werte[k] ?? v);
-  const optionen = (liste, aktuell) => liste.map((m) => `<option value="${esc(m)}" ${m === aktuell ? "selected" : ""}>${esc(m)}</option>`).join("");
-  const mats = [...new Set([...d.materialien, ...(f.werte.material ? [f.werte.material] : [])])];
-  const hersteller = [...new Set(d.spulen.map((s) => s.hersteller).filter(Boolean))], orte = [...new Set(d.spulen.map((s) => s.ort).filter(Boolean))];
-  return `<div class="lg">
-    <h2>${neu ? "Neue Spule" : "Spule bearbeiten"}</h2>
-    <div class="lg-form">
-      <label>Material <select id="lg-material">${optionen(mats, f.werte.material || mats[0])}</select></label>
-      <label>Hersteller <input id="lg-hersteller" list="lg-hersteller-liste" value="${wert("hersteller")}" maxlength="60"></label>
-      <label>Farbname <input id="lg-farbname" value="${wert("farbname")}" maxlength="40" placeholder="z. B. Galaxy Black"></label>
-      <div class="lg-farbe"><span>Farbe</span>
-        <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === f.werte.farbe ? "aktiv" : ""}" data-lg-farbe="${h}" title="${n}" style="background:${h}"></button>`).join("")}
-          <button type="button" class="knopf ${f.werte.farbe ? "" : "aktiv"}" data-lg-farbe="">keine</button></div></div>
-      <label>Durchmesser <select id="lg-durchmesser">${optionen(["1.75", "2.85"], String(f.werte.durchmesser ?? 1.75))}</select> mm</label>
-      <label>Gewicht der vollen Spule <input id="lg-start" type="number" min="1" max="20000" step="10" value="${wert("start_g", d.rolle_g)}"> g</label>
-      ${neu ? "" : `<label>Rest <input id="lg-rest" type="number" min="0" max="20000" step="1" value="${wert("rest_g")}"> g</label>`}
-      <label>Preis der vollen Spule <input id="lg-preis" type="text" inputmode="decimal" value="${wert("preis")}" placeholder="optional"> €</label>
-      <label>Lagerort <input id="lg-ort" list="lg-ort-liste" value="${wert("ort")}" maxlength="60"></label>
-      <label>Notiz <input id="lg-notiz" value="${wert("notiz")}" maxlength="500"></label>
-      ${neu ? `<label>Anzahl <input id="lg-anzahl" type="number" min="1" max="20" value="1"> gleiche Spulen, alle voll</label>` : ""}
-      <datalist id="lg-hersteller-liste">${hersteller.map((h) => `<option value="${esc(h)}">`).join("")}</datalist>
-      <datalist id="lg-ort-liste">${orte.map((o) => `<option value="${esc(o)}">`).join("")}</datalist>
+// ------------------------------------------------------------------ Formular (Seitenfenster rechts)
+
+function lgFormZu() {
+  lg.form = null;
+  const f = $("#lager-form");
+  f.hidden = true;
+  f.innerHTML = "";
+}
+
+function lgFormZeigen(spule, vorlage = null) {
+  const neu = !spule, w = spule || vorlage || { durchmesser: 1.75, start_g: lg.daten.rolle_g };
+  lg.form = { id: spule?.id || null, farbe: w.farbe || "" };
+  const d = lg.daten, anzahl = (id, liste) => `<datalist id="${id}">${[...new Set(liste.filter(Boolean))].map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`;
+  const wert = (v) => esc(v ?? "");
+  $("#lager-form").innerHTML = `
+    <header><h3>${neu ? "Spule anlegen" : "Spule bearbeiten"}</h3><button type="button" class="knopf" data-lg-formzu aria-label="Schliessen">✕</button></header>
+    <div class="lf-koerper">
+      <div class="i-titel">IDENTIFIKATION</div>
+      <label>Material<input id="lf-material" list="lf-material-liste" value="${wert(w.material)}" maxlength="30" placeholder="Material" autocomplete="off"></label>
+      <label>Hersteller<input id="lf-hersteller" list="lf-hersteller-liste" value="${wert(w.hersteller)}" maxlength="60" placeholder="Hersteller" autocomplete="off"></label>
+      <label>Farbname<input id="lf-farbname" value="${wert(w.farbname)}" maxlength="40" placeholder="Farbname"></label>
+      <div class="lf-farbe"><span>Farbwert</span>
+        <div class="farbfelder">${FARBEN.map(([n, h]) => `<button type="button" class="farbfeld ${h === lg.form.farbe ? "aktiv" : ""}" data-lg-farbe="${h}" title="${n}" aria-label="${n}" style="background:${h}"></button>`).join("")}</div>
+        <div class="lf-hex"><input type="color" id="lf-farbwahl" value="${lg.form.farbe || "#1a1a1a"}" aria-label="Farbe wählen"><input id="lf-hex" value="${wert(lg.form.farbe)}" placeholder="#1a1a1a" maxlength="7" aria-label="Farbwert als Hex">
+          <button type="button" class="knopf" data-lg-farbe="">keine</button></div></div>
+      ${neu ? `<div class="lf-anzahl"><span>Anzahl Spulen</span><div><button type="button" class="knopf" data-lg-anzahl="-1" aria-label="Eine weniger">−</button><input id="lf-anzahl" type="number" min="1" max="20" value="1" aria-label="Anzahl Spulen"><button type="button" class="knopf" data-lg-anzahl="1" aria-label="Eine mehr">+</button></div>
+        <p class="dim">Legt mehrere identische Spulen mit eigenem Bestand an (z. B. 3× Schwarz PLA).</p></div>` : ""}
+      <div class="i-titel">LAGERUNG</div>
+      <label>Lagerort<input id="lf-ort" list="lf-ort-liste" value="${wert(w.ort)}" maxlength="60" placeholder="Lagerort" autocomplete="off"></label>
+      <div class="i-titel">BESTAND</div>
+      <div class="lf-zwei"><label>Durchmesser (mm)<input id="lf-durchmesser" type="number" step="0.05" min="1" max="3.5" value="${wert(w.durchmesser)}"></label>
+        <label>Preis (€)<input id="lf-preis" type="text" inputmode="decimal" value="${wert(w.preis)}" placeholder="optional"></label></div>
+      <div class="lf-zwei"><label>Ursprungsgewicht (g)<input id="lf-start" type="number" min="1" max="20000" step="10" value="${wert(w.start_g)}"></label>
+        <label>Restgewicht (g)<input id="lf-rest" type="number" min="0" max="20000" step="1" value="${wert(neu ? w.start_g : w.rest_g)}"></label></div>
+      <div class="lg-balken vorraetig" id="lf-balken"><i></i></div><b id="lf-prozent" class="lf-prozent"></b>
+      <label>Notiz<input id="lf-notiz" value="${wert(w.notiz)}" maxlength="500"></label>
+      ${anzahl("lf-material-liste", [...new Set([...d.materialien, ...d.spulen.map((s) => s.material)])])}${anzahl("lf-hersteller-liste", d.spulen.map((s) => s.hersteller))}${anzahl("lf-ort-liste", d.spulen.map((s) => s.ort))}
     </div>
-    <div class="knoepfe"><button type="button" class="knopf" data-lg-zurueck>Abbrechen</button><button type="button" class="knopf akzent" data-lg-speichern>${neu ? "Anlegen" : "Speichern"}</button></div>
-  </div>`;
+    <footer><button type="button" class="knopf akzent" data-lg-speichern>${neu ? "Hinzufügen" : "Speichern"}</button></footer>`;
+  $("#lager-form").hidden = false;
+  lgFormBalken();
+  $("#lf-material").focus();
 }
 
-function lgZeichnen() {
-  $("#dialog-inhalt").innerHTML = lager.form ? lgForm() : lgListe();
+function lgFormBalken() {
+  const start = parseFloat($("#lf-start")?.value), rest = parseFloat($("#lf-rest")?.value);
+  const anteil = start > 0 && rest >= 0 ? Math.max(0, Math.min(1, rest / start)) : 0;
+  $("#lf-balken i").style.width = `${Math.round(anteil * 100)}%`;
+  $("#lf-balken").className = `lg-balken ${rest <= 0 ? "leer" : anteil <= NIEDRIG_BIS ? "niedrig" : "vorraetig"}`;
+  $("#lf-prozent").textContent = `${Math.round(anteil * 100)} %`;
 }
 
-async function lgLaden() {
-  lager.daten = await api("/api/spulen");
-}
-
-function lgFormLesen() {
-  const v = (id) => $(`#${id}`)?.value ?? "";
-  const werte = {
-    material: v("lg-material"), hersteller: v("lg-hersteller"), farbname: v("lg-farbname"), farbe: lager.form.werte.farbe || "",
-    durchmesser: v("lg-durchmesser"), start_g: v("lg-start"), preis: v("lg-preis"), ort: v("lg-ort"), notiz: v("lg-notiz"),
-  };
-  if (lager.form.id) werte.rest_g = v("lg-rest");
-  return werte;
+function lgFormWerte() {
+  const v = (id) => $(`#${id}`).value;
+  return { material: v("lf-material"), hersteller: v("lf-hersteller"), farbname: v("lf-farbname"), farbe: lg.form.farbe, ort: v("lf-ort"), durchmesser: v("lf-durchmesser"),
+    preis: v("lf-preis"), start_g: v("lf-start"), rest_g: v("lf-rest"), notiz: v("lf-notiz") };
 }
 
 async function lgSpeichern() {
-  const werte = lgFormLesen();
+  const werte = lgFormWerte();
   try {
-    if (lager.form.id) await api(`/api/spulen/${lager.form.id}`, { method: "PATCH", body: werte });
+    let ids = [];
+    if (lg.form.id) await api(`/api/spulen/${lg.form.id}`, { method: "PATCH", body: werte });
     else {
-      const anzahl = Number($("#lg-anzahl")?.value) || 1;
-      await api("/api/spulen", { method: "POST", body: { felder: werte, anzahl } });
+      const anzahl = Number($("#lf-anzahl").value) || 1;
+      ({ ids } = await api("/api/spulen", { method: "POST", body: { felder: werte, anzahl } }));
       toast(anzahl === 1 ? "Spule angelegt." : `${anzahl} Spulen angelegt.`);
     }
-    await lgLaden();
-    lager.form = null;
-    lgZeichnen();
+    lgFormZu();
+    await lgNeuLaden(ids);
   } catch (e) { toast(e.message); }
 }
 
-async function oeffneLager() {
-  try { await lgLaden(); } catch (e) { return toast(e.message); }
-  Object.assign(lager, { form: null, offen: true });
-  const zu = dialog(lgListe());
-  await zu;
-  lager.offen = false;
+// Neue Einträge sind kurz hervorgehoben (3MF Katalog: grün umrandet).
+async function lgNeuLaden(neueIds = []) {
+  lg.neu = new Set(neueIds);
+  await ladeLager();
+  if (neueIds.length) setTimeout(() => { lg.neu = new Set(); zeichneLager(); }, 2500);
 }
 
-$("#dialog-inhalt").addEventListener("click", async (e) => {
-  if (!lager.offen) return;
+// ------------------------------------------------------------------ Nachkaufen
+
+async function lgNachkaufen(sid) {
+  const s = lg.daten.spulen.find((x) => x.id === sid);
+  const a = await dialog(`<h2>Nachkaufen</h2>
+    <p class="dim">${esc(s.material)}${s.hersteller || s.farbname ? ` · ${esc([s.hersteller, s.farbname].filter(Boolean).join(" "))}` : ""} — neue, volle Spulen mit denselben Angaben.</p>
+    <div class="lg-nachkauf">
+      <label>Anzahl (1 bis 20)<input id="nk-anzahl" type="number" min="1" max="20" value="1"></label>
+      <label>Menge je Spule (g)<input id="nk-menge" type="number" min="1" max="20000" value="${esc(s.start_g)}"></label>
+      <label>Preis je Spule (€)<input id="nk-preis" type="text" inputmode="decimal" value="${esc(s.preis ?? "")}"></label>
+      <label>Lagerort<input id="nk-ort" value="${esc(s.ort || "")}" maxlength="60"></label>
+    </div>
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Nachkaufen</button></div>`);
+  if (a !== "ja") return;
+  try {
+    const { ids } = await api(`/api/spulen/${sid}/nachkaufen`, { method: "POST",
+      body: { anzahl: Number($("#nk-anzahl").value) || 1, felder: { start_g: $("#nk-menge").value, preis: $("#nk-preis").value, ort: $("#nk-ort").value } } });
+    toast(ids.length === 1 ? "Spule nachgekauft." : `${ids.length} Spulen nachgekauft.`);
+    await lgNeuLaden(ids);
+  } catch (e) { toast(e.message); }
+}
+
+async function lgAblegen(sid) {
+  const s = lg.daten.spulen.find((x) => x.id === sid), ab = !s.archiviert;
+  try {
+    await api(`/api/spulen/${sid}`, { method: "PATCH", body: { archiviert: ab } });
+    await ladeLager();
+    toast(ab ? "Spule abgelegt." : "Spule wieder im Lager.", ab ? { aktionen: [["Rückgängig", () => lgAblegen(sid)]] } : {});
+  } catch (e) { toast(e.message); }
+}
+
+// ------------------------------------------------------------------ Bedienung
+
+document.addEventListener("click", (e) => {
   const t = e.target;
-  const hol = (a) => t.closest?.(`[${a}]`);
-  if (hol("data-lg-neu")) { lager.form = { id: null, werte: { durchmesser: 1.75, start_g: lager.daten.rolle_g } }; return lgZeichnen(); }
-  const bearb = hol("data-lg-bearbeiten");
-  if (bearb) { lager.form = { id: bearb.dataset.lgBearbeiten, werte: { ...lager.daten.spulen.find((s) => s.id === bearb.dataset.lgBearbeiten) } }; return lgZeichnen(); }
-  if (hol("data-lg-zurueck")) { lager.form = null; return lgZeichnen(); }
-  if (hol("data-lg-speichern")) return lgSpeichern();
-  const farbe = hol("data-lg-farbe");
-  if (farbe) { lager.form.werte = { ...lgFormLesen(), farbe: farbe.dataset.lgFarbe }; return lgZeichnen(); }
-  const archiv = hol("data-lg-archiv");
-  if (archiv) {
-    const s = lager.daten.spulen.find((x) => x.id === archiv.dataset.lgArchiv);
-    try { await api(`/api/spulen/${s.id}`, { method: "PATCH", body: { archiviert: !s.archiviert } }); await lgLaden(); lgZeichnen(); }
-    catch (er) { toast(er.message); }
+  if (!t.closest) return;
+  if (t.closest("#lager-seite") || t.closest("#lager-form")) {
+    const hol = (a) => t.closest(`[${a}]`);
+    let b;
+    if (hol("data-lg-neu")) return lgFormZeigen(null);
+    if ((b = hol("data-lg-bearbeiten"))) return lgFormZeigen(lg.daten.spulen.find((s) => s.id === b.dataset.lgBearbeiten));
+    if ((b = hol("data-lg-nachkaufen"))) return lgNachkaufen(b.dataset.lgNachkaufen);
+    if ((b = hol("data-lg-ablegen"))) return lgAblegen(b.dataset.lgAblegen);
+    if ((b = hol("data-lg-filter"))) { lg.filter.has(b.dataset.lgFilter) ? lg.filter.delete(b.dataset.lgFilter) : lg.filter.add(b.dataset.lgFilter); return zeichneLager(); }
+    if ((b = hol("data-lg-ansicht"))) { lg.ansicht = b.dataset.lgAnsicht; localStorageSchreiben("lager-ansicht", lg.ansicht); return zeichneLager(); }
+    if ((b = hol("data-lg-sort"))) {
+      lg.sort = { spalte: b.dataset.lgSort, richtung: lg.sort.spalte === b.dataset.lgSort ? -lg.sort.richtung : 1 };
+      return zeichneLager();
+    }
+    if (hol("data-lg-formzu")) return lgFormZu();
+    if (hol("data-lg-speichern")) return lgSpeichern();
+    if ((b = hol("data-lg-anzahl"))) { const f = $("#lf-anzahl"); f.value = Math.max(1, Math.min(20, (Number(f.value) || 1) + Number(b.dataset.lgAnzahl))); return; }
+    if ((b = hol("data-lg-farbe"))) {
+      lg.form.farbe = b.dataset.lgFarbe;
+      $("#lf-hex").value = lg.form.farbe;
+      if (lg.form.farbe) $("#lf-farbwahl").value = lg.form.farbe;
+      document.querySelectorAll("#lager-form [data-lg-farbe]").forEach((x) => x.classList.toggle("aktiv", x.dataset.lgFarbe === lg.form.farbe));
+    }
   }
 });
-$("#dialog-inhalt").addEventListener("change", (e) => {
-  if (lager.offen && e.target.matches?.("[data-lg-leere]")) { lager.leere = e.target.checked; lgZeichnen(); }
+document.addEventListener("dblclick", (e) => {
+  const z = e.target.closest?.("#lager-seite [data-lg-id]");
+  if (z && !e.target.closest("button")) lgFormZeigen(lg.daten.spulen.find((s) => s.id === z.dataset.lgId));
 });
-document.addEventListener("click", (e) => { if (e.target.closest?.("#lager")) oeffneLager(); });
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.id === "lg-suche") { lg.suche = t.value; return zeichneLager(); }
+  if (!t.closest?.("#lager-form")) return;
+  if (t.id === "lf-start" || t.id === "lf-rest") lgFormBalken();
+  if (t.id === "lf-farbwahl") { lg.form.farbe = t.value; $("#lf-hex").value = t.value; }
+  if (t.id === "lf-hex" && /^#[0-9a-fA-F]{6}$/.test(t.value)) { lg.form.farbe = t.value.toLowerCase(); $("#lf-farbwahl").value = lg.form.farbe; }
+  if (t.id === "lf-hex" && !t.value) lg.form.farbe = "";
+  if (t.id === "lf-farbwahl" || t.id === "lf-hex") document.querySelectorAll("#lager-form [data-lg-farbe]").forEach((x) => x.classList.toggle("aktiv", x.dataset.lgFarbe === lg.form.farbe));
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && lg.form && !$("#dialog").open) { e.preventDefault(); lgFormZu(); }
+  if (e.key === "Enter" && lg.form && e.target.closest?.("#lager-form") && e.target.matches("input:not([type=color])")) { e.preventDefault(); lgSpeichern(); }
+});

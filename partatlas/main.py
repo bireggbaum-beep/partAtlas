@@ -788,6 +788,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     def spule_neu(d: dict = Depends(json_koerper)):
         return {"ids": K().lager.anlegen(d.get("felder"), d.get("anzahl", 1))}
 
+    @app.post("/api/spulen/{sid}/nachkaufen")
+    def spule_nachkaufen(sid: str, d: dict = Depends(json_koerper)):
+        return {"ids": K().lager.nachkaufen(sid, d.get("anzahl", 1), d.get("felder"))}
+
     @app.patch("/api/spulen/{sid}")
     def spule_aendern(sid: str, koerper: dict = Depends(json_koerper)):
         K().lager.aendern(sid, koerper)

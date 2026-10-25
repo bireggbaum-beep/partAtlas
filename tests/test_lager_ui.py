@@ -1,4 +1,5 @@
-"""Filamentlager in der Oberfläche: Knopf in der Leiste, Spule anlegen (auch mehrere), bearbeiten, ablegen und wieder holen; Fehler als Satz."""
+"""Die Seite „Lager“ (lager.js), nach dem Material Manager des 3MF Katalogs: Kennzahlen, Suche, Filter, Dashboard und Liste, Formular als Seitenfenster,
+Nachkaufen, Ablegen. Der Server (Prüfung der Eingaben, Nachkaufen) steht in test_lager."""
 import os
 import socket
 import subprocess
@@ -10,9 +11,10 @@ from muster import check
 from test_bereinigen_ui import abfrage, chromium, warte
 
 HIER = os.path.dirname(os.path.abspath(__file__))
+BILD = "/tmp/claude-0/-home-user/a87771ce-acd8-5417-a6e2-9a56023b0bc8/scratchpad/lager.png"
 
 if __name__ == "__main__":
-    muster.zeitgrenze(90)
+    muster.zeitgrenze(120)
     from playwright.sync_api import sync_playwright
     tmp = tempfile.mkdtemp()
     with socket.socket() as s:
@@ -25,53 +27,92 @@ if __name__ == "__main__":
         warte(lambda: abfrage(port, "/api/zaehler") is not None)
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
-            pg = b.new_page(viewport={"width": 1300, "height": 800})
+            pg = b.new_page(viewport={"width": 1500, "height": 850})
             pg.goto(f"http://127.0.0.1:{port}/")
             pg.wait_for_selector("#lager")
             pg.click("#lager")
-            pg.wait_for_selector("[data-lg-neu]")
-            check("Der Knopf in der Leiste öffnet das Lager; ohne Spulen steht ein Hinweis da", "Noch keine Spulen" in pg.inner_text("#dialog"))
+            pg.wait_for_selector(".lg-zahlen")
+            zahlen = lambda: [pg.inner_text(f".lg-zahl:nth-child({i}) b") for i in (1, 2, 3, 4)]
+            check("Der Knopf in der Leiste öffnet die Seite Lager: vier Kennzahlen, leer; Hinweis statt Karten",
+                  zahlen() == ["0", "0 g", "0", "0"] and "Noch keine Spulen" in pg.inner_text("#lager-seite")
+                  and pg.evaluate("document.querySelector('#raster').hidden") and pg.locator("#lager.aktiv").count() == 1)
+
             pg.click("[data-lg-neu]")
-            pg.select_option("#lg-material", "PETG")
-            pg.fill("#lg-hersteller", "Prusament")
-            pg.fill("#lg-farbname", "Galaxy Black")
-            pg.click('[data-lg-farbe="#1a1a1a"]')
-            pg.fill("#lg-preis", "24,90")
-            pg.fill("#lg-ort", "Regal 2")
-            pg.fill("#lg-anzahl", "2")
-            check("Formular: gewählte Farbe bleibt nach dem Klick erhalten, Eingaben auch",
-                  pg.locator('[data-lg-farbe="#1a1a1a"].aktiv').count() == 1 and pg.input_value("#lg-hersteller") == "Prusament" and pg.input_value("#lg-ort") == "Regal 2")
+            pg.wait_for_selector("#lf-material")
+            pg.fill("#lf-material", "PETG")
+            pg.fill("#lf-hersteller", "Filamentwerk Süd")
+            pg.fill("#lf-farbname", "Petrol")
+            pg.fill("#lf-hex", "#1A8A99")
+            pg.fill("#lf-ort", "Regal B1")
+            pg.fill("#lf-preis", "24,90")
+            pg.click('[data-lg-anzahl="1"]')
+            check("Formular als Seitenfenster: Farbwert per Hex, Anzahl mit +, der Balken zeigt 100 %",
+                  pg.input_value("#lf-anzahl") == "2" and pg.inner_text("#lf-prozent") == "100 %" and not pg.evaluate("document.querySelector('#lager-form').hidden"))
             pg.click("[data-lg-speichern]")
-            pg.wait_for_selector(".lg-zeile")
-            check("Zwei gleiche Spulen angelegt, in der Liste mit Material, Name und Rest",
-                  pg.locator(".lg-zeile").count() == 2 and "PETG" in pg.inner_text(".lg-zeile >> nth=0") and "Galaxy Black" in pg.inner_text(".lg-zeile >> nth=0")
-                  and "1.000 g" in pg.inner_text(".lg-zeile >> nth=0"))
-            check("Die Summe oben stimmt: 2 Spulen, 2 kg, Wert 49,80 €", "2 Spulen" in pg.inner_text(".lg > p") and "2 kg" in pg.inner_text(".lg > p") and "49,8" in pg.inner_text(".lg > p"))
-            pg.click(".lg-zeile >> nth=0 >> [data-lg-bearbeiten]")
-            pg.fill("#lg-rest", "80")
+            pg.wait_for_selector(".lg-karte")
+            check("Hinzufügen: zwei Karten, das Seitenfenster ist zu, die neuen sind hervorgehoben",
+                  pg.locator(".lg-karte").count() == 2 and pg.evaluate("document.querySelector('#lager-form').hidden") and pg.locator(".lg-karte.neu").count() == 2)
+            check("Kennzahlen: 2 Spulen, 2.000 g, 1 Lagerplatz, nichts niedrig", zahlen() == ["2", "2.000 g", "1", "0"])
+            check("Karte: Material, Hersteller · Farbname, Lagerort, Status Vorrätig, 100 %, Durchmesser und Preis",
+                  all(w in pg.inner_text(".lg-karte >> nth=0") for w in ("PETG", "Filamentwerk Süd · Petrol", "Regal B1", "VORRÄTIG", "100 %", "1,75 mm", "24,90")))
+
+            pg.dblclick(".lg-karte >> nth=0 >> .lg-kopf")
+            pg.wait_for_selector("#lf-rest")
+            pg.fill("#lf-rest", "140")
+            check("Doppelklick bearbeitet: Restgewicht 140 von 1000 = 14 %", pg.inner_text("#lf-prozent") == "14 %" and pg.input_value("#lf-material") == "PETG")
             pg.click("[data-lg-speichern]")
-            pg.wait_for_selector(".lg-zeile")
-            check("Rest geändert: 80 g, der Balken ist knapp (gelb), die zweite Spule bleibt voll",
-                  "80 g" in pg.inner_text(".lg-zeile >> nth=0") and pg.locator(".lg-zeile >> nth=0 >> .lg-rest.knapp").count() == 1
-                  and "1.000 g" in pg.inner_text(".lg-zeile >> nth=1"))
-            pg.click(".lg-zeile >> nth=0 >> [data-lg-bearbeiten]")
-            pg.fill("#lg-rest", "5000")
+            pg.wait_for_function("document.querySelectorAll('.lg-marke.niedrig').length === 1")
+            check("Nach dem Speichern: eine Karte „Niedrig“, Kennzahl Niedrig/leer = 1", zahlen()[3] == "1")
+            pg.click('[data-lg-filter="niedrig"]')
+            check("Filter „Niedrig“ zeigt nur die eine Karte", pg.locator(".lg-karte").count() == 1)
+            pg.click('[data-lg-filter="niedrig"]')
+            pg.fill("#lg-suche", "petrol")
+            n1 = pg.locator(".lg-karte").count()
+            pg.fill("#lg-suche", "gibtsnicht")
+            check("Suche nach Farbname findet beide, bei Unbekanntem kommt ein Hinweis",
+                  n1 == 2 and pg.locator(".lg-karte").count() == 0 and "Keine Spulen für diese Auswahl" in pg.inner_text("#lager-seite"))
+            pg.fill("#lg-suche", "")
+
+            pg.click('[data-lg-nachkaufen] >> nth=0')
+            pg.wait_for_selector("#nk-anzahl")
+            pg.fill("#nk-anzahl", "2")
+            pg.fill("#nk-preis", "22,50")
+            pg.click("#dialog .knopf.akzent")
+            pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 4")
+            check("Nachkaufen: zwei neue Spulen, voll, mit Material und Hersteller der Vorlage und dem neuen Preis",
+                  pg.locator(".lg-karte", has_text="22,50").count() == 2 and pg.locator(".lg-karte", has_text="Filamentwerk Süd").count() == 4)
+
+            pg.click('[data-lg-ansicht="liste"]')
+            pg.wait_for_selector(".lg-tabelle")
+            pg.click('[data-lg-sort="rest_g"]')
+            ersteZeile = pg.inner_text(".lg-tabelle tbody tr >> nth=0")
+            pg.click('[data-lg-sort="rest_g"]')
+            check("Liste: sortierbar nach Bestand — aufsteigend steht die knappe Spule oben, absteigend eine volle",
+                  "140" in ersteZeile and "140" not in pg.inner_text(".lg-tabelle tbody tr >> nth=0"))
+            pg.screenshot(path=BILD)
+            pg.click('[data-lg-ansicht="dashboard"]')
+
+            pg.click(".lg-karte >> nth=0 >> [data-lg-ablegen]")
+            pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 3")
+            pg.click('[data-lg-filter="abgelegt"]')
+            check("Ablegen: die Spule verschwindet, unter „Abgelegt“ ist sie gedämpft zu finden",
+                  pg.locator(".lg-karte.abgelegt").count() == 1)
+            pg.click(".lg-karte.abgelegt [data-lg-ablegen]")
+            pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 0")
+            pg.click('[data-lg-filter="abgelegt"]')
+            check("Wieder ins Lager: vier Spulen sind wieder da", pg.locator(".lg-karte").count() == 4)
+
+            pg.click("[data-lg-neu]")
+            pg.fill("#lf-material", "PLA")
+            pg.fill("#lf-rest", "5000")
             pg.click("[data-lg-speichern]")
             pg.wait_for_timeout(500)
-            check("Rest über der vollen Spule: Meldung, das Formular bleibt offen", "grösser" in pg.inner_text("#toast") and pg.locator("#lg-rest").count() == 1)
-            pg.click("[data-lg-zurueck]")
-            pg.click(".lg-zeile >> nth=0 >> [data-lg-archiv]")
-            pg.wait_for_selector("[data-lg-leere]")
-            check("Als leer abgelegt: sie verschwindet aus der Liste, ein Schalter „Abgelegte zeigen (1)“ erscheint",
-                  pg.locator(".lg-zeile").count() == 1 and "(1)" in pg.inner_text(".lg-leiste"))
-            pg.check("[data-lg-leere]")
-            check("Abgelegte zeigen: wieder zwei Zeilen, die abgelegte gedämpft", pg.locator(".lg-zeile").count() == 2 and pg.locator(".lg-zeile.archiv").count() == 1)
-            pg.screenshot(path="/tmp/claude-0/-home-user/a87771ce-acd8-5417-a6e2-9a56023b0bc8/scratchpad/lager.png")
-            pg.click(".lg-zeile.archiv [data-lg-archiv]")
-            pg.wait_for_function("document.querySelectorAll('.lg-zeile.archiv').length === 0", timeout=5000)
-            check("Wieder aktiviert", pg.locator(".lg-zeile.archiv").count() == 0 and pg.locator(".lg-zeile").count() == 2)
-            pg.click("#dialog .knoepfe .knopf")
-            check("Schliessen beendet das Fenster", not pg.evaluate("document.querySelector('#dialog').open"))
+            check("Rest über der vollen Spule: Meldung, das Seitenfenster bleibt offen", "grösser" in pg.inner_text("#toast") and pg.locator("#lf-rest").count() == 1)
+            pg.keyboard.press("Escape")
+            check("Escape schliesst das Seitenfenster", pg.evaluate("document.querySelector('#lager-form').hidden"))
+            pg.click('[data-rail="katalog"]')
+            pg.wait_for_selector("#raster:not([hidden])")
+            check("Zurück in den Katalog: das Lager ist weg, der Knopf nicht mehr aktiv", pg.evaluate("document.querySelector('#lager-seite').hidden") and pg.locator("#lager.aktiv").count() == 0)
             b.close()
     finally:
         server.terminate()
