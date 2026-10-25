@@ -1,24 +1,56 @@
-/* Farben und Masse aus dem 3MF Katalog Manager (src/styles/theme.css,
-   MIT, © 2026 Bexxs75) — die Oberfläche soll dem Anwender vertraut sein.
-   Schriften: Barlow / IBM Plex Mono, wenn installiert; sonst Systemschrift. */
+/* Masse und Schriften aus dem 3MF Katalog Manager (src/styles/theme.css, MIT, © 2026 Bexxs75) — die Oberfläche soll dem Anwender vertraut
+   sein. Schriften: Barlow / IBM Plex Mono, wenn installiert; sonst Systemschrift.
+   Farben sind eigene Schemata (25.10.2026, Probezeit): C Filament ist die Vorgabe und steht in den ersten beiden Blöcken, A Messing und
+   B Blaupause überschreiben sie über `data-farbe` am Seitenanfang (Einstellungen › Ansicht, gemerkt in diesem Browser). Hell/Dunkel bleibt
+   `data-app`. Schrift auf Akzent und Akzent als Schrift erreichen überall mindestens 4,5 : 1. Gewählt wird später eines; die anderen entfallen. */
 
 [data-app] {
-  --bg: oklch(0.965 0.004 60); --panel: oklch(1 0 0); --panel-2: oklch(0.985 0.003 60);
-  --line: oklch(0.895 0.006 60); --line-strong: oklch(0.82 0.008 60);
-  --ink: oklch(0.245 0.01 45); --ink-2: oklch(0.42 0.01 50); --ink-3: oklch(0.50 0.008 50);
-  --accent: oklch(0.565 0.165 30); --accent-ink: oklch(0.99 0.01 30); --accent-soft: oklch(0.945 0.03 30);
-  --plate: oklch(0.915 0.006 60); --plate-2: oklch(0.955 0.004 60);
+  --bg: oklch(0.965 0.007 200); --panel: oklch(1 0 0); --panel-2: oklch(0.985 0.004 200);
+  --line: oklch(0.89 0.011 200); --line-strong: oklch(0.82 0.012 200);
+  --ink: oklch(0.25 0.022 220); --ink-2: oklch(0.42 0.02 215); --ink-3: oklch(0.5 0.02 215);
+  --accent: oklch(0.5 0.1 185); --accent-ink: oklch(0.99 0.01 185); --accent-soft: oklch(0.94 0.032 190);
+  --plate: oklch(0.915 0.008 200); --plate-2: oklch(0.955 0.006 200);
   --good: oklch(0.52 0.13 150); --warn: oklch(0.62 0.14 80); --crit: oklch(0.55 0.18 18);
-  --shadow: 0 1px 2px rgba(40, 28, 24, 0.06), 0 8px 24px rgba(40, 28, 24, 0.05);
+  --shadow: 0 1px 2px rgba(20, 32, 36, 0.06), 0 8px 24px rgba(20, 32, 36, 0.05);
 }
 [data-app="dark"] {
-  --bg: oklch(0.165 0.005 60); --panel: oklch(0.205 0.006 60); --panel-2: oklch(0.235 0.006 60);
-  --line: oklch(0.295 0.008 60); --line-strong: oklch(0.375 0.01 60);
-  --ink: oklch(0.945 0.005 60); --ink-2: oklch(0.80 0.008 60); --ink-3: oklch(0.68 0.01 60);
-  --accent: oklch(0.735 0.155 34); --accent-ink: oklch(0.17 0.03 30); --accent-soft: oklch(0.285 0.05 32);
-  --plate: oklch(0.195 0.006 60); --plate-2: oklch(0.235 0.006 60);
+  --bg: oklch(0.18 0.013 215); --panel: oklch(0.225 0.015 215); --panel-2: oklch(0.255 0.016 215);
+  --line: oklch(0.31 0.017 215); --line-strong: oklch(0.38 0.018 215);
+  --ink: oklch(0.94 0.008 190); --ink-2: oklch(0.8 0.012 200); --ink-3: oklch(0.7 0.02 205);
+  --accent: oklch(0.76 0.115 180); --accent-ink: oklch(0.18 0.03 190); --accent-soft: oklch(0.3 0.045 185);
+  --plate: oklch(0.195 0.013 215); --plate-2: oklch(0.235 0.015 215);
   --good: oklch(0.72 0.14 150); --warn: oklch(0.8 0.15 85); --crit: oklch(0.68 0.19 15);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+/* A Messing: Graphit und Messing */
+[data-farbe="a"][data-app] {
+  --bg: oklch(0.965 0.007 95); --panel: oklch(0.992 0.004 95); --panel-2: oklch(0.98 0.005 95);
+  --line: oklch(0.88 0.012 95); --line-strong: oklch(0.82 0.014 95);
+  --ink: oklch(0.24 0.014 255); --ink-2: oklch(0.42 0.014 255); --ink-3: oklch(0.5 0.012 255);
+  --accent: oklch(0.5 0.11 78); --accent-ink: oklch(0.99 0.01 78); --accent-soft: oklch(0.935 0.045 90);
+  --plate: oklch(0.915 0.01 95); --plate-2: oklch(0.955 0.008 95);
+}
+[data-farbe="a"][data-app="dark"] {
+  --bg: oklch(0.17 0.008 255); --panel: oklch(0.215 0.01 255); --panel-2: oklch(0.24 0.011 255);
+  --line: oklch(0.3 0.012 255); --line-strong: oklch(0.37 0.014 255);
+  --ink: oklch(0.94 0.005 95); --ink-2: oklch(0.8 0.008 95); --ink-3: oklch(0.68 0.01 255);
+  --accent: oklch(0.78 0.125 85); --accent-ink: oklch(0.2 0.03 85); --accent-soft: oklch(0.3 0.05 85);
+  --plate: oklch(0.19 0.01 255); --plate-2: oklch(0.235 0.011 255);
+}
+/* B Blaupause: Tinte und Papier, dunkel als Plan */
+[data-farbe="b"][data-app] {
+  --bg: oklch(0.97 0.008 250); --panel: oklch(1 0 0); --panel-2: oklch(0.985 0.006 250);
+  --line: oklch(0.89 0.014 250); --line-strong: oklch(0.82 0.016 250);
+  --ink: oklch(0.24 0.045 262); --ink-2: oklch(0.42 0.04 260); --ink-3: oklch(0.5 0.04 258);
+  --accent: oklch(0.5 0.16 262); --accent-ink: oklch(0.99 0.01 262); --accent-soft: oklch(0.94 0.03 255);
+  --plate: oklch(0.92 0.012 250); --plate-2: oklch(0.955 0.01 250);
+}
+[data-farbe="b"][data-app="dark"] {
+  --bg: oklch(0.2 0.045 262); --panel: oklch(0.245 0.05 262); --panel-2: oklch(0.275 0.05 262);
+  --line: oklch(0.34 0.05 262); --line-strong: oklch(0.4 0.05 262);
+  --ink: oklch(0.95 0.01 250); --ink-2: oklch(0.82 0.03 255); --ink-3: oklch(0.74 0.035 255);
+  --accent: oklch(0.79 0.12 215); --accent-ink: oklch(0.2 0.05 240); --accent-soft: oklch(0.33 0.06 235);
+  --plate: oklch(0.215 0.048 262); --plate-2: oklch(0.26 0.05 262);
 }
 :root {
   /* Maßsystem — siehe KONZEPT „Gestaltungsregeln“. Alle Abstände und Masse kommen aus der Fibonacci-Reihe;
@@ -48,7 +80,8 @@ button, input, select { font: inherit; color: inherit; }
 .kopf { grid-area: kopf; display: flex; align-items: center; gap: var(--s4); padding: 0 var(--s4);
         border-bottom: 1px solid var(--line); background: var(--bg); }
 .logo { font-weight: 700; letter-spacing: 0.08em; font-size: 14px; }
-.logo span { color: var(--accent); font-family: var(--mono); font-weight: 500; font-size: 12.5px; margin-left: 4px; }
+.logo { display: flex; align-items: center; gap: var(--s3); }
+.logo .zeichen { width: 21px; height: 21px; color: var(--accent); flex: none; }
 .kopf-luecke { flex: 1; }
 .label { font-family: var(--mono); font-size: var(--fs-label); color: var(--ink-3); letter-spacing: 0.1em; }
 .knopf { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; font-size: 13.5px; }

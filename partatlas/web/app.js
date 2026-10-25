@@ -2845,6 +2845,10 @@ document.addEventListener("change", async (e) => {
     return raster.neu();
   }
   if (e.target.name === "ein-kachelgroesse") return kachelGroesseSetzen(e.target.value);   // Einstellungen › Ansicht, sofort
+  if (e.target.name === "ein-farbe") {                                                      // Farbschema, gemerkt in diesem Browser
+    document.documentElement.dataset.farbe = e.target.value;
+    return localStorageSchreiben("farbe", e.target.value);
+  }
   if (e.target.id === "ein-format-etikett") {          // wirkt sofort, auch ohne „Speichern“
     zustand.formatEtikett = e.target.checked;
     localStorageSchreiben("formatEtikett", e.target.checked ? "1" : "0");
@@ -3340,6 +3344,7 @@ function liveMeldung(m) {
 }
 
 document.documentElement.dataset.app = localStorageLesen("thema") || "dark";
+document.documentElement.dataset.farbe = localStorageLesen("farbe") || "c";
 neuLaden();
 programmeAktualisieren();
 $("#scan-abbrechen").onclick = async () => {
