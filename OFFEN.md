@@ -45,6 +45,28 @@ Tauri-Fenster liegt zurückgestellt auf dem Branch.
 
 **Später (Ideen, nur bei echtem Bedarf)** — G-Code-Vorschau, Messen/Schnitt, mehr Formate (IGES, AMF, PLY, glTF), Name/Markensuche, G-Code-Ordner mit Zuordnung (3)
 
+## Parität Material Manager (3MF Katalog, gelesen 25.10.2026 in `docs/benutzerhandbuch/BENUTZERHANDBUCH.md` und den Bildern 08, 09, 10, 22, 25, 26, 27, 12, 24)
+
+Anwender: **in der ersten Iteration funktionale Parität**. Meine erste Spulenliste (Fenster, lager.js) ist nur ein Teil davon und wird zur Seite umgebaut.
+Der Material Manager ist eine **eigene Seite** (zweites Symbol links), nicht ein Fenster: oben Schalter Filament | Resin; vier Kennzahlen (Spulen gesamt,
+Restbestand gesamt, belegte Lagerplätze, niedrig/leer); Suchfeld (Material, Hersteller, Lagerort), Filter „Niedrig“ und „Leer“, Umschalter Dashboard | Liste,
+Knopf „＋ Spule anlegen“. **Dashboard:** Karte je Spule mit Material-Kürzel, Farbpunkt, Hersteller · Farbname, Lagerort-Marke, Status (VORRÄTIG grün /
+NIEDRIG orange / LEER rot), Rest in g mit Balken und Prozent, Durchmesser, Preis, „＋ Nachkaufen“, Stift, ✕. **Liste:** sortierbare Spalten Material,
+Hersteller, Farbe, Lagerort, ⌀, Bestand (Balken), Preis, Status. Doppelklick auf Karte/Zeile = Bearbeiten. **Formular** als Seitenfenster rechts: Bild (ziehen
+oder klicken, PNG/JPG/WebP ≤ 5 MB), Material, Hersteller, Farbname (Autovorschläge), Farbwert (Palette mit 16 Feldern + Hex-Feld), Anzahl Spulen mit −/+,
+Lagerort, Durchmesser, Preis, Ursprungsgewicht, Restgewicht mit Balken und Prozent; Gewichte auf 0,1 g. **Nachkaufen:** kleines Fenster, Anzahl 1–20, Menge/Preis/
+Ort anpassbar, übernimmt Art, Material, Hersteller, Farbe, Farbwert, Bild, Durchmesser; neue Einträge kurz grün umrandet. **Resin:** eigene Ansicht (Flaschen, ml,
+„− Verbrauch“, nie unter 0, kein Durchmesser), zählt nicht bei „Reicht das Filament?“ und den Kosten. **Drucker** (rechte Spalte, Printer Manager): Drucker
+Filament oder Resin (danach fest), Name, Hersteller, Modell, Düse, Bauraum X×Y×Z; **Einheiten** aus Vorlagen (Bambu AMS / AMS lite / AMS HT, Creality CFS, Prusa MMU3,
+Anycubic ACE Pro, Spulenhalter) oder eigene mit Fachzahl; jeder Filament-Drucker hat einen Spulenhalter; Spule **auf ein Fach ziehen** oder Fach anklicken und wählen,
+„Herausnehmen“ bringt sie an den **Stammplatz** zurück; Resin-Drucker haben eine Harzwanne. **Reicht das Filament?** (Detailseite, für gesliceste 3MF, über alle Platten):
+je Filament **reicht / reicht mit Spulenwechsel / reicht nicht (mit fehlender Menge) / unklar**, nennt die Spule mit Rest und wo sie steckt; die **Warteschlange**
+zeigt dasselbe als Symbol und rechnet von oben nach unten mit dem gemeinsamen Bedarf; nichts wird dabei abgebucht. **Abbuchen:** nur nach Bestätigung im Dialog „Neue
+Drucke“ (Verbrauch in g, vorgeschlagene Spule = die im Drucker eingelegte, vorgeschlagenes Modell über den Dateinamen); mit Modell entsteht ein Druckprotokoll-Eintrag.
+Materialkosten je Modell aus Gewicht × Preis. **Moonraker** (Druckerverlauf lesen) entfällt für die Drucker des Testers (A1 Mini, Kobra 2).
+Stücke (Aufwand): Seite mit Kennzahlen, Filtern, Dashboard/Liste, Formular, Nachkaufen (4–5) · Bild an der Spule (1) · Drucker mit Einheiten und Fächern, einlegen/herausnehmen (4) ·
+Reicht das Filament? mit Warteschlange (3) · Abbuchen mit Bestätigung und Druckeintrag (2–3) · Materialkosten (1) · Resin (2).
+
 ## Filament, Drucker, G-Code nach dem 3MF Katalog (Anwender 25.10.2026) — nur Entwurf, nichts gebaut
 
 Drucker des Testers: Bambu A1 Mini, Anycubic Kobra 2 → **Moonraker entfällt** (Kobra 2 ohne Klipper, A1 Mini ist Bambu). Budget: nur Stücke mit Aufwand 1–2.
