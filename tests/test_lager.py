@@ -124,6 +124,37 @@ if __name__ == "__main__":
               a == "reicht" and b2["status"] == "reicht_nicht" and b2["filamente"][0]["fehlt_g"] == 200)
         
 
+        # -- Abbuchen am Druck und Materialkosten
+        for x in c.get("/api/spulen").json()["spulen"]:
+            c.delete(f"/api/spulen/{x['id']}")
+        schwarz = c.post("/api/spulen", json={"felder": {"material": "PETG", "farbe": "#000000", "start_g": 1000, "preis": 25}}).json()["ids"][0]
+        weiss = c.post("/api/spulen", json={"felder": {"material": "PLA", "farbe": "#ffffff", "start_g": 1000, "preis": 20}}).json()["ids"][0]
+        rest = lambda i: next(x for x in c.get("/api/spulen").json()["spulen"] if x["id"] == i)["rest_g"]
+        check("Passende Spule: Material und Farbe führen zur richtigen, Unbekanntes zu null",
+              c.get("/api/spulen/passend", params={"typ": "PETG", "farbe": "#101010", "g": 12.5}).json()["spule"] == schwarz
+              and c.get("/api/spulen/passend", params={"typ": "TPU", "g": 5}).json()["spule"] is None)
+        r = c.post("/api/drucke", json={"modelle": [mid], "felder": {"gewicht_g": 12.5, "filament": [{"typ": "PETG", "farbe": "#000000", "g": 12.5}],
+                                                                      "abbuchung": {"spule": schwarz, "g": 12.5}}})
+        druck = next(d for d in c.get(f"/api/modelle/{mid}").json()["drucke"] if d["id"] == r.json()["id"])
+        check("Druck mit Abbuchung: der Rest sinkt um 12,5 g, der Druck merkt sich Spule, Menge und Kosten (0,31 €)",
+              rest(schwarz) == 987.5 and druck["abbuchung"]["g"] == 12.5 and druck["abbuchung"]["spule"] == schwarz and druck["abbuchung"]["kosten"] == 0.31)
+        klein = c.post("/api/spulen", json={"felder": {"material": "PETG", "start_g": 1000, "rest_g": 5}}).json()["ids"][0]
+        r = c.post("/api/drucke", json={"modelle": [mid], "felder": {"gewicht_g": 12.5, "abbuchung": {"spule": klein, "g": 12.5}}})
+        check("Mehr als der Rest: abgezogen wird nur, was da ist, der Rest bleibt bei 0",
+              rest(klein) == 0 and next(d for d in c.get(f"/api/modelle/{mid}").json()["drucke"] if d["id"] == r.json()["id"])["abbuchung"]["g"] == 5)
+        anzahl = len(c.get(f"/api/modelle/{mid}").json()["drucke"])
+        r = c.post("/api/drucke", json={"modelle": [mid], "felder": {"gewicht_g": 3, "abbuchung": {"spule": "sp_99999", "g": 3}}})
+        check("Unbekannte Spule: Satz als Antwort, und es entsteht kein halber Druck", r.status_code == 400 and len(c.get(f"/api/modelle/{mid}").json()["drucke"]) == anzahl)
+        r = c.post("/api/drucke", json={"modelle": [mid], "felder": {"gewicht_g": 3}})
+        check("Druck ohne Abbuchung: kein Eintrag, nichts wird abgezogen", next(d for d in c.get(f"/api/modelle/{mid}").json()["drucke"] if d["id"] == r.json()["id"])["abbuchung"] is None
+              and rest(schwarz) == 987.5)
+        k = c.get(f"/api/modelle/{mid}").json()["reicht"]
+        check("Materialkosten am Modell: PETG 12,5 g aus der Spule zu 25 € und PLA 3,25 g zu 20 € = 0,38 €, vollständig",
+              k["kosten"] == 0.38 and k["kosten_vollstaendig"] is True)
+        c.patch(f"/api/spulen/{weiss}", json={"preis": ""})
+        k = c.get(f"/api/modelle/{mid}").json()["reicht"]
+        check("Ohne Preis an einer Spule: die Summe gilt nur für die anderen und wird als unvollständig gemeldet", k["kosten"] == 0.31 and k["kosten_vollstaendig"] is False)
+
     with TestClient(erstelle_app(bestand, prozesse=1)) as c2:
-        check("Nach einem Neustart sind alle Spulen noch da", len(c2.get("/api/spulen").json()["spulen"]) == 1)
+        check("Nach einem Neustart sind alle Spulen noch da", len(c2.get("/api/spulen").json()["spulen"]) == 3)
     muster.ende()

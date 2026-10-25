@@ -1392,3 +1392,7 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .lf-bild img { max-width: 100%; max-height: 140px; border-radius: var(--radius); }
 .lf-bild .knopf { position: absolute; top: 6px; right: 6px; }
 .lf-bildhinweis { margin: 0; color: var(--crit); font-size: var(--fs-meta); }
+.rf-kosten { padding: var(--s3) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); }
+.d-abbuchen { display: flex; flex-direction: column; gap: 3px; }
+.d-abbuchen select { width: 100%; }
+.d-abbuchen p { margin: 0; min-height: 1.2em; }

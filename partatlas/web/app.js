@@ -1438,7 +1438,8 @@ function reichtTeil(m) {
     return `<div class="rf-zeile"><span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span><b>${esc(f.typ || "?")}</b> ${zahl(f.bedarf_g, 1)} g
       <span class="rf-marke ${f.status}">${REICHT_TEXT[f.status]}</span><span class="dim rf-detail">${detail}</span></div>`;
   }).join("");
-  return `<div class="i-titel">REICHT DAS FILAMENT?</div><div class="i-karte rf">${zeilen}
+  const kosten = r_ => r_.kosten != null ? `<div class="rf-kosten">Materialkosten ca. ${lgEuro(r_.kosten)}${r_.kosten_vollstaendig ? "" : " (ohne die Filamente ohne Spule oder Preis)"}</div>` : "";
+  return `<div class="i-titel">REICHT DAS FILAMENT?</div><div class="i-karte rf">${zeilen}${kosten(m.reicht)}
     <div class="rf-fuss dim">Gleiches Material und ähnliche Farbe, über alle Platten. Es wird nichts abgebucht. <button type="button" class="knopf-text" id="zum-lager">Zum Lager</button></div></div>`;
 }
 
@@ -1574,7 +1575,8 @@ function druckeTafel(m) {
   return kopf + liste.map((d) => {
     const [text, art] = ERGEBNIS[d.ergebnis] || ERGEBNIS.gut;
     const werte = [d.gewicht_g != null ? `${zahl(d.gewicht_g, 1)} g` : "", d.dauer_s ? dauer(d.dauer_s) : ""].filter(Boolean).join(" · ");
-    const fil = d.filament.map((f) => `<span class="chip"><span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")}${f.g != null ? " " + zahl(f.g, 1) + " g" : ""}</span>`).join("");
+    const fil = d.filament.map((f) => `<span class="chip"><span class="farbpunkt" style="background:${esc(f.farbe || "transparent")}"></span>${esc(f.typ || "?")}${f.g != null ? " " + zahl(f.g, 1) + " g" : ""}</span>`).join("")
+      + (d.abbuchung ? `<span class="chip" title="Beim Anlegen von der Spule im Lager abgezogen">↓ ${zahl(d.abbuchung.g, 1)} g von ${esc(d.abbuchung.name)}${d.abbuchung.kosten != null ? ` · ${lgEuro(d.abbuchung.kosten)}` : ""}</span>` : "");
     return `<div class="druck ${d.referenz ? "ref" : ""}" data-druck="${esc(d.id)}">
       <div class="d-kopf"><span class="d-erg ${art}">${text}</span><b>${esc(datumDe(d.datum))}</b>
         ${d.referenz ? `<span class="d-refmarke" title="So war es gut — Referenz für dieses Modell">★ Referenz</span>` : ""}</div>
@@ -1672,7 +1674,9 @@ async function druckDialog({ titel, namen, druck }) {
   const f0 = (d.filament && d.filament[0]) || {};
   const std = d.dauer_s ? [Math.floor(d.dauer_s / 3600), Math.round((d.dauer_s % 3600) / 60)] : ["", ""];
   const heute = new Date().toISOString().slice(0, 10);
-  const a = await dialog(`<h2>${esc(titel)}</h2>
+  // Beim Anlegen: Verbrauch von einer Spule im Lager abziehen (lager.py) — vorgeschlagen wird die passende, abgezogen wird nur nach deiner Wahl.
+  const spulen = druck ? [] : (await api("/api/spulen")).spulen.filter((x) => x.rest_g > 0);
+  const dlg = dialog(`<h2>${esc(titel)}</h2>
     ${namen.length > 1 ? `<p class="dim">Gilt für: ${namen.map(esc).join(", ")}</p>` : ""}
     <div class="d-form">
       <div class="d-ergebnis">${Object.entries(ERGEBNIS).map(([k, [t]]) =>
@@ -1687,9 +1691,14 @@ async function druckDialog({ titel, namen, druck }) {
         <label>Farbe <input type="color" id="df-farbe" value="${esc(f0.farbe || "#cccccc")}" data-gesetzt="${f0.farbe ? "1" : ""}"></label>
         <label>Verbrauch (g) <input type="number" id="df-fg" min="0" step="0.1" value="${f0.g ?? ""}"></label>
       </div>
+      ${druck || !spulen.length ? "" : `<div class="d-abbuchen"><label>Von Spule abziehen <select id="df-spule"><option value="">– nichts abziehen –</option>${spulen.map((x) =>
+        `<option value="${esc(x.id)}">${esc(x.material)} · ${esc([x.hersteller, x.farbname].filter(Boolean).join(" ") || "ohne Namen")} · ${zahl(x.rest_g, 0)} g</option>`).join("")}</select></label>
+        <p class="dim" id="df-spulehinweis"></p></div>`}
       <label>Notiz <textarea id="df-notiz" rows="3" placeholder="z. B. Düse 215 °C, Lüfter 60 %, Brim an">${esc(d.notiz || "")}</textarea></label>
     </div>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" id="df-ok" value="ja">Speichern</button></div>`);
+  if (!druck && spulen.length) druckSpuleAnbinden(spulen);
+  const a = await dlg;
   if (a !== "ja") return null;
   const zahlOderNull = (id) => { const v = $(id).value; return v === "" ? null : Number(v); };
   const h = zahlOderNull("#df-h"), mi = zahlOderNull("#df-min");
@@ -1697,7 +1706,9 @@ async function druckDialog({ titel, namen, druck }) {
   // Weitere Filamente (aus einer G-Code-Datei, später) bleiben unberührt.
   const rest = (d.filament || []).slice(1);
   const erstes = typ || farbe || fg != null ? [{ typ: typ || null, farbe, g: fg }] : [];
+  const spule = $("#df-spule")?.value, abzug = fg ?? zahlOderNull("#df-g");
   return {
+    ...(spule && abzug > 0 ? { abbuchung: { spule, g: abzug } } : {}),
     ergebnis: document.querySelector('input[name="df-erg"]:checked').value,
     datum: $("#df-datum").value || null,
     gewicht_g: zahlOderNull("#df-g"),
@@ -1707,6 +1718,34 @@ async function druckDialog({ titel, namen, druck }) {
   };
 }
 document.addEventListener("input", (e) => { if (e.target.id === "df-farbe") e.target.dataset.gesetzt = "1"; });
+
+// Vorbelegung der Spule aus Material, Farbe und Verbrauch (`/api/spulen/passend`); wer selbst gewählt hat, behält seine Wahl.
+function druckSpuleAnbinden(spulen) {
+  const wahl = $("#df-spule"), hinweis = $("#df-spulehinweis");
+  let selbst = false, nr = 0;
+  const verbrauch = () => { const v = $("#df-fg").value || $("#df-g").value; return v === "" ? 0 : Number(v); };
+  const zeigeHinweis = () => {
+    const x = spulen.find((y) => y.id === wahl.value), g = verbrauch();
+    hinweis.textContent = !x ? "" : !g ? "Trag den Verbrauch ein, dann wird er abgezogen."
+      : `Zieht ${zahl(Math.min(g, x.rest_g), 1)} g ab — Rest dann ${zahl(Math.max(0, x.rest_g - g), 0)} g.`;
+  };
+  const vorschlagen = async () => {
+    if (selbst) return;
+    const typ = $("#df-typ").value, g = verbrauch();
+    if (!typ || !g) return;
+    const farbe = $("#df-farbe").dataset.gesetzt ? $("#df-farbe").value : "";
+    const mein = ++nr;
+    try {
+      const { spule } = await api(`/api/spulen/passend?${new URLSearchParams({ typ, farbe, g })}`);
+      if (mein !== nr || selbst) return;
+      wahl.value = spule && spulen.some((y) => y.id === spule) ? spule : "";
+    } catch { /* ohne Vorschlag bleibt die Auswahl, wie sie ist */ }
+    zeigeHinweis();
+  };
+  wahl.addEventListener("change", () => { selbst = true; zeigeHinweis(); });
+  for (const id of ["#df-typ", "#df-farbe", "#df-fg", "#df-g"]) $(id).addEventListener("change", () => { vorschlagen(); zeigeHinweis(); });
+  vorschlagen();
+}
 
 async function druckAnlegen(modelle) {
   const namen = modelle.map((id) => zustand.modelle.find((x) => x.id === id)?.name || id);

@@ -784,6 +784,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         e = zustand["bestand"].einstellungen()
         return {"spulen": K().lager.liste(), "materialien": K().materialien(), "rolle_g": e.get("rolle_g") or 1000}
 
+    @app.get("/api/spulen/passend")
+    def spule_passend(typ: str = "", farbe: str = "", g: float = 0):
+        """Die Spule, die zu Material, Farbe und Verbrauch passt (Vorbelegung beim Abbuchen), oder null."""
+        return {"spule": K().lager.vorschlag(typ, farbe or None, g or None)}
+
     @app.post("/api/spulen")
     def spule_neu(d: dict = Depends(json_koerper)):
         return {"ids": K().lager.anlegen(d.get("felder"), d.get("anzahl", 1))}

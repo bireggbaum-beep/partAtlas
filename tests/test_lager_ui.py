@@ -163,6 +163,29 @@ if __name__ == "__main__":
             pg.goto(f"http://127.0.0.1:{port}/?phase=2")
             pg.wait_for_selector("#ws-liste .ws-reicht")
             check("Mit weisser PLA-Spule: der Punkt in der Warteschlange wird grün", "reicht" in pg.get_attribute("#ws-liste .ws-reicht", "title") and "ws-reicht reicht" in pg.get_attribute("#ws-liste .ws-reicht", "class"))
+
+            # -- Abbuchen beim Anlegen eines Drucks, Materialkosten
+            for x in abfrage(port, "/api/spulen")["spulen"]:
+                abfrage(port, f"/api/spulen/{x['id']}", {"preis": 30}, methode="PATCH")
+            pg.click(".karte >> nth=0")
+            pg.wait_for_selector(".rf")
+            pg.click('[data-reiter="drucke"]')
+            pg.click("[data-druck-neu]")
+            pg.wait_for_selector("#df-typ")
+            pg.select_option("#df-typ", "PETG")
+            pg.fill("#df-fg", "12.5")
+            pg.dispatch_event("#df-fg", "change")
+            pg.wait_for_function("document.querySelector('#df-spule').value !== ''")
+            check("Druck anlegen: die PETG-Spule ist vorgewählt, der Hinweis nennt, was abgezogen wird",
+                  "PETG" in pg.eval_on_selector("#df-spule", "e => e.selectedOptions[0].textContent") and "Zieht 12,5 g ab" in pg.inner_text("#df-spulehinweis"))
+            pg.click("#df-ok")
+            pg.wait_for_selector(".druck .chip:has-text('von PETG')")
+            petg = next(x for x in abfrage(port, "/api/spulen")["spulen"] if x["material"] == "PETG")
+            check("Gespeichert: der Rest der Spule sank um 12,5 g, der Druck zeigt „↓ 12,5 g von PETG · 0,38 €“",
+                  petg["rest_g"] == 987.5 and "0,38" in pg.inner_text(".druck .chip:has-text('von PETG')"))
+            pg.click('[data-reiter="uebersicht"]')
+            check("Der Inspektor nennt die Materialkosten des Projekts: 12,5 g PETG und 3,25 g PLA zu je 30 € je kg = 0,47 €",
+                  "Materialkosten ca. 0,47" in pg.inner_text(".rf") and "ohne die Filamente" not in pg.inner_text(".rf"))
             b.close()
     finally:
         server.terminate()

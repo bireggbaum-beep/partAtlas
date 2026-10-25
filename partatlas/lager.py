@@ -166,6 +166,28 @@ class Lager:
         b = d.get("bild")
         return self.k.b.pfad(*b["datei"].split("/")) if b else None
 
+    # ------------------------------------------------------------ Abbuchen
+
+    @staticmethod
+    def euro_je_g(s):
+        return s["preis"] / s["start_g"] if s.get("preis") and s.get("start_g") else None
+
+    def abbuchen(self, sid, g):
+        """Zieht `g` Gramm vom Rest ab, nie unter 0 (der Aufrufer hält die Transaktion). Gibt zurück, was wirklich abgezogen wurde und was es kostete."""
+        s = self._spule(sid)
+        g = _zahl(g, "Verbrauch", 0.01, 20000, " g")
+        abgezogen = round(min(g, s["rest_g"]), 2)
+        self.db.update_node(SPULE, sid, {"rest_g": round(s["rest_g"] - abgezogen, 2)})
+        je_g = self.euro_je_g(s)
+        name = " ".join(x for x in (s.get("hersteller"), s.get("farbname")) if x) or s["material"]
+        return {"spule": sid, "name": f"{s['material']} · {name}" if name != s["material"] else s["material"], "g": abgezogen,
+                "kosten": round(abgezogen * je_g, 2) if je_g else None}
+
+    def vorschlag(self, typ, farbe, g):
+        """Die Spule, von der ein Druck mit diesem Filament am ehesten abgezogen wird (dieselbe Zuteilung wie bei „Reicht das Filament?“)."""
+        f = self.reicht([{"typ": typ, "farbe": farbe, "g": g}])["filamente"][0]
+        return f["spulen"][0]["id"] if f["spulen"] else None
+
     # ------------------------------------------------------------ Reicht das Filament?
 
     @staticmethod
@@ -218,7 +240,11 @@ class Lager:
                     break
             aus.append({**eintrag, "status": "wechsel" if noetig <= 0 else "reicht_nicht", "spulen": genommen, "fehlt_g": round(max(noetig, 0), 2)})
         schlimmst = max((a["status"] for a in aus), key=ENGE.index, default="unklar")
-        return {"filamente": aus, "status": schlimmst if aus else "unklar"}
+        # Materialkosten: nur, wo eine Spule mit Preis zugeteilt ist; fehlt bei einem Filament der Preis, ist die Summe unvollständig.
+        preise = [(sp["nimmt_g"], sp["euro_je_g"]) for a in aus for sp in a["spulen"]]
+        kosten = round(sum(g * e for g, e in preise if e), 2) if any(e for _, e in preise) else None
+        return {"filamente": aus, "status": schlimmst if aus else "unklar", "kosten": kosten,
+                "kosten_vollstaendig": bool(preise) and all(e for _, e in preise) and all(a["status"] in ("reicht", "wechsel") for a in aus)}
 
 
 MAX_BILD = 5 * 1024 * 1024
@@ -247,4 +273,4 @@ def _farbabstand(a, b):
 
 def _kurz(s, g):
     return {"id": s["id"], "material": s["material"], "hersteller": s.get("hersteller", ""), "farbname": s.get("farbname", ""), "farbe": s.get("farbe", ""),
-            "ort": s.get("ort", ""), "rest_g": s["rest_g"], "nimmt_g": round(g, 2)}
+            "ort": s.get("ort", ""), "rest_g": s["rest_g"], "nimmt_g": round(g, 2), "euro_je_g": Lager.euro_je_g(s)}

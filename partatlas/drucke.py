@@ -128,7 +128,7 @@ class Drucke:
                 "bilder": [{"k": b["k"], "url": f"/api/drucke/{did}/bilder/{b['k']}"} for b in d.get("bilder") or []],
                 "zusammen_mit": [{"id": x, "name": (self.db.get_node(ref(MODELL, x), readonly=True) or {}).get("name")}
                                  for x in gefaehrten],
-                "referenz": did == referenz, "leer": ist_leer(d), "angelegt": d.get("angelegt"),
+                "referenz": did == referenz, "leer": ist_leer(d), "angelegt": d.get("angelegt"), "abbuchung": d.get("abbuchung"),
                 "datei": self.datei_von(did),
             })
         aus.sort(key=lambda x: (x["datum"] or "", x["angelegt"] or ""), reverse=True)
@@ -161,9 +161,15 @@ class Drucke:
         for mid in modelle:
             if self.db.get_node(ref(MODELL, mid), readonly=True) is None:
                 raise KatalogFehler(f"Modell {mid} gibt es nicht.")
-        daten = pruefen(felder or {}, voll=True)
+        felder = dict(felder or {})
+        abbuchung = felder.pop("abbuchung", None)       # nur beim Anlegen: Verbrauch von einer Spule abziehen (lager.py)
+        if abbuchung is not None and not isinstance(abbuchung, dict):
+            raise KatalogFehler("Abbuchung: Eintrag ungültig.")
+        daten = pruefen(felder, voll=True)
         with self.db.transaction():
             did = self.db.next_id(DRUCK, "d_", 6)
+            if abbuchung:
+                daten["abbuchung"] = self.k.lager.abbuchen(abbuchung.get("spule"), abbuchung.get("g"))
             self.db.create_node(DRUCK, did, {**daten, "bilder": [], "herkunft": "hand", "angelegt": jetzt()})
             for mid in modelle:
                 self.db.create_edge(ref(MODELL, mid), ref(DRUCK, did), GEDRUCKT_IN)
