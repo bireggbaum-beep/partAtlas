@@ -1334,12 +1334,12 @@ dialog.tv-frage:has(.vg-tabelle), dialog.tv-frage:has(.einst-druck) { width: min
 .lg-klein { font-size: var(--fs-meta); border-top: 1px solid var(--line); padding-top: var(--s3); }
 .lg-ort { font: var(--fs-label) var(--mono); border: 1px solid var(--line); border-radius: var(--radius); padding: 1px 7px; background: var(--panel-2); }
 .lg-marke { font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; border-radius: 99px; padding: 2px 9px; }
-.lg-marke.vorraetig { background: color-mix(in oklch, var(--good) 18%, transparent); color: var(--good); }
-.lg-marke.niedrig { background: color-mix(in oklch, var(--warn) 20%, transparent); color: var(--warn); }
-.lg-marke.leer { background: color-mix(in oklch, var(--crit) 18%, transparent); color: var(--crit); }
+.lg-marke.st-vorraetig { background: color-mix(in oklch, var(--good) 18%, transparent); color: var(--good); }
+.lg-marke.st-niedrig { background: color-mix(in oklch, var(--warn) 20%, transparent); color: var(--warn); }
+.lg-marke.st-leer { background: color-mix(in oklch, var(--crit) 18%, transparent); color: var(--crit); }
 .lg-balken { height: 6px; border-radius: 99px; background: var(--plate); overflow: hidden; }
 .lg-balken i { display: block; height: 100%; background: var(--good); border-radius: 99px; }
-.lg-balken.niedrig i { background: var(--warn); } .lg-balken.leer i { background: var(--crit); }
+.lg-balken.st-niedrig i { background: var(--warn); } .lg-balken.st-leer i { background: var(--crit); }
 .lg-aktionen { display: flex; justify-content: space-between; align-items: center; }
 .lg-aktionen .knopf-text, .lg-tab-akt .knopf-text { text-decoration: none; font-size: 13px; padding: 2px 5px; }
 .lg-tabelle { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
@@ -1396,3 +1396,6 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .d-abbuchen { display: flex; flex-direction: column; gap: 3px; }
 .d-abbuchen select { width: 100%; }
 .d-abbuchen p { margin: 0; min-height: 1.2em; }
+.lager-form input:not([type="color"]):not([type="file"]), .lager-form select, .lg-nachkauf input, .d-abbuchen select {
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 8px; font: inherit; }
+.lager-form input:focus-visible, .lager-form select:focus-visible, .lg-nachkauf input:focus-visible, .d-abbuchen select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

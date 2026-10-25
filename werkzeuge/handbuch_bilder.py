@@ -74,7 +74,7 @@ def vorbereiten(port, samm):
     sid = api(port, "/api/sammlungen", {"name": "Werkstatt", "modelle": werkstatt})["id"]
     api(port, "/api/sammlungen", {"name": "Drohnen-Teile", "regel": {"tags": ["drohne"]}})
     bid = api(port, "/api/baugruppen", {"name": "Quadrocopter 5 Zoll", "modelle": drohne})["id"]
-    return {"modelle": m, "baugruppe": bid, "sammlung": sid}
+    return {"modelle": m, "baugruppe": bid, "sammlung": sid, "port": port}
 
 
 # ---------------------------------------------------------------- Motive
@@ -184,9 +184,40 @@ def tags_verwalten(pg, d):
     return {}
 
 
+SPULEN = [("PLA", "Prusament", "Galaxy Black", "#1a1a1a", 812, "Regal B2", 24.9), ("PLA", "Filamentwerk Süd", "Petrol", "#1a8a99", 1000, "Regal B1", 24.9),
+          ("PETG", "Nordfaser", "Signalorange", "#e67e22", 380, "Regal A3", 29.9), ("PLA", "PolyWerk", "Gold", "#f1c40f", 150, "Regal A3", 22.9),
+          ("PETG", "KunststoffKontor", "Transparent", "#f2f2f2", 0, "Trockenbox", 26.9), ("ASA", "KunststoffKontor", "Hellgrau", "#c0c0c0", 890, "Regal B2", 29.9)]
+
+
+def _spulen_anlegen(d):
+    if api(d["port"], "/api/spulen")["spulen"]:
+        return
+    for mat, her, farbname, farbe, rest, ort, preis in SPULEN:
+        api(d["port"], "/api/spulen", {"felder": {"material": mat, "hersteller": her, "farbname": farbname, "farbe": farbe, "start_g": 1000,
+                                                  "rest_g": rest, "ort": ort, "preis": preis}})
+
+
+def lager(pg, d):
+    _spulen_anlegen(d)
+    pg.click("#lager")
+    pg.wait_for_selector(".lg-karte")
+    pg.wait_for_timeout(600)
+    return {"rahmen": [".lg-zahlen"]}
+
+
+def lager_formular(pg, d):
+    _spulen_anlegen(d)
+    pg.click("#lager")
+    pg.wait_for_selector(".lg-karte")
+    pg.click(".lg-karte >> nth=0 >> [data-lg-bearbeiten]")
+    pg.wait_for_selector("#lf-material")
+    pg.wait_for_timeout(400)
+    return {}
+
+
 MOTIVE = {"katalog": katalog, "einlesen": einlesen, "ansichten": ansichten, "auswahl": auswahl, "suche": suche, "inspektor": inspektor,
           "drucke": drucke, "baugruppe": baugruppe, "ordner": ordner, "umbenennen": umbenennen, "bereinigen": bereinigen,
-          "einstellungen": einstellungen, "tags_verwalten": tags_verwalten}
+          "einstellungen": einstellungen, "tags_verwalten": tags_verwalten, "lager": lager, "lager_formular": lager_formular}
 
 
 # ---------------------------------------------------------------- Fotografieren

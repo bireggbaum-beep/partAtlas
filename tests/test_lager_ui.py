@@ -67,7 +67,7 @@ if __name__ == "__main__":
             pg.fill("#lf-rest", "140")
             check("Doppelklick bearbeitet: Restgewicht 140 von 1000 = 14 %", pg.inner_text("#lf-prozent") == "14 %" and pg.input_value("#lf-material") == "PETG")
             pg.click("[data-lg-speichern]")
-            pg.wait_for_function("document.querySelectorAll('.lg-marke.niedrig').length === 1")
+            pg.wait_for_function("document.querySelectorAll('.lg-marke.st-niedrig').length === 1")
             check("Nach dem Speichern: eine Karte „Niedrig“, Kennzahl Niedrig/leer = 1", zahlen()[3] == "1")
             pg.click('[data-lg-filter="niedrig"]')
             check("Filter „Niedrig“ zeigt nur die eine Karte", pg.locator(".lg-karte").count() == 1)
@@ -104,6 +104,14 @@ if __name__ == "__main__":
             pg.click("#toast button")
             pg.wait_for_function("document.querySelectorAll('.lg-karte').length === 4")
             check("Rückgängig: alle vier Spulen sind wieder da", pg.locator(".lg-karte").count() == 4)
+
+            # -- Eine leere Spule bleibt klein: die Klasse „leer“ gehört der Seite (Hinweisfläche) und sprengte einmal den Balken
+            abfrage(port, f"/api/spulen/{abfrage(port, '/api/spulen')['spulen'][0]['id']}", {"rest_g": 0}, methode="PATCH")
+            pg.reload()
+            pg.click("#lager")
+            pg.wait_for_selector(".lg-karte")
+            check("Leere Spule: roter Status, Balken nur ein dünner Streifen (nicht aufgebläht)",
+                  pg.locator(".lg-marke.st-leer").count() == 1 and pg.eval_on_selector(".lg-balken.st-leer", "e => e.getBoundingClientRect().height") <= 12)
 
             # -- Bild an der Spule
             import io

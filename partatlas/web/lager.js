@@ -45,9 +45,9 @@ function lgKarte(s) {
   return `<article class="lg-karte ${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
     <div class="lg-kopf">${s.bild ? `<img class="lg-bild" src="/api/spulen/${esc(s.id)}/bild?k=${esc(s.bild.k)}" alt="">` : `<span class="lg-kuerzel">${lgKuerzel(s.material)}</span>`}
       <div><b>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span>` : ""}${esc(s.material)}</b><span class="dim">${esc(name) || "&nbsp;"}</span></div></div>
-    <div class="lg-reihe">${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : "<span></span>"}<span class="lg-marke ${st}">${LG_STATUS[st]}</span></div>
+    <div class="lg-reihe">${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : "<span></span>"}<span class="lg-marke st-${st}">${LG_STATUS[st]}</span></div>
     <div class="lg-reihe"><span class="mono">${lgG(s.rest_g)}</span><span class="dim">${Math.round(lgAnteil(s) * 100)} %</span></div>
-    <div class="lg-balken ${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div>
+    <div class="lg-balken st-${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div>
     <div class="lg-reihe lg-klein dim"><span>${s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : ""}</span><span>${lgEuro(s.preis)}</span></div>
     <div class="lg-aktionen"><button type="button" class="knopf-text" data-lg-nachkaufen="${esc(s.id)}">＋ Nachkaufen</button>
       <span><button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten" aria-label="Spule bearbeiten">✎</button>
@@ -73,8 +73,8 @@ function lgTabelle(liste) {
     return `<tr class="${lg.neu.has(s.id) ? "neu" : ""}" data-lg-id="${esc(s.id)}">
       <td><b>${esc(s.material)}</b></td><td>${esc(s.hersteller)}</td><td>${s.farbe ? `<span class="farbpunkt" style="background:${esc(s.farbe)}"></span> ` : ""}${esc(s.farbname)}</td>
       <td>${s.ort ? `<span class="lg-ort">${esc(s.ort)}</span>` : ""}</td><td>${s.durchmesser ? `${zahl(s.durchmesser, 2)} mm` : ""}</td>
-      <td><span class="mono">${lgG(s.rest_g)}</span> <span class="dim">${Math.round(lgAnteil(s) * 100)} %</span><div class="lg-balken ${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div></td>
-      <td class="mono">${lgEuro(s.preis)}</td><td><span class="lg-marke ${st}">${LG_STATUS[st]}</span></td>
+      <td><span class="mono">${lgG(s.rest_g)}</span> <span class="dim">${Math.round(lgAnteil(s) * 100)} %</span><div class="lg-balken st-${st}"><i style="width:${Math.round(lgAnteil(s) * 100)}%"></i></div></td>
+      <td class="mono">${lgEuro(s.preis)}</td><td><span class="lg-marke st-${st}">${LG_STATUS[st]}</span></td>
       <td class="lg-tab-akt"><button type="button" class="knopf-text" data-lg-nachkaufen="${esc(s.id)}" title="Nachkaufen" aria-label="Nachkaufen">＋</button>
         <button type="button" class="knopf-text" data-lg-bearbeiten="${esc(s.id)}" title="Bearbeiten" aria-label="Spule bearbeiten">✎</button>
         <button type="button" class="knopf-text" data-lg-loeschen="${esc(s.id)}" title="Löschen" aria-label="Spule löschen">✕</button></td></tr>`;
@@ -140,7 +140,7 @@ function lgFormZeigen(spule, vorlage = null) {
         <label>Preis (€)<input id="lf-preis" type="text" inputmode="decimal" value="${wert(w.preis)}" placeholder="optional"></label></div>
       <div class="lf-zwei"><label>Ursprungsgewicht (g)<input id="lf-start" type="number" min="1" max="20000" step="10" value="${wert(w.start_g)}"></label>
         <label>Restgewicht (g)<input id="lf-rest" type="number" min="0" max="20000" step="1" value="${wert(neu ? w.start_g : w.rest_g)}"></label></div>
-      <div class="lg-balken vorraetig" id="lf-balken"><i></i></div><b id="lf-prozent" class="lf-prozent"></b>
+      <div class="lg-balken st-vorraetig" id="lf-balken"><i></i></div><b id="lf-prozent" class="lf-prozent"></b>
       <label>Notiz<input id="lf-notiz" value="${wert(w.notiz)}" maxlength="500"></label>
       ${anzahl("lf-material-liste", [...new Set([...d.materialien, ...d.spulen.map((s) => s.material)])])}${anzahl("lf-hersteller-liste", d.spulen.map((s) => s.hersteller))}${anzahl("lf-ort-liste", d.spulen.map((s) => s.ort))}
     </div>
@@ -184,7 +184,7 @@ function lgFormBalken() {
   const start = parseFloat($("#lf-start")?.value), rest = parseFloat($("#lf-rest")?.value);
   const anteil = start > 0 && rest >= 0 ? Math.max(0, Math.min(1, rest / start)) : 0;
   $("#lf-balken i").style.width = `${Math.round(anteil * 100)}%`;
-  $("#lf-balken").className = `lg-balken ${rest <= 0 ? "leer" : anteil <= NIEDRIG_BIS ? "niedrig" : "vorraetig"}`;
+  $("#lf-balken").className = `lg-balken st-${rest <= 0 ? "leer" : anteil <= NIEDRIG_BIS ? "niedrig" : "vorraetig"}`;
   $("#lf-prozent").textContent = `${Math.round(anteil * 100)} %`;
 }
 
