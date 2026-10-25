@@ -1408,7 +1408,9 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .lg-leerlager .lg-leer { padding: 0; text-align: center; max-width: 46ch; }
 .lf-bild { gap: var(--s3); }
 
-/* G-Code-Zeichen auf der Kachel (ein Klick öffnet den Reiter) */
-.badge.gcode { bottom: var(--s3); right: var(--s3); border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--panel); cursor: pointer; font: 12px var(--mono); }
-.badge.gcode.mit-status { right: calc(var(--s3) + 3.4em); }
+/* Zeichen unten rechts auf der Kachel: feste Plätze, G-Code ganz rechts, der Status (✓ n×, Datei fehlt …) links davon; der Platz für G-Code bleibt frei */
+.badges { position: absolute; bottom: var(--s3); right: var(--s3); display: flex; align-items: center; gap: var(--s2); }
+.badges > .badge, .badges .slot-g .badge { position: static; bottom: auto; right: auto; }
+.badges .slot-g { display: flex; justify-content: flex-end; min-width: 5.2em; }
+.badge.gcode { border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--panel); cursor: pointer; font: 12px var(--mono); }
 .badge.gcode:hover { color: var(--accent); border-color: var(--accent); }

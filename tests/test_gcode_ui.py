@@ -49,6 +49,10 @@ if __name__ == "__main__":
             wo = lambda n: pg.locator(".karte", has_text=n).locator(".badge.gcode").count()
             check("Zeichen „G-Code“ bei dem Modell mit angehängtem G-Code und beim geslicten 3MF, nicht beim anderen",
                   wo("Mit") == 1 and wo("Geslict") == 1 and wo("Ohne") == 0)
+            ort = lambda n, sel: pg.eval_on_selector(f".karte:has-text('{n}') {sel}", "e => { const r = e.getBoundingClientRect(), k = e.closest('.karte').getBoundingClientRect(); return [Math.round(k.right - r.right), Math.round(k.bottom - r.bottom)]; }")
+            check("Feste Plätze: das G-Code-Zeichen sitzt in jeder Kachel am selben Ort, mit und ohne ✓ daneben; das ✓ steht links davon",
+                  ort("Mit", ".badge.gcode") == ort("Geslict", ".badge.gcode")
+                  and pg.eval_on_selector(".karte:has-text('Mit') .badge.gedruckt", "e => e.getBoundingClientRect().right") <= pg.eval_on_selector(".karte:has-text('Mit') .badge.gcode", "e => e.getBoundingClientRect().left"))
             check("Der Hinweis nennt, wo der G-Code steckt",
                   "bei den Drucken" in pg.get_attribute(".karte:has-text('Mit') .badge.gcode", "title")
                   and "geslict" in pg.get_attribute(".karte:has-text('Geslict') .badge.gcode", "title"))
@@ -65,7 +69,7 @@ if __name__ == "__main__":
             check("Die Suche gcode:ja zeigt genau die beiden, beide mit dem Zeichen", pg.locator(".karte").count() == 2 and pg.locator(".karte .badge.gcode").count() == 2
                   and pg.locator(".karte", has_text="Ohne").count() == 0)
             pg.fill("#suche", "")
-            check("Der Schriftzug oben heisst „partAtlas“, nicht in Grossbuchstaben", pg.inner_text(".logo").startswith("partAtlas") and "PARTATLAS" not in pg.inner_text(".logo"))
+            check("Der Schriftzug oben heisst „PartAtlas“, nicht in Grossbuchstaben", pg.inner_text(".logo").startswith("PartAtlas") and "PARTATLAS" not in pg.inner_text(".logo"))
             b.close()
     finally:
         server.terminate()

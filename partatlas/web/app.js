@@ -736,7 +736,7 @@ function bildUrl(m) {
 }
 
 // „G-Code“ auf der Kachel, wenn zum Modell irgendwo ein G-Code gehört: an einem Druck angehängt oder weil das 3MF schon geslict ist. Ein Klick öffnet den Reiter.
-const gcodeBadge = (m, mitStatus) => m.gcode ? `<button type="button" class="badge gcode ${mitStatus ? "mit-status" : ""}" data-gcode-oeffnen="${esc(m.gcode)}"
+const gcodeBadge = (m) => m.gcode ? `<button type="button" class="badge gcode" data-gcode-oeffnen="${esc(m.gcode)}"
   title="${m.gcode === "druck" ? "G-Code bei den Drucken — ansehen" : "Das 3MF ist schon geslict — Einstellungen ansehen"}">G-Code</button>` : "";
 
 function statusBadge(m) {
@@ -745,7 +745,9 @@ function statusBadge(m) {
     : m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
     : m.fehler ? `<span class="badge warn">unlesbar</span>`
     : m.drucke_n ? `<span class="badge gedruckt" title="${m.drucke_n}× gedruckt">✓${m.drucke_n > 1 ? " " + m.drucke_n + "×" : ""}</span>` : "";
-  return status + (m.fehlt || m.ohne_datei ? "" : gcodeBadge(m, !!status));
+  // Feste Plätze unten rechts: das G-Code-Zeichen ganz rechts, der Status links davon — so steht jedes Zeichen in jeder Kachel am selben Ort.
+  const gcode = m.fehlt || m.ohne_datei ? "" : gcodeBadge(m);
+  return status || gcode ? `<span class="badges">${status}<span class="slot-g">${gcode}</span></span>` : "";
 }
 
 // Was unter dem Namen auf der Kachel steht (Einstellungen › Ansicht). Die Kachel wächst mit: je Zeile 18 px (kachelHoehe).
