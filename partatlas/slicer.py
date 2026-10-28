@@ -174,6 +174,7 @@ def aus_gcode(pfad, grenze=4 << 20):
         m = re.search(muster, text, re.M)
         if m and schluessel not in kopf:
             kopf[schluessel] = m.group(1).strip()
+    _nur_benutzte_filamente(werte, text)
     if "zeit" in kopf:
         kopf["dauer_s"] = dauer_s(kopf.pop("zeit"))
     if "sekunden" in kopf:
@@ -184,6 +185,25 @@ def aus_gcode(pfad, grenze=4 << 20):
     if "gewicht_g" in kopf:
         kopf["gewicht_g"] = float(kopf["gewicht_g"])
     return {"slicer": slicer, "werte": werte, "kopf": kopf}
+
+
+# Je Filament-Platz eine Angabe, durch „;“ getrennt (Orca/Bambu/Anycubic führen so alle Plätze des Druckers, auch ungenutzte).
+JE_FILAMENT = ("filament_settings_id", "filament_type", "filament_colour")
+
+
+def _nur_benutzte_filamente(werte, text):
+    """Ein Anycubic-Drucker mit vier Plätzen schreibt alle vier Profile in die Datei, obwohl nur einer Filament verbraucht: dann bleibt nur, was verbraucht wurde,
+    sonst zeigte die Seite vier Filamente für einen Druck. Ohne Verbrauchszeile bleibt alles, wie es ist."""
+    m = re.search(r"^; filament used \[g\] = ([\d.,\s]+)$", text, re.M)
+    if not m:
+        return
+    benutzt = [float(x or 0) > 0 for x in m.group(1).replace(" ", "").split(",")]
+    if len(benutzt) < 2 or not any(benutzt):
+        return
+    for k in JE_FILAMENT:
+        teile = str(werte.get(k, "")).split(";")
+        if len(teile) == len(benutzt):
+            werte[k] = ";".join(t for t, b in zip(teile, benutzt) if b)
 
 
 def dauer_s(text):
