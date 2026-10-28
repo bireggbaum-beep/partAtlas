@@ -52,7 +52,7 @@ Vorhanden war schon: Auto-Tags abschalten (Einstellungen › Einlesen), alle aut
 **Paket 1 gebaut:** Seitenleiste mit Umschalter **Eigene | Alle** über der Tag-Liste (Vorgabe Eigene, gemerkt in `localStorage` `tags_alle`); „Eigene“ = mindestens einmal von Hand
 gesetzt (`/api/tags` liefert `eigen`), ein aktiver Filter bleibt sichtbar; nur automatische Tags → Hinweis mit Weg zu „Alle“; automatische unter „Alle“ blasser. Kanten von vor 0.56
 ohne `auto` werden beim Start einmal nach den Regeln bestimmt und festgeschrieben (`_tag_herkunft_nachziehen`), damit die Seitenleiste nicht bei jedem Zeichnen rechnet.
-test_tags 17/17, test_tags_ui 4/4, Gegenproben fallen. **Paket 2 offen:** Tag von der Auswahl entfernen im Zuordnen-Fenster. Bemerkt: die Sektion Tags ist anfangs zugeklappt.
+test_tags 17/17, test_tags_ui 4/4, Gegenproben fallen. **Paket 2 im Backlog (Anwender 28.10.):** Tag von der Auswahl entfernen im Zuordnen-Fenster — Entwurf: Fenster „Tags“, Block „An der Auswahl“ mit Stand, je Zeile „−“ (Tab/Enter), danach „von n entfernt · Rückgängig“ mit alter Herkunft, entfernte Auto-Tags kommen beim Einlesen nicht wieder (`tags_ab`); Material/Sammlung/Baugruppe später im selben Muster. Bemerkt: die Sektion Tags ist anfangs zugeklappt.
 
 ## Vorschaubild aus dem G-Code (28.10.2026, auf dem Branch, nicht auf `main`)
 
