@@ -1610,7 +1610,10 @@ function druckDateiZeile(d, liste) {
   const f = d.datei;
   const andere = liste.filter((x) => x.id !== d.id && x.datei?.profil).length;
   const gleich = f.gleiche > 1 ? ` · <span title="Drucke mit genau diesen Einstellungen, über alle Modelle">${f.gleiche}× diese Einstellungen</span>` : "";
-  return `<div class="d-datei"><div class="d-datei-name"><span class="d-datei-art">${f.art === "3mf" ? "3MF" : "G-Code"}</span>
+  // Das Vorschaubild, das der Slicer in den G-Code legt (nur G-Code; bei einer Datei ohne Bild fällt das Feld weg).
+  const bild = f.art === "gcode" && f.vorschau !== false
+    ? `<img class="d-datei-bild" src="/api/drucke/${esc(d.id)}/datei/vorschau?g=${esc(f.gcode)}" alt="Vorschau aus dem G-Code" loading="lazy" onerror="this.remove()">` : "";
+  return `<div class="d-datei">${bild}<div class="d-datei-name"><span class="d-datei-art">${f.art === "3mf" ? "3MF" : "G-Code"}</span>
       <b title="${esc(f.name)}">${esc(f.name)}</b></div>
     <div class="dim d-datei-info">${esc(f.slicer || "Slicer unbekannt")}${f.profil ? "" : " · keine Einstellungen gefunden"}${gleich}</div>
     <div class="d-aktionen">${f.profil ? `<button class="link" data-druck-einst="${esc(d.id)}">Einstellungen</button>` : ""}

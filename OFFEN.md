@@ -46,6 +46,14 @@ Zahlen und Farben (Anwender: „sonst verwirrend“). Feste Plätze unten rechts
 der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellungen je Druck): Vorschlag Slicer → „In der Datei“, Drucke = was passiert ist, dazu ein Knopf
 „Aus der Datei als Druck anlegen“ (Aufwand 1–2). Handbuchbilder zeigen noch „PARTATLAS“ — beim nächsten Push alle neu erzeugen (`python werkzeuge/handbuch_bilder.py`).
 
+## Vorschaubild aus dem G-Code (28.10.2026, auf dem Branch, nicht auf `main`)
+
+Am Druck mit G-Code steht das Bild, das der Slicer im Kopf der Datei mitliefert (`; thumbnail begin 512x512 …`, Anycubic Slicer Next, Bambu, Orca; Prusa als `thumbnail_PNG`): `slicer.vorschau_aus_gcode`
+nimmt das grösste PNG, `GET /api/drucke/{id}/datei/vorschau` liefert es aus dem Vault, gespeichert wird nichts zusätzlich (Feld `vorschau` am GCODE-Knoten, bei älteren Dateien unbekannt → die Seite
+versucht es und blendet das Bild bei 404 aus). Mit den vier echten G-Codes des Testers geprüft (alle haben zwei Bilder, 230×110 und 512×512 „top“). Bekannt: das Bild hat weissen Grund und das Teil ist
+klein darin — auf dem dunklen Thema ein heller Kasten; Zuschneiden wäre ein späterer Schritt. Gleichzeitig behoben: bei mehreren Filament-Plätzen (Anycubic, vier Plätze) zeigte die Seite alle Profile,
+jetzt nur die mit Verbrauch (`_nur_benutzte_filamente`). Noch nicht: G-Code als eigene Kachel in der Bibliothek (Einschätzung im Chat: Filter `gcode:ja` genügt vielleicht), 3D-Bahnen (gcode-preview).
+
 ## Spulenbild im Lager (25.10.2026, auf dem Branch, nicht auf `main`)
 
 Das KI-Bild des Anwenders (312 × 327 px, weisser Hintergrund) ist freigestellt (`web/spule.png`, 125 KB, Schatten als weicher Schwarzton) und hat eine Maske für die Wicklung

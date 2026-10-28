@@ -10,6 +10,8 @@ Nichts davon kommt beim Einlesen in den Graphen: einige hundert Werte je Datei w
 jemand den Reiter öffnet (die Datei liegt auf demselben Rechner). Nur ein Druck mit G-Code bewahrt seine Konfiguration als
 `PRINT_PROFILE` (drucke.py) — dort gehört sie zum Ergebnis.
 """
+import base64
+import binascii
 import hashlib
 import json
 import re
@@ -204,6 +206,25 @@ def _nur_benutzte_filamente(werte, text):
         teile = str(werte.get(k, "")).split(";")
         if len(teile) == len(benutzt):
             werte[k] = ";".join(t for t, b in zip(teile, benutzt) if b)
+
+
+VORSCHAU_SUCHE = 1 << 20      # die Vorschaubilder stehen im Kopf der Datei, meist in den ersten Zehntausend Byte
+
+
+def vorschau_aus_gcode(pfad):
+    """Das grösste PNG-Vorschaubild, das der Slicer in den Kopf des G-Codes schreibt („; thumbnail begin 512x512 …“, bei Prusa „thumbnail_PNG“), oder None."""
+    with open(pfad, "rb") as f:
+        kopf = f.read(VORSCHAU_SUCHE).decode("latin-1")
+    beste = None
+    for m in re.finditer(r"^; thumbnail(?:_PNG)? begin (\d+)x(\d+) \d+[^\n]*\n((?:; [^\n]*\n)+?); thumbnail(?:_PNG)? end", kopf, re.M):
+        try:
+            png = base64.b64decode("".join(z[2:].strip() for z in m.group(3).splitlines()), validate=True)
+        except (binascii.Error, ValueError):
+            continue
+        flaeche = int(m.group(1)) * int(m.group(2))
+        if png.startswith(b"\x89PNG") and (beste is None or flaeche > beste[0]):
+            beste = (flaeche, png)
+    return beste[1] if beste else None
 
 
 def dauer_s(text):

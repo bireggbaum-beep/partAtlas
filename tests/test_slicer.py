@@ -80,6 +80,16 @@ if __name__ == "__main__":
     g = slicer.aus_gcode(vier)
     check("G-Code mit vier Filament-Plätzen, einer benutzt: nur dieses Filament steht in den Werten",
           g["werte"]["filament_type"] == "PLA" and g["werte"]["filament_settings_id"] == '"PLA a"' and g["werte"]["layer_height"] == "0.28")
+    import base64
+    klein, gross_png = muster.PNG_1PX, muster.PNG_1PX + b"B"
+
+    def block(w, h, png, name=""):
+        b64 = base64.b64encode(png).decode()
+        return f"; thumbnail begin {w}x{h} {len(b64)}{name}\n" + "".join(f"; {b64[i:i + 78]}\n" for i in range(0, len(b64), 78)) + "; thumbnail end\n"
+    mit_bild = os.path.join(tmp, "bild.gcode")
+    open(mit_bild, "w").write("; HEADER_BLOCK_START\n" + block(230, 110, klein) + block(512, 512, gross_png, " top") + "; HEADER_BLOCK_END\nG28\n")
+    check("G-Code-Vorschau: von mehreren Bildern das grösste, als PNG", slicer.vorschau_aus_gcode(mit_bild) == gross_png)
+    check("G-Code ohne Vorschaubild: None", slicer.vorschau_aus_gcode(g1) is None)
     gross = os.path.join(tmp, "gross.gcode")
     kopf, rumpf, schluss = ORCA_GCODE.split("G28\nG1 X10 Y10\n")[0], "G1 X1 Y1\n" * 400000, ORCA_GCODE.split("G1 X10 Y10\n")[1]
     open(gross, "w").write(kopf + rumpf + schluss)
@@ -108,6 +118,12 @@ if __name__ == "__main__":
               and len(r["alle"]) == len(muster.BAMBU_EINSTELLUNGEN))
         r = cl.get(f"/api/modelle/{ids['Nur']}/slicer").json()
         check("Reine Geometrie: leer, mit Grund", r["leer"] and "Geometrie" in r["grund"])
+        did = cl.post("/api/drucke", json={"modelle": [ids["Halter"]], "felder": {}}).json()["id"]
+        r = cl.post(f"/api/drucke/{did}/datei", params={"name": "bild.gcode"}, content=open(mit_bild, "rb").read())
+        v = cl.get(f"/api/drucke/{did}/datei/vorschau")
+        check("Druck mit G-Code: das Vorschaubild kommt aus der Datei", r.status_code == 200 and v.status_code == 200 and v.content == gross_png)
+        cl.post(f"/api/drucke/{did}/datei", params={"name": "a.gcode"}, content=open(g1, "rb").read())
+        check("G-Code ohne Vorschaubild: 404, kein leeres Bild", cl.get(f"/api/drucke/{did}/datei/vorschau").status_code == 404)
         h = cl.get(f"/api/modelle/{ids['Halter']}").json()["hash"]
         d = z["katalog"].db.get_node(f"PART_GEOMETRY/{h}")
         check("Die Einstellungen stehen nicht im Graphen", "layer_height" not in str(d))

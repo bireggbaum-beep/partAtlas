@@ -854,6 +854,14 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             raise HTTPException(404)
         return FileResponse(zustand["bestand"].pfad(*info["datei"].split("/")), filename=info["name"])
 
+    @app.get("/api/drucke/{did}/datei/vorschau")
+    def druck_datei_vorschau(did: str):
+        png = K().drucke.datei_vorschau(did)
+        if png is None:
+            raise HTTPException(404)
+        # Die Adresse trägt die Kennung der Datei (?g=…): eine andere Datei am Druck hat eine andere Adresse.
+        return Response(png, media_type="image/png", headers={"Cache-Control": "max-age=31536000, immutable"})
+
     @app.get("/api/drucke/{did}/einstellungen")
     def druck_einstellungen(did: str):
         return K().drucke.einstellungen(did)

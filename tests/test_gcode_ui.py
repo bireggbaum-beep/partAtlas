@@ -1,4 +1,5 @@
 """Das G-Code-Zeichen auf der Kachel und in der Liste, die Suche gcode:ja, ein Klick öffnet den Reiter; der Schriftzug oben heisst „partAtlas“."""
+import base64
 import os
 import socket
 import subprocess
@@ -39,6 +40,12 @@ if __name__ == "__main__":
         r = urllib.request.Request(f"http://127.0.0.1:{port}/api/drucke/{did}/datei?name=mit.gcode", method="POST", data=GCODE,
                                    headers={"Content-Type": "application/octet-stream"})
         urllib.request.urlopen(r).read()
+        # Ein zweiter Druck mit einem G-Code, der ein Vorschaubild im Kopf trägt (wie bei Anycubic und Bambu).
+        b64 = base64.b64encode(muster.PNG_1PX).decode()
+        mit_bild = (f"; HEADER_BLOCK_START\n; thumbnail begin 16x16 {len(b64)}\n; {b64}\n; thumbnail end\n; HEADER_BLOCK_END\nG28\n").encode()
+        did2 = abfrage(port, "/api/drucke", {"modelle": [ids["Mit"]], "felder": {}})["id"]
+        urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/api/drucke/{did2}/datei?name=bild.gcode", method="POST", data=mit_bild,
+                                                      headers={"Content-Type": "application/octet-stream"})).read()
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
             pg = b.new_page(viewport={"width": 1400, "height": 800})
@@ -61,6 +68,10 @@ if __name__ == "__main__":
             pg.wait_for_function("document.querySelector('#inspektor').dataset.reiter === 'drucke'")
             check("Ein Klick auf das Zeichen wählt das Modell und öffnet den Reiter Drucke mit dem G-Code",
                   "mit.gcode" in pg.inner_text("#inspektor").lower())
+            pg.wait_for_selector(".d-datei-bild")
+            pg.wait_for_function("document.querySelector('.d-datei-bild')?.naturalWidth > 0")
+            check("Das Vorschaubild aus dem G-Code steht am Druck, und nur an dem, dessen Datei eines hat",
+                  pg.locator(".d-datei-bild").count() == 1 and pg.locator(".druck", has_text="bild.gcode").locator(".d-datei-bild").count() == 1)
             pg.click(".karte:has-text('Geslict') .badge.gcode")
             pg.wait_for_function("document.querySelector('#inspektor').dataset.reiter === 'slicer'")
             check("Beim geslicten 3MF öffnet es den Reiter Slicer", pg.evaluate("document.querySelector('#inspektor').dataset.reiter") == "slicer")
