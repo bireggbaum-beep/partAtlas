@@ -140,6 +140,10 @@ if __name__ == "__main__":
         k_ = c.app.state.zustand["katalog"]
         v1 = c.post("/api/drucke", json={"modelle": [C], "felder": {"ergebnis": "fehler"}}).json()["id"]
         r = c.post(f"/api/drucke/{v1}/datei", params={"name": "Clip_v1.gcode"}, content=gcode(2)).json()
+        gc = lambda n: next(x for x in c.get("/api/modelle").json() if x["name"] == n)["gcode"]
+        suche_gcode = lambda w: sorted(x["name"] for x in c.get("/api/modelle", params={"q": f"gcode:{w}"}).json())
+        check("Kachel: das Modell mit G-Code am Druck trägt „druck“, die anderen nichts; die Suche gcode:ja findet genau das eine",
+              gc("Clip") == "druck" and gc("Halter") is None and gc("Deckel") is None and suche_gcode("ja") == ["Clip"] and "Clip" not in suche_gcode("nein"))
         d1 = next(x for x in c.get(f"/api/modelle/{C}").json()["drucke"] if x["id"] == v1)
         check("G-Code am Druck: Gewicht und Dauer aus dem Kopf füllen leere Felder, Einstellungen als Profil",
               d1["gewicht_g"] == 21.5 and d1["dauer_s"] == 7200 and d1["datei"]["name"] == "Clip_v1.gcode" and r["werte"] == 4
@@ -166,6 +170,14 @@ if __name__ == "__main__":
         check("Einstellungen des Drucks: das Wichtigste und alle Werte", len(e["alle"]) == 4 and "Qualität" in [x["gruppe"] for x in e["wichtig"]])
         check("Herunterladen liefert die Datei", c.get(f"/api/drucke/{v1}/datei").content == gcode(2))
         check("Nur G-Code oder 3MF", c.post(f"/api/drucke/{v1}/datei", params={"name": "x.stl"}, content=b"solid").status_code == 400)
+        gcn = lambda: k_.db.get_node(f"MODEL_ASSET/{D}", readonly=True).get("gcode_n")
+        vorher = gcn()
+        vd = c.post("/api/drucke", json={"modelle": [D], "felder": {}}).json()["id"]
+        c.post(f"/api/drucke/{vd}/datei", params={"name": "Deckel2.gcode"}, content=gcode(2))
+        check("Ein weiterer Druck mit G-Code am selben Modell zählt mit; das Zeichen bleibt „druck“ und die Suche findet das Modell",
+              gcn() == vorher + 1 and gc("Deckel") == "druck" and "Deckel" in suche_gcode("ja"))
+        c.delete(f"/api/drucke/{vd}/datei")
+        check("G-Code gelöst: der Zähler geht zurück (das Zeichen hängt an den übrigen Drucken des Modells)", gcn() == vorher and (gc("Deckel") == "druck") == bool(vorher))
         c.delete(f"/api/drucke/{v1}/datei")
         check("Lösen: der Druck hat keine Datei mehr, die Datei bleibt im Vault",
               next(x for x in c.get(f"/api/modelle/{C}").json()["drucke"] if x["id"] == v1)["datei"] is None

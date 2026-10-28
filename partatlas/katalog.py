@@ -460,6 +460,7 @@ class Katalog:
             "id": mid, "name": m.get("name"), "format": d.get("format"),
             "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None, "gewicht_herkunft": gewicht_herkunft,
             "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
+            "gcode": "druck" if m.get("gcode_n") else ("3mf" if platten else None),
             "drucke_n": m.get("drucke_n", 0),
             "favorit": m.get("favorit", False), "entwurf": bool(m.get("entwurf")), "hash": h,
             "vorschau": d.get("vorschau"), "cad": d.get("cad"), "fehlt": not orte and not papierkorb,

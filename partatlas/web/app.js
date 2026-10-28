@@ -264,6 +264,7 @@ const SORTIERUNGEN = {
   material: { wert: (m) => m.material || "", ab: false },
   ordner: { wert: (m) => ordnerText(m), ab: false },
   drucke: { wert: (m) => m.drucke_n || 0, ab: true },
+  gcode: { wert: (m) => (m.gcode ? 1 : 0), ab: true },
 };
 function sortierungWaehlen(k) {
   zustand.absteigend = zustand.sortierung === k ? !zustand.absteigend : SORTIERUNGEN[k].ab;
@@ -734,12 +735,19 @@ function bildUrl(m) {
   return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png?t=1` : null;
 }
 
+// „G-Code“ auf der Kachel, wenn zum Modell irgendwo ein G-Code gehört: an einem Druck angehängt oder weil das 3MF schon geslict ist. Ein Klick öffnet den Reiter.
+const gcodeBadge = (m) => m.gcode ? `<button type="button" class="badge gcode" data-gcode-oeffnen="${esc(m.gcode)}"
+  title="${m.gcode === "druck" ? "G-Code bei den Drucken — ansehen" : "Das 3MF ist schon geslict — Einstellungen ansehen"}">G-Code</button>` : "";
+
 function statusBadge(m) {
   // Ruhig: ein Haken, bei mehreren Drucken mit Zahl. Gewicht und Material stehen im Inspektor.
-  return m.ohne_datei ? `<span class="badge ohne" title="Ohne Datei behalten">ohne Datei</span>`
+  const status = m.ohne_datei ? `<span class="badge ohne" title="Ohne Datei behalten">ohne Datei</span>`
     : m.fehlt ? `<span class="badge warn">⚠ Datei fehlt</span>`
     : m.fehler ? `<span class="badge warn">unlesbar</span>`
     : m.drucke_n ? `<span class="badge gedruckt" title="${m.drucke_n}× gedruckt">✓${m.drucke_n > 1 ? " " + m.drucke_n + "×" : ""}</span>` : "";
+  // Feste Plätze unten rechts: das G-Code-Zeichen ganz rechts, der Status links davon — so steht jedes Zeichen in jeder Kachel am selben Ort.
+  const gcode = m.fehlt || m.ohne_datei ? "" : gcodeBadge(m);
+  return status || gcode ? `<span class="badges">${status}<span class="slot-g">${gcode}</span></span>` : "";
 }
 
 // Was unter dem Namen auf der Kachel steht (Einstellungen › Ansicht). Die Kachel wächst mit: je Zeile 18 px (kachelHoehe).
@@ -846,6 +854,7 @@ const SPALTEN = {
   neu: { titel: "EINGELESEN", sort: "neu", min: 72, w: 96, zelle: (m) => (m.angelegt ? new Date(m.angelegt).toLocaleDateString("de-DE") : "") },
   ordner: { titel: "ORDNER", sort: "ordner", min: 72, w: 180, zelle: (m) => esc(ordnerText(m)) },
   drucke: { titel: "DRUCKE", sort: "drucke", min: 48, w: 64, zelle: (m) => (m.drucke_n ? String(m.drucke_n) : "") },
+  gcode: { titel: "G-CODE", sort: "gcode", min: 56, w: 72, zelle: (m) => (m.gcode ? `<span title="${m.gcode === "druck" ? "G-Code bei den Drucken" : "geslictes 3MF"}">G-Code</span>` : "") },
 };
 const SPALTEN_VORGABE = ["format", "groesse", "gewicht", "status"];
 const groesseText = (b) => (b < 1048576 ? `${zahl(b / 1024, 0)} kB` : `${zahl(b / 1048576, 1)} MB`);
@@ -2718,6 +2727,12 @@ $("#gruppierung").value = zustand.gruppierung;
     zustand.offen.has(id) ? zustand.offen.delete(id) : zustand.offen.add(id);
     localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));
     ladeSeite();
+    return;
+  }
+  const gcodeZeichen = t.closest("[data-gcode-oeffnen]");
+  if (gcodeZeichen) {                                  // Kachel oder Zeile wählen und den Reiter öffnen, in dem der G-Code steht
+    const id = gcodeZeichen.closest("[data-id]")?.dataset.id;
+    if (id) { localStorageSchreiben("reiter", gcodeZeichen.dataset.gcodeOeffnen === "druck" ? "drucke" : "slicer"); await waehle(id); }
     return;
   }
   const k = t.closest(".karte");

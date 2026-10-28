@@ -165,7 +165,7 @@ function lgBildFeld() {
   const f = lg.form;
   const url = f.datei ? f.vorschau : (f.bild && !f.bildWeg ? `/api/spulen/${f.id}/bild?k=${f.bild.k}` : "");
   return url ? `<img src="${esc(url)}" alt="Foto der Spule"><button type="button" class="knopf" data-lg-bildweg aria-label="Bild entfernen">✕</button>`
-    : `${lgSpule(f.farbe, 64)}<span class="dim">Bild hierher ziehen oder klicken</span>`;
+    : `${lgSpule(f.farbe, 120)}<span class="dim">Bild hierher ziehen oder klicken</span>`;
 }
 
 function lgBildWaehlen(datei) {

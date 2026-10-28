@@ -4,7 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Stand: 1.0.4 auf `main` (25.10.2026, für den Tester)
+## Stand: 1.0.5 auf `main` (28.10.2026, für den Tester)
+
+Neu: Zeichen **„G-Code“ auf der Kachel** (an einem Druck angehängt oder geslictes 3MF; feste Plätze unten rechts, Spalte „G-Code“ in der Liste, Suche `gcode:ja`), Schriftzug „PartAtlas“, Spule im Formular 120 px. Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.4`.
+**Offen (Entscheidung Anwender):** Reiter „Slicer“ gegen „Drucke“ (Vorschlag: Slicer → „In der Datei“, Knopf „Aus der Datei als Druck anlegen“, Aufwand 1–2). **Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).
+
+## Stand: 1.0.4 (25.10.2026)
 
 Neu: die **Spule im Lager** (Bild vor jeder Karte, Wicklung in der Farbe der Spule; auch im Formular und im leeren Lager). Handbuchbilder des Lagers neu. Rückweg: Zweig `fassung-1.0.3`.
 **Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).

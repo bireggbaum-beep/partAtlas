@@ -52,9 +52,9 @@ WORTBONUS = 2.0
 # feld:wert — deutsch, wie es der Anwender tippt.
 FILTER = {"tag": "tags", "ordner": "ordner", "baugruppe": "baugruppen", "sammlung": "sammlungen",
           "material": "material", "designer": "designer", "name": "name", "titel": "titel",
-          "format": "format", "gedruckt": "gedruckt", "favorit": "favorit", "notiz": "notiz"}
+          "format": "format", "gedruckt": "gedruckt", "favorit": "favorit", "notiz": "notiz", "gcode": "gcode"}
 # Diese vergleichen genau: „format:st“ soll nicht STL und STEP liefern.
-GENAU = {"format", "gedruckt", "favorit"}
+GENAU = {"format", "gedruckt", "favorit", "gcode"}
 JA = {"ja": "ja", "j": "ja", "1": "ja", "true": "ja", "nein": "nein", "n": "nein", "0": "nein", "false": "nein"}
 
 _FELDFILTER = re.compile(r'(-?)(\w+):(?:"([^"]*)"|(\S+))')
@@ -84,7 +84,7 @@ def zerlege(q):
         if name not in FILTER:
             return m.group(0)
         wert = norm(m.group(3) if m.group(3) is not None else m.group(4))
-        if FILTER[name] in ("gedruckt", "favorit"):
+        if FILTER[name] in ("gedruckt", "favorit", "gcode"):
             wert = JA.get(wert, wert)
         if wert:
             filter_.append((FILTER[name], wert, m.group(1) == "-"))
@@ -159,6 +159,7 @@ class Suchindex:
             "format": d.get("format") or "",
             "gedruckt": "ja" if m.get("gedruckt") else "nein",
             "favorit": "ja" if m.get("favorit") else "nein",
+            "gcode": "ja" if m.get("gcode_n") or d.get("platten") else "nein",
             "notiz": norm(" ".join([self.db.get_node_full(ref(MODELL, mid)).get("notiz") or ""]
                                    + [a.get("name", "") for a in m.get("anhaenge") or []])),
         }
