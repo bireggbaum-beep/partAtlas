@@ -46,6 +46,14 @@ Zahlen und Farben (Anwender: „sonst verwirrend“). Feste Plätze unten rechts
 der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellungen je Druck): Vorschlag Slicer → „In der Datei“, Drucke = was passiert ist, dazu ein Knopf
 „Aus der Datei als Druck anlegen“ (Aufwand 1–2). Handbuchbilder zeigen noch „PARTATLAS“ — beim nächsten Push alle neu erzeugen (`python werkzeuge/handbuch_bilder.py`).
 
+## Tags bei vielen Modellen (28.10.2026, Anwender: „bei 5000 Modellen zugemüllt, man kann nichts tun“; auf dem Branch)
+
+Vorhanden war schon: Auto-Tags abschalten (Einstellungen › Einlesen), alle automatischen entfernen, Wörter sperren, Tags verwalten, Tag für viele hinzufügen.
+**Paket 1 gebaut:** Seitenleiste mit Umschalter **Eigene | Alle** über der Tag-Liste (Vorgabe Eigene, gemerkt in `localStorage` `tags_alle`); „Eigene“ = mindestens einmal von Hand
+gesetzt (`/api/tags` liefert `eigen`), ein aktiver Filter bleibt sichtbar; nur automatische Tags → Hinweis mit Weg zu „Alle“; automatische unter „Alle“ blasser. Kanten von vor 0.56
+ohne `auto` werden beim Start einmal nach den Regeln bestimmt und festgeschrieben (`_tag_herkunft_nachziehen`), damit die Seitenleiste nicht bei jedem Zeichnen rechnet.
+test_tags 17/17, test_tags_ui 4/4, Gegenproben fallen. **Paket 2 offen:** Tag von der Auswahl entfernen im Zuordnen-Fenster. Bemerkt: die Sektion Tags ist anfangs zugeklappt.
+
 ## Vorschaubild aus dem G-Code (28.10.2026, auf dem Branch, nicht auf `main`)
 
 Am Druck mit G-Code steht das Bild, das der Slicer im Kopf der Datei mitliefert (`; thumbnail begin 512x512 …`, Anycubic Slicer Next, Bambu, Orca; Prusa als `thumbnail_PNG`): `slicer.vorschau_aus_gcode`

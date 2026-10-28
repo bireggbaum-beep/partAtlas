@@ -38,6 +38,23 @@ if __name__ == "__main__":
         check("Verwaltung zählt Modelle und davon automatische",
               v["halter"]["anzahl"] == 2 and v["halter"]["auto"] == 2 and v["drohne"]["anzahl"] == 1 and v["drohne"]["auto"] == 0)
 
+        t = {x["name"]: x for x in c.get("/api/tags").json()}
+        check("Seitenleiste: je Tag, an wie vielen Modellen von Hand gesetzt (die nur automatischen haben 0)",
+              t["halter"]["eigen"] == 0 and t["drohne"]["eigen"] == 1 and t["drohne"]["anzahl"] == 1)
+
+        # -- Kanten von vor 0.56 ohne `auto`: beim Start einmal nach den Regeln bestimmt und festgeschrieben.
+        db = z["katalog"].db
+        with db.transaction():
+            for kid, k in db.get_connected_edges(f"MODEL_ASSET/{deckel}", rel_type="HAS_TAG"):
+                db.delete_edge(kid)
+            db.create_node("TAG_ITEM", "werkstatt", {"name": "werkstatt"})
+            db.create_edge(f"MODEL_ASSET/{deckel}", "TAG_ITEM/deckel", "HAS_TAG")
+            db.create_edge(f"MODEL_ASSET/{deckel}", "TAG_ITEM/werkstatt", "HAS_TAG")
+        z["katalog"]._tag_herkunft_nachziehen()
+        kanten = {k["target"]: k.get("auto") for _, k in db.get_connected_edges(f"MODEL_ASSET/{deckel}", rel_type="HAS_TAG")}
+        check("Alte Kanten ohne Herkunft: nach den Regeln automatisch oder eigen, danach mit Feld",
+              kanten == {"TAG_ITEM/deckel": True, "TAG_ITEM/werkstatt": False})
+
         # -- Ein Tag, an einem Modell entfernt, kommt beim nächsten Auslesen derselben Datei nicht wieder.
         c.delete(f"/api/modelle/{arm}/tags/arm")
         z["katalog"]._auto_tags(arm, "Halter_Arm_gross", {})
@@ -75,7 +92,7 @@ if __name__ == "__main__":
         r = c.post("/api/tags/auto_entfernen", json={}).json()
         rest = tags_von(c, arm) | tags_von(c, kabel) | tags_von(c, deckel)
         check("Automatische entfernt, eigene bleiben — auch ein automatischer, den man von Hand bestätigt hat", r["kanten"] == n["kanten"]
-              and rest == {"copter", "arm", "gross", "kabel-führung", "halter"})
+              and rest == {"copter", "arm", "gross", "kabel-führung", "halter", "werkstatt"})
         check("… und künftig keine Tags aus Dateinamen", c.get("/api/einstellungen").json()["auto_tags"] is False)
         check("Vorher eine Sicherung", any(s["grund"] == "vor-auto-tags-entfernen" for s in c.get("/api/sicherungen").json()["liste"]))
 

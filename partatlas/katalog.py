@@ -55,6 +55,7 @@ class Katalog:
         self.suche = Suchindex(self)
         self._material_nachziehen()
         self._vault_nachziehen()
+        self._tag_herkunft_nachziehen()
         from .drucke import Drucke
         from .lager import Lager
         self.drucke = Drucke(self)
@@ -1630,13 +1631,28 @@ class Katalog:
                 self.db.update_node(MODELL, mid, {"tags_ab": [*(m.get("tags_ab") or ()), name]})
 
     def tags(self):
-        """[{name, anzahl}] — Anzahl über die Nachbarschaft, nicht gezählt über Modelle."""
+        """[{name, anzahl, eigen}] — Anzahl über die Nachbarschaft, nicht gezählt über Modelle. `eigen`: an wie vielen Modellen von Hand
+        gesetzt; die Seitenleiste blendet damit die nur automatischen aus (bei Tausenden Dateinamen-Tags sah man sonst die eigenen nicht)."""
         liste = []
         for name in self.db.list_nodes(TAG, readonly=True):
-            n = len(self.db.get_connected(ref(TAG, name), direction="in", rel_type=HAT_TAG))
-            if n:
-                liste.append({"name": name, "anzahl": n})
+            kanten = self.db.get_connected_edges(ref(TAG, name), direction="in", rel_type=HAT_TAG)
+            if kanten:
+                liste.append({"name": name, "anzahl": len(kanten), "eigen": sum(1 for _, k in kanten if k.get("auto") is not True)})
         return sorted(liste, key=lambda t: (-t["anzahl"], t["name"]))
+
+    def _tag_herkunft_nachziehen(self):
+        """Kanten von vor 0.56 tragen kein `auto`. Einmal beim Start nach den Regeln bestimmen (_ist_auto) und festschreiben: die
+        Seitenleiste zählt danach nur noch das Feld, statt bei jedem Zeichnen für Tausende Modelle die Regeln zu rechnen. Schreibt nur,
+        wenn es solche Kanten gibt."""
+        alt = [(kid, k) for kid, k in self.db.list_edges(HAT_TAG).items() if "auto" not in k]
+        if not alt:
+            return
+        cache = {}
+        with self.db.transaction():
+            for kid, k in alt:
+                auto = self._ist_auto(k, k["source"].split("/", 1)[1], cache)
+                self.db.delete_edge(kid)
+                self.db.create_edge(k["source"], k["target"], HAT_TAG, meta={"auto": auto})
 
     # ------------------------------------------------------------ Tags verwalten
 

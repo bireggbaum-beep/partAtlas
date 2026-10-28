@@ -349,11 +349,27 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
   zeichneHinweisLeiste();
-  // Nur die häufigsten: bei tausenden Auto-Tags füllte die Liste sonst die Seitenleiste. Alle stehen in „Tags verwalten“.
-  abgleichen($("#tag-liste"), tags.slice(0, 30).map((t) =>
-    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("")
-    + (tags.length > 30 ? `<button class="eintrag leer-eintrag" data-tags-verwalten>Alle ${zahl(tags.length, 0)} Tags …</button>` : ""));
+  zeichneTagListe(tags);
   markiereAnsicht();
+}
+
+// Tags in der Seitenleiste: „Eigene“ (Vorgabe) zeigt nur Tags, die mindestens einmal von Hand gesetzt sind — die Tausende aus den Dateinamen
+// (#bar, #screw …) verdeckten sonst die eigenen. „Alle“ zeigt alles. Nur die häufigsten 30; alle stehen in „Tags verwalten“.
+// Ein aktiver Tag-Filter bleibt immer sichtbar, auch wenn er nur automatisch ist.
+function zeichneTagListe(tags = zustand.tagsRoh || []) {
+  zustand.tagsRoh = tags;
+  const alle = localStorageLesen("tags_alle") === "1";
+  const nurAuto = tags.filter((t) => !t.eigen).length;
+  const sichtbar = alle ? tags : tags.filter((t) => t.eigen || zustand.tags.has(t.name));
+  const wahl = tags.length && nurAuto
+    ? `<div class="segment tag-wahl" role="group" aria-label="Welche Tags">
+        <button type="button" class="${alle ? "" : "an"}" data-tags-zeigen="eigene" aria-pressed="${!alle}" title="Nur Tags, die du selbst gesetzt hast">Eigene</button>
+        <button type="button" class="${alle ? "an" : ""}" data-tags-zeigen="alle" aria-pressed="${alle}" title="Auch die ${zahl(nurAuto, 0)} automatischen aus den Dateinamen">Alle</button></div>` : "";
+  const leer = !sichtbar.length && tags.length
+    ? `<div class="leer-eintrag tag-leer">Noch keine eigenen Tags. Die ${zahl(nurAuto, 0)} automatischen aus den Dateinamen siehst du unter <button type="button" class="link" data-tags-zeigen="alle">Alle</button>.</div>` : "";
+  abgleichen($("#tag-liste"), wahl + leer + sichtbar.slice(0, 30).map((t) =>
+    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""} ${t.eigen ? "" : "auto"}" data-tag="${esc(t.name)}" ${t.eigen ? "" : `title="Automatisch aus dem Dateinamen"`}><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("")
+    + (sichtbar.length > 30 ? `<button class="eintrag leer-eintrag" data-tags-verwalten>Alle ${zahl(sichtbar.length, 0)} Tags …</button>` : ""));
 }
 
 function zweig(k, tiefe) {
@@ -2764,6 +2780,8 @@ $("#gruppierung").value = zustand.gruppierung;
     await api(`/api/sammlungen/${sammlungWeg.dataset.sammlungWeg}/modelle/${$("#inspektor").dataset.id}`, { method: "DELETE" });
     return;
   }
+  const tagWahl = t.closest("[data-tags-zeigen]");
+  if (tagWahl) { localStorageSchreiben("tags_alle", tagWahl.dataset.tagsZeigen === "alle" ? "1" : "0"); return zeichneTagListe(); }
   const tag = t.closest("[data-tag]");
   const mat = t.closest("[data-mat]");
   if (tag || mat) {
