@@ -52,7 +52,7 @@ Am Druck mit G-Code steht das Bild, das der Slicer im Kopf der Datei mitliefert 
 nimmt das grösste PNG, `GET /api/drucke/{id}/datei/vorschau` liefert es aus dem Vault, gespeichert wird nichts zusätzlich (Feld `vorschau` am GCODE-Knoten, bei älteren Dateien unbekannt → die Seite
 versucht es und blendet das Bild bei 404 aus). Mit den vier echten G-Codes des Testers geprüft (alle haben zwei Bilder, 230×110 und 512×512 „top“). Bekannt: das Bild hat weissen Grund und das Teil ist
 klein darin — auf dem dunklen Thema ein heller Kasten; Zuschneiden wäre ein späterer Schritt. Gleichzeitig behoben: bei mehreren Filament-Plätzen (Anycubic, vier Plätze) zeigte die Seite alle Profile,
-jetzt nur die mit Verbrauch (`_nur_benutzte_filamente`). Noch nicht: G-Code als eigene Kachel in der Bibliothek (Einschätzung im Chat: Filter `gcode:ja` genügt vielleicht), 3D-Bahnen (gcode-preview).
+jetzt nur die mit Verbrauch (`_nur_benutzte_filamente`). **Backlog (Anwender 28.10.):** G-Code als eigene Kachel in der Bibliothek (Einschätzung im Chat: Filter `gcode:ja` genügt vielleicht), 3D-Bahnen (gcode-preview, MIT, three.js ^0.178, Worker; Aufwand 3; oder eigener Linien-Renderer ≈ 200 Zeilen), Vorschaubild auf das Teil zuschneiden (1–2).
 
 ## Spulenbild im Lager (25.10.2026, auf dem Branch, nicht auf `main`)
 
