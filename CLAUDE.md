@@ -12,6 +12,7 @@
 - **`test_ui.py` nie mehrfach hintereinander komplett** (Vorgabe des Anwenders, 7.10.2026). Gegenproben
   für Oberflächen-Prüfungen gezielt, nicht als ganze Suite. Prüfungen nur für Verhalten, das unbemerkt kaputtgehen kann — nicht für
   einmalige Gestaltung (Farben, Abstände, Aufbau eines Panels).
+- **Handbuch und Handbuchbilder nicht bei jeder Fassung nachziehen** (Anwender, 29.10.2026) — nur, wenn sich dort Gezeigtes wirklich geändert hat oder er es verlangt.
 - **Jede Suite hat eine Zeitgrenze** (`muster.zeitgrenze`): hängt sie, bricht sie ab und zeigt die Zeile.
 - **Arbeit in kleinen Paketen:** vorher sagen, was und wie lange; nach spätestens ~10 Minuten anhalten und berichten.
 - **Eine Sache pro Antwort.** Nicht fünf Aspekte in einer Frage-Antwort
