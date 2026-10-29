@@ -46,6 +46,16 @@ Zahlen und Farben (Anwender: „sonst verwirrend“). Feste Plätze unten rechts
 der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellungen je Druck): Vorschlag Slicer → „In der Datei“, Drucke = was passiert ist, dazu ein Knopf
 „Aus der Datei als Druck anlegen“ (Aufwand 1–2). Handbuchbilder zeigen noch „PARTATLAS“ — beim nächsten Push alle neu erzeugen (`python werkzeuge/handbuch_bilder.py`).
 
+## Performance Suche und Filter bei 9 000 Modellen (29.10.2026, Anwender: „Format-Chip STL 1 s inakzeptabel, auch 600 ms verbessern“)
+
+Gemessen auf künstlichem Bestand (9 000 STL im Stil der FreeCAD-Library, Container 4 vCPU, Chromium; nicht Firefox/Rechner des Testers), Zeit von der Aktion bis die Kacheln stehen,
+zerlegt mit Resource Timing (Skripte im Scratchpad: `b9000_*.py`). Vorher: Suche „screw“ (2 565) 332 ms = Pause 162 + Server 118 + Browser 48; Tag-Klick 261 ms + 8 weitere
+Anfragen bis 1,1 s; Format STL (9 000) 706 ms = Server 333 (davon `json.dumps` 177) + Browser 319 (davon **Sortieren 178**: `localeCompare` mit Optionen je Vergleich).
+**Paket A+B gebaut:** ein `Intl.Collator` statt `localeCompare` (gleiche Reihenfolge); Filter (Ordner, Tag, Material, Format, Sammlung, gemerkte Suche, Filter weg) laden die
+Seitenleiste nicht mehr neu (`ansichtLaden` statt `neuLaden`). **Nachher:** Format STL 392 ms (1 Anfrage), Tag-Klick 199 ms (1 Anfrage), Suche „screw“ 306 ms. test_tags_ui 5/5
+(neue Prüfung: Tag-Filter holt nur die Liste; Gegenprobe fällt). **Nächstes Paket:** JSON der Kacheln auf dem Server zwischenspeichern (177 ms bei 9 000), erst filtern dann
+kopieren (Sockel 25–40 ms), Format-Filter rechnet die Liste zweimal, `/api/tags` 67 → 146 ms seit „Eigene/Alle“ (Kopien der Kanten). Tipp-Pause der Suche 150 ms (Abwägung).
+
 ## Rückmeldung Tester zu 1.0.5 (29.10.2026) — für nachher
 
 1. **G-Code-Zeichen erscheint bei ihm nicht.** Zeichen kommt nur, wenn der G-Code an einem Druck hängt oder das 3MF geslict ist. Vermutung: er hat ihn als Anhang ans Modell

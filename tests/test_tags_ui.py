@@ -52,6 +52,18 @@ if __name__ == "__main__":
             pg.wait_for_function("!document.querySelector(\"#tag-liste [data-tag='schraube']\")")
             check("„Eigene“: nur der von Hand gesetzte Tag", pg.locator("#tag-liste [data-tag]").count() == 1
                   and pg.locator("#tag-liste [data-tag='werkstatt']").count() == 1)
+            # Ein Filter ändert nichts an Zählern, Ordnerbaum und Tags: der Klick holt nur die Liste. Sonst kamen acht Anfragen über alle Modelle
+            # mit (bei 9 000 Modellen über eine Sekunde Serverarbeit), die die Liste ausbremsten.
+            # Erst wenn Einlesen und Vorschaubilder ruhen: deren Ende lädt zu Recht alles neu und gehört nicht zum Klick.
+            warte(lambda: not any(abfrage(port, "/api/stand")[k]["laeuft"] for k in ("scan", "worker")), 60)
+            pg.wait_for_timeout(1500)
+            seite = []
+            pg.on("request", lambda r: seite.append(r.url) if any(x in r.url for x in ("/api/zaehler", "/api/tags", "/api/ordner", "/api/baugruppen")) else None)
+            with pg.expect_response(lambda r: "/api/modelle?" in r.url):
+                pg.click("#tag-liste [data-tag='werkstatt']")
+            pg.wait_for_timeout(500)
+            check("Ein Tag-Filter holt nur die Liste, nicht Zähler, Ordnerbaum, Tags und Baugruppen neu",
+                  not seite and pg.locator("#tag-liste [data-tag='werkstatt'].aktiv").count() == 1)
             b.close()
     finally:
         server.terminate()

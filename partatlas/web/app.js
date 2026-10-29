@@ -137,7 +137,10 @@ const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()
 // einer Gruppe bleibt die gewählte Sortierung), danach zählen alle Indizes wie bei einer flachen Liste.
 // Gibt es nur eine Gruppe, steht kein Band da: es gäbe nichts zu trennen (etwa ein Ordner ohne Unterordner).
 
-const natuerlich = (a, b) => a.localeCompare(b, "de", { numeric: true, sensitivity: "base" });
+// Ein Collator für alle Vergleiche: `localeCompare` mit Optionen baut die Regeln bei jedem Aufruf neu — beim Sortieren von 9 000 Namen
+// (gut 100 000 Vergleiche) waren das 180 ms von 700 bis zur fertigen Liste (gemessen 29.10.2026). Gleiche Reihenfolge.
+const NATUERLICH = new Intl.Collator("de", { numeric: true, sensitivity: "base" });
+const natuerlich = NATUERLICH.compare;
 const wurzelName = (id) => zustand.wurzelNamen.get(id) || id;
 
 // Der Ordner eines Modells hat die Form „Wurzel/Pfad“. Gruppiert wird nach der **nächsten Ebene** unter dem, was in der
@@ -490,7 +493,7 @@ function gemerktAnwenden(id) {
                              ordner: r.ordner || "", sammlung: "", ansicht: "alle" });
     $("#suche").value = r.q || "";
     $("#suche-x").hidden = !r.q;
-    return neuLaden();
+    return ansichtLaden();
   });
 }
 async function sucheMerken() {
@@ -2683,7 +2686,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
   const pf = t.closest("[data-pfad]");
-  if (pf) { Object.assign(zustand, { ordner: pf.dataset.pfad, ansicht: "alle", sammlung: "", eingeklappt: new Set() }); return neuLaden(); }
+  if (pf) { Object.assign(zustand, { ordner: pf.dataset.pfad, ansicht: "alle", sammlung: "", eingeklappt: new Set() }); return ansichtLaden(); }
   const go = t.closest("[data-gruppe-ordner]");
   if (go) {
     const id = go.dataset.gruppeOrdner;
@@ -2692,7 +2695,7 @@ document.addEventListener("click", async (e) => {
     for (let i = 1; i < teile.length; i++) zustand.offen.add(teile.slice(0, i).join("/"));
     localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));
     Object.assign(zustand, { ordner: id, ansicht: "alle", sammlung: "", eingeklappt: new Set() });
-    return neuLaden();
+    return ansichtLaden();
   }
   const gk = t.closest("[data-gruppe]");
   if (gk) {
@@ -2764,9 +2767,9 @@ $("#gruppierung").value = zustand.gruppierung;
   const rail = t.closest("[data-rail]");
   if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const ordner = t.closest("[data-ordner]");
-  if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); });
+  if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return ansichtLaden(); });
   const sammlung = t.closest("[data-sammlung]");
-  if (sammlung) return navigiere(() => { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return neuLaden(); });
+  if (sammlung) return navigiere(() => { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return ansichtLaden(); });
   const springe = t.closest("[data-springe]");
   if (springe) return springeZu(springe.dataset.springe, springe.dataset.id);
   const geheReiter = t.closest("[data-gehe-reiter]");
@@ -2790,10 +2793,10 @@ $("#gruppierung").value = zustand.gruppierung;
     else if (wahl.has(wert)) wahl.delete(wert);
     else wahl.add(wert);
     if (zustand.ansicht === "papierkorb") zustand.ansicht = "alle";
-    return neuLaden();
+    return ansichtLaden();
   }
   const fmt = t.closest("[data-format]");
-  if (fmt) { zustand.format = zustand.format === fmt.dataset.format ? "" : fmt.dataset.format; return neuLaden(); }
+  if (fmt) { zustand.format = zustand.format === fmt.dataset.format ? "" : fmt.dataset.format; return ansichtLaden(); }
   const matWahl = t.closest("[data-mat-wahl]");
   if (matWahl) { $("#s-name").value = matWahl.dataset.matWahl; return; }
   const matWeg = t.closest("[data-material-weg]");
@@ -2814,7 +2817,7 @@ $("#gruppierung").value = zustand.gruppierung;
       zustand.ohneEntwuerfe = !zustand.ohneEntwuerfe;
       localStorageSchreiben("ohneEntwuerfe", zustand.ohneEntwuerfe ? "1" : "0");
       return ladeModelle();
-    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return neuLaden();
+    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return ansichtLaden();
     case "sammlung-neu": case "sammlung-neu-2": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
       try {
@@ -3018,8 +3021,9 @@ function sucheLeeren() {
 $("#suche-x").addEventListener("click", sucheLeeren);
 $("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
 
-// Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste. Zähler, Ordnerbaum, Tags und die Vorschläge der
-// Baugruppen-Leiste — die über alle Modelle rechnen und unter Windows bei 8 600 Modellen mehrere Sekunden brauchen — bleiben, wie sie sind:
+// Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste — ebenso ein Filter (Ordner, Tag, Material, Format,
+// Sammlung, gemerkte Suche): ein Tag-Klick holte sonst acht Antworten über alle Modelle mit, die sich durch den Filter nicht ändern (29.10.2026).
+// Zähler, Ordnerbaum, Tags und die Vorschläge der Baugruppen-Leiste — die über alle Modelle rechnen und unter Windows bei 8 600 Modellen mehrere Sekunden brauchen — bleiben, wie sie sind:
 // ändert sich daran etwas, meldet es der Server und `neuLaden` holt alles neu (Anwender, 12.10.2026: „Klicks in Bereinigen sind langsam“).
 function ansichtLaden() {
   ladeModelle();
