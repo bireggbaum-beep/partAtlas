@@ -116,11 +116,36 @@ if __name__ == "__main__":
         c.delete(f"/api/modelle/{zahnrad['id']}/tags/funktional")
         check("Tag entfernen", "funktional" not in c.get(f"/api/modelle/{zahnrad['id']}").json()["tags"])
 
+        c.get("/api/modelle", params={"leiste": 1})       # füllt das aufbewahrte JSON der Kacheln (Katalog.modelle_json)
         r = c.patch(f"/api/modelle/{zahnrad['id']}", json={"favorit": True, "gedruckt": True})
         check("Favorit und Gedruckt setzen", r.json()["favorit"] and r.json()["gedruckt"])
         check("Die Liste ist nach jeder Änderung sofort aktuell: der Zwischenspeicher der Kacheln wird bei einer Änderung verworfen, auch für die Ansicht „Favoriten“",
               next(x for x in c.get("/api/modelle").json() if x["id"] == zahnrad["id"])["favorit"] is True
               and [x["id"] for x in c.get("/api/modelle", params={"ansicht": "favoriten"}).json()] == [zahnrad["id"]])
+        check("Auch der schnelle Weg mit aufbewahrtem JSON je Kachel ist nach der Änderung aktuell",
+              next(x for x in c.get("/api/modelle", params={"leiste": 1}).json()["modelle"] if x["id"] == zahnrad["id"])["favorit"] is True)
+        # Der schnelle Weg (JSON je Kachel aufbewahrt) liefert in jeder Ansicht und mit jedem Filter genau, was der alte lieferte.
+        import json as _json
+        wurzel_id = c.get("/api/ordner").json()[0]["id"]
+        faelle = [{}, {"q": "zahn"}, {"format": "stl"}, {"format": "3mf", "tags": "funktional"}, {"ansicht": "favoriten"}, {"ansicht": "neu"},
+                  {"ansicht": "neu", "format": "stl"}, {"ansicht": "papierkorb"}, {"ansicht": "archiv"}, {"tag": "gibtsnicht"},
+                  {"ordner": wurzel_id}, {"ordner": wurzel_id, "format": "3mf", "q": "zahn"}, {"material": "PLA"}]
+        namen = {"q": "suche", "format": "fmt", "tags": "tags", "material": "materialien"}
+        def alt_weg(f):
+            kw = {namen.get(k, k): (v.split(",") if k in ("tags", "material") else v) for k, v in f.items()}
+            return _json.loads(_json.dumps(z["katalog"].modelle(**kw, leiste=True), ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)))
+        r = c.get("/api/modelle", params={"format": "stl", "leiste": 1}).json()
+        check("Format-Filter mit Chip-Zahlen: nur STL in der Liste, die Chips zählen alle Formate der Ansicht",
+              [m["name"] for m in r["modelle"]] == ["Haken"] and r["leiste"]["formate"] == {"stl": 1, "3mf": 1})
+        abweichend = [f for f in faelle if c.get("/api/modelle", params={**f, "leiste": 1}).json() != alt_weg(f)]
+        check("Schneller Weg der Liste: in allen Ansichten und Filtern dieselbe Antwort wie der alte", not abweichend)
+        echt = z["katalog"].modelle_json
+        def kaputt(**_):
+            raise RuntimeError("Probe")
+        z["katalog"].modelle_json = kaputt
+        r = c.get("/api/modelle", params={"leiste": 1})
+        z["katalog"].modelle_json = echt
+        check("Scheitert der schnelle Weg, liefert der alte die Liste (kein Absturz)", r.status_code == 200 and r.json() == alt_weg({}))
         check("Unbekanntes Feld wird abgelehnt", c.patch(f"/api/modelle/{zahnrad['id']}", json={"hash": "x"}).status_code == 400)
 
         # -- Ordner wählen: durchsuchen statt Pfad tippen

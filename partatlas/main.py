@@ -389,9 +389,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
                 sammlung: str = "", tags: str = "", material: str = "", leiste: bool = False):
         # tags und material als Komma-Liste: die Chips der Leiste, je mit ODER.
         liste = lambda s: [x for x in s.split(",") if x]
-        erg = K().modelle(suche=q or None, tag=tag or None, ordner=ordner or None,
-                          fmt=format or None, ansicht=ansicht, sammlung=sammlung or None,
-                          tags=liste(tags), materialien=liste(material), leiste=leiste)
+        filter_ = dict(suche=q or None, tag=tag or None, ordner=ordner or None, fmt=format or None, ansicht=ansicht,
+                       sammlung=sammlung or None, tags=liste(tags), materialien=liste(material))
+        if leiste:
+            # Der schnelle Weg mit aufbewahrtem JSON je Kachel (Katalog.modelle_json). Scheitert er, gilt der alte: lieber 200 ms langsamer
+            # als eine leere Seite beim Anwender.
+            try:
+                return Response(K().modelle_json(**filter_), media_type="application/json")
+            except Exception:
+                log.exception("Liste über den schnellen Weg gescheitert, nehme den alten")
+        erg = K().modelle(**filter_, leiste=leiste)
         # Selbst in JSON wandeln: FastAPIs Umwandlung (`jsonable_encoder`) brauchte bei 9 000 Treffern 0,7 s von 1,3 s, `json.dumps` 0,1 s.
         # Auf einem älteren Rechner sind das die Sekunden zwischen Klick und Liste (Messung vom 5.10.2026, siehe OFFEN.md).
         return Response(json.dumps(erg, ensure_ascii=False, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o)),

@@ -42,6 +42,12 @@ if __name__ == "__main__":
         check("Seitenleiste: je Tag, an wie vielen Modellen von Hand gesetzt (die nur automatischen haben 0)",
               t["halter"]["eigen"] == 0 and t["drohne"]["eigen"] == 1 and t["drohne"]["anzahl"] == 1)
 
+        c.post(f"/api/modelle/{kabel}/tags", json={"tag": "Werkbank"})
+        check("Die aufbewahrte Tag-Liste ist nach einer Änderung sofort aktuell",
+              {x["name"]: x["eigen"] for x in c.get("/api/tags").json()}.get("werkbank") == 1)
+        c.delete(f"/api/modelle/{kabel}/tags/werkbank")
+        check("… auch nach dem Entfernen", "werkbank" not in {x["name"] for x in c.get("/api/tags").json()})
+
         # -- Kanten von vor 0.56 ohne `auto`: beim Start einmal nach den Regeln bestimmt und festgeschrieben.
         db = z["katalog"].db
         with db.transaction():

@@ -53,8 +53,12 @@ zerlegt mit Resource Timing (Skripte im Scratchpad: `b9000_*.py`). Vorher: Suche
 Anfragen bis 1,1 s; Format STL (9 000) 706 ms = Server 333 (davon `json.dumps` 177) + Browser 319 (davon **Sortieren 178**: `localeCompare` mit Optionen je Vergleich).
 **Paket A+B gebaut:** ein `Intl.Collator` statt `localeCompare` (gleiche Reihenfolge); Filter (Ordner, Tag, Material, Format, Sammlung, gemerkte Suche, Filter weg) laden die
 Seitenleiste nicht mehr neu (`ansichtLaden` statt `neuLaden`). **Nachher:** Format STL 392 ms (1 Anfrage), Tag-Klick 199 ms (1 Anfrage), Suche „screw“ 306 ms. test_tags_ui 5/5
-(neue Prüfung: Tag-Filter holt nur die Liste; Gegenprobe fällt). **Nächstes Paket:** JSON der Kacheln auf dem Server zwischenspeichern (177 ms bei 9 000), erst filtern dann
-kopieren (Sockel 25–40 ms), Format-Filter rechnet die Liste zweimal, `/api/tags` 67 → 146 ms seit „Eigene/Alle“ (Kopien der Kanten). Tipp-Pause der Suche 150 ms (Abwägung).
+(neue Prüfung: Tag-Filter holt nur die Liste; Gegenprobe fällt). **Paket 2 gebaut:** JSON je Kachel aufbewahrt (`Katalog.modelle_json`, gültig solange die Kachel dasselbe Objekt im Zwischenspeicher ist; scheitert der Weg,
+nimmt `/api/modelle` den alten und schreibt es ins Protokoll), erst filtern dann kopieren (`_modelle(kopie=…)`), Format mit Chip-Zahlen nur einmal gerechnet (ausser „Neu“),
+`/api/tags` aufbewahrt bis `Bestand.generation` sich ändert. **Nachher (gleicher Bestand):** Format STL **244 ms** (vorher 706), Tag-Klick **146 ms** (vorher 261 + 8 Anfragen),
+Suche „screw“ 283 ms (davon 165 Tipp-Pause), Server „alle“ 87 ms (vorher 308), `/api/tags` 13 ms. test_api 94/94 (gleiche Antwort in 13 Ansichten/Filtern, aktuell nach Änderung,
+Rückfall auf den alten Weg, Format mit Chip-Zahlen), test_tags 19/19; Gegenproben fallen. Alle Suiten ohne Oberfläche grün, betroffene Oberflächen-Suiten grün. **Offen:** Tipp-Pause
+150 ms (Abwägung Anwender); `/api/zaehler` 107 ms (nur beim Neuladen); die 6-MB-Liste selbst (Anwender: „stört mich“, separat ansehen).
 
 ## Rückmeldung Tester zu 1.0.5 (29.10.2026) — für nachher
 

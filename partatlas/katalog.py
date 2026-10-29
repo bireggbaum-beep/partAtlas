@@ -11,6 +11,7 @@ Ohne Ort fehlt sie. Beides wird abgeleitet, nicht gespeichert.
 """
 import hashlib
 import io
+import json
 import logging
 import os
 import re
@@ -33,6 +34,11 @@ def jetzt():
     return time.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def _json_rest(o):
+    """Was json nicht kennt: Mengen als sortierte Liste, alles andere als Text — wie in main.py für /api/modelle."""
+    return sorted(o) if isinstance(o, (set, frozenset)) else str(o)
+
+
 def ref(sammlung, kennung):
     return f"{sammlung}/{kennung}"
 
@@ -48,6 +54,8 @@ class Katalog:
         self._kurz_zwischen = None
         self._kurz_offen = set()
         self._kurz_alles_neu = 0             # zählt „alles neu“: ein Bau, der davor begann, wird nicht gespeichert
+        self._kachel_json = {}               # {Modell: (Kachel, JSON-Text)} — siehe modelle_json
+        self._tags_zwischen = None           # (Bestand.generation, Liste) — siehe tags
         self._kurz_sperre = threading.Lock()
         self._kurz_bau = threading.Lock()    # immer nur ein Nachbau: zwei gleichzeitig verlören die Änderungen des einen
         bestand.hoeren(self._kurz_veraltet)
@@ -487,14 +495,22 @@ class Katalog:
         return teile[0].split("/", 1)[1] if teile else None
 
     def modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None,
-                tags=(), materialien=(), leiste=False, alle=None):
+                tags=(), materialien=(), leiste=False, alle=None, kopie=True):
         """Wie `_modelle`, dazu die Chips der Leiste: Tags und Materialien je
         mit ODER. Wer mehr gewählte Chips trifft, steht weiter oben; bei
         Gleichstand bleibt die Reihenfolge davor (Relevanz, Name …).
 
         Mit `leiste` kommt je Chip die Anzahl dazu — gezählt vor der
         Chip-Auswahl, damit man sieht, was ein weiterer Chip brächte."""
-        basis = self._modelle(suche, tag, ordner, fmt, ansicht, sammlung, alle)
+        # Mit Format-Filter und Zahlen für die Chips: die Liste einmal ohne Format holen und das Format daraus nehmen — vorher wurde sie
+        # zweimal gebaut und sortiert (bei 9 000 Modellen rund 50 ms). Das Format ändert die Reihenfolge nicht; nur „Neu“ schneidet nach dem
+        # Sortieren ab (die 100 neuesten), dort bleibt es bei zwei Durchgängen.
+        ohne_fmt_basis = None
+        if fmt and leiste and ansicht not in ("neu", "papierkorb"):
+            ohne_fmt_basis = self._modelle(suche, tag, ordner, None, ansicht, sammlung, alle, kopie=kopie)
+            basis = [x for x in ohne_fmt_basis if x["format"] == fmt]
+        else:
+            basis = self._modelle(suche, tag, ordner, fmt, ansicht, sammlung, alle, kopie=kopie)
         tags, materialien = set(tags), {m.upper() for m in materialien}
         liste = basis
         if tags or materialien:
@@ -511,7 +527,8 @@ class Katalog:
                 zaehl_m[m] = zaehl_m.get(m, 0) + 1
         # Formate: gezählt in der Ansicht, wie sie dasteht (Ordner, Suche, Chips), nur ohne den Format-Filter selbst — sonst zeigte jeder
         # andere Format-Chip 0. Vorher kamen die Zahlen aus dem ganzen Katalog (/api/zaehler) und passten zu keiner Ansicht.
-        ohne_fmt = liste if not fmt else self._modelle(suche, tag, ordner, None, ansicht, sammlung, alle)
+        ohne_fmt = liste if not fmt else (ohne_fmt_basis if ohne_fmt_basis is not None
+                                          else self._modelle(suche, tag, ordner, None, ansicht, sammlung, alle))
         if fmt and (tags or materialien):
             ohne_fmt = [x for x in ohne_fmt if treffer(x)]
         zaehl_f = {}
@@ -520,6 +537,27 @@ class Katalog:
         ordnen = lambda z: [{"name": k, "anzahl": v} for k, v in sorted(z.items(), key=lambda kv: (-kv[1], kv[0]))]
         return {"modelle": liste, "leiste": {"tags": ordnen(zaehl_t), "materialien": ordnen(zaehl_m),
                                             "formate": {k: v for k, v in zaehl_f.items() if k}}}
+
+    def modelle_json(self, **filter):
+        """Wie `modelle(..., leiste=True)`, gleich als JSON-Text für /api/modelle. Jede Kachel wird nur einmal in JSON gewandelt und so
+        aufbewahrt, bis sie sich ändert: das Umwandeln von 9 000 Kacheln (6 MB) kostete 177 ms je Anfrage, mehr als das Filtern selbst
+        (gemessen 29.10.2026). Ob der aufbewahrte Text noch gilt, entscheidet die Kachel selbst: der Zwischenspeicher baut eine geänderte
+        Kachel als neues Objekt, also gilt der Text nur, solange er zu genau diesem Objekt gehört."""
+        alle = self._kurz_alle()
+        erg = self.modelle(**filter, leiste=True, alle=alle, kopie=False)
+        texte = self._kachel_json
+        teile = []
+        for x in erg["modelle"]:
+            gemerkt = texte.get(x["id"])
+            if gemerkt is None or gemerkt[0] is not x:
+                gemerkt = (x, json.dumps(x, ensure_ascii=False, default=_json_rest))
+                if alle.get(x["id"]) is x:               # nur Kacheln aus dem Zwischenspeicher; Papierkorb u. ä. sind jedes Mal neu
+                    texte[x["id"]] = gemerkt
+            teile.append(gemerkt[1])
+        if len(texte) > 2 * len(alle) + 100:             # gelöschte Modelle: ab und zu aufräumen, damit nichts wächst
+            self._kachel_json = {k: v for k, v in texte.items() if alle.get(k) is v[0]}
+        return ('{"modelle": [' + ", ".join(teile) + '], "leiste": '
+                + json.dumps(erg["leiste"], ensure_ascii=False, default=_json_rest) + "}")
 
     def aenderungen(self, refs, **filter):
         """Für das Nachreichen während des Einlesens: die Modelle hinter diesen Graph-Verweisen (Modell, Datei, Kante), je mit der Antwort,
@@ -602,9 +640,15 @@ class Katalog:
                 self._kurz_zwischen = erg
         return erg
 
-    def _modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None, alle=None):
+    def _modelle(self, suche=None, tag=None, ordner=None, fmt=None, ansicht="alle", sammlung=None, alle=None, kopie=True):
         """Kacheln für das Raster, gefiltert. Suche über den Wortindex (suche.py),
-        Tag über die Nachbarschaft in flatgraph, der Rest über die Kacheln selbst."""
+        Tag über die Nachbarschaft in flatgraph, der Rest über die Kacheln selbst.
+        `kopie=False`: die Kacheln selbst aus `alle` statt flacher Kopien — nur für Aufrufer, die sie nicht ändern (modelle_json)."""
+        erg = self._modelle_gefiltert(suche, tag, ordner, fmt, ansicht, sammlung, alle)
+        # Erst filtern, dann kopieren: vorher wurden alle 9 000 Kacheln kopiert, auch wenn danach keine übrig blieb (25–40 ms, 29.10.2026).
+        return [dict(x) for x in erg] if kopie and ansicht != "papierkorb" else erg
+
+    def _modelle_gefiltert(self, suche, tag, ordner, fmt, ansicht, sammlung, alle):
         if ansicht == "papierkorb":
             roh = self.db.list_nodes(MODELL, include_deleted=True, readonly=True)
             liste = [self._kurz(k, v, papierkorb=True) for k, v in roh.items()
@@ -624,7 +668,7 @@ class Katalog:
         if sammlung:
             reihe = self._sammlung_reihe(sammlung)
             kandidaten = {k: v for k, v in kandidaten.items() if k in reihe}
-        liste = [dict(alle[k]) for k in kandidaten]       # flache Kopien: wer die Liste ändert, ändert nicht den Zwischenspeicher
+        liste = [alle[k] for k in kandidaten]       # die Kacheln selbst; kopiert wird am Ende (_modelle), nur was übrig bleibt
         # Das Archiv ruht: nicht in Liste, Suche, Zählern und Bereinigen — nur in seiner eigenen Ansicht.
         liste = [x for x in liste if bool(x.get("archiv")) == (ansicht == "archiv")]
         if fmt:
@@ -1632,13 +1676,21 @@ class Katalog:
 
     def tags(self):
         """[{name, anzahl, eigen}] — Anzahl über die Nachbarschaft, nicht gezählt über Modelle. `eigen`: an wie vielen Modellen von Hand
-        gesetzt; die Seitenleiste blendet damit die nur automatischen aus (bei Tausenden Dateinamen-Tags sah man sonst die eigenen nicht)."""
+        gesetzt; die Seitenleiste blendet damit die nur automatischen aus (bei Tausenden Dateinamen-Tags sah man sonst die eigenen nicht).
+        Aufbewahrt, bis sich am Graphen etwas ändert: die Zählung über die Kanten kostet bei 9 000 Modellen 146 ms und wird bei jedem
+        Neuladen der Seitenleiste gefragt, meist ohne dass sich etwas geändert hat."""
+        stand = self.b.generation
+        gemerkt = self._tags_zwischen
+        if gemerkt is not None and gemerkt[0] == stand:
+            return [dict(t) for t in gemerkt[1]]
         liste = []
         for name in self.db.list_nodes(TAG, readonly=True):
             kanten = self.db.get_connected_edges(ref(TAG, name), direction="in", rel_type=HAT_TAG)
             if kanten:
                 liste.append({"name": name, "anzahl": len(kanten), "eigen": sum(1 for _, k in kanten if k.get("auto") is not True)})
-        return sorted(liste, key=lambda t: (-t["anzahl"], t["name"]))
+        liste = sorted(liste, key=lambda t: (-t["anzahl"], t["name"]))
+        self._tags_zwischen = (stand, liste)
+        return [dict(t) for t in liste]
 
     def _tag_herkunft_nachziehen(self):
         """Kanten von vor 0.56 tragen kein `auto`. Einmal beim Start nach den Regeln bestimmen (_ist_auto) und festschreiben: die
