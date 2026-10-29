@@ -10,6 +10,8 @@ Nichts davon kommt beim Einlesen in den Graphen: einige hundert Werte je Datei w
 jemand den Reiter öffnet (die Datei liegt auf demselben Rechner). Nur ein Druck mit G-Code bewahrt seine Konfiguration als
 `PRINT_PROFILE` (drucke.py) — dort gehört sie zum Ergebnis.
 """
+import base64
+import binascii
 import hashlib
 import json
 import re
@@ -174,6 +176,7 @@ def aus_gcode(pfad, grenze=4 << 20):
         m = re.search(muster, text, re.M)
         if m and schluessel not in kopf:
             kopf[schluessel] = m.group(1).strip()
+    _nur_benutzte_filamente(werte, text)
     if "zeit" in kopf:
         kopf["dauer_s"] = dauer_s(kopf.pop("zeit"))
     if "sekunden" in kopf:
@@ -184,6 +187,44 @@ def aus_gcode(pfad, grenze=4 << 20):
     if "gewicht_g" in kopf:
         kopf["gewicht_g"] = float(kopf["gewicht_g"])
     return {"slicer": slicer, "werte": werte, "kopf": kopf}
+
+
+# Je Filament-Platz eine Angabe, durch „;“ getrennt (Orca/Bambu/Anycubic führen so alle Plätze des Druckers, auch ungenutzte).
+JE_FILAMENT = ("filament_settings_id", "filament_type", "filament_colour")
+
+
+def _nur_benutzte_filamente(werte, text):
+    """Ein Anycubic-Drucker mit vier Plätzen schreibt alle vier Profile in die Datei, obwohl nur einer Filament verbraucht: dann bleibt nur, was verbraucht wurde,
+    sonst zeigte die Seite vier Filamente für einen Druck. Ohne Verbrauchszeile bleibt alles, wie es ist."""
+    m = re.search(r"^; filament used \[g\] = ([\d.,\s]+)$", text, re.M)
+    if not m:
+        return
+    benutzt = [float(x or 0) > 0 for x in m.group(1).replace(" ", "").split(",")]
+    if len(benutzt) < 2 or not any(benutzt):
+        return
+    for k in JE_FILAMENT:
+        teile = str(werte.get(k, "")).split(";")
+        if len(teile) == len(benutzt):
+            werte[k] = ";".join(t for t, b in zip(teile, benutzt) if b)
+
+
+VORSCHAU_SUCHE = 1 << 20      # die Vorschaubilder stehen im Kopf der Datei, meist in den ersten Zehntausend Byte
+
+
+def vorschau_aus_gcode(pfad):
+    """Das grösste PNG-Vorschaubild, das der Slicer in den Kopf des G-Codes schreibt („; thumbnail begin 512x512 …“, bei Prusa „thumbnail_PNG“), oder None."""
+    with open(pfad, "rb") as f:
+        kopf = f.read(VORSCHAU_SUCHE).decode("latin-1")
+    beste = None
+    for m in re.finditer(r"^; thumbnail(?:_PNG)? begin (\d+)x(\d+) \d+[^\n]*\n((?:; [^\n]*\n)+?); thumbnail(?:_PNG)? end", kopf, re.M):
+        try:
+            png = base64.b64decode("".join(z[2:].strip() for z in m.group(3).splitlines()), validate=True)
+        except (binascii.Error, ValueError):
+            continue
+        flaeche = int(m.group(1)) * int(m.group(2))
+        if png.startswith(b"\x89PNG") and (beste is None or flaeche > beste[0]):
+            beste = (flaeche, png)
+    return beste[1] if beste else None
 
 
 def dauer_s(text):

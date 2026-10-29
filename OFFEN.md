@@ -4,7 +4,14 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Stand: 1.0.5 auf `main` (28.10.2026, für den Tester)
+## Stand: 1.0.6 auf `main` (29.10.2026, für den Tester)
+
+Neu: **Performance bei vielen Modellen** (Filter laden nur die Liste, Sortieren mit einem Collator, JSON je Kachel aufbewahrt, erst filtern dann kopieren; Format-Chip bei 9 000
+Modellen 706 → 244 ms, gemessen im Container mit Chromium — beim Tester nicht gemessen), **Tags „Eigene | Alle“** in der Seitenleiste, **Vorschaubild aus dem G-Code** am Druck,
+Filament bei mehreren Plätzen behoben. Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.5`. **Nicht auf `main`:** die Desktop-Arbeit. **Offen:** Reiter „Drucken“ (Mock beim
+Tester), die 6-MB-Liste (später), Tipp-Pause bleibt 150 ms (Anwender 29.10.).
+
+## Stand: 1.0.5 (28.10.2026)
 
 Neu: Zeichen **„G-Code“ auf der Kachel** (an einem Druck angehängt oder geslictes 3MF; feste Plätze unten rechts, Spalte „G-Code“ in der Liste, Suche `gcode:ja`), Schriftzug „PartAtlas“, Spule im Formular 120 px. Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.4`.
 **Offen (Entscheidung Anwender):** Reiter „Slicer“ gegen „Drucke“ (Vorschlag: Slicer → „In der Datei“, Knopf „Aus der Datei als Druck anlegen“, Aufwand 1–2). **Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).
@@ -37,11 +44,62 @@ Vierte Wahl unter Einstellungen › Ansicht: Palette von libadwaita (GTK 4) — 
 sich weiter vom 3MF Katalog zu lösen. Ein Bild dazu nur, wenn der Anwender es will (Aufwand 2–3 für Rundung und Abstände, `--radius` ist ein einziger Wert,
 ob alle Teile ihn nutzen, ist ungeprüft).
 
+## G-Code-Zeichen und Schriftzug (25.10.2026, Wunsch des Testers; auf dem Branch, nicht auf `main`)
+
+Kachel (und Spalte „G-Code“ in der Liste, per Spaltenmenü wählbar): ein kleines Zeichen „G-Code“, wenn zum Modell **irgendwo** ein G-Code gehört — an einem Druck angehängt
+(Feld `gcode_n` am Modell, wie `drucke_n` in `Drucke.nachziehen` geführt, Umzug alter Bestände in `_gcode_nachziehen`) oder weil das 3MF schon geslict ist (Platten). Ohne
+Zahlen und Farben (Anwender: „sonst verwirrend“). Feste Plätze unten rechts auf der Kachel: G-Code ganz rechts, der Status (✓ n×, Datei fehlt …) links davon, der Platz bleibt auch ohne G-Code frei — nichts rutscht. Ein Klick wählt das Modell und öffnet Reiter Drucke bzw. Slicer. Suche `gcode:ja` / `gcode:nein`. Der Schriftzug oben heisst
+„PartAtlas“ (Tester und Anwender: besser lesbar als „PARTATLAS“). test_drucke 42/42, test_gcode_ui 7/7, Gegenproben fallen. **Offen (Entscheidung Anwender):** die Überschneidung
+der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellungen je Druck): Vorschlag Slicer → „In der Datei“, Drucke = was passiert ist, dazu ein Knopf
+„Aus der Datei als Druck anlegen“ (Aufwand 1–2). Handbuchbilder zeigen noch „PARTATLAS“ — beim nächsten Push alle neu erzeugen (`python werkzeuge/handbuch_bilder.py`).
+
+## Performance Suche und Filter bei 9 000 Modellen (29.10.2026, Anwender: „Format-Chip STL 1 s inakzeptabel, auch 600 ms verbessern“)
+
+Gemessen auf künstlichem Bestand (9 000 STL im Stil der FreeCAD-Library, Container 4 vCPU, Chromium; nicht Firefox/Rechner des Testers), Zeit von der Aktion bis die Kacheln stehen,
+zerlegt mit Resource Timing (Skripte im Scratchpad: `b9000_*.py`). Vorher: Suche „screw“ (2 565) 332 ms = Pause 162 + Server 118 + Browser 48; Tag-Klick 261 ms + 8 weitere
+Anfragen bis 1,1 s; Format STL (9 000) 706 ms = Server 333 (davon `json.dumps` 177) + Browser 319 (davon **Sortieren 178**: `localeCompare` mit Optionen je Vergleich).
+**Paket A+B gebaut:** ein `Intl.Collator` statt `localeCompare` (gleiche Reihenfolge); Filter (Ordner, Tag, Material, Format, Sammlung, gemerkte Suche, Filter weg) laden die
+Seitenleiste nicht mehr neu (`ansichtLaden` statt `neuLaden`). **Nachher:** Format STL 392 ms (1 Anfrage), Tag-Klick 199 ms (1 Anfrage), Suche „screw“ 306 ms. test_tags_ui 5/5
+(neue Prüfung: Tag-Filter holt nur die Liste; Gegenprobe fällt). **Paket 2 gebaut:** JSON je Kachel aufbewahrt (`Katalog.modelle_json`, gültig solange die Kachel dasselbe Objekt im Zwischenspeicher ist; scheitert der Weg,
+nimmt `/api/modelle` den alten und schreibt es ins Protokoll), erst filtern dann kopieren (`_modelle(kopie=…)`), Format mit Chip-Zahlen nur einmal gerechnet (ausser „Neu“),
+`/api/tags` aufbewahrt bis `Bestand.generation` sich ändert. **Nachher (gleicher Bestand):** Format STL **244 ms** (vorher 706), Tag-Klick **146 ms** (vorher 261 + 8 Anfragen),
+Suche „screw“ 283 ms (davon 165 Tipp-Pause), Server „alle“ 87 ms (vorher 308), `/api/tags` 13 ms. test_api 94/94 (gleiche Antwort in 13 Ansichten/Filtern, aktuell nach Änderung,
+Rückfall auf den alten Weg, Format mit Chip-Zahlen), test_tags 19/19; Gegenproben fallen. Alle Suiten ohne Oberfläche grün, betroffene Oberflächen-Suiten grün. **Offen:** Tipp-Pause
+150 ms (Abwägung Anwender); `/api/zaehler` 107 ms (nur beim Neuladen); die 6-MB-Liste selbst (Anwender: „stört mich“, separat ansehen).
+
+## Rückmeldung Tester zu 1.0.5 (29.10.2026) — für nachher
+
+1. **G-Code-Zeichen erscheint bei ihm nicht.** Zeichen kommt nur, wenn der G-Code an einem Druck hängt oder das 3MF geslict ist. Vermutung: er hat ihn als Anhang ans Modell
+   gehängt oder neben die STL in den Ordner gelegt (beides löst kein Zeichen aus). Frage an ihn: wo liegt der G-Code? Hängt er an einem Druck und es kommt nichts → Fehler im Umzug suchen.
+   Berechtigte Erwartung: „Anhang .gcode“ = gehört zum Modell → zur Frage Slicer/Drucke und zum Backlog „G-Code in der Bibliothek“.
+   **Nachtrag (29.10.):** Er exportiert den G-Code aus dem Slicer in den Ordner (anders speichert sein Slicer nicht), liest neu ein und erwartet die Zuordnung. Name z. B.
+   `1009-1926-Testscheibe_45mm-Cut002_plate01_PLA_0.2_3m17s.gcode` (vorne Monat-Tag-Stunde-Minute, hinten Platte, Filament, Schicht, Zeit). Tatsächlich liest das Einlesen
+   G-Code gar nicht. Im Inhalt steht aber das Quellmodell: `EXCLUDE_OBJECT_DEFINE NAME=Halter_Netzteil.stl_id_0_copy_0`, `; printing object "Halter_Netzteil.stl"`,
+   `source_info` (alle vier Dateien des Testers; der Slicer schreibt Sonderzeichen um: „Testscheibe_4_5mm“ im Inhalt, „Testscheibe_45mm“ im Dateinamen).
+2. **Versehentlich gelöschte STL zurück:** Papierkorb (Besen › Papierkorb › Wiederherstellen); Neu einlesen holt bewusst nicht zurück. Er fand den Weg nicht → prüfen: bietet der
+   Hinweis nach dem Löschen „Rückgängig“ / „Im Papierkorb ansehen“? Handbuch „Einlesen“: Satz zu gelöschten Modellen.
+
+## Tags bei vielen Modellen (28.10.2026, Anwender: „bei 5000 Modellen zugemüllt, man kann nichts tun“; auf dem Branch)
+
+Vorhanden war schon: Auto-Tags abschalten (Einstellungen › Einlesen), alle automatischen entfernen, Wörter sperren, Tags verwalten, Tag für viele hinzufügen.
+**Paket 1 gebaut:** Seitenleiste mit Umschalter **Eigene | Alle** über der Tag-Liste (Vorgabe Eigene, gemerkt in `localStorage` `tags_alle`); „Eigene“ = mindestens einmal von Hand
+gesetzt (`/api/tags` liefert `eigen`), ein aktiver Filter bleibt sichtbar; nur automatische Tags → Hinweis mit Weg zu „Alle“; automatische unter „Alle“ blasser. Kanten von vor 0.56
+ohne `auto` werden beim Start einmal nach den Regeln bestimmt und festgeschrieben (`_tag_herkunft_nachziehen`), damit die Seitenleiste nicht bei jedem Zeichnen rechnet.
+test_tags 17/17, test_tags_ui 4/4, Gegenproben fallen. **Paket 2 im Backlog (Anwender 28.10.):** Tag von der Auswahl entfernen im Zuordnen-Fenster — Entwurf: Fenster „Tags“, Block „An der Auswahl“ mit Stand, je Zeile „−“ (Tab/Enter), danach „von n entfernt · Rückgängig“ mit alter Herkunft, entfernte Auto-Tags kommen beim Einlesen nicht wieder (`tags_ab`); Material/Sammlung/Baugruppe später im selben Muster. Bemerkt: die Sektion Tags ist anfangs zugeklappt.
+
+## Vorschaubild aus dem G-Code (28.10.2026, auf dem Branch, nicht auf `main`)
+
+Am Druck mit G-Code steht das Bild, das der Slicer im Kopf der Datei mitliefert (`; thumbnail begin 512x512 …`, Anycubic Slicer Next, Bambu, Orca; Prusa als `thumbnail_PNG`): `slicer.vorschau_aus_gcode`
+nimmt das grösste PNG, `GET /api/drucke/{id}/datei/vorschau` liefert es aus dem Vault, gespeichert wird nichts zusätzlich (Feld `vorschau` am GCODE-Knoten, bei älteren Dateien unbekannt → die Seite
+versucht es und blendet das Bild bei 404 aus). Mit den vier echten G-Codes des Testers geprüft (alle haben zwei Bilder, 230×110 und 512×512 „top“). Bekannt: das Bild hat weissen Grund und das Teil ist
+klein darin — auf dem dunklen Thema ein heller Kasten; Zuschneiden wäre ein späterer Schritt. Gleichzeitig behoben: bei mehreren Filament-Plätzen (Anycubic, vier Plätze) zeigte die Seite alle Profile,
+jetzt nur die mit Verbrauch (`_nur_benutzte_filamente`). **Backlog (Anwender 28.10.):** G-Code als eigene Kachel in der Bibliothek (Einschätzung im Chat: Filter `gcode:ja` genügt vielleicht), 3D-Bahnen (gcode-preview, MIT, three.js ^0.178, Worker; Aufwand 3; oder eigener Linien-Renderer ≈ 200 Zeilen), Vorschaubild auf das Teil zuschneiden (1–2).
+
 ## Spulenbild im Lager (25.10.2026, auf dem Branch, nicht auf `main`)
 
 Das KI-Bild des Anwenders (312 × 327 px, weisser Hintergrund) ist freigestellt (`web/spule.png`, 125 KB, Schatten als weicher Schwarzton) und hat eine Maske für die Wicklung
 (`web/spule-wicklung.png`, 17 KB). `lager.js` `lgSpule(farbe, breite)` legt den Farbwert per CSS über die Maske und multipliziert ihn mit dem Bild (`mix-blend-mode: multiply`); sehr
-dunkle Farben werden aufgehellt, ohne Farbe ein helles Grau. Eingebaut an Karte (50 px, statt des Kürzels), Bildfeld im Formular (64 px) und leerem Lager (150 px). Entscheidung
+dunkle Farben werden aufgehellt, ohne Farbe ein helles Grau. Eingebaut an Karte (50 px, statt des Kürzels), Bildfeld im Formular (120 px) und leerem Lager (150 px). Entscheidung
 des Anwenders: **Grösse so lassen**, bei Bedarf des Testers später grösser (60–64 px auf der Karte). Bekannt: schwarze Spule hebt sich auf dunklem Grund nur schwach ab; ein
 farbiger Pixelrand unten an der Wicklung. Die Skripte zum Freistellen liegen nicht im Repo (Scratchpad: `spule_png.py`); bei einer Änderung am Bild neu erzeugen.
 Auf `main` mit der nächsten Fassung (1.0.4), samt Eintrag unter „Neu in dieser Fassung“.

@@ -495,6 +495,8 @@ async def oberflaeche(port):
                   await pg.locator(".karte.gewaehlt").count() == 1 and await pg.locator("#inspektor").get_attribute("data-id") == ids[2])
         if await pg.locator('.sektion[data-sektion="tags"][data-zu="1"]').count():
             await pg.click('.sektion[data-sektion="tags"] .sk-kopf')
+        if await pg.locator('#tag-liste [data-tags-zeigen="alle"]:not(.an)').count():     # die Tags hier sind automatische: unter „Alle“
+            await pg.click('#tag-liste .tag-wahl [data-tags-zeigen="alle"]')
         for tag in [t["name"] for t in api(port, "/api/tags")][:3]:
             await pg.click(f'#tag-liste [data-tag="{tag}"]', no_wait_after=True)
         await pg.wait_for_timeout(800)

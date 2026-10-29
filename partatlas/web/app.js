@@ -137,7 +137,10 @@ const istNeu = (m) => m.angelegt && (Date.now() - new Date(m.angelegt).getTime()
 // einer Gruppe bleibt die gewählte Sortierung), danach zählen alle Indizes wie bei einer flachen Liste.
 // Gibt es nur eine Gruppe, steht kein Band da: es gäbe nichts zu trennen (etwa ein Ordner ohne Unterordner).
 
-const natuerlich = (a, b) => a.localeCompare(b, "de", { numeric: true, sensitivity: "base" });
+// Ein Collator für alle Vergleiche: `localeCompare` mit Optionen baut die Regeln bei jedem Aufruf neu — beim Sortieren von 9 000 Namen
+// (gut 100 000 Vergleiche) waren das 180 ms von 700 bis zur fertigen Liste (gemessen 29.10.2026). Gleiche Reihenfolge.
+const NATUERLICH = new Intl.Collator("de", { numeric: true, sensitivity: "base" });
+const natuerlich = NATUERLICH.compare;
 const wurzelName = (id) => zustand.wurzelNamen.get(id) || id;
 
 // Der Ordner eines Modells hat die Form „Wurzel/Pfad“. Gruppiert wird nach der **nächsten Ebene** unter dem, was in der
@@ -349,11 +352,27 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
   zustand.hatWurzeln = ordner.length > 0;
   zeichneLeer();
   zeichneHinweisLeiste();
-  // Nur die häufigsten: bei tausenden Auto-Tags füllte die Liste sonst die Seitenleiste. Alle stehen in „Tags verwalten“.
-  abgleichen($("#tag-liste"), tags.slice(0, 30).map((t) =>
-    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""}" data-tag="${esc(t.name)}"><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("")
-    + (tags.length > 30 ? `<button class="eintrag leer-eintrag" data-tags-verwalten>Alle ${zahl(tags.length, 0)} Tags …</button>` : ""));
+  zeichneTagListe(tags);
   markiereAnsicht();
+}
+
+// Tags in der Seitenleiste: „Eigene“ (Vorgabe) zeigt nur Tags, die mindestens einmal von Hand gesetzt sind — die Tausende aus den Dateinamen
+// (#bar, #screw …) verdeckten sonst die eigenen. „Alle“ zeigt alles. Nur die häufigsten 30; alle stehen in „Tags verwalten“.
+// Ein aktiver Tag-Filter bleibt immer sichtbar, auch wenn er nur automatisch ist.
+function zeichneTagListe(tags = zustand.tagsRoh || []) {
+  zustand.tagsRoh = tags;
+  const alle = localStorageLesen("tags_alle") === "1";
+  const nurAuto = tags.filter((t) => !t.eigen).length;
+  const sichtbar = alle ? tags : tags.filter((t) => t.eigen || zustand.tags.has(t.name));
+  const wahl = tags.length && nurAuto
+    ? `<div class="segment tag-wahl" role="group" aria-label="Welche Tags">
+        <button type="button" class="${alle ? "" : "an"}" data-tags-zeigen="eigene" aria-pressed="${!alle}" title="Nur Tags, die du selbst gesetzt hast">Eigene</button>
+        <button type="button" class="${alle ? "an" : ""}" data-tags-zeigen="alle" aria-pressed="${alle}" title="Auch die ${zahl(nurAuto, 0)} automatischen aus den Dateinamen">Alle</button></div>` : "";
+  const leer = !sichtbar.length && tags.length
+    ? `<div class="leer-eintrag tag-leer">Noch keine eigenen Tags. Die ${zahl(nurAuto, 0)} automatischen aus den Dateinamen siehst du unter <button type="button" class="link" data-tags-zeigen="alle">Alle</button>.</div>` : "";
+  abgleichen($("#tag-liste"), wahl + leer + sichtbar.slice(0, 30).map((t) =>
+    `<button class="eintrag ${zustand.tags.has(t.name) ? "aktiv" : ""} ${t.eigen ? "" : "auto"}" data-tag="${esc(t.name)}" ${t.eigen ? "" : `title="Automatisch aus dem Dateinamen"`}><span>#${esc(t.name)}</span><em>${t.anzahl}</em></button>`).join("")
+    + (sichtbar.length > 30 ? `<button class="eintrag leer-eintrag" data-tags-verwalten>Alle ${zahl(sichtbar.length, 0)} Tags …</button>` : ""));
 }
 
 function zweig(k, tiefe) {
@@ -474,7 +493,7 @@ function gemerktAnwenden(id) {
                              ordner: r.ordner || "", sammlung: "", ansicht: "alle" });
     $("#suche").value = r.q || "";
     $("#suche-x").hidden = !r.q;
-    return neuLaden();
+    return ansichtLaden();
   });
 }
 async function sucheMerken() {
@@ -1610,7 +1629,10 @@ function druckDateiZeile(d, liste) {
   const f = d.datei;
   const andere = liste.filter((x) => x.id !== d.id && x.datei?.profil).length;
   const gleich = f.gleiche > 1 ? ` · <span title="Drucke mit genau diesen Einstellungen, über alle Modelle">${f.gleiche}× diese Einstellungen</span>` : "";
-  return `<div class="d-datei"><div class="d-datei-name"><span class="d-datei-art">${f.art === "3mf" ? "3MF" : "G-Code"}</span>
+  // Das Vorschaubild, das der Slicer in den G-Code legt (nur G-Code; bei einer Datei ohne Bild fällt das Feld weg).
+  const bild = f.art === "gcode" && f.vorschau !== false
+    ? `<img class="d-datei-bild" src="/api/drucke/${esc(d.id)}/datei/vorschau?g=${esc(f.gcode)}" alt="Vorschau aus dem G-Code" loading="lazy" onerror="this.remove()">` : "";
+  return `<div class="d-datei">${bild}<div class="d-datei-name"><span class="d-datei-art">${f.art === "3mf" ? "3MF" : "G-Code"}</span>
       <b title="${esc(f.name)}">${esc(f.name)}</b></div>
     <div class="dim d-datei-info">${esc(f.slicer || "Slicer unbekannt")}${f.profil ? "" : " · keine Einstellungen gefunden"}${gleich}</div>
     <div class="d-aktionen">${f.profil ? `<button class="link" data-druck-einst="${esc(d.id)}">Einstellungen</button>` : ""}
@@ -2664,7 +2686,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
   const pf = t.closest("[data-pfad]");
-  if (pf) { Object.assign(zustand, { ordner: pf.dataset.pfad, ansicht: "alle", sammlung: "", eingeklappt: new Set() }); return neuLaden(); }
+  if (pf) { Object.assign(zustand, { ordner: pf.dataset.pfad, ansicht: "alle", sammlung: "", eingeklappt: new Set() }); return ansichtLaden(); }
   const go = t.closest("[data-gruppe-ordner]");
   if (go) {
     const id = go.dataset.gruppeOrdner;
@@ -2673,7 +2695,7 @@ document.addEventListener("click", async (e) => {
     for (let i = 1; i < teile.length; i++) zustand.offen.add(teile.slice(0, i).join("/"));
     localStorageSchreiben("offen", JSON.stringify([...zustand.offen]));
     Object.assign(zustand, { ordner: id, ansicht: "alle", sammlung: "", eingeklappt: new Set() });
-    return neuLaden();
+    return ansichtLaden();
   }
   const gk = t.closest("[data-gruppe]");
   if (gk) {
@@ -2745,9 +2767,9 @@ $("#gruppierung").value = zustand.gruppierung;
   const rail = t.closest("[data-rail]");
   if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const ordner = t.closest("[data-ordner]");
-  if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return neuLaden(); });
+  if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return ansichtLaden(); });
   const sammlung = t.closest("[data-sammlung]");
-  if (sammlung) return navigiere(() => { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return neuLaden(); });
+  if (sammlung) return navigiere(() => { Object.assign(zustand, { sammlung: sammlung.dataset.sammlung, ansicht: "alle", ordner: "", tags: new Set(), material: new Set(), format: "" }); return ansichtLaden(); });
   const springe = t.closest("[data-springe]");
   if (springe) return springeZu(springe.dataset.springe, springe.dataset.id);
   const geheReiter = t.closest("[data-gehe-reiter]");
@@ -2761,6 +2783,8 @@ $("#gruppierung").value = zustand.gruppierung;
     await api(`/api/sammlungen/${sammlungWeg.dataset.sammlungWeg}/modelle/${$("#inspektor").dataset.id}`, { method: "DELETE" });
     return;
   }
+  const tagWahl = t.closest("[data-tags-zeigen]");
+  if (tagWahl) { localStorageSchreiben("tags_alle", tagWahl.dataset.tagsZeigen === "alle" ? "1" : "0"); return zeichneTagListe(); }
   const tag = t.closest("[data-tag]");
   const mat = t.closest("[data-mat]");
   if (tag || mat) {
@@ -2769,10 +2793,10 @@ $("#gruppierung").value = zustand.gruppierung;
     else if (wahl.has(wert)) wahl.delete(wert);
     else wahl.add(wert);
     if (zustand.ansicht === "papierkorb") zustand.ansicht = "alle";
-    return neuLaden();
+    return ansichtLaden();
   }
   const fmt = t.closest("[data-format]");
-  if (fmt) { zustand.format = zustand.format === fmt.dataset.format ? "" : fmt.dataset.format; return neuLaden(); }
+  if (fmt) { zustand.format = zustand.format === fmt.dataset.format ? "" : fmt.dataset.format; return ansichtLaden(); }
   const matWahl = t.closest("[data-mat-wahl]");
   if (matWahl) { $("#s-name").value = matWahl.dataset.matWahl; return; }
   const matWeg = t.closest("[data-material-weg]");
@@ -2793,7 +2817,7 @@ $("#gruppierung").value = zustand.gruppierung;
       zustand.ohneEntwuerfe = !zustand.ohneEntwuerfe;
       localStorageSchreiben("ohneEntwuerfe", zustand.ohneEntwuerfe ? "1" : "0");
       return ladeModelle();
-    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return neuLaden();
+    case "filter-weg": Object.assign(zustand, { ordner: "", tags: new Set(), material: new Set(), format: "", suche: "", sammlung: "", ansicht: "alle" }); $("#suche").value = ""; $("#suche-x").hidden = true; return ansichtLaden();
     case "sammlung-neu": case "sammlung-neu-2": return sammlungNeu([]);
     case "sammlung-zu-baugruppe": {
       try {
@@ -2997,8 +3021,9 @@ function sucheLeeren() {
 $("#suche-x").addEventListener("click", sucheLeeren);
 $("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
 
-// Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste. Zähler, Ordnerbaum, Tags und die Vorschläge der
-// Baugruppen-Leiste — die über alle Modelle rechnen und unter Windows bei 8 600 Modellen mehrere Sekunden brauchen — bleiben, wie sie sind:
+// Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste — ebenso ein Filter (Ordner, Tag, Material, Format,
+// Sammlung, gemerkte Suche): ein Tag-Klick holte sonst acht Antworten über alle Modelle mit, die sich durch den Filter nicht ändern (29.10.2026).
+// Zähler, Ordnerbaum, Tags und die Vorschläge der Baugruppen-Leiste — die über alle Modelle rechnen und unter Windows bei 8 600 Modellen mehrere Sekunden brauchen — bleiben, wie sie sind:
 // ändert sich daran etwas, meldet es der Server und `neuLaden` holt alles neu (Anwender, 12.10.2026: „Klicks in Bereinigen sind langsam“).
 function ansichtLaden() {
   ladeModelle();

@@ -516,6 +516,11 @@ body.erststart .tagleiste { display: none; }
 .sk-inhalt { padding-left: 2px; }
 body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .leer-eintrag { color: var(--ink-3); font-size: 13px; }
+/* Tags: Umschalter Eigene | Alle über der Liste; automatische Tags (nur unter „Alle“) etwas leiser */
+.tag-wahl { margin: 0 var(--s2) var(--s2); width: max-content; }
+.tag-wahl button { padding: 1px 10px; font-size: 12px; }
+.tag-leer { padding: var(--s1) var(--s3) var(--s2); line-height: 1.45; }
+#tag-liste .eintrag.auto span { color: var(--ink-3); }
 
 /* Rechtsklick-Menü */
 .menu.kontext { position: fixed; min-width: 230px; z-index: 60; padding: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
@@ -1222,6 +1227,7 @@ dialog.tv-frage label input[type=text] { flex: 1; }
 
 /* Drucke › Datei (Stufe b) und Vergleich */
 .d-datei { margin-top: var(--s3); padding: var(--s3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.d-datei-bild { display: block; width: 100%; max-height: 220px; object-fit: contain; margin-bottom: var(--s3); border-radius: 4px; background: var(--panel); }
 .d-datei-name { display: flex; gap: var(--s3); align-items: baseline; min-width: 0; }
 .d-datei-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-datei-art { font: 11.5px var(--mono); padding: 0 var(--s2); border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); flex: none; }

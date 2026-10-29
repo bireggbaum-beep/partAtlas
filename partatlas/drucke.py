@@ -283,6 +283,8 @@ class Drucke:
             gelesen = slicer.aus_gcode(arbeit) if art == "gcode" else (slicer.aus_3mf(arbeit) or {"werte": {}, "slicer": None})
             if art == "3mf":
                 gelesen["kopf"] = _kopf_aus_3mf(arbeit)
+            else:
+                gelesen["vorschau"] = slicer.vorschau_aus_gcode(arbeit) is not None
         except (slicer.SlicerFehler, OSError) as e:
             raise KatalogFehler(f"Die Datei liess sich nicht lesen: {e}") from e
         finally:
@@ -295,7 +297,8 @@ class Drucke:
         with self.db.transaction():
             if bestehend is None:
                 self.db.create_node(GCODE, h, {"datei": rel, "name": os.path.basename(name)[:200], "art": art, "groesse": len(daten),
-                                               "slicer": gelesen.get("slicer"), "kopf": kopf, "angelegt": jetzt()})
+                                               "slicer": gelesen.get("slicer"), "kopf": kopf, "vorschau": bool(gelesen.get("vorschau")),
+                                               "angelegt": jetzt()})
             if ph:
                 if self.db.get_node(ref(PROFIL, ph), readonly=True) is None:
                     if self.db.get_node_raw(ref(PROFIL, ph)) is not None:
@@ -364,7 +367,17 @@ class Drucke:
         p = self.db.get_connected(g[0], rel_type=BASIERT_AUF)
         ph = p[0].split("/", 1)[1] if p else None
         return {"gcode": gh, "name": n.get("name"), "art": n.get("art"), "slicer": n.get("slicer"), "groesse": n.get("groesse"),
-                "profil": ph, "datei": n.get("datei"), "gleiche": len(self._drucke_mit_profil(ph)) if ph else 0}
+                "vorschau": n.get("vorschau"), "profil": ph, "datei": n.get("datei"), "gleiche": len(self._drucke_mit_profil(ph)) if ph else 0}
+
+    def datei_vorschau(self, did):
+        """Das Vorschaubild aus dem G-Code des Drucks (PNG-Bytes) oder None. Gelesen wird aus dem Vault, gespeichert wird nichts zusätzlich."""
+        info = self.datei_von(did)
+        if not info or info["art"] != "gcode" or info["vorschau"] is False:
+            return None
+        try:
+            return slicer.vorschau_aus_gcode(self.k.b.pfad(*info["datei"].split("/")))
+        except OSError:
+            return None
 
     def datei_loesen(self, did):
         """Nur die Verbindung geht; die Datei bleibt im Vault (er wächst nur, §3.2) — hängt man sie wieder an, ist sie gleich da."""
