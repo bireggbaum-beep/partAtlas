@@ -102,4 +102,45 @@ if __name__ == "__main__":
         check("… und künftig keine Tags aus Dateinamen", c.get("/api/einstellungen").json()["auto_tags"] is False)
         check("Vorher eine Sicherung", any(s["grund"] == "vor-auto-tags-entfernen" for s in c.get("/api/sicherungen").json()["liste"]))
 
+    # -- Öffnen eines Bestands mit alten Kanten an Modellen im Papierkorb (1.0.6 startete beim Tester deshalb nicht, 29.10.2026)
+    from partatlas.bestand import Bestand
+    from partatlas.katalog import Katalog
+    alt = os.path.join(tmp, "alt")
+    b = Bestand(alt); Katalog(b)
+    with b.db.transaction():
+        b.db.create_node("MODEL_ASSET", "m_weg", {"name": "Weg"})
+        b.db.create_node("MODEL_ASSET", "m_da", {"name": "Da"})
+        b.db.create_node("TAG_ITEM", "werkstatt", {"name": "werkstatt"})
+        b.db.create_edge("MODEL_ASSET/m_weg", "TAG_ITEM/werkstatt", "HAS_TAG")      # wie vor 0.56: ohne `auto`
+        b.db.create_edge("MODEL_ASSET/m_da", "TAG_ITEM/werkstatt", "HAS_TAG")
+    with b.db.transaction():
+        b.db.soft_delete("MODEL_ASSET", "m_weg")
+    b.schliessen()
+    herkunft = lambda b: {e["source"]: e.get("auto", "ohne") for e in b.db.list_edges("HAS_TAG").values()}
+    try:
+        b = Bestand(alt); k = Katalog(b); geoeffnet = True
+    except Exception as e:
+        geoeffnet = False
+        print("Öffnen scheiterte:", e)
+    check("Bestand mit alter Tag-Kante an einem Modell im Papierkorb öffnet sich",
+          geoeffnet and herkunft(b) == {"MODEL_ASSET/m_weg": "ohne", "MODEL_ASSET/m_da": False})
+    if geoeffnet:
+        with b.db.transaction():
+            b.db.restore_node("MODEL_ASSET", "m_weg")
+        k._tag_herkunft_nachziehen()
+        check("… kommt das Modell zurück, wird seine Kante beim nächsten Nachziehen umgestellt", herkunft(b)["MODEL_ASSET/m_weg"] is False)
+        b.schliessen()
+    # Jede Nachzieh-Arbeit beim Start darf scheitern, ohne dass der Bestand zu bleibt.
+    echt = Katalog._vault_nachziehen
+    def kaputt(self):
+        raise RuntimeError("Probe")
+    Katalog._vault_nachziehen = kaputt
+    try:
+        b = Bestand(alt); Katalog(b); trotzdem = True; b.schliessen()
+    except Exception:
+        trotzdem = False
+    finally:
+        Katalog._vault_nachziehen = echt
+    check("Scheitert eine Nachzieh-Arbeit beim Start, öffnet sich der Bestand trotzdem", trotzdem)
+
     muster.ende()
