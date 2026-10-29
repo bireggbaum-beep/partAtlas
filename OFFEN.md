@@ -13,6 +13,10 @@ Umstellung lief in einer Transaktion; nachgestellt und geprüft). **Behoben:** n
 Gegenproben fallen. **Lehre:** Umzüge beim Start wurden nur an frischen Testbeständen geprüft, nie an einem mit Papierkorb und alten Daten — künftig jeder Umzug auch an
 einem Bestand mit Papierkorb (gelöschte Modelle, Tags) und Kanten im alten Format.
 
+**Bekannt, für die nächste echte Fassung (Anwender 29.10.: erst dann bereinigen):** die Seitenleiste zählt seit 1.0.6 Tag-Zuordnungen von Modellen im Papierkorb mit
+(`tags()` über `get_connected_edges`, die gelöschte Quellen enthält; vorher `get_connected` ohne sie) und wertet alte Zuordnungen ohne `auto` als eigene → beim Tester stehen
+#bar (1409 → 1412), #miniatur, #s235jr unter „Eigene“. Nachgestellt. Vor der Fassung: alle in 1.0.6 geänderten Stellen gegen einen Altbestand prüfen (siehe Lehre oben).
+
 ## Stand: 1.0.6 (29.10.2026)
 
 Neu: **Performance bei vielen Modellen** (Filter laden nur die Liste, Sortieren mit einem Collator, JSON je Kachel aufbewahrt, erst filtern dann kopieren; Format-Chip bei 9 000
