@@ -65,6 +65,10 @@ Rückfall auf den alten Weg, Format mit Chip-Zahlen), test_tags 19/19; Gegenprob
 1. **G-Code-Zeichen erscheint bei ihm nicht.** Zeichen kommt nur, wenn der G-Code an einem Druck hängt oder das 3MF geslict ist. Vermutung: er hat ihn als Anhang ans Modell
    gehängt oder neben die STL in den Ordner gelegt (beides löst kein Zeichen aus). Frage an ihn: wo liegt der G-Code? Hängt er an einem Druck und es kommt nichts → Fehler im Umzug suchen.
    Berechtigte Erwartung: „Anhang .gcode“ = gehört zum Modell → zur Frage Slicer/Drucke und zum Backlog „G-Code in der Bibliothek“.
+   **Nachtrag (29.10.):** Er exportiert den G-Code aus dem Slicer in den Ordner (anders speichert sein Slicer nicht), liest neu ein und erwartet die Zuordnung. Name z. B.
+   `1009-1926-Testscheibe_45mm-Cut002_plate01_PLA_0.2_3m17s.gcode` (vorne Monat-Tag-Stunde-Minute, hinten Platte, Filament, Schicht, Zeit). Tatsächlich liest das Einlesen
+   G-Code gar nicht. Im Inhalt steht aber das Quellmodell: `EXCLUDE_OBJECT_DEFINE NAME=Halter_Netzteil.stl_id_0_copy_0`, `; printing object "Halter_Netzteil.stl"`,
+   `source_info` (alle vier Dateien des Testers; der Slicer schreibt Sonderzeichen um: „Testscheibe_4_5mm“ im Inhalt, „Testscheibe_45mm“ im Dateinamen).
 2. **Versehentlich gelöschte STL zurück:** Papierkorb (Besen › Papierkorb › Wiederherstellen); Neu einlesen holt bewusst nicht zurück. Er fand den Weg nicht → prüfen: bietet der
    Hinweis nach dem Löschen „Rückgängig“ / „Im Papierkorb ansehen“? Handbuch „Einlesen“: Satz zu gelöschten Modellen.
 
