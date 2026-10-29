@@ -12,6 +12,7 @@ import zipfile
 import numpy as np
 
 # PARTATLAS_QUELLE: eine mutierte Kopie prüfen (Gegenprobe) statt des Repos.
+os.environ.setdefault("PARTATLAS_KEIN_NETZ", "1")     # keine Suite fragt GitHub nach einer neuen Fassung (partatlas/fassung.py)
 sys.path.insert(0, os.environ.get("PARTATLAS_QUELLE") or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import warnings
 warnings.filterwarnings("ignore", message=".*httpx.*")

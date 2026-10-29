@@ -2385,6 +2385,22 @@ async function neuigkeitenZeigen({ alle = false, versuch = 0 } = {}) {
   if (!alle) api("/api/neuigkeiten/gesehen", { method: "POST" }).catch(() => {});
 }
 setTimeout(() => neuigkeitenZeigen(), 1200);
+
+// Neue Fassung auf `main` (fassung.py, vorübergehend für den Tester): ein kleines Zeichen oben rechts, ein Klick zeigt, was neu ist und was zu tun ist.
+async function fassungPruefen() {
+  let s;
+  try { s = await api("/api/fassung"); } catch { return; }
+  const k = $("#fassung-neu");
+  k.hidden = !(s.neuer || s.neustart);
+  k.textContent = s.neustart && !s.neuer ? `Neu starten für ${s.auf_platte}` : `${s.verfuegbar} verfügbar`;
+  k.onclick = () => dialog(`<h2>${s.neustart && !s.neuer ? `PartAtlas ${esc(s.auf_platte)} ist geladen` : `PartAtlas ${esc(s.verfuegbar)} ist verfügbar`}</h2>
+    <p class="dim">Du nutzt ${esc(s.laeuft)}.${s.neustart && !s.neuer ? " Die neue Fassung liegt schon im Ordner; sie gilt nach einem Neustart."
+      : " So holst du sie: im Ordner <code>partAtlas</code> <code>git pull</code>, dann PartAtlas neu starten."}</p>
+    ${s.neu.map((e) => `<h3 class="neu-fassung">${esc(e.version)}</h3><ul class="neu">${e.zeilen.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>`).join("")}
+    <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
+}
+setTimeout(fassungPruefen, 3000);
+setInterval(fassungPruefen, 30 * 60 * 1000);
 $("#version").style.cursor = "pointer";
 $("#version").title = "Fassung — Klick zeigt, was neu ist";
 $("#version").addEventListener("click", () => neuigkeitenZeigen({ alle: true }));

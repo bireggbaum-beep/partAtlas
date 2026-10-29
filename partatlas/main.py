@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
+from . import fassung
 from . import anhaenge, aufraeumen, backup, dateidialog, neuigkeiten, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
@@ -162,6 +163,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         b.schliessen()
         log.info("partAtlas beendet")
 
+    fassung.im_hintergrund()
     app = FastAPI(title="partAtlas", version=VERSION, lifespan=leben)
     app.state.zustand = zustand
     app.state.verteiler = verteiler
@@ -318,6 +320,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             return {"abgebrochen": True}
         modelle, vollstaendig = durchsuchen.zaehlen(pfad)
         return {"pfad": pfad, "modelle": modelle, "vollstaendig": vollstaendig}
+
+    @app.get("/api/fassung")
+    def fassung_stand():
+        return fassung.stand()
 
     @app.get("/api/neuigkeiten")
     def neuigkeiten_holen(alle: int = 0):

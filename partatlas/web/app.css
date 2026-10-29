@@ -516,6 +516,9 @@ body.erststart .tagleiste { display: none; }
 .sk-inhalt { padding-left: 2px; }
 body.erststart .seite .sektion:not([data-sektion="ordner"]) { display: none; }
 .leer-eintrag { color: var(--ink-3); font-size: 13px; }
+/* Neue Fassung verfügbar (vorübergehend, fassung.py): klein, oben rechts */
+.fassung-neu { border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 1px 9px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.fassung-neu:hover { background: var(--accent); color: var(--accent-ink); }
 /* Tags: Umschalter Eigene | Alle über der Liste; automatische Tags (nur unter „Alle“) etwas leiser */
 .tag-wahl { margin: 0 var(--s2) var(--s2); width: max-content; }
 .tag-wahl button { padding: 1px 10px; font-size: 12px; }
