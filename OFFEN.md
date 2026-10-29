@@ -46,6 +46,14 @@ Zahlen und Farben (Anwender: „sonst verwirrend“). Feste Plätze unten rechts
 der Reiter „Slicer“ (Einstellungen in der Datei) und „Drucke“ (Einstellungen je Druck): Vorschlag Slicer → „In der Datei“, Drucke = was passiert ist, dazu ein Knopf
 „Aus der Datei als Druck anlegen“ (Aufwand 1–2). Handbuchbilder zeigen noch „PARTATLAS“ — beim nächsten Push alle neu erzeugen (`python werkzeuge/handbuch_bilder.py`).
 
+## Rückmeldung Tester zu 1.0.5 (29.10.2026) — für nachher
+
+1. **G-Code-Zeichen erscheint bei ihm nicht.** Zeichen kommt nur, wenn der G-Code an einem Druck hängt oder das 3MF geslict ist. Vermutung: er hat ihn als Anhang ans Modell
+   gehängt oder neben die STL in den Ordner gelegt (beides löst kein Zeichen aus). Frage an ihn: wo liegt der G-Code? Hängt er an einem Druck und es kommt nichts → Fehler im Umzug suchen.
+   Berechtigte Erwartung: „Anhang .gcode“ = gehört zum Modell → zur Frage Slicer/Drucke und zum Backlog „G-Code in der Bibliothek“.
+2. **Versehentlich gelöschte STL zurück:** Papierkorb (Besen › Papierkorb › Wiederherstellen); Neu einlesen holt bewusst nicht zurück. Er fand den Weg nicht → prüfen: bietet der
+   Hinweis nach dem Löschen „Rückgängig“ / „Im Papierkorb ansehen“? Handbuch „Einlesen“: Satz zu gelöschten Modellen.
+
 ## Tags bei vielen Modellen (28.10.2026, Anwender: „bei 5000 Modellen zugemüllt, man kann nichts tun“; auf dem Branch)
 
 Vorhanden war schon: Auto-Tags abschalten (Einstellungen › Einlesen), alle automatischen entfernen, Wörter sperren, Tags verwalten, Tag für viele hinzufügen.
