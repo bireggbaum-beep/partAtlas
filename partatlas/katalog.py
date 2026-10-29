@@ -34,6 +34,16 @@ def jetzt():
     return time.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def beim_start(name, arbeit):
+    """Nachziehen beim Öffnen (Umzüge alter Bestände, abgeleitete Felder) darf das Öffnen nie verhindern: scheitert es, steht es im Protokoll
+    und partAtlas startet trotzdem — die Arbeit läuft in einer Transaktion, also ganz oder gar nicht, und beim nächsten Start noch einmal.
+    1.0.6 startete beim Tester nicht, weil eine solche Umstellung an einem Modell im Papierkorb scheiterte (29.10.2026)."""
+    try:
+        arbeit()
+    except Exception:
+        log.exception("Nachziehen beim Start gescheitert (%s); partAtlas startet trotzdem", name)
+
+
 def _json_rest(o):
     """Was json nicht kennt: Mengen als sortierte Liste, alles andere als Text — wie in main.py für /api/modelle."""
     return sorted(o) if isinstance(o, (set, frozenset)) else str(o)
@@ -61,9 +71,9 @@ class Katalog:
         bestand.hoeren(self._kurz_veraltet)
         self._ordner_platte = None           # {Wurzel: [Unterordner …]} von der Platte — siehe ordner_platte_lesen
         self.suche = Suchindex(self)
-        self._material_nachziehen()
-        self._vault_nachziehen()
-        self._tag_herkunft_nachziehen()
+        beim_start("Material", self._material_nachziehen)
+        beim_start("Vault", self._vault_nachziehen)
+        beim_start("Herkunft der Tags", self._tag_herkunft_nachziehen)
         from .drucke import Drucke
         from .lager import Lager
         self.drucke = Drucke(self)
@@ -1696,7 +1706,10 @@ class Katalog:
         """Kanten von vor 0.56 tragen kein `auto`. Einmal beim Start nach den Regeln bestimmen (_ist_auto) und festschreiben: die
         Seitenleiste zählt danach nur noch das Feld, statt bei jedem Zeichnen für Tausende Modelle die Regeln zu rechnen. Schreibt nur,
         wenn es solche Kanten gibt."""
-        alt = [(kid, k) for kid, k in self.db.list_edges(HAT_TAG).items() if "auto" not in k]
+        # Nur Kanten zwischen lebenden Knoten: an einem Modell oder Tag im Papierkorb lässt flatgraph keine neue Kante zu. Diese bleiben,
+        # wie sie sind (_ist_auto entscheidet für sie weiter nach den Regeln); kommt das Modell zurück, wird seine Kante beim nächsten Start umgestellt.
+        lebt = lambda r: self.db.get_node(r, readonly=True) is not None
+        alt = [(kid, k) for kid, k in self.db.list_edges(HAT_TAG).items() if "auto" not in k and lebt(k["source"]) and lebt(k["target"])]
         if not alt:
             return
         cache = {}

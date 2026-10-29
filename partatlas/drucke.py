@@ -18,7 +18,7 @@ import time
 
 from . import dateien, slicer
 from .bestand import AUSGEFUEHRT, BASIERT_AUF, DATEI, DRUCK, GCODE, GEDRUCKT_IN, GESLICED_AUS, MODELL, PROFIL, REFERENZ
-from .katalog import KatalogFehler, jetzt, ref
+from .katalog import KatalogFehler, beim_start, jetzt, ref
 
 DATEI_ARTEN = {".gcode": "gcode", ".3mf": "3mf"}       # .gcode.3mf (Bambu: geslicetes Projekt) ist eine 3MF
 MAX_DATEI = 1 << 30
@@ -94,8 +94,8 @@ class Drucke:
     def __init__(self, katalog):
         self.k = katalog
         self.db = katalog.db
-        self._alte_haken_umziehen()
-        self._gcode_nachziehen()
+        beim_start("alte Haken", self._alte_haken_umziehen)
+        beim_start("G-Code-Zähler", self._gcode_nachziehen)
 
     # ------------------------------------------------------------ Lesen
 

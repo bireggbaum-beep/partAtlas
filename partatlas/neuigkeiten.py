@@ -8,6 +8,7 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.7", ["Behoben: 1.0.6 liess sich nicht öffnen, wenn Modelle im Papierkorb lagen. Deine Daten waren davon nicht betroffen; es ging nichts verloren."]),
     ("1.0.6", ["Schneller bei vielen Modellen: Ein Klick auf Ordner, Tag oder Format holt nur noch die Liste und nicht jedes Mal die ganze Seitenleiste neu. "
                "Bei 9 000 Modellen war das auf unserem Testrechner zwei- bis dreimal so schnell.",
                "Tags in der Seitenleiste: Über der Liste wählst du „Eigene“ (nur die, die du selbst gesetzt hast) oder „Alle“ (auch die automatischen aus den Dateinamen, etwas blasser).",

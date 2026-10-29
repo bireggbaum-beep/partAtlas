@@ -4,7 +4,16 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Stand: 1.0.6 auf `main` (29.10.2026, für den Tester)
+## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
+
+**1.0.6 öffnete den Bestand des Testers nicht** („Source node MODEL_ASSET/m_000047 does not exist or is soft-deleted“): die neue Umstellung der Tag-Herkunft beim Start
+(`_tag_herkunft_nachziehen`) legte Kanten an Modellen im Papierkorb neu an, flatgraph lehnte das ab, und der Fehler brach das Öffnen ab. Die Daten blieben unverändert (die
+Umstellung lief in einer Transaktion; nachgestellt und geprüft). **Behoben:** nur Kanten zwischen lebenden Knoten umstellen; dazu `beim_start`: keine Nachzieh-Arbeit beim
+Öffnen (Material, Vault, Tag-Herkunft, alte Haken, G-Code-Zähler) kann das Öffnen mehr verhindern, ein Fehler steht im Protokoll. test_tags 22/22 mit beiden Fällen,
+Gegenproben fallen. **Lehre:** Umzüge beim Start wurden nur an frischen Testbeständen geprüft, nie an einem mit Papierkorb und alten Daten — künftig jeder Umzug auch an
+einem Bestand mit Papierkorb (gelöschte Modelle, Tags) und Kanten im alten Format.
+
+## Stand: 1.0.6 (29.10.2026)
 
 Neu: **Performance bei vielen Modellen** (Filter laden nur die Liste, Sortieren mit einem Collator, JSON je Kachel aufbewahrt, erst filtern dann kopieren; Format-Chip bei 9 000
 Modellen 706 → 244 ms, gemessen im Container mit Chromium — beim Tester nicht gemessen), **Tags „Eigene | Alle“** in der Seitenleiste, **Vorschaubild aus dem G-Code** am Druck,
