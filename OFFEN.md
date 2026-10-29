@@ -4,7 +4,14 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Stand: 1.0.5 auf `main` (28.10.2026, für den Tester)
+## Stand: 1.0.6 auf `main` (29.10.2026, für den Tester)
+
+Neu: **Performance bei vielen Modellen** (Filter laden nur die Liste, Sortieren mit einem Collator, JSON je Kachel aufbewahrt, erst filtern dann kopieren; Format-Chip bei 9 000
+Modellen 706 → 244 ms, gemessen im Container mit Chromium — beim Tester nicht gemessen), **Tags „Eigene | Alle“** in der Seitenleiste, **Vorschaubild aus dem G-Code** am Druck,
+Filament bei mehreren Plätzen behoben. Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.5`. **Nicht auf `main`:** die Desktop-Arbeit. **Offen:** Reiter „Drucken“ (Mock beim
+Tester), die 6-MB-Liste (später), Tipp-Pause bleibt 150 ms (Anwender 29.10.).
+
+## Stand: 1.0.5 (28.10.2026)
 
 Neu: Zeichen **„G-Code“ auf der Kachel** (an einem Druck angehängt oder geslictes 3MF; feste Plätze unten rechts, Spalte „G-Code“ in der Liste, Suche `gcode:ja`), Schriftzug „PartAtlas“, Spule im Formular 120 px. Handbuchbilder neu. Rückweg: Zweig `fassung-1.0.4`.
 **Offen (Entscheidung Anwender):** Reiter „Slicer“ gegen „Drucke“ (Vorschlag: Slicer → „In der Datei“, Knopf „Aus der Datei als Druck anlegen“, Aufwand 1–2). **Nicht auf `main`:** die Desktop-Arbeit (Zweig `ccr-212cc51e-yf8m3p`).

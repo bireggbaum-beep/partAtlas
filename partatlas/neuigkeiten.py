@@ -8,6 +8,11 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.6", ["Schneller bei vielen Modellen: Ein Klick auf Ordner, Tag oder Format holt nur noch die Liste und nicht jedes Mal die ganze Seitenleiste neu. "
+               "Bei 9 000 Modellen war das auf unserem Testrechner zwei- bis dreimal so schnell.",
+               "Tags in der Seitenleiste: Über der Liste wählst du „Eigene“ (nur die, die du selbst gesetzt hast) oder „Alle“ (auch die automatischen aus den Dateinamen, etwas blasser).",
+               "Hängt an einem Druck ein G-Code, zeigt der Druck das Vorschaubild, das der Slicer in die Datei legt.",
+               "Behoben: Bei G-Codes mit mehreren Filament-Plätzen (etwa Anycubic mit vier) standen alle Profile da, jetzt nur das benutzte."]),
     ("1.0.5", ["Auf der Kachel steht „G-Code“, wenn zu einem Modell ein G-Code gehört — an einem Druck angehängt oder schon im geslicten 3MF. Ein Klick öffnet den passenden Reiter, "
                "die Suche kennt dazu „gcode:ja“. Das Zeichen sitzt unten rechts immer am selben Platz, der Status (✓ gedruckt, Datei fehlt) links davon.",
                "Der Schriftzug oben heisst jetzt „PartAtlas“. Im Spulenformular ist das Bild der Spule grösser."]),
