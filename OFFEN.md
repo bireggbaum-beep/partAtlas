@@ -4,6 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
+
+Neu: **G-Code aus dem Ordner** (Einlesen erkennt das Quellmodell am Inhalt, Druck „Noch nicht gedruckt“), **Bereinigen › G-Code ohne Modell** (unklare und unbekannte zuordnen oder ausblenden),
+**Zeichen „↑ Fassung“** neben der Fassung, wenn auf `main` eine neuere liegt (git fetch; wirkt ab der Fassung nach 1.0.8), Tag-Zählung ohne Modelle im Papierkorb, Roadmap (⚑) stummgeschaltet.
+Abschusstests (Altbestand, kill -9, Doppelstart) als Suiten. Vor dem Push: alle 45 Suiten grün (925 Checks), test_ui einmal komplett 70/70. Handbuch nicht nachgezogen (Anwender). Rückweg: Zweig `fassung-1.0.7`.
+
 ## Heute (30.10.2026): Abschusstests, G-Code aus dem Ordner erkennen, Update-Info in der App für den Testzeitraum
 
 Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher Bestand. Die Abschusstests (Anwender 30.10.): Altbestand, Hochziehen über alle Fassungen,
