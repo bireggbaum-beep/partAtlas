@@ -634,6 +634,7 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .d-erg.gut { color: var(--accent); border-color: var(--accent); }
 .d-erg.fehler { color: var(--warn); border-color: var(--warn); }
 .d-erg.abbruch { color: var(--ink-3); }
+.d-erg.offen { color: var(--ink-3); border-style: dashed; }
 .d-refmarke { margin-left: auto; font: 12px var(--mono); color: var(--accent); }
 .d-werte { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .d-notiz { margin: 8px 0 0; color: var(--ink-2); line-height: 1.45; white-space: pre-wrap; }

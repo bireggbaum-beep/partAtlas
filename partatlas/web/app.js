@@ -1591,7 +1591,8 @@ const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><
 // Zähler folgen daraus (KONZEPT §4.6). Ein Druck kann an mehreren Modellen
 // hängen — eine Platte mit drei Teilen —, dann steht „zusammen mit …“ dabei.
 
-const ERGEBNIS = { gut: ["✓ Gut", "gut"], fehler: ["⚠ Mit Fehlern", "fehler"], abgebrochen: ["✕ Abgebrochen", "abbruch"] };
+const ERGEBNIS = { gut: ["✓ Gut", "gut"], fehler: ["⚠ Mit Fehlern", "fehler"], abgebrochen: ["✕ Abgebrochen", "abbruch"],
+  offen: ["○ Noch nicht gedruckt", "offen"] };
 const datumDe = (d) => d ? new Date(d + "T00:00").toLocaleDateString("de-DE") : "Datum unbekannt";
 
 function druckeTafel(m) {

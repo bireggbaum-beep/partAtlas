@@ -19,6 +19,17 @@ Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher
   flatgraph-Kopie entfernt → 2 Checks fallen. **Beobachtet, kein Datenfehler:** der zweite Prozess auf anderem Port **beendet sich nicht**, er bleibt als leere 503-Seite stehen, mit dem
   technischen Text („BestandBelegt …"); im Browser steht dann nur diese Meldung. Vorschlag (Aufwand 1): Meldung freundlich („partAtlas läuft schon — im anderen Fenster weiterarbeiten") und beenden.
 - **Offen:** 2 (Bestand durch alle Fassungen), 4 (voller Datenträger, schreibgeschützt).
+- **G-Code aus dem Ordner erkennen — gebaut (Anwender 30.10.: regulärer Weg neben dem Hochladen):** `partatlas/gcode_ordner.py`, am Ende von `Scanner.einlesen`. Das Einlesen findet `.gcode`
+  unter den Wurzeln, liest das Quellmodell aus dem Inhalt (`slicer.quellen_aus_gcode`: `EXCLUDE_OBJECT_DEFINE NAME=…`, `; printing object "…"` bzw. Prusa-Form), vergleicht tolerant (ohne Endung,
+  Gross-/Kleinschreibung, Umlaute, Satzzeichen: „Testscheibe_4_5mm“ = „Testscheibe_45mm“) und hängt ihn über denselben Weg wie das Hochladen an (`Drucke.aus_ordner` → `datei_anhaengen`).
+  Der Druck hat das neue Ergebnis **„offen“** („○ Noch nicht gedruckt“, zählt nicht, Modell gilt nicht als gedruckt; Datum = Datum der Datei; Dauer/Gewicht aus dem Kopf). Zuordnung nur bei
+  Eindeutigkeit: zwei Modelle gleichen Namens → unklar, kein Modell → „ohne“ (beide nur gezählt: `gcode_unklar`, `gcode_ohne_modell`, im Protokoll genannt); mehrere Objekte → an alle;
+  nennt der Inhalt nichts → Dateiname (ein längster Treffer, mindestens 5 Zeichen). Gemerkt je Datei in den Einstellungen (`gcode_gesehen`: Grösse, Zeit, Ausgang); Unzugeordnete werden erneut
+  angesehen, wenn Modelle dazukamen. Derselbe Inhalt wird nicht doppelt angelegt; die Datei im Ordner bleibt. `tests/test_gcode_ordner.py` 14/14 (3 Gegenproben fallen), test_drucke 42/42,
+  test_slicer 19/19, test_scan 110/110, test_lager 35/35, test_gcode_ui 8/8. **Nicht geprüft:** echte G-Codes des Testers (Test mit nachgebauten Köpfen; `source_info` und Cura-`;MESH:`
+  werden nicht gelesen), sehr grosse Ordner (Zeit des Durchgangs), Anzeige der Bilanz in der Oberfläche (nur Protokoll/Status). **Offen dazu:** unklare unter „Bereinigen“ anbieten;
+  Reiter „Drucken“ (Mock) bleibt.
+
 
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
