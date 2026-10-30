@@ -31,6 +31,9 @@ Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher
   Reiter „Drucken“ (Mock) bleibt.
 
 
+- **Update-Info — gebaut:** Fassung **1.0.8** (Branch, noch nicht auf `main`) mit Eintrag „Neu in dieser Fassung“ (G-Code im Ordner, Tag-Zählung); das Fenster gab es schon (nach jedem Update einmal, Klick auf die Fassung
+  zeigt es wieder). Anwender 30.10.: kein Link, keine Releases — der Tester holt per `git pull` von `main`. test_neuigkeiten 9/9.
+
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
 **1.0.6 öffnete den Bestand des Testers nicht** („Source node MODEL_ASSET/m_000047 does not exist or is soft-deleted“): die neue Umstellung der Tag-Herkunft beim Start
