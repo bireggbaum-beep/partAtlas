@@ -226,6 +226,10 @@ async function ladeModelle() {
     zeigeAufraeumen(zustand.ansicht === "aufraeumen");
     if (zustand.ansicht === "aufraeumen") return ladeAufraeumen();
   }
+  if (typeof zeigeGcode === "function") {                   // G-Code ohne Modell: eigene Fläche (gcode.js)
+    zeigeGcode(zustand.ansicht === "gcode");
+    if (zustand.ansicht === "gcode") return ladeGcode();
+  }
   if (typeof zeigeLager === "function") {                   // das Lager ist wie Aufräumen eine eigene Fläche (lager.js)
     zeigeLager(zustand.ansicht === "lager");
     if (zustand.ansicht === "lager") return ladeLager();
@@ -328,12 +332,12 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
     || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`);
   abgleichen($("#ws-liste"), ws.map((m, i) =>
     `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b>${m.reicht ? `<i class="ws-reicht ${m.reicht}" title="Filament: ${REICHT_TEXT[m.reicht]}"></i>` : ""}<span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
-  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "archiv", "warteschlange"]) {
+  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "gcode", "papierkorb", "archiv", "warteschlange"]) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
   // Zählabzeichen am Besen: nur, wenn etwas zu tun ist (der Papierkorb zählt nicht).
-  const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0);
+  const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0) + (z.gcode || 0);
   const abz = $("#abz-bereinigen");
   abz.hidden = !zu;
   abz.textContent = zu > 99 ? "99+" : zu;
@@ -390,7 +394,7 @@ function zweig(k, tiefe) {
 }
 
 // Die Seitenleiste wechselt als Ganzes (wie bei VS Code): Katalog oder Bereinigen.
-const BEREINIGEN = ["aufraeumen", "papierkorb", "archiv", "duplikate", "fehlt", "unlesbar"];
+const BEREINIGEN = ["aufraeumen", "gcode", "papierkorb", "archiv", "duplikate", "fehlt", "unlesbar"];
 
 function markiereAnsicht() {
   const bereinigt = BEREINIGEN.includes(zustand.ansicht);
@@ -558,7 +562,7 @@ function zeichneLeer() {
   const leer = $("#leer");
   const erst = zustand.hatWurzeln === false && zustand.katalogLeer !== false;
   document.body.classList.toggle("erststart", erst);
-  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen" || zustand.ansicht === "lager";      // Aufräumen hat seine eigene Fläche
+  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen" || zustand.ansicht === "gcode" || zustand.ansicht === "lager";      // Aufräumen hat seine eigene Fläche
   if (leer.hidden) return;
   const scan = zustand.scan;
   if (erst) {
@@ -1041,7 +1045,7 @@ function waehleAus(id, bereich, { dazu = true, mitGewaehltem = false } = {}) {
 function tastaturAuswahl(e) {
   const strg = e.ctrlKey || e.metaKey;
   const n = zustand.modelle.length;
-  if (!n || zustand.ansicht === "aufraeumen" || zustand.ansicht === "lager" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
+  if (!n || zustand.ansicht === "aufraeumen" || zustand.ansicht === "gcode" || zustand.ansicht === "lager" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
   // Auf einem Knopf gehören Enter und Leertaste dem Knopf.
   const knopf = document.activeElement?.closest?.("button, a, summary, [contenteditable]");
   if (strg && e.key.toLowerCase() === "a" && !e.altKey) {
@@ -1591,7 +1595,8 @@ const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><
 // Zähler folgen daraus (KONZEPT §4.6). Ein Druck kann an mehreren Modellen
 // hängen — eine Platte mit drei Teilen —, dann steht „zusammen mit …“ dabei.
 
-const ERGEBNIS = { gut: ["✓ Gut", "gut"], fehler: ["⚠ Mit Fehlern", "fehler"], abgebrochen: ["✕ Abgebrochen", "abbruch"] };
+const ERGEBNIS = { gut: ["✓ Gut", "gut"], fehler: ["⚠ Mit Fehlern", "fehler"], abgebrochen: ["✕ Abgebrochen", "abbruch"],
+  offen: ["○ Noch nicht gedruckt", "offen"] };
 const datumDe = (d) => d ? new Date(d + "T00:00").toLocaleDateString("de-DE") : "Datum unbekannt";
 
 function druckeTafel(m) {
@@ -2388,6 +2393,27 @@ setTimeout(() => neuigkeitenZeigen(), 1200);
 $("#version").style.cursor = "pointer";
 $("#version").title = "Fassung — Klick zeigt, was neu ist";
 $("#version").addEventListener("click", () => neuigkeitenZeigen({ alle: true }));
+
+// „Neue Fassung verfügbar“ (aktualisierung.py): ein Zeichen neben der Fassung, wenn auf main eine höhere liegt; Klick zeigt, was darin neu ist.
+// Das Nachsehen läuft im Server (git fetch) und braucht einen Moment; darum ein paar Mal früh, dann gelegentlich.
+let neueFassung = null;
+async function neueFassungPruefen() {
+  let a;
+  try { a = await api("/api/aktualisierung"); } catch { return; }
+  neueFassung = a.verfuegbar ? a : null;
+  const el = $("#neue-fassung");
+  el.hidden = !neueFassung;
+  if (neueFassung) { el.textContent = `↑ ${neueFassung.version}`; el.title = `Neue Fassung ${neueFassung.version} verfügbar — Klick zeigt, was neu ist`; }
+}
+$("#neue-fassung").addEventListener("click", async () => {
+  if (!neueFassung) return;
+  await dialog(`<h2>Neue Fassung ${esc(neueFassung.version)}</h2><p class="dim">Du hast ${esc($("#version").textContent || "")}. Das ist neu:</p>
+    ${neueFassung.neu.map((e) => `<h3 class="neu-fassung">${esc(e.version)}</h3><ul class="neu">${e.zeilen.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>`).join("")}
+    <p class="dim">Holen: <code>git pull</code> im partAtlas-Ordner, dann partAtlas neu starten.</p>
+    <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
+});
+[8000, 30000, 90000].forEach((ms) => setTimeout(neueFassungPruefen, ms));
+setInterval(neueFassungPruefen, 10 * 60 * 1000);
 
 function dialog(html) {
   const d = $("#dialog");

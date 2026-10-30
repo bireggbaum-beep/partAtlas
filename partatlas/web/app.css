@@ -634,6 +634,7 @@ html[data-phase="1"] [data-ab-phase="2"] { display: none !important; }
 .d-erg.gut { color: var(--accent); border-color: var(--accent); }
 .d-erg.fehler { color: var(--warn); border-color: var(--warn); }
 .d-erg.abbruch { color: var(--ink-3); }
+.d-erg.offen { color: var(--ink-3); border-style: dashed; }
 .d-refmarke { margin-left: auto; font: 12px var(--mono); color: var(--accent); }
 .d-werte { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .d-notiz { margin: 8px 0 0; color: var(--ink-2); line-height: 1.45; white-space: pre-wrap; }
@@ -1420,3 +1421,12 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .badges .slot-g { display: flex; justify-content: flex-end; min-width: 5.2em; }
 .badge.gcode { border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--panel); cursor: pointer; font: 12px var(--mono); }
 .badge.gcode:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Neue Fassung verfügbar: kleines Zeichen neben der Fassung */
+.neue-fassung { margin-left: 8px; padding: 1px 8px; font: 600 11px var(--mono); color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 999px; cursor: pointer; vertical-align: middle; }
+.neue-fassung:hover { background: var(--accent); color: var(--bg, #fff); }
+.neue-fassung[hidden] { display: none; }
+/* G-Code ohne Modell (gcode.js): ohne Häkchen und Grösse — nur Was und Aktionen */
+.af-zeile.gc-zeile { grid-template-columns: 1fr auto; }
+.gc-zeile .af-aktion { display: flex; gap: 6px; align-items: flex-start; white-space: nowrap; }
+.gc-kandidaten { margin-top: 6px; }

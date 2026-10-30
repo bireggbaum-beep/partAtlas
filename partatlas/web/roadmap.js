@@ -1,6 +1,7 @@
 // Die Roadmap im Programm: was schon da ist, was als Nächstes kommt, was später folgt. Plakativ — eine Überschrift und
 // ein kurzer Satz je Punkt. Eine Reihenfolge, keine Termine. Wer etwas fertigstellt, schiebt es von „Als Nächstes“ nach „Jetzt“;
 // die Quelle der Wahrheit bleibt KONZEPT §7 und OFFEN.md.
+// Stummgeschaltet (Anwender 30.10.2026): der Knopf ⚑ ist aus index.html genommen, bis die Inhalte aktualisiert sind.
 const ROADMAP = [
   ["Jetzt da", "da", [
     ["Katalog", "Ordner einlesen, Vorschaubilder, 3D-Ansicht, Suche und gemerkte Suchen, Tags, Sammlungen, Varianten — in Raster, Liste und Karten."],

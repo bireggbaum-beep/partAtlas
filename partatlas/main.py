@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
+from .aktualisierung import Aktualisierung
 from . import anhaenge, aufraeumen, backup, dateidialog, neuigkeiten, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
@@ -79,12 +80,13 @@ def _dateien(pfad):
     return sum(len(fs) for _, _, fs in os.walk(pfad))
 
 
-def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hintergrund=False):
+def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hintergrund=False, fassung_pruefen=False):
     """`im_hintergrund`: der Port ist sofort offen und der Bestand wird in einem Thread geöffnet; bis er bereit ist, zeigt „/“ eine
     Warteseite und /api/* antwortet 503. Unter Windows dauerte das Öffnen bei 8 600 Modellen 47 s, in denen die Seite nicht erreichbar
     war (Protokoll des Anwenders, 8.10.2026). Die Tests im selben Prozess öffnen weiter vorher — sie fragen gleich danach ab."""
     verteiler = Verteiler()
     zustand = {}
+    aktuell = Aktualisierung(VERSION)         # Nachsehen nur im echten Start (`fassung_pruefen`): Tests sollen kein `git fetch` auslösen
     oeffnen_stand = {"bereit": False, "fehler": None}
 
     def backup_melden(st):
@@ -107,7 +109,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
         neuigkeiten.beim_oeffnen(b, k)
-        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg), backup=backup.Backup(b, k, melden=backup_melden))
+        zustand.update(aktualisierung=aktuell, bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg), backup=backup.Backup(b, k, melden=backup_melden))
         s.schleifenprobe = verteiler.antwortzeit
         _startinfo(b, k, s)
         # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
@@ -124,6 +126,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         # Ohne `im_hintergrund` ist der Port hier noch nicht offen; „nimmt Anfragen an“ schreibt __main__, wenn er es wirklich ist.
         oeffnen_stand["bereit"] = True
         log.info("Katalog geöffnet")
+        if fassung_pruefen:
+            aktuell.starten()
 
     def oeffnen_sicher():
         try:
@@ -154,6 +158,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         # beim harten Beenden als eigener Prozess zurück.
         zustand["backup"].abbrechen()          # ein halbes ZIP bleibt nicht liegen: die Arbeitsdatei geht beim Abbruch weg
         zustand["backup"].warten(BEENDEN_S)
+        aktuell.beenden()
         s.abbrechen()
         if not s.warten(BEENDEN_S):
             # Datenverlust droht nicht: was das Einlesen danach noch schreiben will, scheitert an der geschlossenen Datenbank, und jede
@@ -328,6 +333,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         gesehen = b.einstellungen().get("neuigkeiten_gesehen") or neuigkeiten.START
         return {"version": VERSION, "neu": neuigkeiten.seit(gesehen, VERSION)}
 
+    @app.get("/api/aktualisierung")
+    def aktualisierung_holen():
+        """Gibt es auf `main` eine höhere Fassung? {verfuegbar, version, neu: [{version, zeilen}]} — leer, solange nicht nachgesehen wurde oder kein Git-Ordner da ist."""
+        return aktuell.stand
+
     @app.post("/api/neuigkeiten/gesehen")
     def neuigkeiten_gesehen():
         zustand["bestand"].einstellungen_setzen(neuigkeiten_gesehen=VERSION)
@@ -433,6 +443,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             "warteschlange": sum(m["warteschlange"] is not None for m in alle),
             "neu": len(k.modelle(ansicht="neu")),
             "archiv": len(k.modelle(ansicht="archiv")),
+            "gcode": G().anzahl_offen(),
         }
 
     @app.get("/api/modelle/{mid}")
@@ -1410,6 +1421,40 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.post("/api/ordner/im_ordner")
     def ordner_im_ordner(koerper: dict = Depends(json_koerper)):
         pfad = K()._ordner_pfad(koerper.get("id", ""))[2]
+        try:
+            programme.im_ordner_zeigen(pfad)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True}
+
+    # -- G-Code ohne Modell (Bereinigen; gcode_ordner.py): was das Einlesen nicht zuordnen konnte
+    def G():
+        from .gcode_ordner import GcodeOrdner
+        return GcodeOrdner(K(), zustand["bestand"])
+
+    @app.get("/api/gcode_offen")
+    def gcode_offen():
+        return G().offene()
+
+    @app.post("/api/gcode_offen/zuordnen")
+    def gcode_zuordnen(d: dict = Depends(json_koerper)):
+        G().von_hand(d.get("id", ""), d.get("modelle") or [])
+        return {"ok": True}
+
+    @app.post("/api/gcode_offen/ausblenden")
+    def gcode_ausblenden(d: dict = Depends(json_koerper)):
+        G().ausblenden(d.get("id", ""), bool(d.get("an", True)))
+        return {"ok": True}
+
+    @app.get("/api/gcode_offen/ausgeblendet")
+    def gcode_ausgeblendet():
+        return G().ausgeblendete()
+
+    @app.post("/api/gcode_offen/im_ordner")
+    def gcode_im_ordner(d: dict = Depends(json_koerper)):
+        pfad, _ = G()._pfad(d.get("id", ""))
+        if not pfad or not os.path.isfile(pfad):
+            raise KatalogFehler("Die Datei ist nicht da.")
         try:
             programme.im_ordner_zeigen(pfad)
         except (OSError, subprocess.SubprocessError) as e:

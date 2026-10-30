@@ -4,6 +4,56 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
+
+Neu: **G-Code aus dem Ordner** (Einlesen erkennt das Quellmodell am Inhalt, Druck „Noch nicht gedruckt“), **Bereinigen › G-Code ohne Modell** (unklare und unbekannte zuordnen oder ausblenden),
+**Zeichen „↑ Fassung“** neben der Fassung, wenn auf `main` eine neuere liegt (git fetch; wirkt ab der Fassung nach 1.0.8), Tag-Zählung ohne Modelle im Papierkorb, Roadmap (⚑) stummgeschaltet.
+Abschusstests (Altbestand, kill -9, Doppelstart) als Suiten. Vor dem Push: alle 45 Suiten grün (925 Checks), test_ui einmal komplett 70/70. Handbuch nicht nachgezogen (Anwender). Rückweg: Zweig `fassung-1.0.7`.
+
+## Heute (30.10.2026): Abschusstests, G-Code aus dem Ordner erkennen, Update-Info in der App für den Testzeitraum
+
+Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher Bestand. Die Abschusstests (Anwender 30.10.): Altbestand, Hochziehen über alle Fassungen,
+`kill -9`, voller Datenträger, zweimal gestartet — als eigene Suiten „vor einer Fassung“.
+- **1 Altbestand — gebaut:** `tests/test_altbestand.py` (26/26): Papierkorb, Tags, Drucke, Spule, Kanten ohne `auto`, Modelle ohne `gcode_n`, fehlende und umbenannte Datei; dreimal neu
+  geöffnet, jede Liste, Zähler gegen die Wahrheit, Wiederherstellen. **Fand den bekannten Zählfehler der Seitenleiste** (Tags gelöschter Modelle gezählt) — behoben in `Katalog.tags()`
+  (nur lebende Quellen, Herkunft nach `_ist_auto`); ohne die Korrektur fallen 3 Checks.
+- **3 kill -9 — gebaut:** `tests/test_abbruch.py` (40 Läufe, 42/42, ~80 s; `ABBRUCH_LAEUFE`, `ABBRUCH_SAMEN`). Ein Arbeiter-Prozess (Tag setzen/lösen, Löschen/Zurückholen, Druck mit
+  Abbuchung, Neu einlesen) wird nach 0,05–1,5 s mit SIGKILL beendet; danach öffnen, alle Listen, Zähler am Modell = Drucke, Spule = voll − Abbuchungen, Tag-Zählung, keine Kante ins Leere.
+  Gegenprobe: Abbuchung in eigener Transaktion vor dem Druck → fällt im ersten Lauf. **Kein Fehler gefunden.** Nicht abgedeckt: Abbruch während des Einlesens grosser Bestände und der Umstellungen beim Start.
+- **5 Doppelstart — gebaut:** `tests/test_doppelstart.py` (10/10, echte Prozesse `python -m partatlas`): zweiter Start auf anderem Port liefert keine Daten (503 „von einem anderen Prozess geoeffnet"),
+  der erste schreibt weiter; zweiter auf demselben Port beendet sich (Exit 3); nach kill -9 des ersten öffnet ein neuer Start alles (flock fällt mit dem Prozess). Gegenprobe: Sperre in einer
+  flatgraph-Kopie entfernt → 2 Checks fallen. **Beobachtet, kein Datenfehler:** der zweite Prozess auf anderem Port **beendet sich nicht**, er bleibt als leere 503-Seite stehen, mit dem
+  technischen Text („BestandBelegt …"); im Browser steht dann nur diese Meldung. Vorschlag (Aufwand 1): Meldung freundlich („partAtlas läuft schon — im anderen Fenster weiterarbeiten") und beenden.
+- **Offen:** 2 (Bestand durch alle Fassungen), 4 (voller Datenträger, schreibgeschützt).
+- **G-Code aus dem Ordner erkennen — gebaut (Anwender 30.10.: regulärer Weg neben dem Hochladen):** `partatlas/gcode_ordner.py`, am Ende von `Scanner.einlesen`. Das Einlesen findet `.gcode`
+  unter den Wurzeln, liest das Quellmodell aus dem Inhalt (`slicer.quellen_aus_gcode`: `EXCLUDE_OBJECT_DEFINE NAME=…`, `; printing object "…"` bzw. Prusa-Form), vergleicht tolerant (ohne Endung,
+  Gross-/Kleinschreibung, Umlaute, Satzzeichen: „Testscheibe_4_5mm“ = „Testscheibe_45mm“) und hängt ihn über denselben Weg wie das Hochladen an (`Drucke.aus_ordner` → `datei_anhaengen`).
+  Der Druck hat das neue Ergebnis **„offen“** („○ Noch nicht gedruckt“, zählt nicht, Modell gilt nicht als gedruckt; Datum = Datum der Datei; Dauer/Gewicht aus dem Kopf). Zuordnung nur bei
+  Eindeutigkeit: zwei Modelle gleichen Namens → unklar, kein Modell → „ohne“ (beide nur gezählt: `gcode_unklar`, `gcode_ohne_modell`, im Protokoll genannt); mehrere Objekte → an alle;
+  nennt der Inhalt nichts → Dateiname (ein längster Treffer, mindestens 5 Zeichen). Gemerkt je Datei in den Einstellungen (`gcode_gesehen`: Grösse, Zeit, Ausgang); Unzugeordnete werden erneut
+  angesehen, wenn Modelle dazukamen. Derselbe Inhalt wird nicht doppelt angelegt; die Datei im Ordner bleibt. `tests/test_gcode_ordner.py` 14/14 (3 Gegenproben fallen), test_drucke 42/42,
+  test_slicer 19/19, test_scan 110/110, test_lager 35/35, test_gcode_ui 8/8. **Nicht geprüft:** echte G-Codes des Testers (Test mit nachgebauten Köpfen; `source_info` und Cura-`;MESH:`
+  werden nicht gelesen), sehr grosse Ordner (Zeit des Durchgangs), Anzeige der Bilanz in der Oberfläche (nur Protokoll/Status). Reiter „Drucken“ (Mock) bleibt.
+- **G-Code ohne Modell unter Bereinigen — gebaut (Anwender 30.10.: vor dem Push auf `main`):** Eintrag „▤ G-Code ohne Modell“ unter Aufräumen mit Zahl (zählt auch am Besen), eigene Fläche
+  (`web/gcode.js`, Stile von „Vorschläge“): je G-Code Name, Ordner (📂), Grund in Worten („nennt „X.stl“ — 2 Modelle heissen so“ / „kein Modell heisst so“ / „nennt kein Modell“); bei „unklar“
+  je Kandidat ein Knopf mit Ordner; „Modell wählen …“ (Suche, vorbelegt mit dem Kern des Dateinamens ohne Zeitstempel und Platte); „Nicht zuordnen“ (ausblenden, oben zurückholbar).
+  Zuordnen = derselbe Weg wie beim Einlesen. `gcode_gesehen` trägt jetzt die genannten Namen; zugeordnete und ausgeblendete fasst das Einlesen nicht mehr an; das Ende eines Einlesens
+  überschreibt keine Entscheidung, die während des Laufs fiel (Sperre + Abgleich in `_merken`). API `/api/gcode_offen` (+ `/zuordnen`, `/ausblenden`, `/ausgeblendet`, `/im_ordner`), Zähler `gcode`.
+  test_gcode_ordner 25/25 (3 Gegenproben fallen), test_gcode_offen_ui 7/7 (Gegenprobe fällt), test_bereinigen_ui 2/2 (neue Fläche in die Prüfung „jede Ansicht erklärt sich“ aufgenommen),
+  test_api 94/94, test_aufraeumen 13/13.
+
+
+- **Update-Info — gebaut (zuerst falsch verstanden: nur der Eintrag „Neu in dieser Fassung“, das ist nach dem Update, nicht davor):** Fassung **1.0.8** (Branch, nicht auf `main`). Anwender 30.10.: ein **Zeichen
+  „↑ 9.9.9“ neben der Fassung**, wenn eine neuere da ist; Klick zeigt, was in der nächsten Fassung neu ist. Kein Link, keine Releases — der Tester holt per `git pull` von `main`. Gebaut:
+  `partatlas/aktualisierung.py`: im echten Start (`__main__`, `fassung_pruefen=True`; Tests lösen kein `git fetch` aus) holt ein Hintergrund-Thread `origin/main` (`git fetch`, ändert den Arbeitsordner
+  nicht; Kanal mit `PARTATLAS_KANAL` änderbar), liest `version.py` und `neuigkeiten.py` von dort (Text, nicht ausgeführt) und merkt die Einträge zwischen laufender und neuer Fassung;
+  alle 3 h wieder. `GET /api/aktualisierung`; Zeichen `#neue-fassung` (Seite fragt nach 8/30/90 s, dann alle 10 min), Klick: Fenster „Neue Fassung x“ mit den Einträgen und „git pull, dann neu starten“.
+  Still bei: kein Git-Ordner (Einzeldatei/Archiv), kein Netz, Fehler (Protokoll). test_aktualisierung 12/12 (echte Git-Ordner, Gegenprobe fällt), test_aktualisierung_ui 3/3 (Gegenprobe fällt),
+  test_neuigkeiten 9/9. **Nicht geprüft:** ein privates Repo mit echten Zugangsdaten des Testers (es nutzt sein Git; fragt Git nach einem Passwort, scheitert `fetch` still: `GIT_TERMINAL_PROMPT=0`);
+  der Tester muss beim Klon `origin` und Zweig `main` haben.
+
+- **Roadmap (⚑) stummgeschaltet (Anwender 30.10.):** Knopf aus `index.html` genommen (als Kommentar dort, zum Zurückholen), `roadmap.js` bleibt; zurück, wenn die Inhalte aktualisiert sind.
+
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
 **1.0.6 öffnete den Bestand des Testers nicht** („Source node MODEL_ASSET/m_000047 does not exist or is soft-deleted“): die neue Umstellung der Tag-Herkunft beim Start

@@ -696,7 +696,8 @@ class Scanner(_Bahn):
                     geprueft=0, je_format={}, aus_datei=0, einlesen_s=None, vorschauen_gesamt=0, cad_gesamt=0, zu_pruefen=0, zu_analysieren=0,
                     analysiert=0, kopien=0, aufgeraeumt=0, nicht_erreichbar=[], gefunden=0, neu=0, geaendert=0, verschoben=0, entfernt=0,
                     bearbeitet=0, unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False,
-                    abgebrochen=False, beginn=time.strftime("%H:%M:%S"), fehlt_neu=0)
+                    abgebrochen=False, beginn=time.strftime("%H:%M:%S"), fehlt_neu=0,
+                    gcode_neu=0, gcode_unklar=0, gcode_ohne_modell=0, gcode_fehler=0)
         index = self.k.ort_index()
         ignoriert = self.k.ignorierte_orte()
         wurzeln = self.k.wurzeln()
@@ -845,6 +846,13 @@ class Scanner(_Bahn):
             self._setze(entfernt=len(weg), cad_voraus=self._cad_anzahl(), fcstd_frage=self._fcstd_offen(), zuletzt_eingelesen=jetzt)
         finally:
             self._pool_beenden(self._pool, hart=self._stopp.is_set())
+        if not self._stopp.is_set():
+            # G-Code im Ordner (gcode_ordner.py): nach den Modellen, damit die neuen schon da sind; ein Fehler hier bricht das Einlesen nicht ab.
+            try:
+                from .gcode_ordner import GcodeOrdner
+                self._setze(**GcodeOrdner(self.k, self.b).einlesen(self.k.wurzeln(), bool(self.status.get("neu")), self._stopp))
+            except Exception:
+                log.exception("G-Code aus den Ordnern nicht eingelesen")
         try:
             self.k.ordner_platte_lesen()          # neue und verschwundene Ordner für den Baum, auch leere
         except OSError as e:

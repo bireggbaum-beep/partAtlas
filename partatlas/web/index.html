@@ -16,13 +16,13 @@
     <span class="rail-luecke"></span>
     <button class="rail-btn" id="lager" title="Filamentlager"><svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg></button>
     <button class="rail-btn" id="handbuch" title="Handbuch (F1)">?</button>
-    <button class="rail-btn" id="roadmap" title="Roadmap — was schon da ist und was kommt">⚑</button>
+    <!-- Roadmap (⚑, roadmap.js) stummgeschaltet bis zur Aktualisierung (Anwender 30.10.2026); zurück: <button class="rail-btn" id="roadmap" title="Roadmap — was schon da ist und was kommt">⚑</button> -->
     <button class="rail-btn" id="einstellungen" title="Einstellungen">⚙</button>
     <button class="rail-btn" id="thema" title="Hell/Dunkel">◐</button>
   </nav>
 
   <header class="kopf">
-    <div class="logo"><svg class="zeichen" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.4"/><ellipse cx="16" cy="16" rx="5.5" ry="13" fill="none" stroke="currentColor" stroke-width="2" opacity=".55"/><path d="M3 16H29" stroke="currentColor" stroke-width="2" opacity=".55"/><rect x="11.5" y="11.5" width="9" height="9" rx="2" fill="currentColor"/></svg>PartAtlas <small id="version" title="Fassung"></small></div>
+    <div class="logo"><svg class="zeichen" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.4"/><ellipse cx="16" cy="16" rx="5.5" ry="13" fill="none" stroke="currentColor" stroke-width="2" opacity=".55"/><path d="M3 16H29" stroke="currentColor" stroke-width="2" opacity=".55"/><rect x="11.5" y="11.5" width="9" height="9" rx="2" fill="currentColor"/></svg>PartAtlas <small id="version" title="Fassung"></small><button id="neue-fassung" class="neue-fassung" type="button" hidden></button></div>
     <div class="nav"><button id="nav-zurueck" type="button" title="Zurück (Alt+←)" disabled>‹</button><button id="nav-vor" type="button" title="Vor (Alt+→)" disabled>›</button></div>
     <div class="import">
       <button class="knopf akzent" id="import-knopf">＋ Importieren ▾</button>
@@ -98,6 +98,7 @@
         <button class="eintrag" data-ansicht="fehlt" title="Modelle, deren Datei nicht mehr gefunden wird"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
         <button class="eintrag" data-ansicht="duplikate" title="Dieselbe Datei mit gleichem Inhalt an mehreren Orten"><span>⧉ Gleiche Datei</span><em id="z-duplikate"></em></button>
         <button class="eintrag" data-ansicht="unlesbar" title="Dateien, die partAtlas nicht lesen konnte"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
+        <button class="eintrag" data-ansicht="gcode" title="G-Codes aus deinen Ordnern, die partAtlas keinem Modell sicher zuordnen konnte"><span>▤ G-Code ohne Modell</span><em id="z-gcode"></em></button>
         <button class="eintrag" data-ansicht="aufraeumen" title="Was Platz kostet und vermutlich weg kann"><span>🧹 Vorschläge</span><em id="z-aufraeumen"></em></button>
         <div class="sk-gruppe">Aufbewahrt</div>
         <button class="eintrag" data-ansicht="archiv" title="Modelle, die ruhen: nicht in Liste und Suche, aber mit allem, was daran hängt"><span>🗄 Archiv</span><em id="z-archiv"></em></button>
@@ -118,6 +119,7 @@
     <div class="leer" id="leer" hidden></div>
     <div class="bg-ansicht" id="bg-ansicht" hidden></div>
     <div class="aufraeumen" id="aufraeumen" hidden></div>
+    <div class="aufraeumen" id="gcode-offen" hidden></div>
     <div class="lager-seite" id="lager-seite" hidden></div>
     <div class="statuszeile"><span id="anzahl"></span>
       <button class="st-knopf" id="kachel-knopf" title="Grösse der Vorschaukacheln" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></button>
@@ -148,6 +150,7 @@
 <script src="/web/app.js"></script>
 <script src="/web/baugruppen.js"></script>
 <script src="/web/aufraeumen.js"></script>
+<script src="/web/gcode.js"></script>
 <script src="/web/zuordnen.js"></script>
 <script src="/web/tags.js"></script>
 <script src="/web/anhaenge.js"></script>

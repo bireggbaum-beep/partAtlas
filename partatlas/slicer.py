@@ -227,6 +227,28 @@ def vorschau_aus_gcode(pfad):
     return beste[1] if beste else None
 
 
+# Wie die Slicer das Quellmodell in den G-Code schreiben: Klipper-Objektliste (`EXCLUDE_OBJECT_DEFINE NAME=Teil.stl_id_0_copy_0`) und
+# der Kommentar je Objekt (`; printing object "Teil.stl"` bei Anycubic/Orca/Bambu, `; printing object Teil.stl id:0 copy 0` bei Prusa).
+_QUELLE_OBJEKT = re.compile(r"^EXCLUDE_OBJECT_DEFINE\s+NAME=(\S+)", re.M)
+_QUELLE_KOMMENTAR = re.compile(r'^;\s*printing object\s+(?:"([^"]+)"|(.+?))(?:\s+id:\d+\s+copy\s+\d+)?\s*$', re.M)
+_ENDUNG = re.compile(r"\.(stl|3mf|obj|step|stp|fcstd)(?=$|_id_|\s)", re.I)
+
+
+def quellen_aus_gcode(pfad, grenze=4 << 20):
+    """Die Namen der Modelle, aus denen ein G-Code gesliced wurde, wie der Slicer sie schreibt (ohne `_id_n_copy_m`), in der Reihenfolge des
+    Auftretens, ohne Doppelte. Gelesen wird nur der Anfang: dort stehen Objektliste und das erste `printing object`. Leer, wenn die Datei
+    nichts nennt (dann bleibt der Dateiname)."""
+    with open(pfad, "rb") as f:
+        text = f.read(grenze).decode("utf-8", "replace")
+    roh = _QUELLE_OBJEKT.findall(text) + [a or b for a, b in _QUELLE_KOMMENTAR.findall(text)]
+    namen = []
+    for n in roh:
+        n = re.sub(r"_id_\d+_copy_\d+$", "", n.strip().strip('"'))
+        if n and n not in namen:
+            namen.append(n)
+    return namen
+
+
 def dauer_s(text):
     """„1d 2h 3m 4s“ / „2h 3m“ → Sekunden."""
     teile = {einheit: zahl for zahl, einheit in re.findall(r"(\d+)\s*([dhms])", text)}

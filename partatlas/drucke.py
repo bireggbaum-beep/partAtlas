@@ -23,7 +23,7 @@ from .katalog import KatalogFehler, beim_start, jetzt, ref
 DATEI_ARTEN = {".gcode": "gcode", ".3mf": "3mf"}       # .gcode.3mf (Bambu: geslicetes Projekt) ist eine 3MF
 MAX_DATEI = 1 << 30
 
-ERGEBNISSE = ("gut", "fehler", "abgebrochen")
+ERGEBNISSE = ("gut", "fehler", "abgebrochen", "offen")      # „offen“: vorbereitet (G-Code aus dem Ordner), noch nicht gedruckt — zählt nicht
 ZAEHLT = ("gut", "fehler")      # ein Druck mit Fehlern hat stattgefunden; abgebrochen nicht
 FELDER = ("datum", "dauer_s", "gewicht_g", "filament", "ergebnis", "notiz")
 
@@ -75,7 +75,7 @@ def pruefen(felder, voll):
     if "ergebnis" in felder or voll:
         e = felder.get("ergebnis") or "gut"
         if e not in ERGEBNISSE:
-            raise KatalogFehler("Ergebnis: gut, fehler oder abgebrochen.")
+            raise KatalogFehler("Ergebnis: gut, fehler, abgebrochen oder offen.")
         neu["ergebnis"] = e
     if "notiz" in felder or voll:
         n = (felder.get("notiz") or "").strip()
@@ -178,6 +178,16 @@ class Drucke:
                 self.db.create_edge(ref(MODELL, mid), ref(DRUCK, did), GEDRUCKT_IN)
             self.nachziehen(modelle)
         return did
+
+    def aus_ordner(self, modelle, name, daten, datum):
+        """Ein G-Code, der im Ordner lag (Einlesen, gcode_ordner.py): wie das Hochladen an einen Druck, den es dafür anlegt. Der Druck ist „offen“ —
+        ein exportierter G-Code ist vorbereitet, nicht gedruckt; „gedruckt“ sagt der Mensch. Druck und Datei sind eine Transaktion: ein Abbruch
+        dazwischen liesse einen leeren Druck zurück, und das nächste Einlesen legte einen zweiten an."""
+        with self.db.transaction():
+            did = self.anlegen(modelle, {"ergebnis": "offen", "datum": datum})
+            bilanz = self.datei_anhaengen(did, name, daten)
+            self.db.update_node(DRUCK, did, {"herkunft": "ordner"})
+        return did, bilanz
 
     def aendern(self, did, felder):
         self._druck(did)
