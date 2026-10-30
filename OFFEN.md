@@ -46,6 +46,8 @@ Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher
   test_neuigkeiten 9/9. **Nicht geprüft:** ein privates Repo mit echten Zugangsdaten des Testers (es nutzt sein Git; fragt Git nach einem Passwort, scheitert `fetch` still: `GIT_TERMINAL_PROMPT=0`);
   der Tester muss beim Klon `origin` und Zweig `main` haben.
 
+- **Roadmap (⚑) stummgeschaltet (Anwender 30.10.):** Knopf aus `index.html` genommen (als Kommentar dort, zum Zurückholen), `roadmap.js` bleibt; zurück, wenn die Inhalte aktualisiert sind.
+
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
 **1.0.6 öffnete den Bestand des Testers nicht** („Source node MODEL_ASSET/m_000047 does not exist or is soft-deleted“): die neue Umstellung der Tag-Herkunft beim Start
