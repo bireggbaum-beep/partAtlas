@@ -4,6 +4,18 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Heute (30.10.2026): Abschusstests, G-Code aus dem Ordner erkennen, Update-Info in der App für den Testzeitraum
+
+Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher Bestand. Die Abschusstests (Anwender 30.10.): Altbestand, Hochziehen über alle Fassungen,
+`kill -9`, voller Datenträger, zweimal gestartet — als eigene Suiten „vor einer Fassung“.
+- **1 Altbestand — gebaut:** `tests/test_altbestand.py` (26/26): Papierkorb, Tags, Drucke, Spule, Kanten ohne `auto`, Modelle ohne `gcode_n`, fehlende und umbenannte Datei; dreimal neu
+  geöffnet, jede Liste, Zähler gegen die Wahrheit, Wiederherstellen. **Fand den bekannten Zählfehler der Seitenleiste** (Tags gelöschter Modelle gezählt) — behoben in `Katalog.tags()`
+  (nur lebende Quellen, Herkunft nach `_ist_auto`); ohne die Korrektur fallen 3 Checks.
+- **3 kill -9 — gebaut:** `tests/test_abbruch.py` (40 Läufe, 42/42, ~80 s; `ABBRUCH_LAEUFE`, `ABBRUCH_SAMEN`). Ein Arbeiter-Prozess (Tag setzen/lösen, Löschen/Zurückholen, Druck mit
+  Abbuchung, Neu einlesen) wird nach 0,05–1,5 s mit SIGKILL beendet; danach öffnen, alle Listen, Zähler am Modell = Drucke, Spule = voll − Abbuchungen, Tag-Zählung, keine Kante ins Leere.
+  Gegenprobe: Abbuchung in eigener Transaktion vor dem Druck → fällt im ersten Lauf. **Kein Fehler gefunden.** Nicht abgedeckt: Abbruch während des Einlesens grosser Bestände und der Umstellungen beim Start.
+- **Offen:** 2 (Bestand durch alle Fassungen), 4 (voller Datenträger, schreibgeschützt), 5 (zweimal gestartet).
+
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
 **1.0.6 öffnete den Bestand des Testers nicht** („Source node MODEL_ASSET/m_000047 does not exist or is soft-deleted“): die neue Umstellung der Tag-Herkunft beim Start
