@@ -10,7 +10,8 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 NEUES = [
     ("1.0.8", ["G-Code im Ordner: Legst du einen G-Code aus dem Slicer in einen deiner Ordner, liest partAtlas ihn beim Einlesen mit. Das Modell erkennt es am Inhalt der Datei "
                "und hängt den G-Code daran; die Datei im Ordner bleibt liegen. Er erscheint als Druck „Noch nicht gedruckt“ — das Modell gilt erst als gedruckt, wenn du das sagst. "
-               "Ist das Modell nicht eindeutig (etwa zwei mit demselben Namen) oder nicht vorhanden, bleibt der G-Code unberührt.",
+               "Ist das Modell nicht eindeutig (etwa zwei mit demselben Namen) oder nicht vorhanden, steht der G-Code unter Bereinigen › „G-Code ohne Modell“ — "
+               "dort ordnest du ihn mit einem Klick zu oder blendest ihn aus.",
                "Neben der Fassung oben links erscheint „↑ 1.0.9“, wenn auf main eine neuere Fassung liegt. Ein Klick zeigt, was darin neu ist. "
                "(Das klappt, wenn partAtlas aus einem Git-Ordner läuft.)",
                "Behoben: Die Tag-Zahlen in der Seitenleiste zählten Modelle im Papierkorb mit (#bar zeigte 1412 statt 1409)."]),

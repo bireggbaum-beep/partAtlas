@@ -98,6 +98,7 @@
         <button class="eintrag" data-ansicht="fehlt" title="Modelle, deren Datei nicht mehr gefunden wird"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
         <button class="eintrag" data-ansicht="duplikate" title="Dieselbe Datei mit gleichem Inhalt an mehreren Orten"><span>⧉ Gleiche Datei</span><em id="z-duplikate"></em></button>
         <button class="eintrag" data-ansicht="unlesbar" title="Dateien, die partAtlas nicht lesen konnte"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
+        <button class="eintrag" data-ansicht="gcode" title="G-Codes aus deinen Ordnern, die partAtlas keinem Modell sicher zuordnen konnte"><span>▤ G-Code ohne Modell</span><em id="z-gcode"></em></button>
         <button class="eintrag" data-ansicht="aufraeumen" title="Was Platz kostet und vermutlich weg kann"><span>🧹 Vorschläge</span><em id="z-aufraeumen"></em></button>
         <div class="sk-gruppe">Aufbewahrt</div>
         <button class="eintrag" data-ansicht="archiv" title="Modelle, die ruhen: nicht in Liste und Suche, aber mit allem, was daran hängt"><span>🗄 Archiv</span><em id="z-archiv"></em></button>
@@ -118,6 +119,7 @@
     <div class="leer" id="leer" hidden></div>
     <div class="bg-ansicht" id="bg-ansicht" hidden></div>
     <div class="aufraeumen" id="aufraeumen" hidden></div>
+    <div class="aufraeumen" id="gcode-offen" hidden></div>
     <div class="lager-seite" id="lager-seite" hidden></div>
     <div class="statuszeile"><span id="anzahl"></span>
       <button class="st-knopf" id="kachel-knopf" title="Grösse der Vorschaukacheln" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></button>
@@ -148,6 +150,7 @@
 <script src="/web/app.js"></script>
 <script src="/web/baugruppen.js"></script>
 <script src="/web/aufraeumen.js"></script>
+<script src="/web/gcode.js"></script>
 <script src="/web/zuordnen.js"></script>
 <script src="/web/tags.js"></script>
 <script src="/web/anhaenge.js"></script>

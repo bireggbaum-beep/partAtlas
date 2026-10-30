@@ -443,6 +443,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             "warteschlange": sum(m["warteschlange"] is not None for m in alle),
             "neu": len(k.modelle(ansicht="neu")),
             "archiv": len(k.modelle(ansicht="archiv")),
+            "gcode": G().anzahl_offen(),
         }
 
     @app.get("/api/modelle/{mid}")
@@ -1420,6 +1421,40 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.post("/api/ordner/im_ordner")
     def ordner_im_ordner(koerper: dict = Depends(json_koerper)):
         pfad = K()._ordner_pfad(koerper.get("id", ""))[2]
+        try:
+            programme.im_ordner_zeigen(pfad)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise KatalogFehler(f"Dateimanager ließ sich nicht öffnen: {e}")
+        return {"ok": True}
+
+    # -- G-Code ohne Modell (Bereinigen; gcode_ordner.py): was das Einlesen nicht zuordnen konnte
+    def G():
+        from .gcode_ordner import GcodeOrdner
+        return GcodeOrdner(K(), zustand["bestand"])
+
+    @app.get("/api/gcode_offen")
+    def gcode_offen():
+        return G().offene()
+
+    @app.post("/api/gcode_offen/zuordnen")
+    def gcode_zuordnen(d: dict = Depends(json_koerper)):
+        G().von_hand(d.get("id", ""), d.get("modelle") or [])
+        return {"ok": True}
+
+    @app.post("/api/gcode_offen/ausblenden")
+    def gcode_ausblenden(d: dict = Depends(json_koerper)):
+        G().ausblenden(d.get("id", ""), bool(d.get("an", True)))
+        return {"ok": True}
+
+    @app.get("/api/gcode_offen/ausgeblendet")
+    def gcode_ausgeblendet():
+        return G().ausgeblendete()
+
+    @app.post("/api/gcode_offen/im_ordner")
+    def gcode_im_ordner(d: dict = Depends(json_koerper)):
+        pfad, _ = G()._pfad(d.get("id", ""))
+        if not pfad or not os.path.isfile(pfad):
+            raise KatalogFehler("Die Datei ist nicht da.")
         try:
             programme.im_ordner_zeigen(pfad)
         except (OSError, subprocess.SubprocessError) as e:

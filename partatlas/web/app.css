@@ -1426,3 +1426,7 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .neue-fassung { margin-left: 8px; padding: 1px 8px; font: 600 11px var(--mono); color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 999px; cursor: pointer; vertical-align: middle; }
 .neue-fassung:hover { background: var(--accent); color: var(--bg, #fff); }
 .neue-fassung[hidden] { display: none; }
+/* G-Code ohne Modell (gcode.js): ohne Häkchen und Grösse — nur Was und Aktionen */
+.af-zeile.gc-zeile { grid-template-columns: 1fr auto; }
+.gc-zeile .af-aktion { display: flex; gap: 6px; align-items: flex-start; white-space: nowrap; }
+.gc-kandidaten { margin-top: 6px; }

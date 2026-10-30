@@ -79,7 +79,7 @@ if __name__ == "__main__":
             for a in ansichten:
                 pg.click(f'[data-ansicht="{a}"]')
                 time.sleep(1.2)                    # Liste geholt und gezeichnet; die Live-Verbindung lässt kein „networkidle“ zu
-                text = pg.evaluate("""() => ['#pk-leiste', '#leer', '#aufraeumen .af-kopf']
+                text = pg.evaluate("""() => ['#pk-leiste', '#leer', '#aufraeumen .af-kopf', '#gcode-offen .af-kopf']
                     .map((s) => document.querySelector(s)).filter((e) => e && e.offsetParent !== null)
                     .map((e) => e.innerText.trim()).join(' ')""")
                 if len(text) < 30:

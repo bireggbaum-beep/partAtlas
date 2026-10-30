@@ -226,6 +226,10 @@ async function ladeModelle() {
     zeigeAufraeumen(zustand.ansicht === "aufraeumen");
     if (zustand.ansicht === "aufraeumen") return ladeAufraeumen();
   }
+  if (typeof zeigeGcode === "function") {                   // G-Code ohne Modell: eigene Fläche (gcode.js)
+    zeigeGcode(zustand.ansicht === "gcode");
+    if (zustand.ansicht === "gcode") return ladeGcode();
+  }
   if (typeof zeigeLager === "function") {                   // das Lager ist wie Aufräumen eine eigene Fläche (lager.js)
     zeigeLager(zustand.ansicht === "lager");
     if (zustand.ansicht === "lager") return ladeLager();
@@ -328,12 +332,12 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
     || `<button class="eintrag leer-eintrag" id="sammlung-neu-2">＋ Neue Sammlung</button>`);
   abgleichen($("#ws-liste"), ws.map((m, i) =>
     `<li draggable="true" data-ws="${esc(m.id)}" data-ws-waehle="${esc(m.id)}"><b>${i + 1}</b>${m.reicht ? `<i class="ws-reicht ${m.reicht}" title="Filament: ${REICHT_TEXT[m.reicht]}"></i>` : ""}<span title="${esc(m.name)}">${esc(m.name)}${esc(endung[m.format] || "")}</span><button data-ws-weg="${esc(m.id)}" title="aus der Warteschlange">×</button></li>`).join(""));
-  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "papierkorb", "archiv", "warteschlange"]) {
+  for (const k of ["alle", "neu", "favoriten", "duplikate", "fehlt", "unlesbar", "gcode", "papierkorb", "archiv", "warteschlange"]) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
   // Zählabzeichen am Besen: nur, wenn etwas zu tun ist (der Papierkorb zählt nicht).
-  const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0);
+  const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0) + (z.gcode || 0);
   const abz = $("#abz-bereinigen");
   abz.hidden = !zu;
   abz.textContent = zu > 99 ? "99+" : zu;
@@ -390,7 +394,7 @@ function zweig(k, tiefe) {
 }
 
 // Die Seitenleiste wechselt als Ganzes (wie bei VS Code): Katalog oder Bereinigen.
-const BEREINIGEN = ["aufraeumen", "papierkorb", "archiv", "duplikate", "fehlt", "unlesbar"];
+const BEREINIGEN = ["aufraeumen", "gcode", "papierkorb", "archiv", "duplikate", "fehlt", "unlesbar"];
 
 function markiereAnsicht() {
   const bereinigt = BEREINIGEN.includes(zustand.ansicht);
@@ -558,7 +562,7 @@ function zeichneLeer() {
   const leer = $("#leer");
   const erst = zustand.hatWurzeln === false && zustand.katalogLeer !== false;
   document.body.classList.toggle("erststart", erst);
-  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen" || zustand.ansicht === "lager";      // Aufräumen hat seine eigene Fläche
+  leer.hidden = zustand.modelle.length > 0 || zustand.ansicht === "aufraeumen" || zustand.ansicht === "gcode" || zustand.ansicht === "lager";      // Aufräumen hat seine eigene Fläche
   if (leer.hidden) return;
   const scan = zustand.scan;
   if (erst) {
@@ -1041,7 +1045,7 @@ function waehleAus(id, bereich, { dazu = true, mitGewaehltem = false } = {}) {
 function tastaturAuswahl(e) {
   const strg = e.ctrlKey || e.metaKey;
   const n = zustand.modelle.length;
-  if (!n || zustand.ansicht === "aufraeumen" || zustand.ansicht === "lager" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
+  if (!n || zustand.ansicht === "aufraeumen" || zustand.ansicht === "gcode" || zustand.ansicht === "lager" || zustand.baugruppe || e.defaultPrevented || e.altKey) return false;
   // Auf einem Knopf gehören Enter und Leertaste dem Knopf.
   const knopf = document.activeElement?.closest?.("button, a, summary, [contenteditable]");
   if (strg && e.key.toLowerCase() === "a" && !e.altKey) {

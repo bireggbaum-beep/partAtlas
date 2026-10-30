@@ -96,4 +96,49 @@ if __name__ == "__main__":
         c.post("/api/scan")
         warten(z)
         check("Ein Modell im Papierkorb bekommt keinen G-Code mehr", c.get("/api/stand").json()["scan"]["gcode_ohne_modell"] >= 1)
+
+        # -- Bereinigen: G-Code ohne Modell
+        offen = c.get("/api/gcode_offen").json()
+        je = {e["name"]: e for e in offen["eintraege"]}
+        check("Bereinigen listet die nicht zugeordneten G-Codes mit Art und genannten Namen",
+              je.get("unklar.gcode", {}).get("art") == "unklar" and je["unklar.gcode"]["namen"] == ["Doppelt.stl"]
+              and je.get("nachzuegler.gcode", {}).get("art") == "ohne")
+        kand = je["unklar.gcode"]["kandidaten"]
+        check("… bei „unklar“ mit beiden Modellen gleichen Namens als Kandidaten, je mit Ordner",
+              len(kand) == 2 and {k["name"] for k in kand} == {"Doppelt"} and {k["ordner"] for k in kand} == {"3D-Druck", "3D-Druck/zweite"})
+        check("Die Seitenleiste zählt sie", c.get("/api/zaehler").json()["gcode"] == len(offen["eintraege"]))
+        ziel = next(k for k in kand if k["ordner"].endswith("zweite"))
+        r = c.post("/api/gcode_offen/zuordnen", json={"id": je["unklar.gcode"]["id"], "modelle": [ziel["id"]]})
+        dd = c.get(f"/api/modelle/{ziel['id']}").json()
+        check("Von Hand zuordnen hängt den G-Code an das gewählte Modell (Druck „offen“)",
+              r.status_code == 200 and [x["ergebnis"] for x in dd["drucke"]] == ["offen"] and dd["drucke"][0]["datei"]["name"] == "unklar.gcode")
+        check("… und er verschwindet aus der Liste", "unklar.gcode" not in {e["name"] for e in c.get("/api/gcode_offen").json()["eintraege"]})
+        c.post("/api/scan")
+        warten(z)
+        check("Ein Einlesen danach lässt ihn in Ruhe (kein zweiter Druck, nicht wieder in der Liste)",
+              len(c.get(f"/api/modelle/{ziel['id']}").json()["drucke"]) == 1
+              and "unklar.gcode" not in {e["name"] for e in c.get("/api/gcode_offen").json()["eintraege"]})
+        nid = je["nachzuegler.gcode"]["id"]
+        c.post("/api/gcode_offen/ausblenden", json={"id": nid, "an": True})
+        o2 = c.get("/api/gcode_offen").json()
+        check("„Nicht zuordnen“ blendet ihn aus und zählt ihn als ausgeblendet",
+              nid not in {e["id"] for e in o2["eintraege"]} and o2["ausgeblendet"] == 1
+              and [x["id"] for x in c.get("/api/gcode_offen/ausgeblendet").json()] == [nid])
+        muster.stl_binaer(os.path.join(sammlung, "Noch_Eins.stl"), 3, 20, 30)          # neues Modell: Unzugeordnete werden neu angesehen …
+        c.post("/api/scan")
+        warten(z)
+        check("… ein Einlesen holt einen ausgeblendeten nicht zurück", nid not in {e["id"] for e in c.get("/api/gcode_offen").json()["eintraege"]})
+        c.post("/api/gcode_offen/ausblenden", json={"id": nid, "an": False})
+        check("Zurückholen zeigt ihn wieder, mit seiner Art", next((e["art"] for e in c.get("/api/gcode_offen").json()["eintraege"] if e["id"] == nid), None) == "ohne")
+        check("Zuordnen an ein Modell, das es nicht gibt: verständliche Meldung",
+              c.post("/api/gcode_offen/zuordnen", json={"id": nid, "modelle": ["m_gibtsnicht"]}).status_code == 400)
+
+        # -- Ein Einlesen überschreibt nicht, was der Anwender während des Laufs entschieden hat
+        from partatlas.gcode_ordner import GcodeOrdner, GESEHEN
+        go = GcodeOrdner(z["katalog"], z["bestand"])
+        vorher = dict(z["bestand"].einstellungen()[GESEHEN])
+        lauf_sieht = {k: list(v) for k, v in vorher.items()}            # das Ergebnis eines Laufs, der begann, bevor der Anwender zuordnete
+        go.ausblenden(nid, True)                                          # … der Anwender entscheidet währenddessen
+        go._merken(vorher, lauf_sieht, vollstaendig=True)
+        check("Das Ende eines Einlesens überschreibt eine Entscheidung während des Laufs nicht", z["bestand"].einstellungen()[GESEHEN][nid][2] == "ignoriert")
     muster.ende()
