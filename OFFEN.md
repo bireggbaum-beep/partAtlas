@@ -4,6 +4,13 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## G-Code und Reiter „Drucken“ — Konzeptentwurf mit Schemas und Mock (29./30.10.2026)
+
+Schemas (heute / Planungsstand / Vorschlag) und Mock des Reiters liegen in `mock/gcode_drucken/` (mit README: Beschlossenes, Offenes). **Nicht in `KONZEPT.md`**, erst mit dem Anwender
+und dem Tester abstimmen. Kern: ein G-Code gehört **einmal zum Modell** (egal wie er kam: Ordner, Ziehen, Anhang), „Gedruckt …“ legt den Druck an, ein Reiter „Drucken“ ersetzt
+„Slicer“ und „Drucke“; der Verlauf des Modells zeigt alle Drucke (auch ohne G-Code), die Historie eines G-Codes nur seine. Der Tester exportiert G-Code in den Ordner; das Einlesen
+beachtet ihn heute nicht, der Inhalt nennt aber das Quellmodell. Aufwand 3–4.
+
 ## Robustheit: Abschusstests (Anwender 30.10.2026, vor der nächsten echten Fassung)
 
 Anlass: 1.0.6 öffnete den Bestand des Testers nicht, und die Tag-Zählung stimmte mit gelöschten Modellen nicht — beides zeigte sich nur an einem echten Bestand mit Papierkorb und

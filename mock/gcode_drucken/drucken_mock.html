@@ -1,0 +1,104 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:oklch(0.18 0.013 215);--panel:oklch(0.225 0.015 215);--panel-2:oklch(0.255 0.016 215);--line:oklch(0.31 0.017 215);--line-strong:oklch(0.38 0.018 215);
+--ink:oklch(0.94 0.008 190);--ink-2:oklch(0.8 0.012 200);--ink-3:oklch(0.7 0.02 205);--accent:oklch(0.76 0.115 180);--accent-ink:oklch(0.18 0.03 190);--accent-soft:oklch(0.3 0.045 185);
+--good:oklch(0.72 0.14 150);--warn:oklch(0.8 0.15 85);--crit:oklch(0.68 0.19 15);--mono:"DejaVu Sans Mono",monospace}
+*{box-sizing:border-box}body{margin:0;background:#11161a;font:13px "DejaVu Sans",Arial,sans-serif;color:var(--ink);display:flex;gap:28px;padding:24px}
+.insp{width:420px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.kopf{padding:14px 16px 0}.kopf h2{margin:0 0 4px;font-size:16px}.kopf .dim{color:var(--ink-3);font-size:12px}
+.reiter{display:flex;gap:2px;margin-top:12px;border-bottom:1px solid var(--line);padding:0 10px}
+.reiter span{padding:8px 9px;color:var(--ink-3);font-size:12.5px;border-bottom:2px solid transparent}
+.reiter span.an{color:var(--ink);border-color:var(--accent)}.zahl{font:11px var(--mono);color:var(--ink-3);margin-left:4px}
+.tafel{padding:14px 16px 18px}
+.titel{font:11.5px var(--mono);letter-spacing:.06em;color:var(--ink-3);margin:16px 0 8px;display:flex;justify-content:space-between;align-items:center}
+.titel:first-child{margin-top:2px}
+.knoepfe{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.k{border:1px solid var(--line-strong);border-radius:6px;padding:9px 10px;background:var(--panel-2);color:var(--ink)}
+.k b{display:block;font-size:13px;margin-bottom:3px}.k small{color:var(--ink-3);font-size:11.5px;line-height:1.35;display:block}
+.k.akzent{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}.k.akzent small{color:var(--accent-ink);opacity:.8}
+.bilanz{margin:12px 0 0;color:var(--ink-2);font-size:12px}.bilanz b{color:var(--ink)}
+.offen{border:1px dashed var(--warn);border-radius:8px;padding:10px 12px;margin-top:4px;background:color-mix(in oklch,var(--warn) 8%,var(--panel))}
+.offen .z1{display:flex;justify-content:space-between;font-size:12.5px}.offen .z1 b{font-size:13px}
+.wahl{display:flex;gap:6px;margin-top:9px}.wahl span{flex:1;white-space:nowrap;text-align:center;border:1px solid var(--line-strong);border-radius:5px;padding:5px 0;font-size:12px}
+.wahl .g{color:var(--good);border-color:var(--good)}.wahl .f{color:var(--warn);border-color:var(--warn)}.wahl .a{color:var(--crit);border-color:var(--crit)}
+.d{display:grid;grid-template-columns:62px 1fr auto;gap:2px 10px;padding:9px 0;border-bottom:1px solid var(--line);align-items:start}
+.d .dat{font:12px var(--mono);color:var(--ink-2);padding-top:1px}
+.erg{font-size:11.5px;border-radius:4px;padding:1px 6px;display:inline-block;margin-right:6px}
+.erg.g{color:var(--good);background:color-mix(in oklch,var(--good) 15%,transparent)}.erg.f{color:var(--warn);background:color-mix(in oklch,var(--warn) 15%,transparent)}.erg.a{color:var(--crit);background:color-mix(in oklch,var(--crit) 15%,transparent)}
+.via{font-size:12px;color:var(--ink-2)}.via.gc{color:var(--accent)}.via code{font:11.5px var(--mono)}
+.meta{grid-column:2/4;color:var(--ink-3);font-size:11.5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--line);border-radius:10px;padding:0 7px;font-size:11px;color:var(--ink-2);display:inline-flex;align-items:center;gap:4px}
+.pt{width:8px;height:8px;border-radius:50%;display:inline-block}
+.foto{width:34px;height:26px;border-radius:3px;background:linear-gradient(135deg,#55606a,#2d343a);display:inline-block}
+.nochmal{font-size:11.5px;color:var(--accent);white-space:nowrap}
+.notiz{grid-column:2/4;font-size:12px;color:var(--ink-2);font-style:italic}
+.mehr{color:var(--ink-3);font-size:12px;padding:8px 0 0}
+.g-karte{display:grid;grid-template-columns:64px 1fr;gap:10px;border:1px solid var(--line);border-radius:8px;padding:9px;margin-bottom:8px;background:var(--bg)}
+.g-karte.stern{border-color:var(--accent)}
+.g-karte img,.g-karte .ph{width:64px;height:64px;border-radius:5px;background:#fff;object-fit:contain}
+.g-karte .ph{background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-3);font:11px var(--mono)}
+.g-name{font:12px var(--mono);word-break:break-all}.g-name .st{color:var(--accent);font-family:"DejaVu Sans"}
+.g-werte{color:var(--ink-2);font-size:11.5px;margin-top:3px}.g-hist{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+.g-akt{margin-top:6px;display:flex;gap:10px;font-size:11.5px;color:var(--accent)}.g-akt span.dim{color:var(--ink-3)}
+.herkunft{white-space:nowrap;display:inline-block;margin-top:2px;font-size:10.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:3px;padding:0 4px;margin-left:4px}
+.plus{border:1px dashed var(--line-strong);border-radius:6px;padding:9px;text-align:center;color:var(--ink-3);font-size:12px}
+.nr{display:inline-flex;width:18px;height:18px;border-radius:50%;background:#e08a00;color:#111;font:700 11px Arial;align-items:center;justify-content:center;margin-left:6px;vertical-align:middle}
+.notes{width:430px;color:#d9dee3;font-size:13px;line-height:1.5}
+.notes h3{margin:4px 0 14px;font-size:17px;color:#fff}.notes p{margin:0 0 13px}.notes .n{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#e08a00;color:#111;font:700 11.5px Arial;align-items:center;justify-content:center;margin-right:8px}
+.notes .grau{color:#8f99a3;font-size:12px}
+</style></head><body>
+<div class="insp">
+ <div class="kopf"><h2>Halter_Netzteil</h2><div class="dim">STL · 52,5 × 18 × 6 mm · Hilfsmittel</div>
+  <div class="reiter"><span>Übersicht</span><span class="an">Drucken<span class="zahl">7</span></span><span>Verwendet</span><span>Varianten</span><span>Datei</span></div></div>
+ <div class="tafel">
+  <div class="titel"><span>DRUCKEN<span class="nr">1</span></span></div>
+  <div class="knoepfe">
+   <div class="k akzent"><b>↗ Im Slicer öffnen</b><small>Modell slicen und von dort drucken</small></div>
+   <div class="k"><b>↻ Nochmal drucken</b><small>mit ★ Halter_Netzteil_PLA… (zuletzt gut)</small></div>
+  </div>
+  <div class="bilanz"><b>7× gedruckt</b> · 4 gut · 1 mit Fehler · 2 abgebrochen · zuletzt heute</div>
+
+  <div class="titel"><span>VERLAUF<span class="nr">2</span></span><span style="letter-spacing:0">＋ Druck nachtragen</span></div>
+  <div class="offen"><div class="z1"><b>Heute 10:42 · im Slicer geöffnet</b><span class="via">über den Slicer</span></div>
+   <div style="color:var(--ink-2);font-size:12px;margin-top:3px">Wie ist es geworden?<span class="nr">3</span></div>
+   <div class="wahl"><span class="g">✓ gut</span><span class="f">⚠ mit Fehler</span><span class="a">✗ abgebr.</span><span style="color:var(--ink-3)">nicht gedruckt</span></div></div>
+
+  <div class="d"><span class="dat">29.10.</span><div><span class="erg g">✓ gut</span><span class="via gc">★ <code>…PLA_0.2_7m55s</code></span></div><span class="nochmal">↻ nochmal</span>
+   <div class="meta"><span class="chip"><span class="pt" style="background:#f2f2f2"></span>PLA 2,6 g</span><span class="chip">↓ Geeetech weiss · 0,06 €</span><span class="foto"></span></div></div>
+  <div class="d"><span class="dat">28.10.</span><div><span class="erg g">✓ gut</span><span class="via gc">★ <code>…PLA_0.2_7m55s</code></span><span class="nr">4</span></div><span class="nochmal">↻ nochmal</span>
+   <div class="meta"><span class="chip"><span class="pt" style="background:#f2f2f2"></span>PLA 2,6 g</span><span>· ab hier mit G-Code</span></div></div>
+  <div class="d"><span class="dat">27.10.</span><div><span class="erg f">⚠ mit Fehler</span><span class="via">über den Slicer</span></div><span class="nochmal">↗ Slicer</span>
+   <div class="notiz">„Warping an der Ecke, Bett 5 °C wärmer“</div><div class="meta"><span class="chip"><span class="pt" style="background:#1a1a1a;border:1px solid #666"></span>PLA</span><span class="foto"></span></div></div>
+  <div class="d"><span class="dat">20.10.</span><div><span class="erg a">✗ abgebrochen</span><span class="via">über den Slicer</span></div><span class="nochmal">↗ Slicer</span>
+   <div class="meta"><span>Haftung, nach 2 min</span></div></div>
+  <div class="mehr">3 ältere anzeigen · alle über den Slicer</div>
+
+  <div class="titel"><span>G-CODES<span class="nr">5</span></span><span style="letter-spacing:0">3</span></div>
+  <div class="g-karte stern"><img src="gc1z.png" alt=""><div>
+   <div class="g-name"><span class="st">★ </span>Halter_Netzteil_PLA_0.2_7m55s.gcode<span class="herkunft">aus dem Ordner</span></div>
+   <div class="g-werte">PLA · 0,2 mm · 7 min 55 s · 2,6 g · Kobra 3</div>
+   <div class="g-hist">2× gedruckt · 2 gut · eingelesen 25.10.</div>
+   <div class="g-akt"><span>↻ Drucken</span><span>Einstellungen</span><span>⤓</span><span class="dim">⋯</span></div></div></div>
+  <div class="g-karte"><div class="ph">PETG</div><div>
+   <div class="g-name">1029-0915-Halter_Netzteil_PETG_0.2_9m10s.gcode<span class="herkunft">aus dem Ordner</span></div>
+   <div class="g-werte">PETG · 0,2 mm · 9 min 10 s · 2,7 g · Kobra 3</div>
+   <div class="g-hist">noch nicht gedruckt<span class="nr">6</span></div>
+   <div class="g-akt"><span>↻ Drucken</span><span>Vergleichen mit ★</span><span class="dim">⋯ entfernen</span></div></div></div>
+  <div class="g-karte"><div class="ph">3MF</div><div>
+   <div class="g-name">Halter_Netzteil.3mf<span class="herkunft">Projekt, geslict</span></div>
+   <div class="g-werte">PLA · 0,2 mm · 2 Platten · 5,1 g</div>
+   <div class="g-hist">noch nicht gedruckt · Reicht das Filament? ✓</div>
+   <div class="g-akt"><span>↗ Im Slicer</span><span>Einstellungen</span><span class="dim">⋯</span></div></div></div>
+  <div class="plus">＋ G-Code oder Projekt hinzufügen — oder hierher ziehen</div>
+ </div>
+</div>
+<div class="notes">
+ <h3>Reiter „Drucken“ — Mock zum Besprechen</h3>
+ <p><span class="n">1</span><b>Oben drucken.</b> Zwei Wege: das Modell im Slicer öffnen (der normale Weg des Testers) oder einen vorhandenen, bewährten Druck nochmal — PartAtlas schlägt den ★-G-Code vor und öffnet genau diese Datei im Slicer oder legt sie zum Herunterladen bereit.</p>
+ <p><span class="n">2</span><b>Darunter der Verlauf</b> des Modells, neueste zuerst — jeder Druck mit Ergebnis, womit gedruckt (G-Code oder „über den Slicer“), Filament, abgebuchte Spule, Foto, Notiz. Jede Zeile kann „nochmal“.</p>
+ <p><span class="n">3</span><b>Offener Eintrag.</b> Wer über PartAtlas druckt, bekommt oben eine Zeile „Wie ist es geworden?“ — ein Klick bewertet. „Nicht gedruckt“ verwirft sie. So entsteht der Verlauf fast von selbst.</p>
+ <p><span class="n">4</span><b>Mit und ohne G-Code in einer Liste.</b> Die fünf Drucke über den Slicer und die mit G-Code stehen zusammen; die Zahl oben stimmt immer.</p>
+ <p><span class="n">5</span><b>Unten die verfügbaren G-Codes</b> und geslicten Projekte — eingelesen aus dem Ordner oder hineingezogen. Je Datei: Vorschaubild, Werte, wie oft gedruckt, ★ = der bewährte. Ein Klick auf die Zeile zeigt oben nur ihre Drucke.</p>
+ <p><span class="n">6</span><b>Lose G-Codes</b> („noch nicht gedruckt“) bleiben, bis man sie druckt oder entfernt; die Datei im Ordner bleibt liegen.</p>
+ <p class="grau">Nicht im Mock: unklare G-Codes ohne passendes Modell (stehen unter Bereinigen), Platte mit mehreren Modellen, G-Code später vom Drucker holen.</p>
+</div>
+</body></html>

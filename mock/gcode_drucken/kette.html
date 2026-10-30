@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff;font-family:"DejaVu Sans",Arial,sans-serif}
+text{font-family:"DejaVu Sans",Arial,sans-serif;fill:#1d2430}
+.t{font-size:15px;font-weight:700}.s{font-size:12.5px}.k{font-size:11.5px;fill:#5b6573}
+.box{fill:#f4f6f8;stroke:#9aa5b1;stroke-width:1.3;rx:8}
+.ja{fill:#e7f5ea;stroke:#3c9a52;stroke-width:1.3;rx:7}.nein{fill:#fdecea;stroke:#c8553d;stroke-width:1.3;rx:7}.teil{fill:#fff6e0;stroke:#d39b1f;stroke-width:1.3;rx:7}
+.pf{stroke:#5b6573;stroke-width:1.8;fill:none;marker-end:url(#p)}
+.band{font-size:12px;font-weight:700;fill:#5b6573;letter-spacing:.06em}
+</style></head><body>
+<svg width="1180" height="700" viewBox="0 0 1180 700" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6573"/></marker></defs>
+<text x="24" y="34" class="t" style="font-size:19px">Vom Modell zum gedruckten Teil — was PartAtlas an jeder Station weiss</text>
+<text x="24" y="56" class="k">Am Beispiel des Testers: Anycubic Kobra (USB-Stick/SD) und Bambu A1 Mini (aus dem Slicer per WLAN). Stand 1.0.5.</text>
+
+<text x="24" y="92" class="band">WAS PASSIERT</text>
+<!-- Stationen -->
+<rect class="box" x="24" y="104" width="230" height="118"/>
+<text x="40" y="130" class="t">1 · Modell</text>
+<text x="40" y="152" class="s">STL, 3MF, STEP, FCStd</text><text x="40" y="170" class="s">liegt im Ordner</text>
+<text x="40" y="196" class="k">z. B. Halter_Netzteil.stl</text>
+
+<rect class="box" x="300" y="104" width="250" height="118"/>
+<text x="316" y="130" class="t">2 · Slicen</text>
+<text x="316" y="152" class="s">im Slicer: Profil, Filament,</text><text x="316" y="170" class="s">Schichthöhe wählen</text>
+<text x="316" y="196" class="k">Anycubic Slicer Next, Bambu Studio</text>
+
+<rect class="box" x="596" y="104" width="250" height="118"/>
+<text x="612" y="130" class="t">3 · An den Drucker</text>
+<text x="612" y="152" class="s">G-Code per USB-Stick/SD</text><text x="612" y="170" class="s">oder direkt per WLAN</text>
+<text x="612" y="196" class="k">„vorbereitet“, noch nichts gedruckt</text>
+
+<rect class="box" x="892" y="104" width="264" height="118"/>
+<text x="908" y="130" class="t">4 · Druck</text>
+<text x="908" y="152" class="s">läuft, dann: gut, mit Fehler</text><text x="908" y="170" class="s">oder abgebrochen</text>
+<text x="908" y="196" class="k">nur Mensch oder Drucker weiss es</text>
+<path class="pf" d="M254 163 H296"/><path class="pf" d="M550 163 H592"/><path class="pf" d="M846 163 H888"/>
+
+<!-- Zwischenergebnisse von 2 -->
+<text x="436" y="252" class="band">WAS DABEI ENTSTEHT</text>
+<rect class="box" x="300" y="268" width="250" height="86"/>
+<text x="316" y="292" class="t" style="font-size:13.5px">a) Projekt gespeichert</text>
+<text x="316" y="313" class="s">geslictes 3MF (Einstellungen,</text><text x="316" y="331" class="s">Gewicht, Zeit, Vorschau)</text>
+<rect class="box" x="300" y="364" width="250" height="86"/>
+<text x="316" y="388" class="t" style="font-size:13.5px">b) G-Code exportiert</text>
+<text x="316" y="409" class="s">Datei im Ordner, neuer Name:</text><text x="316" y="427" class="k">1009-1926-Testscheibe…_3m17s</text>
+<path class="pf" d="M425 222 V264"/>
+<path class="pf" d="M550 407 C575 407 575 200 592 190"/>
+
+<!-- partAtlas heute -->
+<text x="24" y="490" class="band">PARTATLAS HEUTE</text>
+<rect class="ja" x="24" y="502" width="230" height="96"/>
+<text x="40" y="526" class="t" style="font-size:13.5px">✓ Kachel</text>
+<text x="40" y="547" class="s">Vorschau, Masse, Tags,</text><text x="40" y="565" class="s">Ordner, Suche</text>
+
+<rect class="teil" x="300" y="502" width="250" height="150"/>
+<text x="316" y="526" class="t" style="font-size:13.5px">◐ Reiter „Slicer“</text>
+<text x="316" y="547" class="s">a) ✓ Einstellungen aus dem</text><text x="316" y="565" class="s">3MF, Zeichen „G-Code“</text>
+<text x="316" y="591" class="s">b) ✗ unsichtbar: das Einlesen</text><text x="316" y="609" class="s">beachtet G-Code nicht</text>
+<text x="316" y="635" class="k">← hier sucht der Tester ihn</text>
+
+<rect class="nein" x="596" y="502" width="250" height="96"/>
+<text x="612" y="526" class="t" style="font-size:13.5px">✗ weiss nichts</text>
+<text x="612" y="547" class="s">ob, wann, auf welchem</text><text x="612" y="565" class="s">Drucker gedruckt wird</text>
+
+<rect class="teil" x="892" y="502" width="264" height="150"/>
+<text x="908" y="526" class="t" style="font-size:13.5px">◐ Reiter „Drucke“ (von Hand)</text>
+<text x="908" y="547" class="s">Ergebnis, Fotos, Gewicht,</text><text x="908" y="565" class="s">Spule abbuchen</text>
+<text x="908" y="591" class="s">G-Code an den Druck hängen</text><text x="908" y="609" class="s">→ Zeichen „G-Code“</text>
+<text x="908" y="635" class="k">nur so kennt PartAtlas G-Code heute</text>
+<path d="M139 222 V498 M425 454 V498 M721 222 V498 M1024 222 V498" stroke="#c3cad2" stroke-width="1.2" stroke-dasharray="4 4"/>
+</svg></body></html>

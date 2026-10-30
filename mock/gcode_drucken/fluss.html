@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff}
+text{font-family:"DejaVu Sans",Arial,sans-serif;fill:#1d2430}
+.t{font-size:14.5px;font-weight:700}.s{font-size:12.5px}.k{font-size:11.5px;fill:#5b6573}.m{white-space:pre;font-size:12px;font-family:"DejaVu Sans Mono",monospace}
+.heute{fill:#e7f5ea;stroke:#3c9a52;stroke-width:1.4}.neu{fill:#fff3dc;stroke:#e08a00;stroke-width:1.8}.weg{fill:#f3f4f6;stroke:#b0b7bf;stroke-width:1.3;stroke-dasharray:5 3}.box{fill:#f4f6f8;stroke:#9aa5b1;stroke-width:1.3}
+.pf{stroke:#3c9a52;stroke-width:2;fill:none;marker-end:url(#pg)}.pn{stroke:#e08a00;stroke-width:2.4;fill:none;marker-end:url(#po)}.pw{stroke:#b0b7bf;stroke-width:1.8;fill:none;stroke-dasharray:5 4;marker-end:url(#pgr)}
+.band{font-size:12px;font-weight:700;fill:#5b6573;letter-spacing:.06em}.wegt{fill:#8a929b}
+</style></head><body>
+<svg width="1240" height="830" viewBox="0 0 1240 830" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="pg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3c9a52"/></marker>
+<marker id="po" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#e08a00"/></marker>
+<marker id="pgr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b0b7bf"/></marker>
+</defs>
+<text x="24" y="34" class="t" style="font-size:19px">Der Weg eines G-Codes — heute und Vorschlag</text>
+<text x="24" y="56" class="k">Grundsatz (Tester): vor und nach dem Druck ist es derselbe G-Code. Also gibt es ihn in PartAtlas nur einmal, am Modell — Drucke hängen an ihm.</text>
+<rect class="heute" x="760" y="74" width="18" height="13" rx="3"/><text x="784" y="85" class="s">so ist es heute und bleibt</text>
+<rect class="neu" x="960" y="74" width="18" height="13" rx="3"/><text x="984" y="85" class="s">neu (Vorschlag)</text>
+<rect class="weg" x="1090" y="74" width="18" height="13" rx="3"/><text x="1114" y="85" class="s">heute, entfällt</text>
+
+<!-- Slicer -->
+<rect class="box" x="24" y="120" width="200" height="100" rx="8"/>
+<text x="40" y="146" class="t">Slicer</text><text x="40" y="167" class="s">Anycubic Slicer Next,</text><text x="40" y="185" class="s">Bambu Studio</text><text x="40" y="207" class="k">erzeugt den G-Code</text>
+
+<!-- Wege hinein -->
+<rect class="neu" x="290" y="104" width="250" height="80" rx="8"/>
+<text x="306" y="128" class="t">A · in den Ordner exportiert</text><text x="306" y="149" class="s">Einlesen findet ihn und ordnet</text><text x="306" y="167" class="s">ihn über den Inhalt zu</text>
+<rect class="neu" x="290" y="196" width="250" height="62" rx="8"/>
+<text x="306" y="220" class="t">B · aufs Modell gezogen</text><text x="306" y="242" class="s">oder „＋ G-Code“ am Modell</text>
+<rect class="box" x="290" y="270" width="250" height="70" rx="8"/>
+<text x="306" y="294" class="t">C · direkt an den Drucker</text><text x="306" y="314" class="s">A1 Mini per WLAN: PartAtlas</text><text x="306" y="330" class="s">sieht nichts (bleibt so)</text>
+<path class="pn" d="M224 160 H286"/><path class="pn" d="M224 180 C255 180 255 226 286 226"/><path class="pw" d="M224 200 C250 200 255 300 286 300"/>
+
+<!-- Zentrum: G-Code am Modell -->
+<rect class="neu" x="610" y="104" width="300" height="228" rx="10"/>
+<text x="628" y="130" class="t" style="font-size:15.5px">Der G-Code am Modell</text>
+<text x="628" y="152" class="k">einmal, egal wie er kam</text>
+<text x="628" y="180" class="s">• Vorschaubild aus der Datei</text>
+<text x="628" y="201" class="s">• Filament, Schichthöhe, Zeit, Gewicht</text>
+<text x="628" y="222" class="s">• Einstellungen, Vergleich</text>
+<text x="628" y="243" class="s">• „Reicht das Filament?“</text>
+<text x="628" y="264" class="s">• Zeichen „G-Code“ auf der Kachel</text>
+<text x="628" y="294" class="k">geslictes 3MF gehört genauso hierher</text>
+<text x="628" y="312" class="k">(heute schon: Reiter „Slicer“)</text>
+<path class="pn" d="M540 144 H606"/><path class="pn" d="M540 226 H606"/>
+
+<!-- Gedruckt -->
+<rect class="neu" x="960" y="148" width="250" height="56" rx="8"/>
+<text x="976" y="172" class="t">Knopf „Gedruckt …“</text><text x="976" y="192" class="s">am G-Code — ein Klick</text>
+<path class="pn" d="M910 176 H956"/>
+<rect class="heute" x="960" y="226" width="250" height="106" rx="8"/>
+<text x="976" y="250" class="t">Druck</text><text x="976" y="271" class="s">Ergebnis, Fotos, Notiz,</text><text x="976" y="289" class="s">Spule abbuchen, Referenz</text><text x="976" y="314" class="k">hängt am G-Code (gebaut)</text>
+<path class="pn" d="M1085 204 V222"/>
+
+<!-- Heute: getrennte Orte -->
+<text x="24" y="390" class="band">HEUTE: DREI ORTE FÜR EIN DING</text>
+<rect class="heute" x="24" y="402" width="290" height="98" rx="8"/>
+<text x="40" y="426" class="t">Reiter „Slicer“</text><text x="40" y="447" class="s">nur das geslicte 3MF selbst</text><text x="40" y="465" class="s">→ wird Teil von „G-Code am Modell“</text>
+<rect class="weg" x="334" y="402" width="290" height="98" rx="8"/>
+<text x="350" y="426" class="t wegt">„Drucke“: ＋ G-Code am Druck</text><text x="350" y="447" class="s">G-Code geht nur über einen Druck</text><text x="350" y="465" class="s">→ entfällt: der Druck zeigt auf den</text><text x="350" y="483" class="s">G-Code am Modell</text>
+<rect class="weg" x="644" y="402" width="290" height="98" rx="8"/>
+<text x="660" y="426" class="t wegt">Anhang .gcode</text><text x="660" y="447" class="s">nimmt jede Datei, auch G-Code —</text><text x="660" y="465" class="s">ohne Folgen → beim Anhängen fragen:</text><text x="660" y="483" class="s">„als G-Code übernehmen?“</text>
+<rect class="weg" x="954" y="402" width="256" height="98" rx="8"/>
+<text x="970" y="426" class="t wegt">G-Code im Ordner</text><text x="970" y="447" class="s">beim Einlesen übersehen</text><text x="970" y="465" class="s">→ Weg A</text>
+
+<!-- So sieht es der Anwender -->
+<text x="24" y="548" class="band">SO SÄHE ES DER ANWENDER: EIN REITER „DRUCKEN“ AM MODELL</text>
+<rect x="24" y="560" width="620" height="250" rx="8" fill="#fbfbfc" stroke="#d5dbe1"/>
+<text x="44" y="590" class="m" style="font-weight:700">Halter_Netzteil_PLA_0.2_7m55s.gcode</text>
+<text x="44" y="611" class="m">  PLA · 0,2 mm · 7 min 55 s · 2,6 g · Anycubic Kobra 3</text>
+<text x="44" y="637" class="m">    ✓ 21.01.  gut          Foto · −2,6 g Geeetech weiss</text>
+<text x="44" y="658" class="m">    ✗ 20.01.  abgebrochen  „Haftung am Rand“</text>
+<text x="44" y="679" class="m">    [ Gedruckt … ]</text>
+<text x="44" y="713" class="m" style="font-weight:700">Halter_Netzteil_PETG_0.2_9m10s.gcode</text>
+<text x="44" y="734" class="m">  PETG · 0,2 mm · 9 min 10 s · 2,7 g</text>
+<text x="44" y="755" class="m">    noch nicht gedruckt   [ Gedruckt … ]</text>
+<text x="44" y="789" class="m" style="fill:#5b6573">[ ＋ G-Code ]   [ Gedruckt ohne G-Code … ]</text>
+<rect x="670" y="560" width="540" height="250" rx="8" fill="#f8f9fb" stroke="#d5dbe1"/>
+<text x="690" y="588" class="t">Was der Anwender sich merken muss</text>
+<text x="690" y="616" class="s">1. Ein G-Code gehört zum Modell — egal, wie er kam.</text>
+<text x="690" y="642" class="s">2. „Gedruckt …“ sagt, wie es lief. Sonst nichts.</text>
+<text x="690" y="676" class="t" style="font-size:13px">Was dafür wegfällt</text>
+<text x="690" y="700" class="s">• zwei Reiter (Slicer, Drucke) → einer</text>
+<text x="690" y="722" class="s">• „erst Druck anlegen, dann G-Code anhängen“</text>
+<text x="690" y="744" class="s">• G-Code als Anhang ohne Wirkung</text>
+<text x="690" y="778" class="k">Datenbank: kaum neu — G-Code und Druck gibt es schon,</text>
+<text x="690" y="795" class="k">neu ist nur die Kante Modell → G-Code.</text>
+</svg></body></html>

@@ -1,0 +1,81 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff}
+text{font-family:"DejaVu Sans",Arial,sans-serif;fill:#1d2430}
+.t{font-size:15px;font-weight:700}.s{font-size:12.5px}.k{font-size:11.5px;fill:#5b6573}.q{font-size:11px;fill:#5b6573;font-style:italic}
+.box{fill:#f4f6f8;stroke:#9aa5b1;stroke-width:1.3}
+.ja{fill:#e7f5ea;stroke:#3c9a52;stroke-width:1.3}.offen{fill:#fff6e0;stroke:#d39b1f;stroke-width:1.3}.weg{fill:#eef0f2;stroke:#a7afb8;stroke-width:1.3;stroke-dasharray:5 3}
+.pf{stroke:#5b6573;stroke-width:1.8;fill:none;marker-end:url(#p)}
+.band{font-size:12px;font-weight:700;fill:#5b6573;letter-spacing:.06em}
+.wegt{fill:#7a838e}
+</style></head><body>
+<svg width="1220" height="790" viewBox="0 0 1220 790" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6573"/></marker></defs>
+<text x="24" y="34" class="t" style="font-size:19px">Planungsstand: was PartAtlas an jeder Station können soll</text>
+<text x="24" y="56" class="k">Quellen: KONZEPT.md §3.2, §4.1–4.6, §7 (Phasen) und die Entscheidungen in OFFEN.md bis 29.10.2026.</text>
+<!-- Legende -->
+<rect class="ja" x="760" y="22" width="16" height="12" rx="3"/><text x="782" y="33" class="s">gebaut</text>
+<rect class="offen" x="850" y="22" width="16" height="12" rx="3"/><text x="872" y="33" class="s">geplant, offen</text>
+<rect class="weg" x="990" y="22" width="16" height="12" rx="3"/><text x="1012" y="33" class="s">zurückgestellt (25.10.)</text>
+
+<text x="24" y="92" class="band">STATION</text>
+<rect class="box" x="24" y="102" width="270" height="62" rx="8"/><text x="40" y="128" class="t">1 · Modell</text><text x="40" y="149" class="k">Datei im Ordner</text>
+<rect class="box" x="330" y="102" width="270" height="62" rx="8"/><text x="346" y="128" class="t">2 · Slicen</text><text x="346" y="149" class="k">3MF-Projekt oder G-Code entsteht</text>
+<rect class="box" x="636" y="102" width="270" height="62" rx="8"/><text x="652" y="128" class="t">3 · An den Drucker</text><text x="652" y="149" class="k">USB/SD oder Netzwerk</text>
+<rect class="box" x="942" y="102" width="254" height="62" rx="8"/><text x="958" y="128" class="t">4 · Druck</text><text x="958" y="149" class="k">gut · mit Fehler · abgebrochen</text>
+<path class="pf" d="M294 133 H326"/><path class="pf" d="M600 133 H632"/><path class="pf" d="M906 133 H938"/>
+
+<text x="24" y="200" class="band">WAS GEPLANT IST — UND WAS DARAUS WURDE</text>
+<!-- Spalte 1 -->
+<rect class="ja" x="24" y="212" width="270" height="92" rx="7"/>
+<text x="40" y="236" class="t" style="font-size:13.5px">Katalog (Phase 1)</text>
+<text x="40" y="257" class="s">Kachel, Vorschau, Masse, Suche,</text><text x="40" y="275" class="s">Ordner, Tags, Baugruppen</text>
+<text x="40" y="294" class="k">§7 Phase 1</text>
+
+<!-- Spalte 2 -->
+<rect class="ja" x="330" y="212" width="270" height="92" rx="7"/>
+<text x="346" y="236" class="t" style="font-size:13.5px">Geslictes 3MF lesen</text>
+<text x="346" y="257" class="s">Einstellungen, Gewicht, Zeit</text><text x="346" y="275" class="s">→ Reiter „Slicer“, Filament-Prüfung</text>
+<text x="346" y="294" class="k">§4.1</text>
+<rect class="weg" x="330" y="316" width="270" height="140" rx="7"/>
+<text x="346" y="340" class="t wegt" style="font-size:13.5px">G-Code im Ordner finden</text>
+<text x="346" y="361" class="s">beim Einlesen gefunden, Zuordnung</text><text x="346" y="379" class="s">geraten (Dateiname, Slicer-Kopf),</text><text x="346" y="397" class="s">Anwender bestätigt → Vault</text>
+<text x="346" y="421" class="k">§3.2, Phase 2 · am 25.10. aus der Runde</text><text x="346" y="437" class="k">genommen (Aufwand 3, Budget 1–2)</text>
+<text x="346" y="451" class="q">← genau das erwartet der Tester</text>
+<rect class="offen" x="330" y="468" width="270" height="76" rx="7"/>
+<text x="346" y="492" class="t" style="font-size:13.5px">STL mit Referenz-Einstellungen</text>
+<text x="346" y="511" class="s">slicen, ohne Slicer-Oberfläche</text><text x="346" y="532" class="k">§4.4, Phase 4</text>
+
+<!-- Spalte 3 -->
+<rect class="weg" x="636" y="212" width="270" height="110" rx="7"/>
+<text x="652" y="236" class="t wegt" style="font-size:13.5px">„Nochmal“</text>
+<text x="652" y="257" class="s">G-Code des Referenzdrucks</text><text x="652" y="275" class="s">bitgenau an den Drucker schicken</text>
+<text x="652" y="296" class="k">§4.3, Phase 2 (Moonraker) · entfällt:</text><text x="652" y="312" class="k">Kobra 2 ohne Klipper, A1 Mini ist Bambu</text>
+<rect class="weg" x="636" y="334" width="270" height="92" rx="7"/>
+<text x="652" y="358" class="t wegt" style="font-size:13.5px">Druckeranbindung</text>
+<text x="652" y="379" class="s">Bambu LAN, PrusaLink, Flotte,</text><text x="652" y="397" class="s">gemeinsame Warteschlange</text>
+<text x="652" y="416" class="k">§7 Phase 4 · Anwender 25.10.: nicht</text>
+
+<!-- Spalte 4 -->
+<rect class="ja" x="942" y="212" width="254" height="150" rx="7"/>
+<text x="958" y="236" class="t" style="font-size:13.5px">Drucke von Hand</text>
+<text x="958" y="257" class="s">Stufe a: Ergebnis, Fotos, Gewicht,</text><text x="958" y="275" class="s">Referenz je Modell</text>
+<text x="958" y="299" class="s">Stufe b: G-Code/Projekt an den</text><text x="958" y="317" class="s">Druck, Einstellungen, Vergleich</text>
+<text x="958" y="341" class="s">Spule abbuchen, Kosten</text>
+<text x="958" y="356" class="k">§4.6 (0.19, 0.63), Lager 1.0.3</text>
+<rect class="offen" x="942" y="374" width="254" height="76" rx="7"/>
+<text x="958" y="398" class="t" style="font-size:13.5px">Platte mit mehreren Teilen</text>
+<text x="958" y="417" class="s">vorschlagen, an welchen Modellen</text><text x="958" y="438" class="k">§4.6 Stufe b, Rest</text>
+<rect class="weg" x="942" y="462" width="254" height="110" rx="7"/>
+<text x="958" y="486" class="t wegt" style="font-size:13.5px">Drucke automatisch</text>
+<text x="958" y="507" class="s">die Anbindung legt Drucke selbst</text><text x="958" y="525" class="s">an, mit Temperatur-Kurven</text>
+<text x="958" y="546" class="k">§4.6 „ab Phase 2“, §4.2 · braucht</text><text x="958" y="562" class="k">die Anbindung → mit ihr zurückgestellt</text>
+
+<!-- Fazit -->
+<rect x="24" y="600" width="1172" height="170" rx="8" fill="#f8f9fb" stroke="#d5dbe1"/>
+<text x="40" y="626" class="t" style="font-size:14px">Was das Schema zeigt</text>
+<text x="40" y="651" class="s">• „Automatisch“ war im Plan die Druckeranbindung (Station 3/4): der Drucker meldet, dass er gedruckt hat. Nicht der Slicer.</text>
+<text x="40" y="674" class="s">• Ohne Anbindung entsteht ein Druck nur von Hand. Ein G-Code allein sagt nie, dass gedruckt wurde — nur, dass vorbereitet wurde.</text>
+<text x="40" y="697" class="s">• Geplant war, G-Code im Ordner zu finden und dem Modell zuzuordnen (Station 2). Das ist genau, was der Tester tut — es wurde am 25.10.</text>
+<text x="52" y="717" class="s">nur aus Budgetgründen zurückgestellt, nicht verworfen.</text>
+<text x="40" y="740" class="s">• Nicht geplant war, wo ein gefundener G-Code hängt, solange es keinen Druck gibt. Das ist die offene Frage „vorbereitet“ gegen „gedruckt“.</text>
+</svg></body></html>
