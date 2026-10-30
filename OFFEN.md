@@ -4,6 +4,20 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Robustheit: Abschusstests (Anwender 30.10.2026, vor der nächsten echten Fassung)
+
+Anlass: 1.0.6 öffnete den Bestand des Testers nicht, und die Tag-Zählung stimmte mit gelöschten Modellen nicht — beides zeigte sich nur an einem echten Bestand mit Papierkorb und
+alten Daten, nie an frischen Testbeständen. Aufwand 3, in zwei Paketen, **als eigene Suite „vor einer Fassung“** (nicht in jedem Lauf):
+1. **Altbestand-Suite (zuerst):** künstlicher Bestand mit Papierkorb (Modelle, Tags, Drucke), Archiv, Zuordnungen im alten Format (Kanten ohne `auto`, Modelle ohne `gcode_n`),
+   fehlenden und umbenannten Dateien; darauf jeder Start, jede Liste, `/api/tags`, `/api/zaehler`. Besser: eine Kopie der Datenbank des Testers (ohne Modelldateien), falls er sie gibt.
+2. **Bestand über alle Fassungen hochziehen:** einer aus 1.0.0 durch jede Fassung bis heute, jeweils öffnen und prüfen.
+3. **Harter Abbruch (`kill -9`)** während Einlesen, Transaktionen (Tag, Löschen, Druck anlegen, Spule abbuchen) und der Umstellungen beim Start; danach öffnen, nichts halb geschrieben,
+   Zähler stimmen. Viele Läufe mit zufälligem Zeitpunkt.
+4. **Voller Datenträger** (ENOSPC) und schreibgeschützter Ordner: sauber melden, weiter lesen.
+5. **Zweimal gleichzeitig gestartet** (Sperre, flatgraph VERTRAG §3.2).
+Grenze: ein Test findet nur, wonach er sucht — darum zuerst Punkt 1 mit echtem Bestand. flatgraph sichert „ganz oder gar nicht“ zu (VERTRAG §2.1–2.6); ob dessen Tests bis zum
+harten Abbruch gehen, ist nicht nachgesehen.
+
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
 **1.0.6 öffnete den Bestand des Testers nicht** („Source node MODEL_ASSET/m_000047 does not exist or is soft-deleted“): die neue Umstellung der Tag-Herkunft beim Start
