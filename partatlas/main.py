@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from .eigene import Eigene
+from .aktualisierung import Aktualisierung
 from . import anhaenge, aufraeumen, backup, dateidialog, neuigkeiten, papierkorb, slicer, durchsuchen, formate, programme, sicherung, zuordnen
 from .baugruppen import Baugruppen
 from .bestand import Bestand
@@ -79,12 +80,13 @@ def _dateien(pfad):
     return sum(len(fs) for _, _, fs in os.walk(pfad))
 
 
-def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hintergrund=False):
+def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hintergrund=False, fassung_pruefen=False):
     """`im_hintergrund`: der Port ist sofort offen und der Bestand wird in einem Thread geöffnet; bis er bereit ist, zeigt „/“ eine
     Warteseite und /api/* antwortet 503. Unter Windows dauerte das Öffnen bei 8 600 Modellen 47 s, in denen die Seite nicht erreichbar
     war (Protokoll des Anwenders, 8.10.2026). Die Tests im selben Prozess öffnen weiter vorher — sie fragen gleich danach ab."""
     verteiler = Verteiler()
     zustand = {}
+    aktuell = Aktualisierung(VERSION)         # Nachsehen nur im echten Start (`fassung_pruefen`): Tests sollen kein `git fetch` auslösen
     oeffnen_stand = {"bereit": False, "fehler": None}
 
     def backup_melden(st):
@@ -107,7 +109,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         s = Scanner(b, k, melden=lambda st: verteiler.senden("scan", st), melden_worker=lambda st: verteiler.senden("worker", st), prozesse=prozesse)
         bg = Baugruppen(k)
         neuigkeiten.beim_oeffnen(b, k)
-        zustand.update(bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg), backup=backup.Backup(b, k, melden=backup_melden))
+        zustand.update(aktualisierung=aktuell, bestand=b, katalog=k, scanner=s, baugruppen=bg, eigene=Eigene(k, bg), backup=backup.Backup(b, k, melden=backup_melden))
         s.schleifenprobe = verteiler.antwortzeit
         _startinfo(b, k, s)
         # Beim Start einlesen: Einstellung des Anwenders, Vorgabe AUS. Eine grosse Library auf einer langsamen Platte rattert sonst bei jedem Start;
@@ -124,6 +126,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         # Ohne `im_hintergrund` ist der Port hier noch nicht offen; „nimmt Anfragen an“ schreibt __main__, wenn er es wirklich ist.
         oeffnen_stand["bereit"] = True
         log.info("Katalog geöffnet")
+        if fassung_pruefen:
+            aktuell.starten()
 
     def oeffnen_sicher():
         try:
@@ -154,6 +158,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         # beim harten Beenden als eigener Prozess zurück.
         zustand["backup"].abbrechen()          # ein halbes ZIP bleibt nicht liegen: die Arbeitsdatei geht beim Abbruch weg
         zustand["backup"].warten(BEENDEN_S)
+        aktuell.beenden()
         s.abbrechen()
         if not s.warten(BEENDEN_S):
             # Datenverlust droht nicht: was das Einlesen danach noch schreiben will, scheitert an der geschlossenen Datenbank, und jede
@@ -327,6 +332,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             return {"version": VERSION, "neu": neuigkeiten.letzte()}
         gesehen = b.einstellungen().get("neuigkeiten_gesehen") or neuigkeiten.START
         return {"version": VERSION, "neu": neuigkeiten.seit(gesehen, VERSION)}
+
+    @app.get("/api/aktualisierung")
+    def aktualisierung_holen():
+        """Gibt es auf `main` eine höhere Fassung? {verfuegbar, version, neu: [{version, zeilen}]} — leer, solange nicht nachgesehen wurde oder kein Git-Ordner da ist."""
+        return aktuell.stand
 
     @app.post("/api/neuigkeiten/gesehen")
     def neuigkeiten_gesehen():

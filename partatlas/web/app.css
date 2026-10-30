@@ -1421,3 +1421,8 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .badges .slot-g { display: flex; justify-content: flex-end; min-width: 5.2em; }
 .badge.gcode { border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--panel); cursor: pointer; font: 12px var(--mono); }
 .badge.gcode:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Neue Fassung verfügbar: kleines Zeichen neben der Fassung */
+.neue-fassung { margin-left: 8px; padding: 1px 8px; font: 600 11px var(--mono); color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 999px; cursor: pointer; vertical-align: middle; }
+.neue-fassung:hover { background: var(--accent); color: var(--bg, #fff); }
+.neue-fassung[hidden] { display: none; }

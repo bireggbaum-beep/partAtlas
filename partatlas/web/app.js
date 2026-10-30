@@ -2390,6 +2390,27 @@ $("#version").style.cursor = "pointer";
 $("#version").title = "Fassung — Klick zeigt, was neu ist";
 $("#version").addEventListener("click", () => neuigkeitenZeigen({ alle: true }));
 
+// „Neue Fassung verfügbar“ (aktualisierung.py): ein Zeichen neben der Fassung, wenn auf main eine höhere liegt; Klick zeigt, was darin neu ist.
+// Das Nachsehen läuft im Server (git fetch) und braucht einen Moment; darum ein paar Mal früh, dann gelegentlich.
+let neueFassung = null;
+async function neueFassungPruefen() {
+  let a;
+  try { a = await api("/api/aktualisierung"); } catch { return; }
+  neueFassung = a.verfuegbar ? a : null;
+  const el = $("#neue-fassung");
+  el.hidden = !neueFassung;
+  if (neueFassung) { el.textContent = `↑ ${neueFassung.version}`; el.title = `Neue Fassung ${neueFassung.version} verfügbar — Klick zeigt, was neu ist`; }
+}
+$("#neue-fassung").addEventListener("click", async () => {
+  if (!neueFassung) return;
+  await dialog(`<h2>Neue Fassung ${esc(neueFassung.version)}</h2><p class="dim">Du hast ${esc($("#version").textContent || "")}. Das ist neu:</p>
+    ${neueFassung.neu.map((e) => `<h3 class="neu-fassung">${esc(e.version)}</h3><ul class="neu">${e.zeilen.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>`).join("")}
+    <p class="dim">Holen: <code>git pull</code> im partAtlas-Ordner, dann partAtlas neu starten.</p>
+    <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
+});
+[8000, 30000, 90000].forEach((ms) => setTimeout(neueFassungPruefen, ms));
+setInterval(neueFassungPruefen, 10 * 60 * 1000);
+
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;

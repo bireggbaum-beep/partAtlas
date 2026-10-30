@@ -31,8 +31,14 @@ Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher
   Reiter „Drucken“ (Mock) bleibt.
 
 
-- **Update-Info — gebaut:** Fassung **1.0.8** (Branch, noch nicht auf `main`) mit Eintrag „Neu in dieser Fassung“ (G-Code im Ordner, Tag-Zählung); das Fenster gab es schon (nach jedem Update einmal, Klick auf die Fassung
-  zeigt es wieder). Anwender 30.10.: kein Link, keine Releases — der Tester holt per `git pull` von `main`. test_neuigkeiten 9/9.
+- **Update-Info — gebaut (zuerst falsch verstanden: nur der Eintrag „Neu in dieser Fassung“, das ist nach dem Update, nicht davor):** Fassung **1.0.8** (Branch, nicht auf `main`). Anwender 30.10.: ein **Zeichen
+  „↑ 9.9.9“ neben der Fassung**, wenn eine neuere da ist; Klick zeigt, was in der nächsten Fassung neu ist. Kein Link, keine Releases — der Tester holt per `git pull` von `main`. Gebaut:
+  `partatlas/aktualisierung.py`: im echten Start (`__main__`, `fassung_pruefen=True`; Tests lösen kein `git fetch` aus) holt ein Hintergrund-Thread `origin/main` (`git fetch`, ändert den Arbeitsordner
+  nicht; Kanal mit `PARTATLAS_KANAL` änderbar), liest `version.py` und `neuigkeiten.py` von dort (Text, nicht ausgeführt) und merkt die Einträge zwischen laufender und neuer Fassung;
+  alle 3 h wieder. `GET /api/aktualisierung`; Zeichen `#neue-fassung` (Seite fragt nach 8/30/90 s, dann alle 10 min), Klick: Fenster „Neue Fassung x“ mit den Einträgen und „git pull, dann neu starten“.
+  Still bei: kein Git-Ordner (Einzeldatei/Archiv), kein Netz, Fehler (Protokoll). test_aktualisierung 12/12 (echte Git-Ordner, Gegenprobe fällt), test_aktualisierung_ui 3/3 (Gegenprobe fällt),
+  test_neuigkeiten 9/9. **Nicht geprüft:** ein privates Repo mit echten Zugangsdaten des Testers (es nutzt sein Git; fragt Git nach einem Passwort, scheitert `fetch` still: `GIT_TERMINAL_PROMPT=0`);
+  der Tester muss beim Klon `origin` und Zweig `main` haben.
 
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
