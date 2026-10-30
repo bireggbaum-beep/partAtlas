@@ -1693,11 +1693,14 @@ class Katalog:
         gemerkt = self._tags_zwischen
         if gemerkt is not None and gemerkt[0] == stand:
             return [dict(t) for t in gemerkt[1]]
-        liste = []
+        liste, cache = [], {}
         for name in self.db.list_nodes(TAG, readonly=True):
             kanten = self.db.get_connected_edges(ref(TAG, name), direction="in", rel_type=HAT_TAG)
-            if kanten:
-                liste.append({"name": name, "anzahl": len(kanten), "eigen": sum(1 for _, k in kanten if k.get("auto") is not True)})
+            # get_connected_edges liefert auch Kanten von Modellen im Papierkorb; die zählen nicht (1.0.6 zählte sie mit). Kanten ohne
+            # `auto` (vor 0.56, und die an Modellen, die der Umzug beim Start ausliess) bestimmen die Regeln wie in tags_verwaltung.
+            lebend = [(k["source"].split("/", 1)[1], k) for _, k in kanten if self.db.get_node(k["source"], readonly=True) is not None]
+            if lebend:
+                liste.append({"name": name, "anzahl": len(lebend), "eigen": sum(1 for mid, k in lebend if not self._ist_auto(k, mid, cache))})
         liste = sorted(liste, key=lambda t: (-t["anzahl"], t["name"]))
         self._tags_zwischen = (stand, liste)
         return [dict(t) for t in liste]
