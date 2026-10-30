@@ -14,7 +14,11 @@ Anwender: nur diese drei. Kein Altbestand des Testers vorhanden → künstlicher
 - **3 kill -9 — gebaut:** `tests/test_abbruch.py` (40 Läufe, 42/42, ~80 s; `ABBRUCH_LAEUFE`, `ABBRUCH_SAMEN`). Ein Arbeiter-Prozess (Tag setzen/lösen, Löschen/Zurückholen, Druck mit
   Abbuchung, Neu einlesen) wird nach 0,05–1,5 s mit SIGKILL beendet; danach öffnen, alle Listen, Zähler am Modell = Drucke, Spule = voll − Abbuchungen, Tag-Zählung, keine Kante ins Leere.
   Gegenprobe: Abbuchung in eigener Transaktion vor dem Druck → fällt im ersten Lauf. **Kein Fehler gefunden.** Nicht abgedeckt: Abbruch während des Einlesens grosser Bestände und der Umstellungen beim Start.
-- **Offen:** 2 (Bestand durch alle Fassungen), 4 (voller Datenträger, schreibgeschützt), 5 (zweimal gestartet).
+- **5 Doppelstart — gebaut:** `tests/test_doppelstart.py` (10/10, echte Prozesse `python -m partatlas`): zweiter Start auf anderem Port liefert keine Daten (503 „von einem anderen Prozess geoeffnet"),
+  der erste schreibt weiter; zweiter auf demselben Port beendet sich (Exit 3); nach kill -9 des ersten öffnet ein neuer Start alles (flock fällt mit dem Prozess). Gegenprobe: Sperre in einer
+  flatgraph-Kopie entfernt → 2 Checks fallen. **Beobachtet, kein Datenfehler:** der zweite Prozess auf anderem Port **beendet sich nicht**, er bleibt als leere 503-Seite stehen, mit dem
+  technischen Text („BestandBelegt …"); im Browser steht dann nur diese Meldung. Vorschlag (Aufwand 1): Meldung freundlich („partAtlas läuft schon — im anderen Fenster weiterarbeiten") und beenden.
+- **Offen:** 2 (Bestand durch alle Fassungen), 4 (voller Datenträger, schreibgeschützt).
 
 ## Stand: 1.0.7 auf `main` (29.10.2026, für den Tester) — Behebung eines Startfehlers in 1.0.6
 
