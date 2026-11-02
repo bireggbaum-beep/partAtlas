@@ -102,7 +102,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         log.info("Datenbank gelesen in %.1f s (%d Dateien)", time.monotonic() - t0, _dateien(os.path.join(b.wurzel, "datenbank")))
         # Vor allem anderen, auch vor dem Nachziehen alter Bestände in Katalog(): der Stand, mit dem diese Sitzung beginnt.
         try:
-            sicherung.sichern(b, "start")
+            sicherung.beim_start(b, VERSION)
         except OSError as e:
             log.error("Keine Sicherung beim Start möglich: %s", e)
         k = Katalog(b)
@@ -124,6 +124,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             # zu durchsuchen. Die Warteschlange ist der Zustand „ausstehend“ im Bestand, sie überlebt Abbruch und Neustart.
             s.starten(nur_cad=True)
         # Ohne `im_hintergrund` ist der Port hier noch nicht offen; „nimmt Anfragen an“ schreibt __main__, wenn er es wirklich ist.
+        # Erst nach gelungenem Öffnen (samt Umstellungen): scheitert es, gilt der nächste Start weiter als erster dieser Fassung.
+        if b.einstellungen().get("fassung_zuletzt") != VERSION:
+            b.einstellungen_setzen(fassung_zuletzt=VERSION)
         oeffnen_stand["bereit"] = True
         log.info("Katalog geöffnet")
         if fassung_pruefen:

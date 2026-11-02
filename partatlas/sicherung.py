@@ -31,12 +31,14 @@ STAND = "stand"         # Fingerabdruck des gesicherten Stands, neben den TEILEN
 INFO = "info.json"      # Anlass in Worten und Grösse, beim Anlegen geschrieben: die Liste muss dafür nicht jede Datei anfassen
 NEUESTE = 5
 TAGE = 30
+UPDATES = 3             # Sicherungen „vor dem Update“: die letzten drei bleiben, auch nach den TAGEN (der Rückweg zur Fassung davor)
 # Der Anlass in Worten, für die Liste in den Einstellungen; ein mitgegebener Text (`anlass`) geht vor.
 ANLASS = {"start": "Beim Start", "von-hand": "Von Hand", "vor-zurueckholen": "Vor dem Zurückholen einer Sicherung",
           "vor-entfernen": "Vor dem Entfernen von Modellen", "vor-ordner-entfernen": "Vor dem Entfernen eines Ordners",
           "vor-ordner-aus-katalog": "Vor dem Entfernen eines Ordners aus dem Katalog", "vor-endgueltig-entfernen": "Vor dem endgültigen Entfernen",
           "vor-tags-loeschen": "Vor dem Löschen von Tags", "vor-tags-zusammenfuehren": "Vor dem Zusammenführen von Tags",
-          "vor-auto-tags-entfernen": "Vor dem Entfernen der automatischen Tags", "vor-archiv": "Vor dem Archivieren", "vor-fehlende": "Vor dem Entscheiden über fehlende Dateien"}
+          "vor-auto-tags-entfernen": "Vor dem Entfernen der automatischen Tags", "vor-archiv": "Vor dem Archivieren", "vor-fehlende": "Vor dem Entscheiden über fehlende Dateien",
+          "vor-update": "Vor einem Update"}
 # Zeit, dann ein immer zweistelliger Zähler: so ist die Reihenfolge der Namen die der Entstehung, auch in derselben Sekunde.
 log = logging.getLogger("partatlas")
 _NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{6})-(\d{2})__([\w-]+)$")
@@ -144,6 +146,22 @@ def sichern(bestand, grund, immer=False, anlass=None, aufraeumen=True):
     return name
 
 
+def beim_start(bestand, version):
+    """Die Sicherung beim Start. Ist die Fassung eine andere als beim letzten Öffnen, immer eine eigene „vor dem Update“ — vor den Umstellungen,
+    die die neue Fassung beim Start macht, und vom Aufräumen ausgenommen (UPDATES): wer zur Fassung davor zurück muss, braucht genau diesen Stand
+    (Vorbild 3MF Katalog Manager 0.16). Bis 1.0.8 merkte sich der Bestand die Fassung nicht; dann gilt die zuletzt gesehene „Neu in dieser Fassung“."""
+    e = bestand.einstellungen()
+    alt = e.get("fassung_zuletzt") or e.get("neuigkeiten_gesehen")
+    if not alt or alt == version:
+        return sichern(bestand, "start")
+    anlass = f"Vor dem Update von {alt} auf {version}"
+    letzte = next((x for x in liste(bestand.wurzel) if x["grund"] == "vor-update"), None)
+    if letzte and letzte["anlass"] == anlass:
+        return sichern(bestand, "start")      # das Öffnen scheiterte nach dieser Sicherung schon einmal: sie steht, keine zweite gleiche
+    log.info("Neue Fassung (%s → %s): Sicherung vor dem Update", alt, version)
+    return sichern(bestand, "vor-update", immer=True, anlass=anlass)
+
+
 def aufraeumen_nach(bestand):
     e = bestand.einstellungen()
     _aufraeumen(bestand.wurzel, e.get("sicherung_neueste", NEUESTE), e.get("sicherung_tage", TAGE))
@@ -159,6 +177,7 @@ def _aufraeumen(wurzel, neueste=NEUESTE, tage=TAGE):
     for s in alle:                            # neueste zuerst: die neueste je Tag gewinnt
         neueste_des_tages.setdefault(s["zeit"][:10], s["name"])
     behalten |= {n for tag, n in neueste_des_tages.items() if tag >= grenze}
+    behalten |= {s["name"] for s in [x for x in alle if x["grund"] == "vor-update"][:UPDATES]}
     basis = os.path.realpath(_ordner(wurzel))
     for s in alle:
         if s["name"] not in behalten:

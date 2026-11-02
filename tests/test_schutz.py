@@ -29,6 +29,8 @@ ERLAUBT = {
     ("bestand.py", "Bestand.thumb", "os.replace"): "Thumb im Bestand fertig ablegen",
     ("bestand.py", "Bestand.einstellungen_setzen", "schreibe_atomar"): "einstellungen.json im Bestand",
     ("cad.py", "_stapel", "shutil.rmtree"): "Arbeitsordner eines FreeCAD-Stapels unter arbeit/cad im Bestand",
+    ("einmal.py", "eintragen", "schreibe_atomar"): "laeuft.json im Bestand (Port, Prozess, Fassung): wo ein zweiter Start den laufenden findet",
+    ("einmal.py", "austragen", "os.remove"): "laeuft.json im Bestand beim Beenden — nur die eigene (gleicher Prozess), nie die eines anderen",
     ("anhaenge.py", "Anhaenge.hinzufuegen", "dateien.schreibe_atomar"): "Anhang → vault/anhaenge/<Titel>__<Hash>, nur wenn dort noch keiner liegt",
     ("drucke.py", "Drucke._quelle_sichern", "os.replace"): "Kopie der Modelldatei → vault/quellen/, nur wenn dort noch keine liegt",
     ("drucke.py", "Drucke.datei_anhaengen", "dateien.schreibe_atomar"): "G-Code/Projekt → vault/gcode/<Titel>__<Hash>, nur wenn dort noch keine liegt",
@@ -56,7 +58,7 @@ ERLAUBT = {
     ("scan.py", "_analyse", "dateien.schreibe_atomar"): "Vorschau aus der Datei in vault/vorschau",
     ("scan.py", "_rendern", "dateien.schreibe_atomar"): "berechnete Vorschau in vault/vorschau",
     ("scan.py", "_cad_bild", "dateien.schreibe_atomar"): "berechnete Vorschau in vault/vorschau",
-    ("sicherung.py", "_aufraeumen", "shutil.rmtree"): "alte Sicherung unter sicherungen/ (die neuesten 5 und je Tag die neueste der letzten 30 bleiben)",
+    ("sicherung.py", "_aufraeumen", "shutil.rmtree"): "alte Sicherung unter sicherungen/ (die neuesten 5, je Tag die neueste der letzten 30 und die letzten 3 vor einem Update bleiben)",
     ("sicherung.py", "sichern", "os.replace"): "fertige Sicherung an ihren Namen",
     ("sicherung.py", "tauschen", "os.replace"): "jetzige Datenbank beiseite nach arbeit/, nicht gelöscht (Zurückholen über Kommandozeile und Oberfläche)",
 }

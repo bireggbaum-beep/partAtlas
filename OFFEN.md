@@ -17,6 +17,13 @@ aktualisieren.
   in den Bestand, beim Beenden entfernt es die eigene. Ein neuer Start (`__main__`) sieht vorher nach: antwortet dort ein partAtlas mit demselben Bestand, öffnet er den Browser dort
   (`webbrowser`, nicht in Tests: `PARTATLAS_KEIN_BROWSER`) und endet. Rutscht er durch (Datei veraltet, beide gleichzeitig), weist ihn die Sperre ab, und eine Wache beendet ihn
   (vorher: leere 503-Seite „BestandBelegt“). start.sh/start.bat prüften den gleichen Port schon. test_doppelstart 10/10 (zwei Gegenproben fallen), test_aktualisierung_ui 3/3.
+  **Nachtrag:** die Wächter-Suite test_schutz fiel danach (laeuft.json schreiben/entfernen nicht in ERLAUBT) — ich hatte sie nicht laufen lassen; eingetragen, 28/28.
+  **Lehre:** wer eine Datei schreibt oder löscht, lässt test_schutz mitlaufen.
+- **Sicherung vor einem Update (Vorbild 3MF Katalog Manager 0.16):** `sicherung.beim_start` statt der gewöhnlichen Startsicherung: ist die Fassung eine andere als beim letzten Öffnen
+  (`fassung_zuletzt` in den Einstellungen, gesetzt erst nach gelungenem Öffnen; bis 1.0.8 nicht vermerkt → ersatzweise `neuigkeiten_gesehen`), immer eine eigene Sicherung „Vor dem Update
+  von x auf y“ (Grund `vor-update`), vor den Umstellungen beim Start. Das Aufräumen behält die letzten 3 davon unabhängig vom Alter (`UPDATES`). Scheitert das Öffnen, legt der nächste
+  Start keine zweite gleiche an. Rückweg: `git checkout fassung-x`, dann diese Sicherung zurückholen. test_update_sicherung 9/9 (3 Gegenproben fallen), test_schutz 28/28, test_backup 19/19,
+  test_altbestand 26/26. Nicht gebaut: eigene Kennzeichnung in der Liste der Einstellungen (der Anlass nennt beide Fassungen).
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 
