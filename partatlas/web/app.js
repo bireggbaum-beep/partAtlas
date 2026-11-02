@@ -2928,7 +2928,7 @@ $("#gruppierung").value = zustand.gruppierung;
     case "archive-knopf": return archiveEntpacken();
     case "verschieben": {
       const ziel = await ordnerWahl("Verschieben", "Die Datei wird auf der Platte verschoben. Nichts wird überschrieben.");
-      if (ziel) await api(`/api/modelle/${id}/verschieben`, { method: "POST", body: { ordner: ziel } }).then(() => toast("Verschoben.")).catch((e2) => toast(e2.message));
+      if (ziel) await modelleVerschieben([id], ziel);
       return;
     }
     case "quelle-aendern": {
@@ -3143,7 +3143,20 @@ document.addEventListener("dragstart", (e) => {
   const k = e.target.closest?.(".karte, .zeile-l, .zeile-k"), w = e.target.closest?.("[data-ws]");
   const o = e.target.closest?.(".baum .eintrag[data-ordner][draggable]");
   if (o) { gezogen = { art: "ordner", id: o.dataset.ordner }; o.classList.add("ziehen"); e.dataTransfer.effectAllowed = "move"; }
-  else if (k) { gezogen = { art: "modell", id: k.dataset.id }; k.classList.add("ziehen"); }
+  else if (k) {
+    gezogen = { art: "modell", id: k.dataset.id };
+    k.classList.add("ziehen");
+    // Mehrere gewählt: das Ziehbild sagt, wie viele mitgehen — sonst sähe man nur die eine Kachel unter dem Zeiger.
+    const n = zustand.auswahl.has(k.dataset.id) ? zustand.auswahl.size : 1;
+    if (n > 1) {
+      const bild = document.createElement("div");
+      bild.className = "ziehbild";
+      bild.textContent = `${anzahl(n)} Modelle`;
+      document.body.append(bild);
+      e.dataTransfer.setDragImage(bild, 16, 16);
+      setTimeout(() => bild.remove(), 0);
+    }
+  }
   else if (w) gezogen = { art: "ws", id: w.dataset.ws };
   else return;
   if (gezogen.art !== "ordner") e.dataTransfer.effectAllowed = "copyMove";
@@ -3157,6 +3170,30 @@ document.addEventListener("dragend", () => {
 
 // Zieht man eine gewählte Kachel, gelten alle Gewählten.
 const gezogene = () => (zustand.auswahl.has(gezogen.id) ? [...zustand.auswahl] : [gezogen.id]);
+
+// Modelle in einen Ordner verschieben (Ziehen oder Menü): die Meldung nennt das Ziel und hat „Rückgängig“, Strg+Z geht ebenso — ein versehentliches
+// Fallenlassen soll ein Tastendruck sein, nicht eine Suche im Dateimanager. Zurück geht nur, was wirklich verschoben wurde, jedes an seinen alten Ort.
+async function modelleVerschieben(ids, ziel) {
+  const vorher = new Map(ids.map((id) => [id, (zustand.modelle.find((m) => m.id === id)?.ordner || [])[0]]));
+  let r;
+  try { r = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: ids, wert: ziel } }); }
+  catch (e) { return toast(e.message); }
+  const gescheitert = new Set(r.fehler.map((f) => f.id));
+  const ok = ids.filter((id) => !gescheitert.has(id) && vorher.get(id) && vorher.get(id).replace(/\/$/, "") !== ziel.replace(/\/$/, ""));
+  if (ok.length) {
+    const je = new Map();
+    for (const id of ok) je.set(vorher.get(id), [...(je.get(vorher.get(id)) || []), id]);
+    ordnerAktion.letzte = { rueck: async () => {
+      for (const [ordner, liste] of je) await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: liste, wert: ordner } });
+    } };
+  }
+  const name = (id) => { const m = zustand.modelle.find((x) => x.id === id); return m ? `„${m.name}${endung[m.format] || ""}“` : "Das Modell"; };
+  const was = ok.length === 1 ? name(ok[0]) : `${anzahl(ok.length)} Modelle`;
+  const text = !ok.length ? (r.fehler[0]?.fehler || "Nichts verschoben.")
+    : `${was} verschoben nach „${ordnerName(ziel)}“.` + (r.fehler.length ? ` ${anzahl(r.fehler.length)} nicht: ${r.fehler[0].fehler}` : "");
+  toast(text, { aktionen: ok.length ? [["Rückgängig", rueckgaengig]] : [], dauer: r.fehler.length ? 9000 : 8000 });
+  neuLaden();
+}
 
 function ablageZiel(el) {
   if (!gezogen || !el?.closest) return null;
@@ -3207,8 +3244,7 @@ document.addEventListener("drop", async (e) => {
       await api(`/api/baugruppen/${z.dataset.baugruppe}/positionen`, { method: "POST", body: { refs: gezogene().map((x) => `MODEL_ASSET/${x}`) } });
       toast("Zur Baugruppe hinzugefügt.");
     } else if (z.dataset.ordner) {
-      const r = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: gezogene(), wert: z.dataset.ordner } });
-      toast(r.fehler.length ? r.fehler[0].fehler : "Verschoben.");
+      await modelleVerschieben(gezogene(), z.dataset.ordner);
     } else if (z.dataset.sammlung) {
       await api(`/api/sammlungen/${z.dataset.sammlung}/modelle`, { method: "POST", body: { modelle: gezogene() } });
       toast("Zur Sammlung hinzugefügt.");
@@ -3928,7 +3964,7 @@ async function ordnerVerschiebenNach(id) {
   } catch (e) { toast(e.message, { dauer: 6000 }); }
 }
 
-// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen, Modelle entfernen) — Knopf in der Meldung und Strg+Z.
+// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen oder verschieben, Modelle entfernen) — Knopf in der Meldung und Strg+Z.
 async function rueckgaengig() {
   const l = ordnerAktion.letzte;
   if (!l) return;

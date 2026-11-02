@@ -33,6 +33,13 @@ aktualisieren.
   dann nach Anzahl; höchstens 8), schon gesetzte nicht. Vorbelegt nur genau/Anfang, sonst die letzte Zeile „„xyz“ neu anlegen“ — ein neuer Tag wird nie aus Versehen ein anderer.
   ↑↓, Enter, Maus; Esc schliesst die Liste, zweites Esc leert und verlässt das Feld; nach dem Hinzufügen bleibt der Fokus im Feld. Liste schwebt (fixed) und klappt am unteren Rand
   nach oben. Vergleich ohne Gross-/Kleinschreibung und Akzente. test_tagfeld_ui 10/10 (3 Gegenproben fallen), test_tags_ui 5/5.
+- **Abgleich mit der erledigt-Liste des 3MF Katalog Managers (Bild des Anwenders, 2.11.):** sauber bei uns: Unterordner beim Umbenennen/Verschieben (inkl. Papierkorb, zuletzt bekannte
+  Orte, gemerkte Suchen; getrennt eingelesene Unterordner gibt es nicht, Überschneidung wird abgewiesen), Rechte der Quelldatei (link bzw. copystat), zip (Standardbibliothek, Grenzen),
+  mehrere Modelle ziehen. **Gebaut:** (1) Modelle verschieben (Menü und Ziehen, `modelleVerschieben`): Meldung nennt Modell/Anzahl und Ziel, „Rückgängig“ und Strg+Z, nur die wirklich
+  verschobenen, jedes an seinen alten Ordner; (2) Ziehbild „n Modelle“ beim Ziehen mehrerer; (3) `gcode_gesehen` zieht beim Ordner-Umbenennen/-Verschieben mit (sonst kämen
+  ausgeblendete G-Codes zurück — meine Lücke vom 30.10.). test_verschieben_ui 5/5 (2 Gegenproben fallen), test_gcode_ordner 29/29 (Gegenprobe fällt), test_ordner, test_ordner_ui,
+  test_tastatur_ui, test_schutz grün. **Offen (klein):** doppelter Import nennt die vorhandene Datei nicht (nur Anzahl + „Gleiche Datei“); nicht erreichbarer Bibliotheksordner nur in der
+  Meldung, nicht im Baum markiert; „Alle auswählen“ ohne Auswahl (Strg+A geht).
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 

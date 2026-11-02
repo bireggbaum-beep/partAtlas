@@ -1027,6 +1027,11 @@ class Katalog:
                 dateien.ordner_umbenennen(ziel, quelle)     # Platte zurück; die Transaktion verwirft den Katalog
                 raise
         log.info("Ordner %s → %s (%d Dateien im Katalog nachgezogen)", ordner_id, neu_id, len(betroffen))
+        try:
+            from .gcode_ordner import ordner_umziehen
+            ordner_umziehen(self.b, ordner_id, neu_id)
+        except Exception:
+            log.exception("Gemerkte G-Codes nicht mit dem Ordner umgezogen; sie werden beim nächsten Einlesen neu angesehen")
         self.ordner_platte_lesen()
         return {"id": neu_id, "vorher": ordner_id.rstrip("/")}
 

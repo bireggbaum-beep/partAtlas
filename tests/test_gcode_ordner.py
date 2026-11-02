@@ -146,4 +146,19 @@ if __name__ == "__main__":
         go.ausblenden(nid, True)                                          # … der Anwender entscheidet währenddessen
         go._merken(vorher, lauf_sieht, vollstaendig=True)
         check("Das Ende eines Einlesens überschreibt eine Entscheidung während des Laufs nicht", z["bestand"].einstellungen()[GESEHEN][nid][2] == "ignoriert")
+
+        # -- Ordner umbenennen: die gemerkten G-Codes darunter ziehen mit (ein ausgeblendeter bleibt ausgeblendet)
+        schreibe(os.path.join(zwei, "unter.gcode"), gcode(["Gibt_es_auch_nicht.stl"]))
+        c.post("/api/scan")
+        warten(z)
+        uid = next(e["id"] for e in c.get("/api/gcode_offen").json()["eintraege"] if e["name"] == "unter.gcode")
+        c.post("/api/gcode_offen/ausblenden", json={"id": uid, "an": True})
+        wid = uid.split("/", 1)[0]
+        r = c.post("/api/ordner/bewegen", json={"id": f"{wid}/zweite", "name": "umbenannt"})
+        c.post("/api/scan")
+        warten(z)
+        o3 = c.get("/api/gcode_offen").json()
+        check("Ordner umbenannt: ein ausgeblendeter G-Code darin bleibt ausgeblendet (die gemerkten ziehen mit)",
+              r.status_code == 200 and "unter.gcode" not in {e["name"] for e in o3["eintraege"]}
+              and f"{wid}/umbenannt/unter.gcode" in z["bestand"].einstellungen()[GESEHEN])
     muster.ende()

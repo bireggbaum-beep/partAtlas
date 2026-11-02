@@ -34,6 +34,17 @@ def vergleichsname(name):
     return re.sub(r"[\W_]+", "", "".join(c for c in name if not unicodedata.combining(c))).lower()
 
 
+def ordner_umziehen(bestand, alt, neu):
+    """Ein Ordner wurde umbenannt oder verschoben (Katalog.ordner_bewegen): die gemerkten G-Codes darunter ziehen mit. Sonst sähe das nächste
+    Einlesen sie als neu — zugeordnete schadet das nicht (derselbe Inhalt wird nicht doppelt angelegt), aber ausgeblendete kämen zurück."""
+    alt, neu = alt.rstrip("/") + "/", neu.rstrip("/") + "/"
+    with _SPERRE:
+        gesehen = bestand.einstellungen().get(GESEHEN) or {}
+        umgezogen = {(neu + k[len(alt):] if k.startswith(alt) else k): v for k, v in gesehen.items()}
+        if umgezogen != gesehen:
+            bestand.einstellungen_setzen(**{GESEHEN: umgezogen})
+
+
 class GcodeOrdner:
     def __init__(self, katalog, bestand):
         self.k, self.b, self.db = katalog, bestand, katalog.db
