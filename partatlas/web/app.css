@@ -1438,3 +1438,15 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .kuerzel dt { white-space: nowrap; color: var(--ink-2); }
 .kuerzel dd { margin: 0; }
 .kuerzel kbd { font: 600 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel-2); color: var(--ink); }
+
+/* Vorschläge im Feld „＋ Tag“ (tagfeld.js): schwebend unter dem Feld, wie eine Auswahlliste des Systems */
+.tag-vorschlaege { position: fixed; z-index: 60; margin: 0; padding: 4px; list-style: none; max-height: 260px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / .28); font-size: 13px; }
+.tag-vorschlaege li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 9px; border-radius: 5px; cursor: pointer; }
+.tag-vorschlaege li em { font: 11px var(--mono); font-style: normal; color: var(--ink-3); }
+.tag-vorschlaege li.auto span { color: var(--ink-2); }
+.tag-vorschlaege li.neu { color: var(--ink-2); border-top: 1px solid var(--line); margin-top: 2px; }
+.tag-vorschlaege li.neu:first-child { border-top: 0; margin-top: 0; }
+.tag-vorschlaege li.markiert { background: var(--accent-soft); color: var(--ink); }
+.tag-vorschlaege li.markiert em { color: var(--accent); }
+.tag-vorschlaege kbd { font: 600 10px var(--mono); padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-3); }

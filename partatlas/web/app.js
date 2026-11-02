@@ -1556,7 +1556,7 @@ const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><
     ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
     <div class="i-gruppe"><span class="i-label">Tags</span>
       <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
-        <input id="tag-neu" placeholder="＋ Tag" autocomplete="off"></div></div>
+        <input id="tag-neu" placeholder="＋ Tag" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="tag-vorschlaege" aria-label="Tag hinzufügen"></div></div>
     <div class="i-gruppe"><span class="i-label">Baugruppen</span>
       <div class="i-sammlungen">${(m.baugruppen || []).map((b) => `<button class="chip" data-baugruppe="${esc(b.id)}">🧩 ${esc(b.name)} · ${b.menge}×</button>`).join("")}
         <button class="knopf klein" id="zu-baugruppe">＋ Baugruppe …</button></div></div>
@@ -3041,12 +3041,7 @@ document.addEventListener("change", async (e) => {
 });
 
 document.addEventListener("keydown", async (e) => {
-  if (e.target.id === "tag-neu" && e.key === "Enter" && e.target.value.trim()) {
-    const id = $("#inspektor").dataset.id;
-    try { await api(`/api/modelle/${id}/tags`, { method: "POST", body: { tag: e.target.value } }); }
-    catch (err) { toast(err.message); }
-    waehle(id);
-  }
+  // Das Feld „＋ Tag“ (Enter, Vorschläge) bedient tagfeld.js.
   const tippt = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || $("#dialog").open;
   if (e.key === "/" && !tippt) { e.preventDefault(); $("#suche").focus(); }
   // F1 wie überall unter Windows und Linux: die Hilfe — hier das Handbuch, beim Kapitel zur jetzigen Ansicht.

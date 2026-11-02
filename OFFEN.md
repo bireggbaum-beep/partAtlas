@@ -28,7 +28,11 @@ aktualisieren.
   auf „Aus dem Katalog entfernen“ (Enter bestätigt, Esc bricht ab — umkehrbar über Papierkorb); danach ist das Modell an derselben Stelle gewählt (`naechstesWaehlen`). Strg+Z macht auch
   das Entfernen rückgängig (`ordnerAktion.letzte`, derselbe Weg wie der Knopf). Suchfeld: ↓ oder Enter → erster Treffer (eine wartende Suche gilt sofort), ↑ in der ersten Reihe →
   zurück ins Suchfeld, Text markiert. „?“ zeigt die Tastenkürzel (⌘/⌫ auf dem Mac, sonst Strg/Entf), Hinweis im Titel des ?-Knopfs. test_tastatur_ui 8/8 (3 Gegenproben fallen),
-  test_loeschen_ui 3/3, test_ordner_ui 18/18. **Offen:** Tag-Vorschläge beim Tippen (5), Tastatur in „Modell wählen …“ (6).
+  test_loeschen_ui 3/3, test_ordner_ui 18/18. **Offen:** Tastatur in „Modell wählen …“ (6).
+- **Tag-Vorschläge im Inspektor (`web/tagfeld.js`):** Combobox am Feld „＋ Tag“ (ARIA): vorhandene Tags beim Tippen (genau, Anfang, Wortanfang, mittendrin; eigene vor nur automatischen,
+  dann nach Anzahl; höchstens 8), schon gesetzte nicht. Vorbelegt nur genau/Anfang, sonst die letzte Zeile „„xyz“ neu anlegen“ — ein neuer Tag wird nie aus Versehen ein anderer.
+  ↑↓, Enter, Maus; Esc schliesst die Liste, zweites Esc leert und verlässt das Feld; nach dem Hinzufügen bleibt der Fokus im Feld. Liste schwebt (fixed) und klappt am unteren Rand
+  nach oben. Vergleich ohne Gross-/Kleinschreibung und Akzente. test_tagfeld_ui 10/10 (3 Gegenproben fallen), test_tags_ui 5/5.
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 

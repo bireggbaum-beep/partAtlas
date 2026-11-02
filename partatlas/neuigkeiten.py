@@ -17,7 +17,9 @@ NEUES = [
                "Vor jedem Update sichert partAtlas deinen Katalog eigens („Vor dem Update von 1.0.8 auf 1.0.9“, Einstellungen › Backup & Wiederherstellung). "
                "Die letzten drei dieser Sicherungen bleiben immer — falls du einmal zur Fassung davor zurück musst.",
                "Mehr mit der Tastatur: „?“ zeigt alle Tastenkürzel. Im Suchfeld führen ↓ oder Enter zu den Treffern, ↑ in der ersten Reihe wieder zurück. "
-               "Entf entfernt auch ein einzelnes angeklicktes Modell (Enter bestätigt), danach ist gleich das nächste gewählt — und Strg+Z holt es zurück."]),
+               "Entf entfernt auch ein einzelnes angeklicktes Modell (Enter bestätigt), danach ist gleich das nächste gewählt — und Strg+Z holt es zurück.",
+               "Tags im Inspektor: Beim Tippen schlägt partAtlas deine vorhandenen Tags vor, mit Anzahl. ↑ ↓ wählt, Enter übernimmt — und das Feld bleibt offen "
+               "für den nächsten. So entsteht nicht aus Versehen „halterung“ neben „halter“; einen neuen Tag legst du in der letzten Zeile an."]),
     ("1.0.8", ["G-Code im Ordner: Legst du einen G-Code aus dem Slicer in einen deiner Ordner, liest partAtlas ihn beim Einlesen mit. Das Modell erkennt es am Inhalt der Datei "
                "und hängt den G-Code daran; die Datei im Ordner bleibt liegen. Er erscheint als Druck „Noch nicht gedruckt“ — das Modell gilt erst als gedruckt, wenn du das sagst. "
                "Ist das Modell nicht eindeutig (etwa zwei mit demselben Namen) oder nicht vorhanden, steht der G-Code unter Bereinigen › „G-Code ohne Modell“ — "
