@@ -1058,8 +1058,11 @@ function tastaturAuswahl(e) {
   if (e.key === "ArrowRight" && raster_) ziel = jetzt == null ? 0 : Math.min(n - 1, jetzt + 1);
   else if (e.key === "ArrowLeft" && raster_) ziel = jetzt == null ? 0 : Math.max(0, jetzt - 1);
   else if (e.key === "ArrowDown") ziel = jetzt == null ? 0 : raster.nachbar(jetzt, 1);
-  else if (e.key === "ArrowUp") ziel = jetzt == null ? 0 : raster.nachbar(jetzt, -1);
-  else if (e.key === "Home") ziel = 0;
+  else if (e.key === "ArrowUp") {
+    ziel = jetzt == null ? 0 : raster.nachbar(jetzt, -1);
+    // Oben angekommen: zurück ins Suchfeld, wie bei Spotlight — von dort führt Pfeil runter wieder hierher.
+    if (ziel === jetzt && !e.shiftKey) { $("#suche").focus(); $("#suche").select(); return true; }
+  } else if (e.key === "Home") ziel = 0;
   else if (e.key === "End") ziel = n - 1;
   else if (e.key === "Enter" && jetzt != null && !strg && !knopf) {
     const m = zustand.modelle[jetzt];
@@ -1393,7 +1396,11 @@ document.addEventListener("click", async (e) => {
 
 
 async function loeschenViele(modelle) {
-  if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) { zustand.auswahl.clear(); waehle(null); }
+  const stelle = Math.min(...modelle.map((id) => zustand.idIndex.get(id) ?? Infinity));
+  if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) {
+    zustand.auswahl.clear();
+    await naechstesWaehlen(Number.isFinite(stelle) ? stelle : null);
+  }
 }
 
 // ---------------------------------------------------------------- Ordner wählen, Archive
@@ -2415,6 +2422,26 @@ $("#neue-fassung").addEventListener("click", async () => {
 [8000, 30000, 90000].forEach((ms) => setTimeout(neueFassungPruefen, ms));
 setInterval(neueFassungPruefen, 10 * 60 * 1000);
 
+// Tastenkürzel auf einen Blick („?“). Die Tasten so, wie sie auf diesem Rechner heissen: ⌘ und ⌫ auf dem Mac, sonst Strg und Entf.
+const MAC = /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform || navigator.platform || "");
+function tastenkuerzel() {
+  const strg = MAC ? "⌘" : "Strg", entf = MAC ? "⌫" : "Entf";
+  const k = (...t) => t.map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
+  const gruppen = [
+    ["In der Bibliothek", [[k("←", "↑", "→", "↓"), "Modell wechseln"], [k("Pos1") + " " + k("Ende"), "Zum ersten oder letzten"],
+      [k("Umschalt") + " + " + k("↑", "↓"), "Mehrere am Stück wählen"], [k("Leertaste"), "Zur Auswahl dazu oder weg"],
+      [k(strg, "A"), "Alle wählen"], [k("Enter"), "Im Programm öffnen"], [k("F2"), "Umbenennen"], [k(entf), "Aus dem Katalog entfernen"]]],
+    ["Suchen", [[k("/"), "Ins Suchfeld"], [k("↓") + " oder " + k("Enter"), "Zu den Treffern"], [k("↑") + " in der ersten Reihe", "Zurück ins Suchfeld"],
+      [k("Esc"), "Suche leeren"]]],
+    ["Überall", [[k(strg, "Z"), "Rückgängig"], [k("Esc"), "Auswahl aufheben, schliessen"],
+      [k("F1"), "Handbuch"], [k("?"), "Diese Übersicht"]]],
+  ];
+  dialog(`<h2>Tastenkürzel</h2>
+    <div class="kuerzel">${gruppen.map(([titel, zeilen]) => `<section><h3>${esc(titel)}</h3>
+      <dl>${zeilen.map(([tasten, was]) => `<dt>${tasten}</dt><dd>${esc(was)}</dd>`).join("")}</dl></section>`).join("")}</div>
+    <div class="knoepfe"><button class="knopf akzent" value="ok" autofocus>OK</button></div>`);
+}
+
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;
@@ -2436,7 +2463,18 @@ $("#dialog-inhalt").addEventListener("keydown", (e) => {
 
 async function loeschen(id) {
   const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${id}`);
-  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus dem Katalog entfernen?`)) waehle(null);
+  const stelle = zustand.idIndex.get(id);
+  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus dem Katalog entfernen?`)) await naechstesWaehlen(stelle);
+}
+
+// Nach dem Entfernen steht die Wahl auf dem Modell, das jetzt an derselben Stelle steht (wie im Dateimanager) — man kann gleich weitermachen.
+async function naechstesWaehlen(stelle) {
+  await ladeModelle();
+  const n = zustand.modelle.length;
+  if (stelle == null || !n) return waehle(null);
+  const i = Math.min(stelle, n - 1);
+  raster.zeigen(i);
+  waehleEines(zustand.modelle[i].id);
 }
 
 // Was am Modell hängt, aus der Nachbarschaft im Graphen — damit man weiss,
@@ -2470,7 +2508,7 @@ async function loeschDialog(modelle, titel, ordner = null) {
     <p class="dim">Das Modell kommt in den Papierkorb von partAtlas und ist damit aus dem Katalog. <b>Die Dateien bleiben unverändert in ihren
       Ordnern</b> — partAtlas löscht und verschiebt nichts. „Wiederherstellen“ nimmt das Modell wieder auf.</p>
     <div class="loesch-liste">${ordnerZeile}${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Aus dem Katalog entfernen</button></div>`);
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja" autofocus>Aus dem Katalog entfernen</button></div>`);
   if (a !== "ja") return false;
   const wahl = {
     tags: $("#mit-tags")?.checked ? nurT.map((t) => t.name) : [],
@@ -2486,13 +2524,9 @@ async function loeschDialog(modelle, titel, ordner = null) {
     else {
       // Rückgängig und der Weg zum Papierkorb gleich in der Meldung: ein Tester löschte versehentlich und fand das Modell nicht wieder —
       // neu einlesen holt es bewusst nicht zurück (es soll ja weg bleiben).
-      const zurueck = async () => {
-        try {
-          await api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } });
-          toast(viele ? `${modelle.length} Modelle wiederhergestellt.` : "Wiederhergestellt.");
-        } catch (e) { toast(e.message); }
-        neuLaden();
-      };
+      // Derselbe Schritt für den Knopf und für Strg+Z (rueckgaengig): einmal zurück, nicht zweimal.
+      ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } }) };
+      const zurueck = () => rueckgaengig();
       toast(`${viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt."} Zurückholen: hier oder unter Bereinigen › Papierkorb.`,
             { aktionen: [["Rückgängig", zurueck], ["Papierkorb", () => document.querySelector('[data-ansicht="papierkorb"]')?.click()]], dauer: 9000 });
     }
@@ -3036,10 +3070,13 @@ document.addEventListener("keydown", async (e) => {
   // offener Dialog schliesst zuerst sich selbst.
   if (e.key === "Escape" && zustand.auswahl.size && !$("#dialog").open) stapelAktion("keine");
   if (!tippt && !document.querySelector("dialog[open]") && tastaturAuswahl(e)) e.preventDefault();
-  if ((e.key === "Delete" || e.key === "Backspace") && zustand.auswahl.size && !tippt && zustand.ansicht !== "papierkorb") {
-    e.preventDefault();
-    loeschenViele([...zustand.auswahl]);
+  // Entf (Mac: ⌫) entfernt, was gewählt ist: die Auswahl, sonst das eine angeklickte Modell — nicht nur eine Mehrfachauswahl.
+  if ((e.key === "Delete" || e.key === "Backspace") && !tippt && !document.querySelector("dialog[open]") && zustand.ansicht !== "papierkorb"
+      && !["aufraeumen", "gcode", "lager"].includes(zustand.ansicht) && !zustand.baugruppe && !document.activeElement?.closest?.(".sektion, #inspektor")) {
+    if (zustand.auswahl.size) { e.preventDefault(); loeschenViele([...zustand.auswahl]); }
+    else if (zustand.gewaehlt && zustand.idIndex.has(zustand.gewaehlt)) { e.preventDefault(); loeschen(zustand.gewaehlt); }
   }
+  if (e.key === "?" && !tippt && !document.querySelector("dialog[open]")) { e.preventDefault(); tastenkuerzel(); }
 });
 
 let suchZeit;
@@ -3057,7 +3094,22 @@ function sucheLeeren() {
   s.focus();
 }
 $("#suche-x").addEventListener("click", sucheLeeren);
-$("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
+$("#suche").addEventListener("keydown", async (e) => {
+  if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); return; }
+  // Pfeil runter oder Enter: zu den Treffern, der erste ist gewählt; weiter mit den Pfeilen. Eine noch wartende Suche gilt sofort.
+  if ((e.key === "ArrowDown" || e.key === "Enter") && !e.isComposing) {
+    e.preventDefault();
+    if (suchZeit && zustand.suche !== e.target.value.trim()) {
+      clearTimeout(suchZeit);
+      zustand.suche = e.target.value.trim(); sortiere.angeklickt = false;
+      await ladeModelle();
+    }
+    if (!zustand.modelle.length) return;
+    e.target.blur();
+    raster.zeigen(0);
+    waehleEines(zustand.modelle[0].id);
+  }
+});
 
 // Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste — ebenso ein Filter (Ordner, Tag, Material, Format,
 // Sammlung, gemerkte Suche): ein Tag-Klick holte sonst acht Antworten über alle Modelle mit, die sich durch den Filter nicht ändern (29.10.2026).
@@ -3881,7 +3933,7 @@ async function ordnerVerschiebenNach(id) {
   } catch (e) { toast(e.message, { dauer: 6000 }); }
 }
 
-// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen) — Knopf in der Meldung und Strg+Z.
+// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen, Modelle entfernen) — Knopf in der Meldung und Strg+Z.
 async function rueckgaengig() {
   const l = ordnerAktion.letzte;
   if (!l) return;

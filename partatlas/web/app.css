@@ -1430,3 +1430,11 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .af-zeile.gc-zeile { grid-template-columns: 1fr auto; }
 .gc-zeile .af-aktion { display: flex; gap: 6px; align-items: flex-start; white-space: nowrap; }
 .gc-kandidaten { margin-top: 6px; }
+
+/* Tastenkürzel („?“): zwei Spalten Taste · Wirkung, gruppiert */
+.kuerzel { display: grid; gap: 14px; margin: 6px 0 4px; }
+.kuerzel h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.kuerzel dl { display: grid; grid-template-columns: 10.5rem 1fr; gap: 6px 16px; margin: 0; align-items: baseline; }
+.kuerzel dt { white-space: nowrap; color: var(--ink-2); }
+.kuerzel dd { margin: 0; }
+.kuerzel kbd { font: 600 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel-2); color: var(--ink); }

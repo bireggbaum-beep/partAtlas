@@ -24,6 +24,11 @@ aktualisieren.
   von x auf y“ (Grund `vor-update`), vor den Umstellungen beim Start. Das Aufräumen behält die letzten 3 davon unabhängig vom Alter (`UPDATES`). Scheitert das Öffnen, legt der nächste
   Start keine zweite gleiche an. Rückweg: `git checkout fassung-x`, dann diese Sicherung zurückholen. test_update_sicherung 9/9 (3 Gegenproben fallen), test_schutz 28/28, test_backup 19/19,
   test_altbestand 26/26. Nicht gebaut: eigene Kennzeichnung in der Liste der Einstellungen (der Anlass nennt beide Fassungen).
+- **Tastatur (Anwender 2.11.: „nativ, natürlich, wie eine Premium-App“):** Entf/⌫ entfernt auch das eine angeklickte Modell (nicht im Ordnerbaum oder Inspektor); die Rückfrage hat den Fokus
+  auf „Aus dem Katalog entfernen“ (Enter bestätigt, Esc bricht ab — umkehrbar über Papierkorb); danach ist das Modell an derselben Stelle gewählt (`naechstesWaehlen`). Strg+Z macht auch
+  das Entfernen rückgängig (`ordnerAktion.letzte`, derselbe Weg wie der Knopf). Suchfeld: ↓ oder Enter → erster Treffer (eine wartende Suche gilt sofort), ↑ in der ersten Reihe →
+  zurück ins Suchfeld, Text markiert. „?“ zeigt die Tastenkürzel (⌘/⌫ auf dem Mac, sonst Strg/Entf), Hinweis im Titel des ?-Knopfs. test_tastatur_ui 8/8 (3 Gegenproben fallen),
+  test_loeschen_ui 3/3, test_ordner_ui 18/18. **Offen:** Tag-Vorschläge beim Tippen (5), Tastatur in „Modell wählen …“ (6).
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 
