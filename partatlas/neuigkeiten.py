@@ -8,6 +8,22 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.9", ["Nach dem Einlesen sagt die Meldung unten, wie viele G-Codes aus deinen Ordnern zugeordnet wurden — und ob neue dazukamen, die partAtlas keinem Modell "
+               "zuordnen konnte. Ein Knopf in der Meldung führt dann direkt zu Bereinigen › „G-Code ohne Modell“.",
+               "Versehentlich gelöscht? Die Meldung nach dem Löschen hat jetzt „Rückgängig“ und einen Knopf zum Papierkorb. Neu einlesen holt ein gelöschtes Modell "
+               "absichtlich nicht zurück — dafür ist der Papierkorb da (Bereinigen › Papierkorb › Wiederherstellen).",
+               "Startest du partAtlas ein zweites Mal, während es schon läuft, öffnet sich der Browser beim laufenden — auch auf einem anderen Port. "
+               "Vorher blieb dann eine leere Seite mit „Bestand belegt“ stehen.",
+               "Vor jedem Update sichert partAtlas deinen Katalog eigens („Vor dem Update von 1.0.8 auf 1.0.9“, Einstellungen › Backup & Wiederherstellung). "
+               "Die letzten drei dieser Sicherungen bleiben immer — falls du einmal zur Fassung davor zurück musst.",
+               "Mehr mit der Tastatur: „?“ zeigt alle Tastenkürzel. Im Suchfeld führen ↓ oder Enter zu den Treffern, ↑ in der ersten Reihe wieder zurück. "
+               "Entf entfernt auch ein einzelnes angeklicktes Modell (Enter bestätigt), danach ist gleich das nächste gewählt — und Strg+Z holt es zurück.",
+               "Tags im Inspektor: Beim Tippen schlägt partAtlas deine vorhandenen Tags vor, mit Anzahl. ↑ ↓ wählt, Enter übernimmt — und das Feld bleibt offen "
+               "für den nächsten. So entsteht nicht aus Versehen „halterung“ neben „halter“; einen neuen Tag legst du in der letzten Zeile an.",
+               "Verschieben rückgängig: Nach dem Verschieben von Modellen in einen anderen Ordner nennt die Meldung das Ziel und hat „Rückgängig“ — Strg+Z geht ebenso. "
+               "Ziehst du mehrere gewählte Modelle, zeigt das Ziehbild, wie viele mitgehen.",
+               "Alle auswählen mit einem Haken: oben links über den Kacheln (in der Liste wie bisher im Spaltenkopf), je Gruppe und oben in Listen zum Ankreuzen "
+               "wie „Archive entpacken“. Ist nur ein Teil gewählt, zeigt der Haken einen Strich."]),
     ("1.0.8", ["G-Code im Ordner: Legst du einen G-Code aus dem Slicer in einen deiner Ordner, liest partAtlas ihn beim Einlesen mit. Das Modell erkennt es am Inhalt der Datei "
                "und hängt den G-Code daran; die Datei im Ordner bleibt liegen. Er erscheint als Druck „Noch nicht gedruckt“ — das Modell gilt erst als gedruckt, wenn du das sagst. "
                "Ist das Modell nicht eindeutig (etwa zwei mit demselben Namen) oder nicht vorhanden, steht der G-Code unter Bereinigen › „G-Code ohne Modell“ — "

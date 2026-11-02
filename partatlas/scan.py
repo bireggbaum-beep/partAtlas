@@ -697,7 +697,7 @@ class Scanner(_Bahn):
                     analysiert=0, kopien=0, aufgeraeumt=0, nicht_erreichbar=[], gefunden=0, neu=0, geaendert=0, verschoben=0, entfernt=0,
                     bearbeitet=0, unlesbar=0, zurueckgeholt=0, im_papierkorb=0, vorschauen_offen=0, abbruch=None, abbricht=False,
                     abgebrochen=False, beginn=time.strftime("%H:%M:%S"), fehlt_neu=0,
-                    gcode_neu=0, gcode_unklar=0, gcode_ohne_modell=0, gcode_fehler=0)
+                    gcode_neu=0, gcode_unklar=0, gcode_ohne_modell=0, gcode_fehler=0, gcode_offen_neu=0)
         index = self.k.ort_index()
         ignoriert = self.k.ignorierte_orte()
         wurzeln = self.k.wurzeln()
@@ -871,7 +871,7 @@ class Scanner(_Bahn):
         if st.get("phase") != "fertig" or st.get("nur_cad"):
             return
         kette["laeufe"] += 1
-        for f in ("neu", "geaendert", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei"):
+        for f in ("neu", "geaendert", "verschoben", "entfernt", "zurueckgeholt", "aufgeraeumt", "kopien", "aus_datei", "gcode_neu", "gcode_offen_neu"):
             kette["summe"][f] = kette["summe"].get(f, 0) + (st.get(f) or 0)
         kette["summe"]["einlesen_s"] = round(kette["summe"].get("einlesen_s", 0) + (st.get("einlesen_s") or 0), 1)
         for name, sek in (st.get("phasen") or {}).items():

@@ -4,6 +4,56 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.9 auf `main` (2.11.2026, für den Tester)
+
+Neu: G-Code-Bilanz nach dem Einlesen, Rückgängig und Papierkorb in der Meldung nach dem Löschen, zweiter Start zeigt den laufenden (`laeuft.json`), Sicherung vor einem Update
+(die letzten 3 bleiben), Tastatur (Entf beim einzelnen Modell, Strg+Z fürs Entfernen und Verschieben, Suchfeld ↔ Treffer, „?“), Tag-Vorschläge, Verschieben mit Ziel und Rückgängig,
+Ziehbild mit Anzahl, Sammel-Haken mit Teilauswahl. Vor dem Push: **Hochzieh-Versuch 1.0.8 → 1.0.9 → 1.0.8** auf einem benutzten Bestand mit echten Prozessen (Skript im Scratchpad
+`hochziehen.py`): öffnet, jede Liste antwortet, Daten gleich (Modelle, Tags, offene und ausgeblendete G-Codes, Spule), Sicherung „Vor dem Update von 1.0.8 auf 1.0.9“ entsteht, kein
+Fehler im Protokoll, Rückweg öffnet ebenso; requirements.txt, start.sh, start.bat unverändert (git pull genügt). Alle 51 Suiten grün (976 Checks), test_ui einmal komplett 70/70.
+Handbuch nicht nachgezogen. Rückweg: Zweig `fassung-1.0.8`. Nicht gebaut: Tastatur in „Modell wählen …“ (Anwender: weglassen). Erstes echtes Zeichen „↑ 1.0.9“ beim Tester (er hat 1.0.8).
+
+### Was in 1.0.9 kam (Einzelheiten)
+
+- **Bilanz der G-Codes in der Meldung nach dem Einlesen:** „n G-Codes zugeordnet“; „n G-Codes ohne Modell“ mit Knopf zu Bereinigen › G-Code ohne Modell — nur die in diesem Lauf neu offenen
+  (`gcode_offen_neu`; ein schon bekannter unklarer, der beim Dazukommen eines Modells neu angesehen wird, zählt nicht), sonst käme dieselbe Meldung bei jedem Einlesen. Bei Ketten von
+  Läufen zusammengezählt. Nur G-Code und nichts Neues an Modellen: statt „Nichts Neues“ steht die G-Code-Bilanz. test_gcode_ordner 28/28, test_gcode_offen_ui 9/9 (Gegenproben fallen),
+  test_scan 110/110, test_neuigkeiten mit Eintrag 1.0.9.
+- **Gelöschtes zurückholen (Rückmeldung des Testers zu 1.0.5):** Die Meldung nach dem Löschen (einzeln und mehrere, `loeschDialog`) hat „Rückgängig“ (Stapel „wiederherstellen“, eine Anfrage)
+  und „Papierkorb“ (springt nach Bereinigen › Papierkorb), 9 s sichtbar; vorher nur „Aus dem Katalog entfernt, die Datei bleibt.“ Nicht geändert: Löschen eines ganzen Ordners
+  (eigener Weg). `tests/test_loeschen_ui.py` 3/3, Gegenprobe fällt. Handbuch nicht nachgezogen (Anwender).
+- **Zweiter Start zeigt den laufenden (Vorbild 3MF Katalog Manager 0.16; Befund Doppelstart-Test):** `partatlas/einmal.py`. Nach dem Öffnen schreibt partAtlas `laeuft.json` (Port, PID, Fassung)
+  in den Bestand, beim Beenden entfernt es die eigene. Ein neuer Start (`__main__`) sieht vorher nach: antwortet dort ein partAtlas mit demselben Bestand, öffnet er den Browser dort
+  (`webbrowser`, nicht in Tests: `PARTATLAS_KEIN_BROWSER`) und endet. Rutscht er durch (Datei veraltet, beide gleichzeitig), weist ihn die Sperre ab, und eine Wache beendet ihn
+  (vorher: leere 503-Seite „BestandBelegt“). start.sh/start.bat prüften den gleichen Port schon. test_doppelstart 10/10 (zwei Gegenproben fallen), test_aktualisierung_ui 3/3.
+  **Nachtrag:** die Wächter-Suite test_schutz fiel danach (laeuft.json schreiben/entfernen nicht in ERLAUBT) — ich hatte sie nicht laufen lassen; eingetragen, 28/28.
+  **Lehre:** wer eine Datei schreibt oder löscht, lässt test_schutz mitlaufen.
+- **Sicherung vor einem Update (Vorbild 3MF Katalog Manager 0.16):** `sicherung.beim_start` statt der gewöhnlichen Startsicherung: ist die Fassung eine andere als beim letzten Öffnen
+  (`fassung_zuletzt` in den Einstellungen, gesetzt erst nach gelungenem Öffnen; bis 1.0.8 nicht vermerkt → ersatzweise `neuigkeiten_gesehen`), immer eine eigene Sicherung „Vor dem Update
+  von x auf y“ (Grund `vor-update`), vor den Umstellungen beim Start. Das Aufräumen behält die letzten 3 davon unabhängig vom Alter (`UPDATES`). Scheitert das Öffnen, legt der nächste
+  Start keine zweite gleiche an. Rückweg: `git checkout fassung-x`, dann diese Sicherung zurückholen. test_update_sicherung 9/9 (3 Gegenproben fallen), test_schutz 28/28, test_backup 19/19,
+  test_altbestand 26/26. Nicht gebaut: eigene Kennzeichnung in der Liste der Einstellungen (der Anlass nennt beide Fassungen).
+- **Tastatur (Anwender 2.11.: „nativ, natürlich, wie eine Premium-App“):** Entf/⌫ entfernt auch das eine angeklickte Modell (nicht im Ordnerbaum oder Inspektor); die Rückfrage hat den Fokus
+  auf „Aus dem Katalog entfernen“ (Enter bestätigt, Esc bricht ab — umkehrbar über Papierkorb); danach ist das Modell an derselben Stelle gewählt (`naechstesWaehlen`). Strg+Z macht auch
+  das Entfernen rückgängig (`ordnerAktion.letzte`, derselbe Weg wie der Knopf). Suchfeld: ↓ oder Enter → erster Treffer (eine wartende Suche gilt sofort), ↑ in der ersten Reihe →
+  zurück ins Suchfeld, Text markiert. „?“ zeigt die Tastenkürzel (⌘/⌫ auf dem Mac, sonst Strg/Entf), Hinweis im Titel des ?-Knopfs. test_tastatur_ui 8/8 (3 Gegenproben fallen),
+  test_loeschen_ui 3/3, test_ordner_ui 18/18. **Offen:** Tastatur in „Modell wählen …“ (6).
+- **Tag-Vorschläge im Inspektor (`web/tagfeld.js`):** Combobox am Feld „＋ Tag“ (ARIA): vorhandene Tags beim Tippen (genau, Anfang, Wortanfang, mittendrin; eigene vor nur automatischen,
+  dann nach Anzahl; höchstens 8), schon gesetzte nicht. Vorbelegt nur genau/Anfang, sonst die letzte Zeile „„xyz“ neu anlegen“ — ein neuer Tag wird nie aus Versehen ein anderer.
+  ↑↓, Enter, Maus; Esc schliesst die Liste, zweites Esc leert und verlässt das Feld; nach dem Hinzufügen bleibt der Fokus im Feld. Liste schwebt (fixed) und klappt am unteren Rand
+  nach oben. Vergleich ohne Gross-/Kleinschreibung und Akzente. test_tagfeld_ui 10/10 (3 Gegenproben fallen), test_tags_ui 5/5.
+- **Abgleich mit der erledigt-Liste des 3MF Katalog Managers (Bild des Anwenders, 2.11.):** sauber bei uns: Unterordner beim Umbenennen/Verschieben (inkl. Papierkorb, zuletzt bekannte
+  Orte, gemerkte Suchen; getrennt eingelesene Unterordner gibt es nicht, Überschneidung wird abgewiesen), Rechte der Quelldatei (link bzw. copystat), zip (Standardbibliothek, Grenzen),
+  mehrere Modelle ziehen. **Gebaut:** (1) Modelle verschieben (Menü und Ziehen, `modelleVerschieben`): Meldung nennt Modell/Anzahl und Ziel, „Rückgängig“ und Strg+Z, nur die wirklich
+  verschobenen, jedes an seinen alten Ordner; (2) Ziehbild „n Modelle“ beim Ziehen mehrerer; (3) `gcode_gesehen` zieht beim Ordner-Umbenennen/-Verschieben mit (sonst kämen
+  ausgeblendete G-Codes zurück — meine Lücke vom 30.10.). test_verschieben_ui 5/5 (2 Gegenproben fallen), test_gcode_ordner 29/29 (Gegenprobe fällt), test_ordner, test_ordner_ui,
+  test_tastatur_ui, test_schutz grün. **Offen (klein):** doppelter Import nennt die vorhandene Datei nicht (nur Anzahl + „Gleiche Datei“); nicht erreichbarer Bibliotheksordner nur in der
+  Meldung, nicht im Baum markiert.
+- **Sammel-Haken (Anwender 2.11.: „Checkbox oben und je Gruppe ist heute Standard“):** Raster/Karten oben links in der Leiste (`#leiste-alle`; in der Liste nur im Spaltenkopf, beim
+  Wechsel neu gezeichnet); Teilauswahl „−“ für alle Sammel-Haken (Gruppen, Aufräumen, Tags verwalten) über `data-teil` und einen Beobachter (indeterminate gibt es nur als Eigenschaft);
+  Baustein `sammelKopf`/`data-sammel(-von)` für Häkchen-Listen in Fenstern („Alle · n“ bzw. „1 von 2“): Archive entpacken, Ausnahmen (Aufräumen), Nicht zugeordnet (G-Code).
+  test_sammel_ui 10/10 (3 Gegenproben fallen), test_bereinigen_ui, test_tags_ui, test_ansicht_ui grün.
+
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 
 Neu: **G-Code aus dem Ordner** (Einlesen erkennt das Quellmodell am Inhalt, Druck „Noch nicht gedruckt“), **Bereinigen › G-Code ohne Modell** (unklare und unbekannte zuordnen oder ausblenden),

@@ -1430,3 +1430,33 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .af-zeile.gc-zeile { grid-template-columns: 1fr auto; }
 .gc-zeile .af-aktion { display: flex; gap: 6px; align-items: flex-start; white-space: nowrap; }
 .gc-kandidaten { margin-top: 6px; }
+
+/* Tastenkürzel („?“): zwei Spalten Taste · Wirkung, gruppiert */
+.kuerzel { display: grid; gap: 14px; margin: 6px 0 4px; }
+.kuerzel h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.kuerzel dl { display: grid; grid-template-columns: 10.5rem 1fr; gap: 6px 16px; margin: 0; align-items: baseline; }
+.kuerzel dt { white-space: nowrap; color: var(--ink-2); }
+.kuerzel dd { margin: 0; }
+.kuerzel kbd { font: 600 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel-2); color: var(--ink); }
+
+/* Vorschläge im Feld „＋ Tag“ (tagfeld.js): schwebend unter dem Feld, wie eine Auswahlliste des Systems */
+.tag-vorschlaege { position: fixed; z-index: 60; margin: 0; padding: 4px; list-style: none; max-height: 260px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / .28); font-size: 13px; }
+.tag-vorschlaege li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 9px; border-radius: 5px; cursor: pointer; }
+.tag-vorschlaege li em { font: 11px var(--mono); font-style: normal; color: var(--ink-3); }
+.tag-vorschlaege li.auto span { color: var(--ink-2); }
+.tag-vorschlaege li.neu { color: var(--ink-2); border-top: 1px solid var(--line); margin-top: 2px; }
+.tag-vorschlaege li.neu:first-child { border-top: 0; margin-top: 0; }
+.tag-vorschlaege li.markiert { background: var(--accent-soft); color: var(--ink); }
+.tag-vorschlaege li.markiert em { color: var(--accent); }
+.tag-vorschlaege kbd { font: 600 10px var(--mono); padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-3); }
+
+/* Ziehbild beim Ziehen mehrerer Modelle: wie viele mitgehen */
+.ziehbild { position: fixed; top: -100px; left: -100px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: var(--bg);
+  font: 600 13px var(--sans, inherit); box-shadow: 0 6px 18px rgb(0 0 0 / .3); pointer-events: none; }
+
+/* Sammel-Haken: in der Leiste über dem Raster und oben in Häkchen-Listen der Fenster */
+.leiste-alle { display: inline-flex; align-items: center; padding: 0 2px; cursor: pointer; }
+.leiste-alle input, .sammel input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+.leiste-luecke.klein { width: 6px; flex: none; }
+.sammel { display: flex; align-items: center; gap: 8px; padding: 6px 0 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); font-weight: 600; cursor: pointer; }

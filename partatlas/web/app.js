@@ -212,10 +212,11 @@ function gruppenKopf(g, y) {
   const zu = zustand.eingeklappt.has(g.key);
   const ids = zustand.modelle.slice(g.start, g.start + g.n).map((m) => m.id);
   const alle = ids.length > 0 && ids.every((id) => zustand.auswahl.has(id));
+  const teil = !alle && ids.some((id) => zustand.auswahl.has(id));
   const ordnerSprung = zustand.gruppierung === "ordner" && g.key !== basisId();
   return `<div class="gruppe ${zu ? "zu" : ""}" data-id="g:${esc(g.key)}" data-gruppe="${esc(g.key)}" style="top:${y}px" title="${zu ? "Aufklappen" : "Zuklappen"}">
     <span class="g-pfeil ${zu ? "zu" : "auf"}"></span>
-    <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
+    <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" data-teil="${teil ? 1 : 0}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
     ${ordnerSprung ? `<span class="g-name g-ordner" data-gruppe-ordner="${esc(g.key)}" title="In diesen Ordner wechseln">${esc(g.label)}</span>`
       : `<span class="g-name">${esc(g.label)}</span>`}<em>${g.n}</em></div>`;
 }
@@ -428,11 +429,14 @@ function zeichneLeiste(l) {
   const entwuerfe = zustand.entwuerfeN || zustand.ohneEntwuerfe
     ? `<button class="chip ${zustand.ohneEntwuerfe ? "aktiv" : ""}" id="entwuerfe-aus" title="Als Entwurf markierte Modelle ausblenden">${zustand.ohneEntwuerfe
       ? `${zustand.entwuerfeN || 0} ${zustand.entwuerfeN === 1 ? "Entwurf" : "Entwürfe"} ausgeblendet ×` : `Entwürfe ausblenden<em>${zustand.entwuerfeN}</em>`}</button>` : "";
-  abgleichen($("#tagleiste"), `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
+  const sammel = zustand.layout !== "liste" && zustand.modelle.length
+    ? `<label class="leiste-alle"><input type="checkbox" id="leiste-alle" aria-label="Alle gezeigten auswählen"></label><span class="leiste-luecke klein"></span>` : "";
+  abgleichen($("#tagleiste"), sammel + `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
     + (fmt ? `<span class="leiste-titel">FORMAT</span>${fmt}` : "")
     + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : "")
     + (entwuerfe ? `<span class="leiste-luecke"></span>${entwuerfe}` : ""));
+  kopfWahlZeichnen();
 }
 
 // Der Weg zum gewählten Ordner, dezent über der Liste: „Alle › 3D-Druck › Technik“. Jeder Teil führt dorthin zurück.
@@ -1001,11 +1005,13 @@ function spalteSetzen(k, an) {
 
 // Häkchen „alle“ im Listenkopf: an, wenn alle Gezeigten gewählt sind, ein Strich, wenn ein Teil.
 function kopfWahlZeichnen() {
-  const k = $("#kopf-alle");
-  if (!k) return;
   const n = zustand.modelle.filter((m) => zustand.auswahl.has(m.id)).length;
-  k.checked = n > 0 && n === zustand.modelle.length;
-  k.indeterminate = n > 0 && n < zustand.modelle.length;
+  for (const k of [$("#kopf-alle"), $("#leiste-alle")]) {
+    if (!k) continue;
+    k.checked = n > 0 && n === zustand.modelle.length;
+    k.indeterminate = n > 0 && n < zustand.modelle.length;
+    k.title = k.checked ? "Auswahl aufheben" : "Alle gezeigten auswählen";
+  }
 }
 
 // ---------------------------------------------------------------- Mehrfachauswahl
@@ -1058,8 +1064,11 @@ function tastaturAuswahl(e) {
   if (e.key === "ArrowRight" && raster_) ziel = jetzt == null ? 0 : Math.min(n - 1, jetzt + 1);
   else if (e.key === "ArrowLeft" && raster_) ziel = jetzt == null ? 0 : Math.max(0, jetzt - 1);
   else if (e.key === "ArrowDown") ziel = jetzt == null ? 0 : raster.nachbar(jetzt, 1);
-  else if (e.key === "ArrowUp") ziel = jetzt == null ? 0 : raster.nachbar(jetzt, -1);
-  else if (e.key === "Home") ziel = 0;
+  else if (e.key === "ArrowUp") {
+    ziel = jetzt == null ? 0 : raster.nachbar(jetzt, -1);
+    // Oben angekommen: zurück ins Suchfeld, wie bei Spotlight — von dort führt Pfeil runter wieder hierher.
+    if (ziel === jetzt && !e.shiftKey) { $("#suche").focus(); $("#suche").select(); return true; }
+  } else if (e.key === "Home") ziel = 0;
   else if (e.key === "End") ziel = n - 1;
   else if (e.key === "Enter" && jetzt != null && !strg && !knopf) {
     const m = zustand.modelle[jetzt];
@@ -1393,7 +1402,11 @@ document.addEventListener("click", async (e) => {
 
 
 async function loeschenViele(modelle) {
-  if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) { zustand.auswahl.clear(); waehle(null); }
+  const stelle = Math.min(...modelle.map((id) => zustand.idIndex.get(id) ?? Infinity));
+  if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) {
+    zustand.auswahl.clear();
+    await naechstesWaehlen(Number.isFinite(stelle) ? stelle : null);
+  }
 }
 
 // ---------------------------------------------------------------- Ordner wählen, Archive
@@ -1420,7 +1433,8 @@ async function archiveEntpacken() {
   const liste = await api("/api/archive");
   if (!liste.length) return toast("Keine Archive in den Ordnern.");
   const a = await dialog(`<h2>Archive entpacken</h2><p class="dim">Jedes in einen Unterordner daneben. Heraus kommen nur Modelle, G-Code, Bilder und Texte — nie Programme.</p>
-    ${liste.map((x, i) => `<label><input type="checkbox" data-archiv="${esc(x.id)}" ${i < 50 ? "checked" : ""}> ${esc(x.id.split("/").slice(1).join("/"))} <span class="dim">${zahl(x.groesse / 1048576, 1)} MB</span></label>`).join("")}
+    ${sammelKopf("archive")}
+    ${liste.map((x, i) => `<label><input type="checkbox" data-archiv="${esc(x.id)}" data-sammel-von="archive" ${i < 50 ? "checked" : ""}> ${esc(x.id.split("/").slice(1).join("/"))} <span class="dim">${zahl(x.groesse / 1048576, 1)} MB</span></label>`).join("")}
     <p class="dim">Das Archiv selbst bleibt unverändert liegen.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Entpacken</button></div>`);
   if (a !== "ja") return;
@@ -1549,7 +1563,7 @@ const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><
     ${papierkorb ? "" : `<div class="i-titel">ORDNEN</div>
     <div class="i-gruppe"><span class="i-label">Tags</span>
       <div class="i-tags">${m.tags.map((t) => `<span class="chip">#${esc(t)}<button data-tag-weg="${esc(t)}" title="entfernen">×</button></span>`).join("")}
-        <input id="tag-neu" placeholder="＋ Tag" autocomplete="off"></div></div>
+        <input id="tag-neu" placeholder="＋ Tag" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="tag-vorschlaege" aria-label="Tag hinzufügen"></div></div>
     <div class="i-gruppe"><span class="i-label">Baugruppen</span>
       <div class="i-sammlungen">${(m.baugruppen || []).map((b) => `<button class="chip" data-baugruppe="${esc(b.id)}">🧩 ${esc(b.name)} · ${b.menge}×</button>`).join("")}
         <button class="knopf klein" id="zu-baugruppe">＋ Baugruppe …</button></div></div>
@@ -2415,9 +2429,56 @@ $("#neue-fassung").addEventListener("click", async () => {
 [8000, 30000, 90000].forEach((ms) => setTimeout(neueFassungPruefen, ms));
 setInterval(neueFassungPruefen, 10 * 60 * 1000);
 
+// Tastenkürzel auf einen Blick („?“). Die Tasten so, wie sie auf diesem Rechner heissen: ⌘ und ⌫ auf dem Mac, sonst Strg und Entf.
+const MAC = /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform || navigator.platform || "");
+function tastenkuerzel() {
+  const strg = MAC ? "⌘" : "Strg", entf = MAC ? "⌫" : "Entf";
+  const k = (...t) => t.map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
+  const gruppen = [
+    ["In der Bibliothek", [[k("←", "↑", "→", "↓"), "Modell wechseln"], [k("Pos1") + " " + k("Ende"), "Zum ersten oder letzten"],
+      [k("Umschalt") + " + " + k("↑", "↓"), "Mehrere am Stück wählen"], [k("Leertaste"), "Zur Auswahl dazu oder weg"],
+      [k(strg, "A"), "Alle wählen"], [k("Enter"), "Im Programm öffnen"], [k("F2"), "Umbenennen"], [k(entf), "Aus dem Katalog entfernen"]]],
+    ["Suchen", [[k("/"), "Ins Suchfeld"], [k("↓") + " oder " + k("Enter"), "Zu den Treffern"], [k("↑") + " in der ersten Reihe", "Zurück ins Suchfeld"],
+      [k("Esc"), "Suche leeren"]]],
+    ["Überall", [[k(strg, "Z"), "Rückgängig"], [k("Esc"), "Auswahl aufheben, schliessen"],
+      [k("F1"), "Handbuch"], [k("?"), "Diese Übersicht"]]],
+  ];
+  dialog(`<h2>Tastenkürzel</h2>
+    <div class="kuerzel">${gruppen.map(([titel, zeilen]) => `<section><h3>${esc(titel)}</h3>
+      <dl>${zeilen.map(([tasten, was]) => `<dt>${tasten}</dt><dd>${esc(was)}</dd>`).join("")}</dl></section>`).join("")}</div>
+    <div class="knoepfe"><button class="knopf akzent" value="ok" autofocus>OK</button></div>`);
+}
+
+// Sammel-Haken für Häkchen-Listen (Fenster wie „Archive entpacken“): `<input type="checkbox" data-sammel="name">` steuert alle mit
+// `data-sammel-von="name"`; er zeigt an, leer oder „−“ (ein Teil). Dazu stellt der Beobachter unten jedes `data-teil="1"` auf „−“ — so tragen
+// alle Sammel-Haken (Gruppen, Aufräumen, Tags) die Teilauswahl, egal wer sie zeichnet: ein Häkchen kennt „teilweise“ nur als Eigenschaft, nicht im HTML.
+function sammelAbgleichen(wurzel = document) {
+  for (const m of wurzel.querySelectorAll("[data-sammel]")) {
+    const glieder = [...wurzel.querySelectorAll(`[data-sammel-von="${CSS.escape(m.dataset.sammel)}"]`)];
+    const n = glieder.filter((g) => g.checked).length;
+    m.checked = n > 0 && n === glieder.length;
+    m.indeterminate = n > 0 && n < glieder.length;
+    const zahl = m.closest("label")?.querySelector(".sammel-zahl");
+    if (zahl) zahl.textContent = n && n < glieder.length ? `${n} von ${glieder.length}` : `${glieder.length}`;
+  }
+}
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset?.sammel) {
+    const wurzel = t.closest("dialog, section, body");
+    wurzel.querySelectorAll(`[data-sammel-von="${CSS.escape(t.dataset.sammel)}"]`).forEach((g) => { g.checked = t.checked; });
+    sammelAbgleichen(wurzel);
+  } else if (t.dataset?.sammelVon) sammelAbgleichen(t.closest("dialog, section, body"));
+});
+new MutationObserver(() => {
+  for (const x of document.querySelectorAll("input[data-teil]")) x.indeterminate = x.dataset.teil === "1";
+}).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-teil"] });
+const sammelKopf = (name, text = "Alle") => `<label class="sammel"><input type="checkbox" data-sammel="${name}"> ${text} <span class="sammel-zahl dim"></span></label>`;
+
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;
+  sammelAbgleichen($("#dialog-inhalt"));
   d.showModal();
   return new Promise((ok) => d.addEventListener("close", () => ok(d.returnValue), { once: true }));
 }
@@ -2436,7 +2497,18 @@ $("#dialog-inhalt").addEventListener("keydown", (e) => {
 
 async function loeschen(id) {
   const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${id}`);
-  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus dem Katalog entfernen?`)) waehle(null);
+  const stelle = zustand.idIndex.get(id);
+  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus dem Katalog entfernen?`)) await naechstesWaehlen(stelle);
+}
+
+// Nach dem Entfernen steht die Wahl auf dem Modell, das jetzt an derselben Stelle steht (wie im Dateimanager) — man kann gleich weitermachen.
+async function naechstesWaehlen(stelle) {
+  await ladeModelle();
+  const n = zustand.modelle.length;
+  if (stelle == null || !n) return waehle(null);
+  const i = Math.min(stelle, n - 1);
+  raster.zeigen(i);
+  waehleEines(zustand.modelle[i].id);
 }
 
 // Was am Modell hängt, aus der Nachbarschaft im Graphen — damit man weiss,
@@ -2470,7 +2542,7 @@ async function loeschDialog(modelle, titel, ordner = null) {
     <p class="dim">Das Modell kommt in den Papierkorb von partAtlas und ist damit aus dem Katalog. <b>Die Dateien bleiben unverändert in ihren
       Ordnern</b> — partAtlas löscht und verschiebt nichts. „Wiederherstellen“ nimmt das Modell wieder auf.</p>
     <div class="loesch-liste">${ordnerZeile}${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Aus dem Katalog entfernen</button></div>`);
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja" autofocus>Aus dem Katalog entfernen</button></div>`);
   if (a !== "ja") return false;
   const wahl = {
     tags: $("#mit-tags")?.checked ? nurT.map((t) => t.name) : [],
@@ -2483,7 +2555,15 @@ async function loeschDialog(modelle, titel, ordner = null) {
   try {
     const r = await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } });
     if (r.fehler.length) toast(`${modelle.length - r.fehler.length} gelöscht, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
-    else toast(viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt.");
+    else {
+      // Rückgängig und der Weg zum Papierkorb gleich in der Meldung: ein Tester löschte versehentlich und fand das Modell nicht wieder —
+      // neu einlesen holt es bewusst nicht zurück (es soll ja weg bleiben).
+      // Derselbe Schritt für den Knopf und für Strg+Z (rueckgaengig): einmal zurück, nicht zweimal.
+      ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } }) };
+      const zurueck = () => rueckgaengig();
+      toast(`${viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt."} Zurückholen: hier oder unter Bereinigen › Papierkorb.`,
+            { aktionen: [["Rückgängig", zurueck], ["Papierkorb", () => document.querySelector('[data-ansicht="papierkorb"]')?.click()]], dauer: 9000 });
+    }
     return true;
   } catch (e) { toast(e.message); return false; }
 }
@@ -2744,7 +2824,8 @@ document.addEventListener("click", async (e) => {
     localStorageSchreiben("layout", zustand.layout);
     document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
     kachelKnopfZeigen();
-$("#gruppierung").value = zustand.gruppierung;
+    $("#gruppierung").value = zustand.gruppierung;
+    if (zustand.leiste) zeichneLeiste(zustand.leiste);     // der Sammel-Haken: in der Liste im Spaltenkopf, sonst in der Leiste
     $("#raster").scrollTop = 0;
     return raster.neu();
   }
@@ -2882,7 +2963,7 @@ $("#gruppierung").value = zustand.gruppierung;
     case "archive-knopf": return archiveEntpacken();
     case "verschieben": {
       const ziel = await ordnerWahl("Verschieben", "Die Datei wird auf der Platte verschoben. Nichts wird überschrieben.");
-      if (ziel) await api(`/api/modelle/${id}/verschieben`, { method: "POST", body: { ordner: ziel } }).then(() => toast("Verschoben.")).catch((e2) => toast(e2.message));
+      if (ziel) await modelleVerschieben([id], ziel);
       return;
     }
     case "quelle-aendern": {
@@ -2965,7 +3046,7 @@ document.addEventListener("change", async (e) => {
     e.target.value = "";
     return bilderHochladen(dateien);
   }
-  if (e.target.id === "kopf-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
+  if (e.target.id === "kopf-alle" || e.target.id === "leiste-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
   if (e.target.dataset?.kachelZeile) {                // Einstellungen › Ansicht: Zeile auf der Kachel an/aus, sofort
     const wahl = new Set(zustand.kachelZeilen);
     e.target.checked ? wahl.add(e.target.dataset.kachelZeile) : wahl.delete(e.target.dataset.kachelZeile);
@@ -2995,12 +3076,7 @@ document.addEventListener("change", async (e) => {
 });
 
 document.addEventListener("keydown", async (e) => {
-  if (e.target.id === "tag-neu" && e.key === "Enter" && e.target.value.trim()) {
-    const id = $("#inspektor").dataset.id;
-    try { await api(`/api/modelle/${id}/tags`, { method: "POST", body: { tag: e.target.value } }); }
-    catch (err) { toast(err.message); }
-    waehle(id);
-  }
+  // Das Feld „＋ Tag“ (Enter, Vorschläge) bedient tagfeld.js.
   const tippt = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) || $("#dialog").open;
   if (e.key === "/" && !tippt) { e.preventDefault(); $("#suche").focus(); }
   // F1 wie überall unter Windows und Linux: die Hilfe — hier das Handbuch, beim Kapitel zur jetzigen Ansicht.
@@ -3024,10 +3100,13 @@ document.addEventListener("keydown", async (e) => {
   // offener Dialog schliesst zuerst sich selbst.
   if (e.key === "Escape" && zustand.auswahl.size && !$("#dialog").open) stapelAktion("keine");
   if (!tippt && !document.querySelector("dialog[open]") && tastaturAuswahl(e)) e.preventDefault();
-  if ((e.key === "Delete" || e.key === "Backspace") && zustand.auswahl.size && !tippt && zustand.ansicht !== "papierkorb") {
-    e.preventDefault();
-    loeschenViele([...zustand.auswahl]);
+  // Entf (Mac: ⌫) entfernt, was gewählt ist: die Auswahl, sonst das eine angeklickte Modell — nicht nur eine Mehrfachauswahl.
+  if ((e.key === "Delete" || e.key === "Backspace") && !tippt && !document.querySelector("dialog[open]") && zustand.ansicht !== "papierkorb"
+      && !["aufraeumen", "gcode", "lager"].includes(zustand.ansicht) && !zustand.baugruppe && !document.activeElement?.closest?.(".sektion, #inspektor")) {
+    if (zustand.auswahl.size) { e.preventDefault(); loeschenViele([...zustand.auswahl]); }
+    else if (zustand.gewaehlt && zustand.idIndex.has(zustand.gewaehlt)) { e.preventDefault(); loeschen(zustand.gewaehlt); }
   }
+  if (e.key === "?" && !tippt && !document.querySelector("dialog[open]")) { e.preventDefault(); tastenkuerzel(); }
 });
 
 let suchZeit;
@@ -3045,7 +3124,22 @@ function sucheLeeren() {
   s.focus();
 }
 $("#suche-x").addEventListener("click", sucheLeeren);
-$("#suche").addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); } });
+$("#suche").addEventListener("keydown", async (e) => {
+  if (e.key === "Escape" && e.target.value) { e.preventDefault(); sucheLeeren(); return; }
+  // Pfeil runter oder Enter: zu den Treffern, der erste ist gewählt; weiter mit den Pfeilen. Eine noch wartende Suche gilt sofort.
+  if ((e.key === "ArrowDown" || e.key === "Enter") && !e.isComposing) {
+    e.preventDefault();
+    if (suchZeit && zustand.suche !== e.target.value.trim()) {
+      clearTimeout(suchZeit);
+      zustand.suche = e.target.value.trim(); sortiere.angeklickt = false;
+      await ladeModelle();
+    }
+    if (!zustand.modelle.length) return;
+    e.target.blur();
+    raster.zeigen(0);
+    waehleEines(zustand.modelle[0].id);
+  }
+});
 
 // Ein Wechsel der Ansicht (Bereinigen › Gleiche Datei, Papierkorb …) ändert nur die Liste — ebenso ein Filter (Ordner, Tag, Material, Format,
 // Sammlung, gemerkte Suche): ein Tag-Klick holte sonst acht Antworten über alle Modelle mit, die sich durch den Filter nicht ändern (29.10.2026).
@@ -3084,7 +3178,20 @@ document.addEventListener("dragstart", (e) => {
   const k = e.target.closest?.(".karte, .zeile-l, .zeile-k"), w = e.target.closest?.("[data-ws]");
   const o = e.target.closest?.(".baum .eintrag[data-ordner][draggable]");
   if (o) { gezogen = { art: "ordner", id: o.dataset.ordner }; o.classList.add("ziehen"); e.dataTransfer.effectAllowed = "move"; }
-  else if (k) { gezogen = { art: "modell", id: k.dataset.id }; k.classList.add("ziehen"); }
+  else if (k) {
+    gezogen = { art: "modell", id: k.dataset.id };
+    k.classList.add("ziehen");
+    // Mehrere gewählt: das Ziehbild sagt, wie viele mitgehen — sonst sähe man nur die eine Kachel unter dem Zeiger.
+    const n = zustand.auswahl.has(k.dataset.id) ? zustand.auswahl.size : 1;
+    if (n > 1) {
+      const bild = document.createElement("div");
+      bild.className = "ziehbild";
+      bild.textContent = `${anzahl(n)} Modelle`;
+      document.body.append(bild);
+      e.dataTransfer.setDragImage(bild, 16, 16);
+      setTimeout(() => bild.remove(), 0);
+    }
+  }
   else if (w) gezogen = { art: "ws", id: w.dataset.ws };
   else return;
   if (gezogen.art !== "ordner") e.dataTransfer.effectAllowed = "copyMove";
@@ -3098,6 +3205,30 @@ document.addEventListener("dragend", () => {
 
 // Zieht man eine gewählte Kachel, gelten alle Gewählten.
 const gezogene = () => (zustand.auswahl.has(gezogen.id) ? [...zustand.auswahl] : [gezogen.id]);
+
+// Modelle in einen Ordner verschieben (Ziehen oder Menü): die Meldung nennt das Ziel und hat „Rückgängig“, Strg+Z geht ebenso — ein versehentliches
+// Fallenlassen soll ein Tastendruck sein, nicht eine Suche im Dateimanager. Zurück geht nur, was wirklich verschoben wurde, jedes an seinen alten Ort.
+async function modelleVerschieben(ids, ziel) {
+  const vorher = new Map(ids.map((id) => [id, (zustand.modelle.find((m) => m.id === id)?.ordner || [])[0]]));
+  let r;
+  try { r = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: ids, wert: ziel } }); }
+  catch (e) { return toast(e.message); }
+  const gescheitert = new Set(r.fehler.map((f) => f.id));
+  const ok = ids.filter((id) => !gescheitert.has(id) && vorher.get(id) && vorher.get(id).replace(/\/$/, "") !== ziel.replace(/\/$/, ""));
+  if (ok.length) {
+    const je = new Map();
+    for (const id of ok) je.set(vorher.get(id), [...(je.get(vorher.get(id)) || []), id]);
+    ordnerAktion.letzte = { rueck: async () => {
+      for (const [ordner, liste] of je) await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: liste, wert: ordner } });
+    } };
+  }
+  const name = (id) => { const m = zustand.modelle.find((x) => x.id === id); return m ? `„${m.name}${endung[m.format] || ""}“` : "Das Modell"; };
+  const was = ok.length === 1 ? name(ok[0]) : `${anzahl(ok.length)} Modelle`;
+  const text = !ok.length ? (r.fehler[0]?.fehler || "Nichts verschoben.")
+    : `${was} verschoben nach „${ordnerName(ziel)}“.` + (r.fehler.length ? ` ${anzahl(r.fehler.length)} nicht: ${r.fehler[0].fehler}` : "");
+  toast(text, { aktionen: ok.length ? [["Rückgängig", rueckgaengig]] : [], dauer: r.fehler.length ? 9000 : 8000 });
+  neuLaden();
+}
 
 function ablageZiel(el) {
   if (!gezogen || !el?.closest) return null;
@@ -3148,8 +3279,7 @@ document.addEventListener("drop", async (e) => {
       await api(`/api/baugruppen/${z.dataset.baugruppe}/positionen`, { method: "POST", body: { refs: gezogene().map((x) => `MODEL_ASSET/${x}`) } });
       toast("Zur Baugruppe hinzugefügt.");
     } else if (z.dataset.ordner) {
-      const r = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: gezogene(), wert: z.dataset.ordner } });
-      toast(r.fehler.length ? r.fehler[0].fehler : "Verschoben.");
+      await modelleVerschieben(gezogene(), z.dataset.ordner);
     } else if (z.dataset.sammlung) {
       await api(`/api/sammlungen/${z.dataset.sammlung}/modelle`, { method: "POST", body: { modelle: gezogene() } });
       toast("Zur Sammlung hinzugefügt.");
@@ -3227,8 +3357,9 @@ function einlesenMelden(m) {
   if (m.phase === "fehler") return toast(`Einlesen gescheitert: ${m.abbruch || "unbekannter Fehler"}. Was schon eingelesen war, bleibt im Katalog.`, { dauer: 10000 });
   if (m.abgebrochen) return toast("Einlesen abgebrochen. Was schon eingelesen war, bleibt im Katalog.");
   const modelle = (n) => `${anzahl(n)} ${n === 1 ? "Modell" : "Modelle"}`;
+  const gcodes = (n) => `${anzahl(n)} ${n === 1 ? "G-Code" : "G-Codes"}`;
   const teile = [m.neu ? `${anzahl(m.neu)} ${m.neu === 1 ? "neues Modell" : "neue Modelle"}`
-    : m.geaendert ? `${modelle(m.geaendert)} geändert` : `Nichts Neues – ${anzahl(m.gefunden)} Dateien geprüft`];
+    : m.geaendert ? `${modelle(m.geaendert)} geändert` : m.gcode_neu || m.gcode_offen_neu ? "" : `Nichts Neues – ${anzahl(m.gefunden)} Dateien geprüft`].filter(Boolean);
   const ziele = [];
   if (m.neu) ziele.push(["Zeigen", "neu"]);
   if (m.neu && m.geaendert) teile.push(`${anzahl(m.geaendert)} geändert`);
@@ -3239,6 +3370,9 @@ function einlesenMelden(m) {
   if (weg > 0) { teile.push(`${anzahl(weg)} nicht mehr da`); if (!m.fehlt_neu) ziele.push(["Datei fehlt", "fehlt"]); }
   if (m.unlesbar) { teile.push(`${anzahl(m.unlesbar)} unlesbar`); ziele.push(["Unlesbar", "unlesbar"]); }
   if (m.kopien) { teile.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Kopie" : "Kopien"} mit gleichem Inhalt`); ziele.push(["Gleiche Datei", "duplikate"]); }
+  // G-Code aus dem Ordner (gcode_ordner.py): zugeordnete nennen; nicht zuordenbare nur, wenn sie in diesem Lauf dazukamen — sonst käme dieselbe Meldung bei jedem Einlesen.
+  if (m.gcode_neu) teile.push(`${gcodes(m.gcode_neu)} zugeordnet`);
+  if (m.gcode_offen_neu) { teile.push(`${gcodes(m.gcode_offen_neu)} ohne Modell`); ziele.push(["G-Code ohne Modell", "gcode"]); }
   if (m.nicht_erreichbar?.length) teile.push(`nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)`);
   toast(teile.join(" · "), { dauer: teile.length > 1 || ziele.length > 1 ? 9000 : 4500,
                 aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });
@@ -3865,7 +3999,7 @@ async function ordnerVerschiebenNach(id) {
   } catch (e) { toast(e.message, { dauer: 6000 }); }
 }
 
-// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen) — Knopf in der Meldung und Strg+Z.
+// Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen oder verschieben, Modelle entfernen) — Knopf in der Meldung und Strg+Z.
 async function rueckgaengig() {
   const l = ordnerAktion.letzte;
   if (!l) return;

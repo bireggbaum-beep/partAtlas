@@ -72,11 +72,14 @@ if __name__ == "__main__":
         check("Die Bilanz zählt: 5 neu, 1 unklar, 1 ohne Modell",
               (st["gcode_neu"], st["gcode_unklar"], st["gcode_ohne_modell"]) == (5, 1, 1))
         check("Die Datei bleibt im Ordner liegen", os.path.exists(os.path.join(sammlung, "1009-Halter.gcode")))
+        check("Für die Meldung: 2 G-Codes in diesem Lauf neu ohne Modell (unklar und fremd)", st["gcode_offen_neu"] == 2)
 
         # -- zweites Einlesen: nichts doppelt
         c.post("/api/scan")
         warten(z)
         check("Ein zweites Einlesen legt keinen Druck doppelt an", len(druecke(modell(c, "Halter_Netzteil"))) == 2)
+        st2 = c.get("/api/stand").json()["scan"]
+        check("… und meldet die schon bekannten offenen nicht noch einmal als neu", st2["gcode_offen_neu"] == 0 and st2["gcode_neu"] == 0)
 
         # -- derselbe Inhalt, hochgeladen: kein zweiter Druck aus dem Ordner
         schreibe(os.path.join(sammlung, "kopie.gcode"), gcode(["Halter_Netzteil.stl"]))
@@ -89,13 +92,15 @@ if __name__ == "__main__":
         c.post("/api/scan")
         warten(z)
         check("Kommt das Modell später dazu, wird der liegengebliebene G-Code zugeordnet", modell(c, "Gibt_es_nicht")["gcode"] == "druck")
+        check("… der unklare wird dabei neu angesehen, gilt aber nicht als neu offen", c.get("/api/stand").json()["scan"]["gcode_offen_neu"] == 0)
 
         # -- Modell im Papierkorb: nicht als Ziel
         c.post(f"/api/modelle/{p['id']}/loeschen", json={})
         schreibe(os.path.join(sammlung, "nachzuegler.gcode"), gcode(["Prusateil.stl"], gewicht=1))
         c.post("/api/scan")
         warten(z)
-        check("Ein Modell im Papierkorb bekommt keinen G-Code mehr", c.get("/api/stand").json()["scan"]["gcode_ohne_modell"] >= 1)
+        st3 = c.get("/api/stand").json()["scan"]
+        check("Ein Modell im Papierkorb bekommt keinen G-Code mehr — der Nachzügler ist neu offen", st3["gcode_ohne_modell"] >= 1 and st3["gcode_offen_neu"] == 1)
 
         # -- Bereinigen: G-Code ohne Modell
         offen = c.get("/api/gcode_offen").json()
@@ -141,4 +146,19 @@ if __name__ == "__main__":
         go.ausblenden(nid, True)                                          # … der Anwender entscheidet währenddessen
         go._merken(vorher, lauf_sieht, vollstaendig=True)
         check("Das Ende eines Einlesens überschreibt eine Entscheidung während des Laufs nicht", z["bestand"].einstellungen()[GESEHEN][nid][2] == "ignoriert")
+
+        # -- Ordner umbenennen: die gemerkten G-Codes darunter ziehen mit (ein ausgeblendeter bleibt ausgeblendet)
+        schreibe(os.path.join(zwei, "unter.gcode"), gcode(["Gibt_es_auch_nicht.stl"]))
+        c.post("/api/scan")
+        warten(z)
+        uid = next(e["id"] for e in c.get("/api/gcode_offen").json()["eintraege"] if e["name"] == "unter.gcode")
+        c.post("/api/gcode_offen/ausblenden", json={"id": uid, "an": True})
+        wid = uid.split("/", 1)[0]
+        r = c.post("/api/ordner/bewegen", json={"id": f"{wid}/zweite", "name": "umbenannt"})
+        c.post("/api/scan")
+        warten(z)
+        o3 = c.get("/api/gcode_offen").json()
+        check("Ordner umbenannt: ein ausgeblendeter G-Code darin bleibt ausgeblendet (die gemerkten ziehen mit)",
+              r.status_code == 200 and "unter.gcode" not in {e["name"] for e in o3["eintraege"]}
+              and f"{wid}/umbenannt/unter.gcode" in z["bestand"].einstellungen()[GESEHEN])
     muster.ende()

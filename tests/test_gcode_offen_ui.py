@@ -64,6 +64,16 @@ if __name__ == "__main__":
             pg.locator("#gc-liste .w-zeile", has_text="Halter_Umbenannt").locator("[data-gc-nimm]").click()
             pg.wait_for_function("document.querySelector('#z-gcode')?.textContent === ''")
             check("… und ein Klick ordnet zu; danach ist nichts mehr offen", "Alle G-Codes aus deinen Ordnern sind zugeordnet" in pg.inner_text("#gcode-offen"))
+            # Meldung nach dem Einlesen: ein neuer G-Code ohne Modell, mit Knopf dorthin
+            pg.click(".rail-btn[data-rail='bereinigen']")
+            pg.click("[data-ansicht='fehlt']")
+            open(os.path.join(samm, "neu_ohne.gcode"), "wb").write(gcode("Gibt_es_nicht.stl"))
+            abfrage(port, "/api/scan", {})
+            pg.wait_for_function("document.querySelector('#toast') && !document.querySelector('#toast').hidden && document.querySelector('#toast').textContent.includes('ohne Modell')", timeout=30000)
+            check("Nach dem Einlesen nennt die Meldung den neuen G-Code ohne Modell", "1 G-Code ohne Modell" in pg.inner_text("#toast"))
+            pg.locator("#toast button", has_text="G-Code ohne Modell").click()
+            pg.wait_for_selector("#gcode-offen .af-zeile")
+            check("… und ihr Knopf führt zu Bereinigen › G-Code ohne Modell", "neu_ohne.gcode" in pg.inner_text("#gcode-offen"))
             b.close()
         ids = {m["name"]: m["id"] for m in abfrage(port, "/api/modelle")}
         h = abfrage(port, f"/api/modelle/{ids['Halter_Umbenannt']}")

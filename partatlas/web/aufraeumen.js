@@ -53,9 +53,10 @@ function zeichneAufraeumen() {
   const gruppen = d.gruppen.map((g) => {
     const zu = aufr.zu.has(g.art);
     const alle = g.eintraege.length && g.eintraege.every((e) => aufr.wahl.has(afSchluessel(g.art, e.id)));
+    const teil = !alle && g.eintraege.some((e) => aufr.wahl.has(afSchluessel(g.art, e.id)));
     return `<section class="af-gruppe" data-id="g-${g.art}">
       <div class="af-gkopf">
-        <input type="checkbox" data-af-alle="${g.art}" ${alle ? "checked" : ""} ${g.n ? "" : "disabled"} title="Alle dieser Gruppe wählen">
+        <input type="checkbox" data-af-alle="${g.art}" data-teil="${teil ? 1 : 0}" ${alle ? "checked" : ""} ${g.n ? "" : "disabled"} title="Alle dieser Gruppe wählen">
         <button class="af-gtitel" data-af-zu="${g.art}">${zu ? "▸" : "▾"} ${esc(g.titel)}</button>
         <span class="af-gzahl">${g.n ? `${anzahl(g.n)} · ${mb(g.bytes)}` : "nichts"}</span>
       </div>
@@ -101,7 +102,8 @@ function afCsv() {
 async function afAusnahmen() {
   const liste = await api("/api/aufraeumen/behalten");
   const a = await dialog(`<h2>Ausnahmen</h2><p class="dim">Diese Modelle schlägt partAtlas beim Aufräumen nicht vor. Häkchen weg = wieder vorschlagen.</p>
-    <div class="dl-liste">${liste.map((m) => `<label class="dl-zeile"><input type="checkbox" data-ausnahme="${esc(m.id)}" checked>
+    ${sammelKopf("ausnahmen")}
+    <div class="dl-liste">${liste.map((m) => `<label class="dl-zeile"><input type="checkbox" data-ausnahme="${esc(m.id)}" data-sammel-von="ausnahmen" checked>
       <span class="dl-pfad">${esc(m.name)}${esc(endung[m.format] || "")}</span><span></span></label>`).join("")}</div>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Übernehmen</button></div>`);
   if (a !== "ja") return;

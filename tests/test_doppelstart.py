@@ -38,9 +38,21 @@ def holen(port, pfad, daten=None, warten=0.0):
         return None, None
 
 
-def starten(bestand, port):
-    env = {**os.environ, "PARTATLAS_BESTAND": bestand, "PARTATLAS_PORT": str(port), "PYTHONPATH": os.pathsep.join(x for x in (os.environ.get("PYTHONPATH"), muster.sys.path[0]) if x)}
-    return subprocess.Popen([sys.executable, "-m", "partatlas"], env=env, cwd=muster.sys.path[0], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+def starten(bestand, port, ausgabe=False):
+    env = {**os.environ, "PARTATLAS_BESTAND": bestand, "PARTATLAS_PORT": str(port), "PARTATLAS_KEIN_BROWSER": "1", "PYTHONPATH": os.pathsep.join(x for x in (os.environ.get("PYTHONPATH"), muster.sys.path[0]) if x)}
+    return subprocess.Popen([sys.executable, "-m", "partatlas"], env=env, cwd=muster.sys.path[0], stdout=subprocess.PIPE if ausgabe else subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, text=True)
+
+
+def endet(p, grenze=30):
+    """(endete von selbst, Ausgabe)"""
+    try:
+        aus, _ = p.communicate(timeout=grenze)
+        return True, aus or ""
+    except subprocess.TimeoutExpired:
+        p.kill()
+        aus, _ = p.communicate()
+        return False, aus or ""
 
 
 def bereit(port, grenze=40):
@@ -74,17 +86,26 @@ if __name__ == "__main__":
         mid = modelle[0]["id"]
         holen(p1, f"/api/modelle/{mid}/tags", {"tag": "vorher"})
 
-        # -- zweiter Start auf demselben Bestand, anderer Port: kommt nicht an die Daten
-        b = starten(bestand, p2)
-        time.sleep(6)
-        st, antwort = holen(p2, "/api/modelle")
-        check("Zweiter Start (anderer Port) liefert keine Daten des Bestands", st != 200)
-        check("… und sagt, woran es liegt (Bestand von anderem Prozess geöffnet)", "anderen Prozess" in json.dumps(antwort or {}, ensure_ascii=False))
+        # -- zweiter Start auf demselben Bestand, anderer Port: zeigt den laufenden und endet (laeuft.json)
+        warte_bis = time.time() + 10
+        while not os.path.exists(os.path.join(bestand, "laeuft.json")) and time.time() < warte_bis:
+            time.sleep(0.2)
+        b = starten(bestand, p2, ausgabe=True)
+        von_selbst, aus = endet(b)
+        check("Zweiter Start (anderer Port) beendet sich von selbst, statt als leere Seite stehen zu bleiben", von_selbst and holen(p2, "/api/stand")[0] is None)
+        check("… und nennt, wo partAtlas mit diesem Bestand schon läuft", f"127.0.0.1:{p1}" in aus)
         st, _ = holen(p1, f"/api/modelle/{mid}/tags", {"tag": "nachher"})
         tags = (holen(p1, f"/api/modelle/{mid}")[1] or {}).get("tags") or []
         check("Der erste arbeitet währenddessen weiter und schreibt", st == 200 and {"vorher", "nachher"} <= set(tags))
-        b.kill(); b.wait()
-        check("Der erste läuft nach dem Ende des zweiten weiter", holen(p1, "/api/stand")[0] == 200)
+
+        # -- liegengebliebene laeuft.json (zeigt ins Leere) und gleichzeitiger Start: die Sperre weist ab, der zweite endet trotzdem von selbst
+        eintrag = open(os.path.join(bestand, "laeuft.json")).read()
+        open(os.path.join(bestand, "laeuft.json"), "w").write(json.dumps({"port": freier_port(), "pid": 1}))
+        b = starten(bestand, p2, ausgabe=True)
+        von_selbst, aus = endet(b, 40)
+        check("Auch wenn laeuft.json ins Leere zeigt: der zweite kommt nicht an die Daten und endet von selbst",
+              von_selbst and "schon offen" in aus and holen(p1, "/api/stand")[0] == 200)
+        open(os.path.join(bestand, "laeuft.json"), "w").write(eintrag)
 
         # -- zweiter Start auf demselben Port: bricht ab, ohne den ersten zu stören
         c = starten(bestand, p1)
