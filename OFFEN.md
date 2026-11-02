@@ -4,6 +4,13 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Auf dem Branch, nicht auf `main`: 1.0.9 (2.11.2026)
+
+- **Bilanz der G-Codes in der Meldung nach dem Einlesen:** „n G-Codes zugeordnet“; „n G-Codes ohne Modell“ mit Knopf zu Bereinigen › G-Code ohne Modell — nur die in diesem Lauf neu offenen
+  (`gcode_offen_neu`; ein schon bekannter unklarer, der beim Dazukommen eines Modells neu angesehen wird, zählt nicht), sonst käme dieselbe Meldung bei jedem Einlesen. Bei Ketten von
+  Läufen zusammengezählt. Nur G-Code und nichts Neues an Modellen: statt „Nichts Neues“ steht die G-Code-Bilanz. test_gcode_ordner 28/28, test_gcode_offen_ui 9/9 (Gegenproben fallen),
+  test_scan 110/110, test_neuigkeiten mit Eintrag 1.0.9.
+
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 
 Neu: **G-Code aus dem Ordner** (Einlesen erkennt das Quellmodell am Inhalt, Druck „Noch nicht gedruckt“), **Bereinigen › G-Code ohne Modell** (unklare und unbekannte zuordnen oder ausblenden),

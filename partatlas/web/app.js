@@ -3227,8 +3227,9 @@ function einlesenMelden(m) {
   if (m.phase === "fehler") return toast(`Einlesen gescheitert: ${m.abbruch || "unbekannter Fehler"}. Was schon eingelesen war, bleibt im Katalog.`, { dauer: 10000 });
   if (m.abgebrochen) return toast("Einlesen abgebrochen. Was schon eingelesen war, bleibt im Katalog.");
   const modelle = (n) => `${anzahl(n)} ${n === 1 ? "Modell" : "Modelle"}`;
+  const gcodes = (n) => `${anzahl(n)} ${n === 1 ? "G-Code" : "G-Codes"}`;
   const teile = [m.neu ? `${anzahl(m.neu)} ${m.neu === 1 ? "neues Modell" : "neue Modelle"}`
-    : m.geaendert ? `${modelle(m.geaendert)} geändert` : `Nichts Neues – ${anzahl(m.gefunden)} Dateien geprüft`];
+    : m.geaendert ? `${modelle(m.geaendert)} geändert` : m.gcode_neu || m.gcode_offen_neu ? "" : `Nichts Neues – ${anzahl(m.gefunden)} Dateien geprüft`].filter(Boolean);
   const ziele = [];
   if (m.neu) ziele.push(["Zeigen", "neu"]);
   if (m.neu && m.geaendert) teile.push(`${anzahl(m.geaendert)} geändert`);
@@ -3239,6 +3240,9 @@ function einlesenMelden(m) {
   if (weg > 0) { teile.push(`${anzahl(weg)} nicht mehr da`); if (!m.fehlt_neu) ziele.push(["Datei fehlt", "fehlt"]); }
   if (m.unlesbar) { teile.push(`${anzahl(m.unlesbar)} unlesbar`); ziele.push(["Unlesbar", "unlesbar"]); }
   if (m.kopien) { teile.push(`${anzahl(m.kopien)} ${m.kopien === 1 ? "Kopie" : "Kopien"} mit gleichem Inhalt`); ziele.push(["Gleiche Datei", "duplikate"]); }
+  // G-Code aus dem Ordner (gcode_ordner.py): zugeordnete nennen; nicht zuordenbare nur, wenn sie in diesem Lauf dazukamen — sonst käme dieselbe Meldung bei jedem Einlesen.
+  if (m.gcode_neu) teile.push(`${gcodes(m.gcode_neu)} zugeordnet`);
+  if (m.gcode_offen_neu) { teile.push(`${gcodes(m.gcode_offen_neu)} ohne Modell`); ziele.push(["G-Code ohne Modell", "gcode"]); }
   if (m.nicht_erreichbar?.length) teile.push(`nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)`);
   toast(teile.join(" · "), { dauer: teile.length > 1 || ziele.length > 1 ? 9000 : 4500,
                 aktionen: ziele.map(([was, ansicht]) => [was, () => document.querySelector(`[data-ansicht="${ansicht}"]`)?.click()]) });

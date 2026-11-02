@@ -77,7 +77,7 @@ class GcodeOrdner:
     def einlesen(self, wurzeln, neue_modelle, stopp=None):
         """Alle `.gcode` unter den Wurzelordnern. `neue_modelle`: in diesem Lauf kamen Modelle dazu — dann werden auch die früher unklaren und
         unbekannten noch einmal angesehen. Zugeordnete und ausgeblendete bleiben, wie sie sind. Gibt die Zahlen zurück."""
-        z = {"gcode_neu": 0, "gcode_unklar": 0, "gcode_ohne_modell": 0, "gcode_fehler": 0}
+        z = {"gcode_neu": 0, "gcode_unklar": 0, "gcode_ohne_modell": 0, "gcode_fehler": 0, "gcode_offen_neu": 0}   # offen_neu: erst in diesem Lauf offen (für die Meldung)
         gesehen = dict(self.b.einstellungen().get(GESEHEN) or {})
         neu_gesehen, je_name = {}, None
         for wid, w in wurzeln.items():
@@ -112,6 +112,8 @@ class GcodeOrdner:
                             z["gcode_neu"] += 1
                         else:
                             z["gcode_unklar" if art == "unklar" else "gcode_ohne_modell"] += 1
+                            if not (alt and alt[2] in OFFEN):
+                                z["gcode_offen_neu"] += 1
                             log.info("G-Code nicht zugeordnet (%s): %s — %s", art, pfad, ", ".join(was) or "der Inhalt nennt kein Modell")
                     except Exception:
                         log.exception("G-Code aus dem Ordner nicht gelesen: %s", pfad)
