@@ -4,7 +4,16 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Auf dem Branch, nicht auf `main`: 1.0.9 (2.11.2026)
+## Stand: 1.0.9 auf `main` (2.11.2026, für den Tester)
+
+Neu: G-Code-Bilanz nach dem Einlesen, Rückgängig und Papierkorb in der Meldung nach dem Löschen, zweiter Start zeigt den laufenden (`laeuft.json`), Sicherung vor einem Update
+(die letzten 3 bleiben), Tastatur (Entf beim einzelnen Modell, Strg+Z fürs Entfernen und Verschieben, Suchfeld ↔ Treffer, „?“), Tag-Vorschläge, Verschieben mit Ziel und Rückgängig,
+Ziehbild mit Anzahl, Sammel-Haken mit Teilauswahl. Vor dem Push: **Hochzieh-Versuch 1.0.8 → 1.0.9 → 1.0.8** auf einem benutzten Bestand mit echten Prozessen (Skript im Scratchpad
+`hochziehen.py`): öffnet, jede Liste antwortet, Daten gleich (Modelle, Tags, offene und ausgeblendete G-Codes, Spule), Sicherung „Vor dem Update von 1.0.8 auf 1.0.9“ entsteht, kein
+Fehler im Protokoll, Rückweg öffnet ebenso; requirements.txt, start.sh, start.bat unverändert (git pull genügt). Alle 51 Suiten grün (976 Checks), test_ui einmal komplett 70/70.
+Handbuch nicht nachgezogen. Rückweg: Zweig `fassung-1.0.8`. Nicht gebaut: Tastatur in „Modell wählen …“ (Anwender: weglassen). Erstes echtes Zeichen „↑ 1.0.9“ beim Tester (er hat 1.0.8).
+
+### Was in 1.0.9 kam (Einzelheiten)
 
 - **Bilanz der G-Codes in der Meldung nach dem Einlesen:** „n G-Codes zugeordnet“; „n G-Codes ohne Modell“ mit Knopf zu Bereinigen › G-Code ohne Modell — nur die in diesem Lauf neu offenen
   (`gcode_offen_neu`; ein schon bekannter unklarer, der beim Dazukommen eines Modells neu angesehen wird, zählt nicht), sonst käme dieselbe Meldung bei jedem Einlesen. Bei Ketten von
