@@ -13,6 +13,10 @@ aktualisieren.
 - **Gelöschtes zurückholen (Rückmeldung des Testers zu 1.0.5):** Die Meldung nach dem Löschen (einzeln und mehrere, `loeschDialog`) hat „Rückgängig“ (Stapel „wiederherstellen“, eine Anfrage)
   und „Papierkorb“ (springt nach Bereinigen › Papierkorb), 9 s sichtbar; vorher nur „Aus dem Katalog entfernt, die Datei bleibt.“ Nicht geändert: Löschen eines ganzen Ordners
   (eigener Weg). `tests/test_loeschen_ui.py` 3/3, Gegenprobe fällt. Handbuch nicht nachgezogen (Anwender).
+- **Zweiter Start zeigt den laufenden (Vorbild 3MF Katalog Manager 0.16; Befund Doppelstart-Test):** `partatlas/einmal.py`. Nach dem Öffnen schreibt partAtlas `laeuft.json` (Port, PID, Fassung)
+  in den Bestand, beim Beenden entfernt es die eigene. Ein neuer Start (`__main__`) sieht vorher nach: antwortet dort ein partAtlas mit demselben Bestand, öffnet er den Browser dort
+  (`webbrowser`, nicht in Tests: `PARTATLAS_KEIN_BROWSER`) und endet. Rutscht er durch (Datei veraltet, beide gleichzeitig), weist ihn die Sperre ab, und eine Wache beendet ihn
+  (vorher: leere 503-Seite „BestandBelegt“). start.sh/start.bat prüften den gleichen Port schon. test_doppelstart 10/10 (zwei Gegenproben fallen), test_aktualisierung_ui 3/3.
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 

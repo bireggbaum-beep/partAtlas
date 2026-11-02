@@ -11,7 +11,9 @@ NEUES = [
     ("1.0.9", ["Nach dem Einlesen sagt die Meldung unten, wie viele G-Codes aus deinen Ordnern zugeordnet wurden — und ob neue dazukamen, die partAtlas keinem Modell "
                "zuordnen konnte. Ein Knopf in der Meldung führt dann direkt zu Bereinigen › „G-Code ohne Modell“.",
                "Versehentlich gelöscht? Die Meldung nach dem Löschen hat jetzt „Rückgängig“ und einen Knopf zum Papierkorb. Neu einlesen holt ein gelöschtes Modell "
-               "absichtlich nicht zurück — dafür ist der Papierkorb da (Bereinigen › Papierkorb › Wiederherstellen)."]),
+               "absichtlich nicht zurück — dafür ist der Papierkorb da (Bereinigen › Papierkorb › Wiederherstellen).",
+               "Startest du partAtlas ein zweites Mal, während es schon läuft, öffnet sich der Browser beim laufenden — auch auf einem anderen Port. "
+               "Vorher blieb dann eine leere Seite mit „Bestand belegt“ stehen."]),
     ("1.0.8", ["G-Code im Ordner: Legst du einen G-Code aus dem Slicer in einen deiner Ordner, liest partAtlas ihn beim Einlesen mit. Das Modell erkennt es am Inhalt der Datei "
                "und hängt den G-Code daran; die Datei im Ordner bleibt liegen. Er erscheint als Druck „Noch nicht gedruckt“ — das Modell gilt erst als gedruckt, wenn du das sagst. "
                "Ist das Modell nicht eindeutig (etwa zwei mit demselben Namen) oder nicht vorhanden, steht der G-Code unter Bereinigen › „G-Code ohne Modell“ — "

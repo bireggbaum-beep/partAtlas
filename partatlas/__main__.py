@@ -6,7 +6,9 @@ import threading
 
 import uvicorn
 
-from . import dateidialog
+import time
+
+from . import dateidialog, einmal
 from .bestand import standard_ort
 from .main import erstelle_app
 from .version import VERSION
@@ -27,6 +29,11 @@ if __name__ == "__main__":
     sys.excepthook = lambda t, v, tb: logging.getLogger("partatlas").critical("Unbehandelter Fehler", exc_info=(t, v, tb))
     logging.getLogger("partatlas").info("partAtlas %s gestartet, Bestand %s", VERSION, ort)
     port = int(os.environ.get("PARTATLAS_PORT", "8765"))
+    # Läuft schon einer mit diesem Bestand (auch auf einem anderen Port): ihn zeigen statt einen zweiten zu starten, der nur „belegt“ sähe.
+    schon = einmal.laufender(ort)
+    if schon:
+        einmal.dorthin(schon)
+        sys.exit(0)
     print(f"partAtlas: http://127.0.0.1:{port}")
     # Nur localhost, solange es kein Passwort gibt (KONZEPT §2).
     # log_config=None: uvicorn richtet sein eigenes Protokoll nicht ein; seine Fehlermeldungen (etwa eine Anfrage, die mit 500 endet) gehen
@@ -49,7 +56,31 @@ if __name__ == "__main__":
             dateidialog.abbrechen()
             super().handle_exit(sig, frame)
 
+    server = Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", log_config=None, timeout_graceful_shutdown=5))
+
+    def wache():
+        """Ist der Bestand offen: vermerken, wo partAtlas läuft. Hat ihn ein anderer (beide fast gleichzeitig gestartet): den zeigen und enden,
+        statt als leere Seite stehen zu bleiben."""
+        st = app.state.oeffnen_stand
+        while not (st["bereit"] or st["fehler"]):
+            time.sleep(0.2)
+        if st["bereit"]:
+            einmal.eintragen(ort, port, VERSION)
+        elif "BestandBelegt" in st["fehler"]:
+            for _ in range(25):                 # der andere trägt sich erst ein, wenn er offen ist
+                schon = einmal.laufender(ort)
+                if schon:
+                    einmal.dorthin(schon)
+                    break
+                time.sleep(0.2)
+            else:
+                print("partAtlas hat diesen Bestand schon offen (in einem anderen Fenster oder Terminal). Dieser Start endet.")
+            server.should_exit = True
+
+    threading.Thread(target=wache, name="Bestand belegt?", daemon=True).start()
     try:
-        Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", log_config=None, timeout_graceful_shutdown=5)).run()
+        server.run()
     except KeyboardInterrupt:
         pass            # Strg+C: uvicorn wirft es nach dem geordneten Beenden noch einmal; als „Unbehandelter Fehler“ sah das nach Absturz aus
+    finally:
+        einmal.austragen(ort)

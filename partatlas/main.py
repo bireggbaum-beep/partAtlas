@@ -170,6 +170,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     app = FastAPI(title="partAtlas", version=VERSION, lifespan=leben)
     app.state.zustand = zustand
     app.state.verteiler = verteiler
+    app.state.oeffnen_stand = oeffnen_stand           # __main__: wann der Bestand offen ist (laeuft.json) oder belegt (zweiter Start)
 
     def K():
         return zustand["katalog"]
