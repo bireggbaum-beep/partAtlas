@@ -39,7 +39,11 @@ aktualisieren.
   verschobenen, jedes an seinen alten Ordner; (2) Ziehbild „n Modelle“ beim Ziehen mehrerer; (3) `gcode_gesehen` zieht beim Ordner-Umbenennen/-Verschieben mit (sonst kämen
   ausgeblendete G-Codes zurück — meine Lücke vom 30.10.). test_verschieben_ui 5/5 (2 Gegenproben fallen), test_gcode_ordner 29/29 (Gegenprobe fällt), test_ordner, test_ordner_ui,
   test_tastatur_ui, test_schutz grün. **Offen (klein):** doppelter Import nennt die vorhandene Datei nicht (nur Anzahl + „Gleiche Datei“); nicht erreichbarer Bibliotheksordner nur in der
-  Meldung, nicht im Baum markiert; „Alle auswählen“ ohne Auswahl (Strg+A geht).
+  Meldung, nicht im Baum markiert.
+- **Sammel-Haken (Anwender 2.11.: „Checkbox oben und je Gruppe ist heute Standard“):** Raster/Karten oben links in der Leiste (`#leiste-alle`; in der Liste nur im Spaltenkopf, beim
+  Wechsel neu gezeichnet); Teilauswahl „−“ für alle Sammel-Haken (Gruppen, Aufräumen, Tags verwalten) über `data-teil` und einen Beobachter (indeterminate gibt es nur als Eigenschaft);
+  Baustein `sammelKopf`/`data-sammel(-von)` für Häkchen-Listen in Fenstern („Alle · n“ bzw. „1 von 2“): Archive entpacken, Ausnahmen (Aufräumen), Nicht zugeordnet (G-Code).
+  test_sammel_ui 10/10 (3 Gegenproben fallen), test_bereinigen_ui, test_tags_ui, test_ansicht_ui grün.
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 

@@ -212,10 +212,11 @@ function gruppenKopf(g, y) {
   const zu = zustand.eingeklappt.has(g.key);
   const ids = zustand.modelle.slice(g.start, g.start + g.n).map((m) => m.id);
   const alle = ids.length > 0 && ids.every((id) => zustand.auswahl.has(id));
+  const teil = !alle && ids.some((id) => zustand.auswahl.has(id));
   const ordnerSprung = zustand.gruppierung === "ordner" && g.key !== basisId();
   return `<div class="gruppe ${zu ? "zu" : ""}" data-id="g:${esc(g.key)}" data-gruppe="${esc(g.key)}" style="top:${y}px" title="${zu ? "Aufklappen" : "Zuklappen"}">
     <span class="g-pfeil ${zu ? "zu" : "auf"}"></span>
-    <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
+    <input type="checkbox" data-gruppe-wahl="${esc(g.key)}" data-teil="${teil ? 1 : 0}" ${alle ? "checked" : ""} title="Alle in dieser Gruppe auswählen">
     ${ordnerSprung ? `<span class="g-name g-ordner" data-gruppe-ordner="${esc(g.key)}" title="In diesen Ordner wechseln">${esc(g.label)}</span>`
       : `<span class="g-name">${esc(g.label)}</span>`}<em>${g.n}</em></div>`;
 }
@@ -428,11 +429,14 @@ function zeichneLeiste(l) {
   const entwuerfe = zustand.entwuerfeN || zustand.ohneEntwuerfe
     ? `<button class="chip ${zustand.ohneEntwuerfe ? "aktiv" : ""}" id="entwuerfe-aus" title="Als Entwurf markierte Modelle ausblenden">${zustand.ohneEntwuerfe
       ? `${zustand.entwuerfeN || 0} ${zustand.entwuerfeN === 1 ? "Entwurf" : "Entwürfe"} ausgeblendet ×` : `Entwürfe ausblenden<em>${zustand.entwuerfeN}</em>`}</button>` : "";
-  abgleichen($("#tagleiste"), `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
+  const sammel = zustand.layout !== "liste" && zustand.modelle.length
+    ? `<label class="leiste-alle"><input type="checkbox" id="leiste-alle" aria-label="Alle gezeigten auswählen"></label><span class="leiste-luecke klein"></span>` : "";
+  abgleichen($("#tagleiste"), sammel + `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
     + (fmt ? `<span class="leiste-titel">FORMAT</span>${fmt}` : "")
     + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : "")
     + (entwuerfe ? `<span class="leiste-luecke"></span>${entwuerfe}` : ""));
+  kopfWahlZeichnen();
 }
 
 // Der Weg zum gewählten Ordner, dezent über der Liste: „Alle › 3D-Druck › Technik“. Jeder Teil führt dorthin zurück.
@@ -1001,11 +1005,13 @@ function spalteSetzen(k, an) {
 
 // Häkchen „alle“ im Listenkopf: an, wenn alle Gezeigten gewählt sind, ein Strich, wenn ein Teil.
 function kopfWahlZeichnen() {
-  const k = $("#kopf-alle");
-  if (!k) return;
   const n = zustand.modelle.filter((m) => zustand.auswahl.has(m.id)).length;
-  k.checked = n > 0 && n === zustand.modelle.length;
-  k.indeterminate = n > 0 && n < zustand.modelle.length;
+  for (const k of [$("#kopf-alle"), $("#leiste-alle")]) {
+    if (!k) continue;
+    k.checked = n > 0 && n === zustand.modelle.length;
+    k.indeterminate = n > 0 && n < zustand.modelle.length;
+    k.title = k.checked ? "Auswahl aufheben" : "Alle gezeigten auswählen";
+  }
 }
 
 // ---------------------------------------------------------------- Mehrfachauswahl
@@ -1427,7 +1433,8 @@ async function archiveEntpacken() {
   const liste = await api("/api/archive");
   if (!liste.length) return toast("Keine Archive in den Ordnern.");
   const a = await dialog(`<h2>Archive entpacken</h2><p class="dim">Jedes in einen Unterordner daneben. Heraus kommen nur Modelle, G-Code, Bilder und Texte — nie Programme.</p>
-    ${liste.map((x, i) => `<label><input type="checkbox" data-archiv="${esc(x.id)}" ${i < 50 ? "checked" : ""}> ${esc(x.id.split("/").slice(1).join("/"))} <span class="dim">${zahl(x.groesse / 1048576, 1)} MB</span></label>`).join("")}
+    ${sammelKopf("archive")}
+    ${liste.map((x, i) => `<label><input type="checkbox" data-archiv="${esc(x.id)}" data-sammel-von="archive" ${i < 50 ? "checked" : ""}> ${esc(x.id.split("/").slice(1).join("/"))} <span class="dim">${zahl(x.groesse / 1048576, 1)} MB</span></label>`).join("")}
     <p class="dim">Das Archiv selbst bleibt unverändert liegen.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Entpacken</button></div>`);
   if (a !== "ja") return;
@@ -2442,9 +2449,36 @@ function tastenkuerzel() {
     <div class="knoepfe"><button class="knopf akzent" value="ok" autofocus>OK</button></div>`);
 }
 
+// Sammel-Haken für Häkchen-Listen (Fenster wie „Archive entpacken“): `<input type="checkbox" data-sammel="name">` steuert alle mit
+// `data-sammel-von="name"`; er zeigt an, leer oder „−“ (ein Teil). Dazu stellt der Beobachter unten jedes `data-teil="1"` auf „−“ — so tragen
+// alle Sammel-Haken (Gruppen, Aufräumen, Tags) die Teilauswahl, egal wer sie zeichnet: ein Häkchen kennt „teilweise“ nur als Eigenschaft, nicht im HTML.
+function sammelAbgleichen(wurzel = document) {
+  for (const m of wurzel.querySelectorAll("[data-sammel]")) {
+    const glieder = [...wurzel.querySelectorAll(`[data-sammel-von="${CSS.escape(m.dataset.sammel)}"]`)];
+    const n = glieder.filter((g) => g.checked).length;
+    m.checked = n > 0 && n === glieder.length;
+    m.indeterminate = n > 0 && n < glieder.length;
+    const zahl = m.closest("label")?.querySelector(".sammel-zahl");
+    if (zahl) zahl.textContent = n && n < glieder.length ? `${n} von ${glieder.length}` : `${glieder.length}`;
+  }
+}
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset?.sammel) {
+    const wurzel = t.closest("dialog, section, body");
+    wurzel.querySelectorAll(`[data-sammel-von="${CSS.escape(t.dataset.sammel)}"]`).forEach((g) => { g.checked = t.checked; });
+    sammelAbgleichen(wurzel);
+  } else if (t.dataset?.sammelVon) sammelAbgleichen(t.closest("dialog, section, body"));
+});
+new MutationObserver(() => {
+  for (const x of document.querySelectorAll("input[data-teil]")) x.indeterminate = x.dataset.teil === "1";
+}).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-teil"] });
+const sammelKopf = (name, text = "Alle") => `<label class="sammel"><input type="checkbox" data-sammel="${name}"> ${text} <span class="sammel-zahl dim"></span></label>`;
+
 function dialog(html) {
   const d = $("#dialog");
   $("#dialog-inhalt").innerHTML = html;
+  sammelAbgleichen($("#dialog-inhalt"));
   d.showModal();
   return new Promise((ok) => d.addEventListener("close", () => ok(d.returnValue), { once: true }));
 }
@@ -2790,7 +2824,8 @@ document.addEventListener("click", async (e) => {
     localStorageSchreiben("layout", zustand.layout);
     document.querySelectorAll("[data-layout]").forEach((b) => b.classList.toggle("an", b.dataset.layout === zustand.layout));
     kachelKnopfZeigen();
-$("#gruppierung").value = zustand.gruppierung;
+    $("#gruppierung").value = zustand.gruppierung;
+    if (zustand.leiste) zeichneLeiste(zustand.leiste);     // der Sammel-Haken: in der Liste im Spaltenkopf, sonst in der Leiste
     $("#raster").scrollTop = 0;
     return raster.neu();
   }
@@ -3011,7 +3046,7 @@ document.addEventListener("change", async (e) => {
     e.target.value = "";
     return bilderHochladen(dateien);
   }
-  if (e.target.id === "kopf-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
+  if (e.target.id === "kopf-alle" || e.target.id === "leiste-alle") return stapelAktion(e.target.checked ? "alle" : "keine");
   if (e.target.dataset?.kachelZeile) {                // Einstellungen › Ansicht: Zeile auf der Kachel an/aus, sofort
     const wahl = new Set(zustand.kachelZeilen);
     e.target.checked ? wahl.add(e.target.dataset.kachelZeile) : wahl.delete(e.target.dataset.kachelZeile);

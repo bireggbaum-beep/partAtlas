@@ -91,7 +91,8 @@ async function gcWaehlen(id, name) {
 async function gcAusgeblendete() {
   const liste = await api("/api/gcode_offen/ausgeblendet");
   const a = await dialog(`<h2>Nicht zugeordnet</h2><p class="dim">Diese G-Codes zeigt partAtlas nicht mehr. Häkchen weg = wieder zeigen.</p>
-    <div class="dl-liste">${liste.map((x) => `<label class="dl-zeile"><input type="checkbox" data-gc-aus="${esc(x.id)}" checked>
+    ${sammelKopf("gc-aus")}
+    <div class="dl-liste">${liste.map((x) => `<label class="dl-zeile"><input type="checkbox" data-gc-aus="${esc(x.id)}" data-sammel-von="gc-aus" checked>
       <span class="dl-pfad">${esc(x.name)}</span><span></span></label>`).join("")}</div>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Übernehmen</button></div>`);
   if (a !== "ja") return;

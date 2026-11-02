@@ -57,7 +57,7 @@ function tvZeichnen() {
       ${n ? `<button type="button" class="knopf gefahr" data-tv="loeschen">Löschen …</button>` : ""}
     </div>
     <div class="tv-liste" role="table">
-      <div class="tv-zeile tv-titelzeile" role="row"><input type="checkbox" data-tv-alle ${zeilen.length && zeilen.every((t) => tv.wahl.has(t.name)) ? "checked" : ""}
+      <div class="tv-zeile tv-titelzeile" role="row"><input type="checkbox" data-tv-alle data-teil="${zeilen.some((t) => tv.wahl.has(t.name)) && !zeilen.every((t) => tv.wahl.has(t.name)) ? 1 : 0}" ${zeilen.length && zeilen.every((t) => tv.wahl.has(t.name)) ? "checked" : ""}
         title="Alle gezeigten wählen"><span>Tag</span><span class="zahl">Modelle</span><span class="zahl" title="Davon automatisch aus dem Dateinamen">automatisch</span><span></span></div>
       ${zeilen.map((t) => `<label class="tv-zeile ${tv.wahl.has(t.name) ? "gewaehlt" : ""}" role="row">
         <input type="checkbox" data-tv-wahl="${esc(t.name)}" ${tv.wahl.has(t.name) ? "checked" : ""}>
