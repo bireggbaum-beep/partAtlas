@@ -2483,7 +2483,19 @@ async function loeschDialog(modelle, titel, ordner = null) {
   try {
     const r = await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } });
     if (r.fehler.length) toast(`${modelle.length - r.fehler.length} gelöscht, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
-    else toast(viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt.");
+    else {
+      // Rückgängig und der Weg zum Papierkorb gleich in der Meldung: ein Tester löschte versehentlich und fand das Modell nicht wieder —
+      // neu einlesen holt es bewusst nicht zurück (es soll ja weg bleiben).
+      const zurueck = async () => {
+        try {
+          await api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } });
+          toast(viele ? `${modelle.length} Modelle wiederhergestellt.` : "Wiederhergestellt.");
+        } catch (e) { toast(e.message); }
+        neuLaden();
+      };
+      toast(`${viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt."} Zurückholen: hier oder unter Bereinigen › Papierkorb.`,
+            { aktionen: [["Rückgängig", zurueck], ["Papierkorb", () => document.querySelector('[data-ansicht="papierkorb"]')?.click()]], dauer: 9000 });
+    }
     return true;
   } catch (e) { toast(e.message); return false; }
 }

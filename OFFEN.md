@@ -10,6 +10,9 @@ aktualisieren.
   (`gcode_offen_neu`; ein schon bekannter unklarer, der beim Dazukommen eines Modells neu angesehen wird, zählt nicht), sonst käme dieselbe Meldung bei jedem Einlesen. Bei Ketten von
   Läufen zusammengezählt. Nur G-Code und nichts Neues an Modellen: statt „Nichts Neues“ steht die G-Code-Bilanz. test_gcode_ordner 28/28, test_gcode_offen_ui 9/9 (Gegenproben fallen),
   test_scan 110/110, test_neuigkeiten mit Eintrag 1.0.9.
+- **Gelöschtes zurückholen (Rückmeldung des Testers zu 1.0.5):** Die Meldung nach dem Löschen (einzeln und mehrere, `loeschDialog`) hat „Rückgängig“ (Stapel „wiederherstellen“, eine Anfrage)
+  und „Papierkorb“ (springt nach Bereinigen › Papierkorb), 9 s sichtbar; vorher nur „Aus dem Katalog entfernt, die Datei bleibt.“ Nicht geändert: Löschen eines ganzen Ordners
+  (eigener Weg). `tests/test_loeschen_ui.py` 3/3, Gegenprobe fällt. Handbuch nicht nachgezogen (Anwender).
 
 ## Stand: 1.0.8 auf `main` (30.10.2026, für den Tester)
 
