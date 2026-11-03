@@ -12,6 +12,10 @@ Signatur nicht beschrieben), MQTT mit TLS und Gerätezertifikat auf 9883, Hochla
 **Herunterladen einer Datei und Druckhistorie nicht dokumentiert**, nur `project.state` („finish“). Anycubic versucht laut hass-anycubic_cloud, MQTT zu sperren. Offen ist Rinkhals
 (Fremd-Firmware, bringt Moonraker). Wege: Durchreiche (PartAtlas als OctoPrint-Ziel, falls Slicer Next das für Anycubic anbietet), Abholen, Ordner (da), Zwischenablage
 des Slicers (Vermutung). **Vorgeschlagen:** erst drei Fragen an den Tester, dann entscheiden.
+**3MF Katalog (Stand b101ee5, 29.10.):** nur Moonraker, nur lesend (`/server/info`, `/server/history/list`), aus per Vorgabe, nur Heimnetz; Zweck: Filament nach Bestätigung
+abbuchen, Dateiname → Modell (sicher/unsicher, Anycubic-Namen `0927-1447-Name_plate(01)_PLA_0.12_3h25m13s.gcode`). Kobra nur **mit Rinkhals** (S1 im Dauerbetrieb, Kobra 3 V2
+ein Testbericht). Befund: der Kobra legt gesendete Dateien in `.3mf_temp/` und **löscht sie nach dem Druck** (`exists: false`) — G-Code vom Drucker zurück geht dort nicht,
+nur Name, Länge, teils Material/Gewicht. Simulator: `fake_moonraker.rs` (nur Tests) spielt echte Antworten aus anonymen Testberichten ab. OctoPrint, Bambu LAN „geplant“.
 
 ## Stand: 1.0.12 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.11`
 
