@@ -183,9 +183,10 @@ class Drucke:
         """Ein G-Code, der im Ordner lag (Einlesen, gcode_ordner.py): wie das Hochladen an einen Druck, den es dafür anlegt. Der Druck ist „offen“ —
         ein exportierter G-Code ist vorbereitet, nicht gedruckt; „gedruckt“ sagt der Mensch. Druck und Datei sind eine Transaktion: ein Abbruch
         dazwischen liesse einen leeren Druck zurück, und das nächste Einlesen legte einen zweiten an."""
+        v = self._datei_vorbereiten(name, daten)          # lesen und in den Vault — ohne die Datenbank festzuhalten
         with self.db.transaction():
             did = self.anlegen(modelle, {"ergebnis": "offen", "datum": datum})
-            bilanz = self.datei_anhaengen(did, name, daten)
+            bilanz = self._datei_verbinden(did, name, v)
             self.db.update_node(DRUCK, did, {"herkunft": "ordner"})
         return did, bilanz
 
@@ -269,6 +270,14 @@ class Drucke:
         Modells kommt als Quelle mit in den Vault — wer neu slicen will, braucht sie auch nach dem Aufräumen des Ordners (§3.2).
         Felder des Drucks, die leer sind, füllt der Kopf des G-Codes (Gewicht, Dauer). Gibt eine kurze Bilanz zurück."""
         self._druck(did)
+        v = self._datei_vorbereiten(name, daten)
+        with self.db.transaction():
+            return self._datei_verbinden(did, name, v)
+
+    def _datei_vorbereiten(self, name, daten):
+        """Alles, was dauert, ausserhalb jeder Transaktion: prüfen, lesen (bis 1 GB), in den Vault schreiben. Eine Transaktion hält die Sperre der
+        Datenbank — liefe das hier darin, stünde die Oberfläche, solange ein grosser G-Code gelesen wird. Ein Abbruch danach lässt höchstens eine
+        Datei im Vault zurück, die nichts kostet und beim nächsten Mal wieder gilt (gleicher Inhalt, gleicher Name)."""
         endung = ".3mf" if name.lower().endswith(".3mf") else os.path.splitext(name.lower())[1]
         art = DATEI_ARTEN.get(endung)
         if art is None:
@@ -280,10 +289,10 @@ class Drucke:
         h = hashlib.sha256(daten).hexdigest()
         titel = re.sub(r"[^\w.-]+", "_", os.path.basename(name)[:-len(endung)] or "druck")[:60]
         rel = f"vault/gcode/{titel}__{h[:12]}{endung}"
-        ziel = self.k.b.pfad(*rel.split("/"))
         bestehend = self.db.get_node(ref(GCODE, h), readonly=True)
         if bestehend is not None:
-            rel, ziel = bestehend["datei"], self.k.b.pfad(*bestehend["datei"].split("/"))
+            rel = bestehend["datei"]
+        ziel = self.k.b.pfad(*rel.split("/"))
         # Lesen aus einer Arbeitsdatei: der Vault bekommt nur, was sich lesen liess.
         os.makedirs(self.k.b.pfad("arbeit"), exist_ok=True)
         with tempfile.NamedTemporaryFile(suffix=endung, dir=self.k.b.pfad("arbeit"), delete=False) as f:
@@ -301,35 +310,39 @@ class Drucke:
             self.k.b.entfernen(arbeit)
         if not os.path.exists(ziel):
             dateien.schreibe_atomar(ziel, daten)
-        werte, kopf = gelesen.get("werte") or {}, gelesen.get("kopf") or {}
-        ph = slicer.profil_hash(werte) if werte else None
+        werte = gelesen.get("werte") or {}
+        return {"h": h, "rel": rel, "art": art, "groesse": len(daten), "gelesen": gelesen, "werte": werte, "kopf": gelesen.get("kopf") or {},
+                "ph": slicer.profil_hash(werte) if werte else None}
+
+    def _datei_verbinden(self, did, name, v):
+        """Der Teil in der Datenbank — der Aufrufer hält die Transaktion. Kurz: nur Knoten und Kanten."""
+        h, ph, werte, kopf, gelesen = v["h"], v["ph"], v["werte"], v["kopf"], v["gelesen"]
         modelle = self._modelle_von(did)
-        with self.db.transaction():
-            if bestehend is None:
-                self.db.create_node(GCODE, h, {"datei": rel, "name": os.path.basename(name)[:200], "art": art, "groesse": len(daten),
-                                               "slicer": gelesen.get("slicer"), "kopf": kopf, "vorschau": bool(gelesen.get("vorschau")),
-                                               "angelegt": jetzt()})
-            if ph:
-                if self.db.get_node(ref(PROFIL, ph), readonly=True) is None:
-                    if self.db.get_node_raw(ref(PROFIL, ph)) is not None:
-                        self.db.restore_node(PROFIL, ph)
-                    else:
-                        self.db.create_node(PROFIL, ph, {"werte": werte, "slicer": gelesen.get("slicer"), "angelegt": jetzt()})
-                if ref(PROFIL, ph) not in self.db.get_connected(ref(GCODE, h), rel_type=BASIERT_AUF):
-                    self.db.create_edge(ref(GCODE, h), ref(PROFIL, ph), BASIERT_AUF)
-            for kid, _ in self.db.get_connected_edges(ref(DRUCK, did), rel_type=AUSGEFUEHRT):
-                self.db.delete_edge(kid)
-            self.db.create_edge(ref(DRUCK, did), ref(GCODE, h), AUSGEFUEHRT)
-            for mid in modelle:
-                self._quelle_sichern(h, mid)
-            d = self._druck(did)
-            neu = {"herkunft": "datei"}
-            if d.get("gewicht_g") is None and kopf.get("gewicht_g") is not None:
-                neu["gewicht_g"] = round(float(kopf["gewicht_g"]), 2)
-            if d.get("dauer_s") is None and kopf.get("dauer_s"):
-                neu["dauer_s"] = int(kopf["dauer_s"])
-            self.db.update_node(DRUCK, did, neu)
-            self.nachziehen(modelle)
+        if self.db.get_node(ref(GCODE, h), readonly=True) is None:
+            self.db.create_node(GCODE, h, {"datei": v["rel"], "name": os.path.basename(name)[:200], "art": v["art"], "groesse": v["groesse"],
+                                           "slicer": gelesen.get("slicer"), "kopf": kopf, "vorschau": bool(gelesen.get("vorschau")),
+                                           "angelegt": jetzt()})
+        if ph:
+            if self.db.get_node(ref(PROFIL, ph), readonly=True) is None:
+                if self.db.get_node_raw(ref(PROFIL, ph)) is not None:
+                    self.db.restore_node(PROFIL, ph)
+                else:
+                    self.db.create_node(PROFIL, ph, {"werte": werte, "slicer": gelesen.get("slicer"), "angelegt": jetzt()})
+            if ref(PROFIL, ph) not in self.db.get_connected(ref(GCODE, h), rel_type=BASIERT_AUF):
+                self.db.create_edge(ref(GCODE, h), ref(PROFIL, ph), BASIERT_AUF)
+        for kid, _ in self.db.get_connected_edges(ref(DRUCK, did), rel_type=AUSGEFUEHRT):
+            self.db.delete_edge(kid)
+        self.db.create_edge(ref(DRUCK, did), ref(GCODE, h), AUSGEFUEHRT)
+        for mid in modelle:
+            self._quelle_sichern(h, mid)
+        d = self._druck(did)
+        neu = {"herkunft": "datei"}
+        if d.get("gewicht_g") is None and kopf.get("gewicht_g") is not None:
+            neu["gewicht_g"] = round(float(kopf["gewicht_g"]), 2)
+        if d.get("dauer_s") is None and kopf.get("dauer_s"):
+            neu["dauer_s"] = int(kopf["dauer_s"])
+        self.db.update_node(DRUCK, did, neu)
+        self.nachziehen(modelle)
         gleich = self._drucke_mit_profil(ph) if ph else []
         return {"gcode": h, "profil": ph, "werte": len(werte), "slicer": gelesen.get("slicer"),
                 "gleiche_einstellungen": len(gleich), "gewicht_g": neu.get("gewicht_g"), "dauer_s": neu.get("dauer_s")}

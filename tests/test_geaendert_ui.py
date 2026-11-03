@@ -64,6 +64,11 @@ if __name__ == "__main__":
             pg.click("[data-layout='liste']")
             pg.wait_for_selector("#listenkopf")
             check("Liste: Spalte „Geändert“ lässt sich wählen", pg.locator("[data-spalte='geaendert']").count() == 1)
+            neu = b.new_context(viewport={"width": 1400, "height": 800}).new_page()       # ein ganz neuer Browser, nichts gespeichert
+            neu.goto(f"http://127.0.0.1:{port}/")
+            neu.wait_for_selector(".karte")
+            check("Neuer Browser: der Merker ist gleich gesetzt — wer „Geändert“ später abwählt, bekommt es nicht zurück",
+                  neu.evaluate("localStorage.getItem('partatlas.kachelGeaendertDazu')") == "1")
             b.close()
     finally:
         server.terminate()

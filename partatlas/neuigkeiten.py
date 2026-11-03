@@ -8,6 +8,36 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.12", ["Papierkorb und Archiv haben eigene Knöpfe in der Leiste links, gleich unter ▦ Bibliothek: 🗄 Archiv und 🗑 Papierkorb — ein Klick öffnet sie. "
+                "Am Papierkorb steht, wie viele Modelle darin liegen. Unter 🧹 Bereinigen bleibt nur noch das Aufräumen; der Besen öffnet gleich die erste Liste, "
+                "in der etwas zu tun ist.",
+                "Ziehen in den Papierkorb: Zieh ein Modell (oder mehrere gewählte) auf 🗑. Ab 25 Modellen fragt PartAtlas einmal nach, darunter geht es gleich. "
+                "Die Dateien bleiben auf der Platte, wie beim Entfernen über das Menü.",
+                "Ziehen ins Archiv: auf 🗄 ziehen. Zurück holst du Modelle aus Papierkorb oder Archiv, indem du sie auf ▦ Bibliothek ziehst.",
+                "Ziehen auf einen Tag in der Seitenleiste: Die Modelle bekommen diesen Tag.",
+                "Ziehen auf ♥ Favoriten: Die Modelle werden Favoriten.",
+                "Ziehen auf ＋ bei den Sammlungen: Eine neue Sammlung entsteht mit den gezogenen Modellen darin, der Name ist gleich zum Tippen bereit.",
+                "Beim Ziehen steht am Zeiger, was beim Loslassen geschieht, etwa „2 Modelle in den Papierkorb“ oder „3 Modelle in die Sammlung „Werkbank““. "
+                "Das gilt auch für die schon bekannten Ziele: Ordner, Sammlung, Baugruppe.",
+                "Alles Gezogene lässt sich zurücknehmen: „Rückgängig“ in der Meldung oder Strg+Z. Neu auch bei Sammlungen (es geht nur heraus, was eben dazukam) "
+                "und bei Baugruppen. Bei Tag und Favorit verlieren ihn nur die Modelle, die ihn vorher nicht hatten.",
+                "Die Meldung unten bleibt stehen, solange die Maus darauf liegt, ein Knopf darin gewählt ist oder du in einem anderen Programm bist. "
+                "Danach bleibt sie noch mindestens zwei Sekunden. So verschwindet „Rückgängig“ nicht unter dem Zeiger. Esc schliesst sie.",
+                "Behoben: Backups mit der alten Schreibweise „partAtlas-Backup-…“ fehlten seit 1.0.11 in der Liste unter Einstellungen › Backup & Wiederherstellung "
+                "und wurden nicht mehr aufgeräumt. Sie waren nie weg und stehen jetzt wieder da.",
+                "Behoben: Holtest du ein Backup zurück, konnte PartAtlas beim nächsten Start meinen, es laufe schon. Diese Merkdatei kommt nicht mehr ins Backup.",
+                "Behoben: Startest du PartAtlas ein zweites Mal, während das erste noch öffnet (bei grossem Bestand dauert das), wartet der zweite Start "
+                "jetzt bis zu zwei Minuten und öffnet dann den Browser beim ersten. Vorher gab er sofort auf.",
+                "Behoben: War ein Laufwerk beim Einlesen nicht eingesteckt (USB, Netz), vergass PartAtlas, welche G-Codes von dort du schon zugeordnet "
+                "oder mit „Nicht zuordnen“ ausgeblendet hattest — sie standen danach wieder unter „G-Code ohne Modell“.",
+                "Behoben: Änderst du Einstellungen schnell hintereinander, ging gelegentlich eine Änderung verloren oder es kam ein Fehler.",
+                "Behoben: Hast du die Kachelzeile „Geändert“ abgeschaltet, kam sie in einem anderen Browser von selbst wieder.",
+                "Behoben: Ordnest du unter „G-Code ohne Modell“ einen G-Code von Hand einem Modell zu, der schon an einem anderen Modell hängt, "
+                "bekommt jetzt auch das gewählte Modell den Druck. Vorher geschah stillschweigend nichts.",
+                "Behoben: Der Dateiname eines G-Codes ordnet nur noch über ganze Wörter zu — „Halter.gcode“ landet nicht mehr bei „Halterung“.",
+                "Behoben: Während PartAtlas grosse G-Codes aus deinen Ordnern einliest, mussten andere Aktionen (Tag setzen, Verschieben …) warten. Jetzt nicht mehr. "
+                "Das Einlesen selbst dauert so lange wie vorher.",
+                "Bei vielen Modellen reagiert die Liste etwas flüssiger: die Haken mit Strich („teilweise gewählt“) werden nur noch dort geprüft, wo sich etwas ändert."]),
     ("1.0.11", ["Aus „Katalog“ wird „PartAtlas“: Meldungen und Fenster sagen jetzt etwa „Aus PartAtlas entfernen“ oder „Zurück in PartAtlas“. "
                 "Der Knopf oben links heisst „Bibliothek“, wie die Überschrift daneben.",
                 "Behoben: Schlug „Rückgängig“ nach dem Verschieben fehl, stand trotzdem „Rückgängig gemacht“ da. Jetzt sagt die Meldung, warum es nicht ging."]),

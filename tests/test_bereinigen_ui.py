@@ -85,7 +85,7 @@ if __name__ == "__main__":
                 if len(text) < 30:
                     ohne.append(a)
             check(f"Jede Ansicht unter Bereinigen ({len(ansichten)}) erklärt oben, was man sieht — ohne: {ohne or 'keine'}",
-                  len(ansichten) >= 6 and not ohne)
+                  len(ansichten) >= 5 and not ohne)          # Archiv und Papierkorb stehen seit 1.0.12 in der Leiste links
             pg.click('[data-ansicht="duplikate"]')
             pg.wait_for_selector(f'.karte[data-id="{halter}"]', timeout=10000)
             pg.click(f'.karte[data-id="{halter}"]')

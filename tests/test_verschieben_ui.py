@@ -31,6 +31,9 @@ if __name__ == "__main__":
         abfrage(port, "/api/neuigkeiten/gesehen", {})
         abfrage(port, "/api/wurzeln", {"pfad": samm})
         warte(lambda: len(abfrage(port, "/api/modelle")) == 3)
+        # Erst verschieben, wenn das Einlesen fertig ist (wie ein Anwender): ein noch laufendes Einlesen kann den eben verschobenen Ort
+        # überschreiben — das liess diesen Test gelegentlich fallen (2.–4.11.2026).
+        warte(lambda: not (abfrage(port, "/api/stand") or {}).get("scan", {}).get("laeuft") and not (abfrage(port, "/api/stand") or {}).get("worker", {}).get("laeuft"))
         im_ziel = lambda n: os.path.exists(os.path.join(samm, "Ziel", n + ".stl"))
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
@@ -55,7 +58,10 @@ if __name__ == "__main__":
                   "„Alpha.stl“ verschoben nach „Ziel“" in toast() and pg.locator("#toast button", has_text="Rückgängig").count() == 1 and im_ziel("Alpha"))
             pg.click("#toast button:has-text('Rückgängig')")
             warte(lambda: os.path.exists(os.path.join(samm, "Alpha.stl")))
-            check("„Rückgängig“ legt die Datei zurück an ihren alten Ort", os.path.exists(os.path.join(samm, "Alpha.stl")) and not im_ziel("Alpha"))
+            zurueck = os.path.exists(os.path.join(samm, "Alpha.stl")) and not im_ziel("Alpha")
+            check("„Rückgängig“ legt die Datei zurück an ihren alten Ort", zurueck)
+            if not zurueck:
+                print("   Meldung:", repr(toast()))
 
             # Ziehen: zwei gewählte auf den Ordner
             pg.wait_for_selector(".karte:has-text('Alpha')")

@@ -63,6 +63,9 @@ THUMB_ENDUNG = "webp"
 KLEIN_BYTES = 64 * 1024  # Bilder darunter (und höchstens THUMB_PX breit) braucht es nicht zu verkleinern
 
 
+_EINSTELLUNGEN_SPERRE = threading.Lock()
+
+
 def standard_ort():
     basis = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
     return os.path.join(basis, "partatlas")
@@ -171,8 +174,11 @@ class Bestand:
             return {}
 
     def einstellungen_setzen(self, **werte):
+        """Lesen, ändern, schreiben in einem Zug unter einer Sperre: sonst schriebe ein Thread (das Einlesen am Ende) die Datei, die ein anderer
+        (eine Einstellung aus der Oberfläche) gerade gelesen hat — und dessen Schreiben nähme die Änderung des ersten wieder weg."""
         from .dateien import schreibe_atomar
-        daten = self.einstellungen()
-        daten.update(werte)
-        schreibe_atomar(self._einstellungen_pfad,
-                        json.dumps(daten, ensure_ascii=False, indent=1).encode("utf-8"))
+        with _EINSTELLUNGEN_SPERRE:
+            daten = self.einstellungen()
+            daten.update(werte)
+            schreibe_atomar(self._einstellungen_pfad,
+                            json.dumps(daten, ensure_ascii=False, indent=1).encode("utf-8"))

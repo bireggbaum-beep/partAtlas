@@ -77,6 +77,7 @@ function tvZeichnen() {
     </div></div>`;
   const neu = el.querySelector(".tv-suche");
   if (fokus) { neu.focus(); neu.setSelectionRange(pos, pos); }
+  teilSetzen(el);           // das „−“ am Sammel-Haken (app.js)
 }
 
 // Rückfrage über dem Fenster: ein zweites, kleines <dialog> — #dialog würde den Inhalt des Einstellungsdialogs o. ä. ersetzen.

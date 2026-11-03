@@ -4,6 +4,60 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.12 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.11`
+
+Papierkorb und Archiv in der Leiste, Ziehen und Ablegen (Paket 1 und 2), Meldung hält an, zehn Fehler aus dem Audit. „Neu in dieser Fassung“ auf Wunsch des Anwenders
+ausführlich: eine Zeile je Änderung (18 Zeilen), das Fenster rollt. Vor dem Push: alle Suiten ausser test_ui grün (nach dem Audit), test_neuigkeiten 9/9, test_ui einmal
+komplett 70/70. Handbuch nicht nachgezogen (zeigt noch „Besen › Papierkorb“). Der Anwender testet selbst.
+
+## Audit 4.11.2026: Sicherheit und Fehler (Anwender: „Bug- und Cybersecurity-Audit“)
+
+**Sicherheit:** 21 aktive Proben gegen einen laufenden Server (Skript im Scratchpad `audit/proben.py`), alle ohne Befund: fremde Herkunft (Sec-Fetch-Site, Origin) → 403;
+Pfadausbruch bei Hochladen, Archiv (`..`, absolut, Symlink, Programmdatei), Vorschau, „Im Ordner zeigen“, Wurzelordner; Programme nur eingetragene, ohne Shell; HTML-Anhänge mit
+`CSP: sandbox` und `nosniff`; Löschen nur im Bestand (Wächter). Hinweise, keine Fehler: nur 127.0.0.1, kein Passwort (KONZEPT §2) — ein lokales Skript kann alles; keine
+Grössengrenze für Anfragekörper (lokal kein Risiko).
+**Fehler (Code-Review der Änderungen seit main), alle zehn behoben:** (1) Backup-Muster erkennt die alte Schreibweise `partAtlas-Backup-…` wieder (mein Fehler beim Umbenennen,
+1.0.11 auf main betroffen!); (2) `laeuft.json` in `AUSGENOMMEN`; (3) zweiter Start wartet bis 120 s auf den ersten (`PARTATLAS_WARTEN_S`); (4) G-Codes nicht erreichbarer
+Wurzeln bleiben gemerkt; (5) `einstellungen_setzen` unter einer Sperre — ohne sie stürzte das gleichzeitige Schreiben ab (dieselbe Arbeitsdatei, FileNotFoundError); (6) Merker
+„Geändert“ auch im neuen Browser; (7) von Hand zugeordneter G-Code, dessen Inhalt an einem anderen Modell hängt, legt am gewählten einen Druck an; (8) Dateiname nur über ganze
+Wörter in Folge; (9) G-Code aus dem Ordner: lesen und Vault ausserhalb der Transaktion (`_datei_vorbereiten`/`_datei_verbinden`); (10) „−“ der Sammel-Haken beim Zeichnen
+(`teilSetzen`) statt Beobachter über das ganze Dokument. Prüfungen: test_backup (+2), test_einstellungen (neu), test_gcode_ordner (+4, 33/33), test_geaendert_ui (+1),
+test_sammel_ui; Gegenproben fallen. (3) ohne automatische Prüfung (langsames Öffnen nicht nachstellbar). Nebenbei: `test_vorschau` wackelte — zwei FCStd aus `muster.fcstd`
+waren innerhalb von 2 s bytegleich (Zip-Zeitstempel); Test gibt der Datei jetzt eigenen Inhalt. Nicht angefasst: `_quelle_sichern` kopiert die Modelldatei weiter innerhalb der
+Transaktion (einmal je Inhalt). Alle Suiten ausser test_ui grün.
+
+## 1.0.12 auf dem Branch (4.11.2026): Papierkorb und Archiv in der Leiste, Paket 2 der Ziehziele
+
+Entschieden (Anwender 4.11.): Grundsatz „dorthin ziehen, wo es hingehört“ — keine Ablageleiste. **Leiste links ▦ 🗄 🗑 🧹**; Papierkorb mit Zahl (ruhig, ab 1000 „999+“),
+Archiv ohne; beide aus Bereinigen heraus (`BEREINIGEN` ohne sie, `ORTE`); 🧹 öffnet die erste Aufräum-Liste mit etwas zu tun (vorher den Papierkorb). **Neue Ziele** in `ZIELE`:
+🗑 (ohne Rückfrage, ab 25 Modellen der Löschdialog — `RUECKFRAGE_AB`), 🗄, aus Papierkorb/Archiv auf ▦ zurück, Tag in der Seitenleiste, ♥ Favoriten, ＋ bei Sammlungen
+(Name gleich zum Tippen); alle mit Hinweis am Zeiger und Rückgängig (Tag/Favorit nur für die, die es vorher nicht hatten). Meldung nach dem Entfernen als `entferntMelden`.
+Texte „Bereinigen › Papierkorb“ in Oberfläche und Server auf „Papierkorb (🗑 links)“. test_ablegen_ui 16/16 (3 Gegenproben fallen); angepasst: test_bereinigen_ui (5 Ansichten),
+test_ui (Papierkorb über 🗑) — test_ui nicht gelaufen (erst vor `main`). Grün: test_loeschen_ui, test_ziehen_ui, test_tastatur_ui, test_verschieben_ui, test_sammel_ui,
+test_meldung_ui, test_gcode_offen_ui, test_papierkorb. **Handbuch** zeigt noch „Besen › Papierkorb“ — veraltet, Entscheidung des Anwenders. Konzeptseite mit Mock: Scratchpad.
+
+## Meldung unten: hält an, solange man sie benutzt (4.11.2026, auf dem Branch)
+
+Anwender: „robust und Premium quality“. Die Zeit der Meldung (`toast`) hält an, solange die Maus darüber steht, ein Knopf darin den Fokus hat oder das Fenster im
+Hintergrund liegt (`visibilitychange`); danach Restzeit, mindestens 2 s (`NACH_PAUSE_MS`). Esc schliesst sie, wenn sie den Fokus hat; `role="status"`, `aria-live`.
+Die Gründe „Maus“ und „Fokus“ werden bei jeder neuen Meldung aus dem wirklichen Zustand abgeleitet — verschwindet eine Meldung unter der Maus, kommt nicht in jedem Browser
+ein mouseleave (Chromium schickt es, Firefox ungeprüft). test_meldung_ui 9/9 (4 Gegenproben fallen), Suiten mit Meldungen grün. Konzeptseite Ziehen und Ablegen (Mock) beim
+Anwender, Entscheidungen offen (Papierkorb/Archiv in die Leiste, Zahl am Papierkorb, Rückfrage ab 50?).
+
+## Ziehen und Ablegen: Fundament (4.11.2026, auf dem Branch)
+
+Anwender: erst die „No-Brainer“ (Papierkorb, aus dem Papierkorb zurück, Archiv, Tag, Favoriten, „＋ Neue Sammlung“), vorher das Fundament. **Paket 1 gebaut:**
+Ziele als Tabelle `ZIELE` in `app.js` statt einer Kette von Sonderfällen (`ablageZiel`): je Ziel `nimmt` (Art des Gezogenen), `finde`, `hinweis`, `ablegen`;
+das erste passende gilt. Vorhandene Ziele umgezogen (Ordner in Ordner, Baugruppe, Ordner, Sammlung, Warteschlange, Reihenfolge), Verhalten gleich. Neu für alle: **am Zeiger
+steht, was beim Loslassen geschieht** (`#ziehhinweis`, „2 Modelle in die Sammlung „Werkbank““); **Rückgängig** jetzt auch für Sammlung (nimmt nur heraus, was neu dazukam) und
+Baugruppe (alte Menge bzw. entfernen) — Meldung und Strg+Z. test_ziehen_ui 6/6 (3 Gegenproben fallen), test_verschieben_ui, test_ordner_ui, test_sammel_ui grün.
+Nicht geprüft: Warteschlange (ausgeblendet) und Umsortieren in Sammlungen — beides deckt test_ui ab, die läuft erst vor `main`.
+**Paket 2 offen:** die sechs neuen Ziele. **Später, als Issues (Anwender: „noch nicht jetzt“):** Modell auf Modell (Stände/Varianten), Ablageleiste, G-Code/Bild von aussen
+auf ein Modell, Datei auf „Datei fehlt“, Kachel aus dem Fenster (geht im Firefox nicht).
+**Wackliger Test `test_verschieben_ui`:** fiel wieder (Rückgängig nach Menü-Verschieben). Unter Last gemessen: Zurückschieben 0,1–0,3 s, also nicht langsam. Verdacht: der Test
+verschob, während das erste Einlesen noch lief, und das Einlesen überschrieb den Ort. Test wartet jetzt das Einlesen ab und gibt bei einem Fehlschlag die Meldung aus. Bestätigt ist der
+Verdacht nicht; fällt er wieder, steht der Grund in der Ausgabe.
+
 ## Repo aufgeräumt (3.11.2026, Anwender: „ohne Ballast, auch wenn jemand von aussen hineinschaut“)
 
 Entfernt: überholte Anforderungsspezifikation `partAtlas.pdf` (URS v1.5.0, ersetzt durch KONZEPT.md), Backup-ZIP in `tests/`, eingecheckte `.pyc`. Verschoben nach

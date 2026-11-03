@@ -120,6 +120,12 @@ if __name__ == "__main__":
         c.post("/api/backup")
         fertig(c)
         check("Aufräumen nimmt nur Dateien mit unserem Namen", os.path.exists(fremd) and len(backup.vorhandene(ziel)) == 2)
+        alt = os.path.join(ziel, "partAtlas-Backup-2026-01-02.zip")          # Schreibweise bis 1.0.10
+        open(alt, "wb").write(b"PK")
+        check("Backups mit der alten Schreibweise (partAtlas-…) gehören weiter dazu", any(x["name"] == os.path.basename(alt) for x in backup.vorhandene(ziel)))
+        os.remove(alt)
+        open(b.pfad("laeuft.json"), "w").write("{}")
+        check("laeuft.json (wo PartAtlas gerade läuft) ist bewusst nicht im Backup — kein „unbekannter Teil“", "laeuft.json" not in backup.unbekannt(b.wurzel))
 
         # -- Abbrechen: keine Arbeitsdatei, kein ZIP
         vorher = set(os.listdir(ziel))

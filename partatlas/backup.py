@@ -31,7 +31,9 @@ log = logging.getLogger("partatlas")
 INHALT = "partatlas-backup.json"
 FORMAT = 1
 BEHALTEN = 2
-NAME = re.compile(r"^PartAtlas-Backup-(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.zip$")
+# Bis 1.0.10 hiessen die Backups „partAtlas-Backup-…“: sie gehören weiter dazu (Liste, Nummerierung, Aufräumen), sonst wären sie nach dem
+# Update unsichtbar und blieben für immer liegen.
+NAME = re.compile(r"^[pP]artAtlas-Backup-(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.zip$")
 
 # Reihenfolge = Reihenfolge im Reiter. `teile`: Pfade im Bestand; `dateien`: die Modelldateien in den Ordnern des Anwenders.
 ZEILEN = [
@@ -61,6 +63,7 @@ AUSGENOMMEN = {
     "thumbs": "kleine Bilder, neu erzeugbar",
     "cache": "Zwischenspeicher früherer Fassungen",
     "partatlas.log": "Protokoll",
+    "laeuft.json": "wo PartAtlas gerade läuft (Port, Prozess) — gilt nur für die laufende Sitzung",
 }
 # Was flatgraph neben die Datenbank legt (Sperrdatei u. ä.) und Dateien mit Punkt vorn gehören nicht dazu.
 _FREMD = re.compile(r"^\.")
