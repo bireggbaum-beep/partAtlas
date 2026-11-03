@@ -18,6 +18,10 @@ des Slicers (Vermutung). **Vorgeschlagen:** erst drei Fragen an den Tester, dann
 wenn der Name erscheint). Name mit Anycubic-Vorsatz `MMDD-HHMM-` und Anhang `_plate(01)_Material_Schicht_Dauer`. Offen: wie lange die Datei liegt (Löschen nicht
 beobachtet), ob sie auch beim Export entsteht, Pfad beim AppImage/Windows. Folge: PartAtlas kann den Ordner `ACGcode3mf` beobachten und beim Erscheinen kopieren.
 Lücke bei uns: Ordner-Einlesen nimmt nur `.gcode`, nicht `.gcode.3mf` (`gcode_ordner.py`).
+**Nachtrag:** Tester schickte die `.gcode.3mf` (125 KB) und die exportierte `.gcode` (1,1 MB): `Metadata/plate_1.gcode` darin ist bytegleich mit der exportierten, dazu
+Plattenbilder, `project_settings.config`, `slice_info.config`. Kopf `AnycubicSlicerNext 2.0.0.5` (Tester nannte 1.3.9.4 — Flatpak vermutlich neuer). `EXCLUDE_OBJECT_DEFINE
+NAME=Passring-115x80-28_9mm.stl…` vorhanden. Die Datei lag nach 5 Minuten noch da — Nachsehen alle paar Sekunden genügt, kein Live-Beobachten nötig. Ob sie das
+Schliessen des Slicers überlebt, ist nicht sicher.
 **3MF Katalog (Stand b101ee5, 29.10.):** nur Moonraker, nur lesend (`/server/info`, `/server/history/list`), aus per Vorgabe, nur Heimnetz; Zweck: Filament nach Bestätigung
 abbuchen, Dateiname → Modell (sicher/unsicher, Anycubic-Namen `0927-1447-Name_plate(01)_PLA_0.12_3h25m13s.gcode`). Kobra nur **mit Rinkhals** (S1 im Dauerbetrieb, Kobra 3 V2
 ein Testbericht). Befund: der Kobra legt gesendete Dateien in `.3mf_temp/` und **löscht sie nach dem Druck** (`exists: false`) — G-Code vom Drucker zurück geht dort nicht,
