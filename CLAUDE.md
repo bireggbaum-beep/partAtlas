@@ -1,7 +1,7 @@
 # partAtlas — Arbeitsweise
 
 - Führend ist `KONZEPT.md`. Alles auf Deutsch.
-- Stand, Entscheidungen und nächste Schritte: `OFFEN.md` — zu Beginn lesen,
+- Stand, Entscheidungen und nächste Schritte: `docs/entwicklung/OFFEN.md` — zu Beginn lesen,
   nach jeder erledigten Sache aktualisieren.
 - **Tests sparsam:** nach einer Änderung nur die Suite, die sie prüft,
   und deren Gegenprobe. Alle Suiten nur ab und zu (vor einer Fassung).
