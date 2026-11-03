@@ -12,6 +12,9 @@
 <div class="app">
   <nav class="rail">
     <button class="rail-btn aktiv" data-rail="katalog" title="Bibliothek">▦</button>
+    <!-- Archiv und Papierkorb sind Orte wie die Bibliothek (Anwender 4.11.2026): ein Klick öffnet sie, darauf ziehen legt hinein. -->
+    <button class="rail-btn" data-ansicht="archiv" title="Archiv — Modelle, die ruhen: nicht in Liste und Suche, aber mit allem, was daran hängt">🗄</button>
+    <button class="rail-btn" data-ansicht="papierkorb" title="Papierkorb — Gelöschtes, zurückholbar">🗑<span class="rail-abz ruhig" id="z-papierkorb"></span></button>
     <button class="rail-btn" data-rail="bereinigen" title="Bereinigen">🧹<span class="rail-abz" id="abz-bereinigen" hidden></span></button>
     <span class="rail-luecke"></span>
     <button class="rail-btn" id="lager" title="Filamentlager"><svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg></button>
@@ -101,9 +104,6 @@
         <button class="eintrag" data-ansicht="unlesbar" title="Dateien, die PartAtlas nicht lesen konnte"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
         <button class="eintrag" data-ansicht="gcode" title="G-Codes aus deinen Ordnern, die PartAtlas keinem Modell sicher zuordnen konnte"><span>▤ G-Code ohne Modell</span><em id="z-gcode"></em></button>
         <button class="eintrag" data-ansicht="aufraeumen" title="Was Platz kostet und vermutlich weg kann"><span>🧹 Vorschläge</span><em id="z-aufraeumen"></em></button>
-        <div class="sk-gruppe">Aufbewahrt</div>
-        <button class="eintrag" data-ansicht="archiv" title="Modelle, die ruhen: nicht in Liste und Suche, aber mit allem, was daran hängt"><span>🗄 Archiv</span><em id="z-archiv"></em></button>
-        <button class="eintrag" data-ansicht="papierkorb" title="Gelöschtes, zurückholbar"><span>🗑 Papierkorb</span><em id="z-papierkorb"></em></button>
       </div>
     </section>
     </div>

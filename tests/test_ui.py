@@ -622,7 +622,7 @@ async def oberflaeche(port):
 
         # -- Endgültig entfernen: je Modell im Papierkorb, erst nach Eintippen
         im_korb = api(port, "/api/zaehler")["papierkorb"]
-        await pg.click('[data-rail="bereinigen"]')
+        await pg.click('.rail [data-ansicht="papierkorb"]')          # seit 1.0.12 ein Ort in der Leiste, nicht mehr unter Bereinigen
         await pg.locator(".karte", has_text="Haken").first.click()
         await pg.click("#endgueltig")
         await pg.wait_for_selector("dialog[open] #endgueltig-wort")

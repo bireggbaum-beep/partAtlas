@@ -4,6 +4,16 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.12 auf dem Branch (4.11.2026): Papierkorb und Archiv in der Leiste, Paket 2 der Ziehziele
+
+Entschieden (Anwender 4.11.): Grundsatz „dorthin ziehen, wo es hingehört“ — keine Ablageleiste. **Leiste links ▦ 🗄 🗑 🧹**; Papierkorb mit Zahl (ruhig, ab 1000 „999+“),
+Archiv ohne; beide aus Bereinigen heraus (`BEREINIGEN` ohne sie, `ORTE`); 🧹 öffnet die erste Aufräum-Liste mit etwas zu tun (vorher den Papierkorb). **Neue Ziele** in `ZIELE`:
+🗑 (ohne Rückfrage, ab 25 Modellen der Löschdialog — `RUECKFRAGE_AB`), 🗄, aus Papierkorb/Archiv auf ▦ zurück, Tag in der Seitenleiste, ♥ Favoriten, ＋ bei Sammlungen
+(Name gleich zum Tippen); alle mit Hinweis am Zeiger und Rückgängig (Tag/Favorit nur für die, die es vorher nicht hatten). Meldung nach dem Entfernen als `entferntMelden`.
+Texte „Bereinigen › Papierkorb“ in Oberfläche und Server auf „Papierkorb (🗑 links)“. test_ablegen_ui 16/16 (3 Gegenproben fallen); angepasst: test_bereinigen_ui (5 Ansichten),
+test_ui (Papierkorb über 🗑) — test_ui nicht gelaufen (erst vor `main`). Grün: test_loeschen_ui, test_ziehen_ui, test_tastatur_ui, test_verschieben_ui, test_sammel_ui,
+test_meldung_ui, test_gcode_offen_ui, test_papierkorb. **Handbuch** zeigt noch „Besen › Papierkorb“ — veraltet, Entscheidung des Anwenders. Konzeptseite mit Mock: Scratchpad.
+
 ## Meldung unten: hält an, solange man sie benutzt (4.11.2026, auf dem Branch)
 
 Anwender: „robust und Premium quality“. Die Zeit der Meldung (`toast`) hält an, solange die Maus darüber steht, ein Knopf darin den Fokus hat oder das Fenster im

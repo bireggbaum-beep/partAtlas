@@ -8,6 +8,14 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.12", ["Papierkorb und Archiv stehen jetzt links in der Leiste, neben der Bibliothek — ein Klick öffnet sie. Am Papierkorb steht, wie viele Modelle "
+                "darin liegen. Unter Bereinigen bleibt das Aufräumen.",
+                "Ziehen und Ablegen: Zieh Modelle auf 🗑 (in den Papierkorb), auf 🗄 (ins Archiv), auf einen Tag, auf ♥ (Favorit) oder auf ＋ bei den "
+                "Sammlungen (neue Sammlung). Aus Papierkorb oder Archiv zurück: auf ▦ Bibliothek ziehen. Beim Ziehen steht am Zeiger, was beim Loslassen "
+                "geschieht; danach geht alles mit „Rückgängig“ oder Strg+Z zurück — auch bei Sammlungen und Baugruppen. Ab 25 Modellen fragt der "
+                "Papierkorb einmal nach.",
+                "Die Meldung unten bleibt stehen, solange die Maus darüber ist oder du in einem anderen Programm bist — „Rückgängig“ verschwindet dir nicht "
+                "mehr unter dem Zeiger."]),
     ("1.0.11", ["Aus „Katalog“ wird „PartAtlas“: Meldungen und Fenster sagen jetzt etwa „Aus PartAtlas entfernen“ oder „Zurück in PartAtlas“. "
                 "Der Knopf oben links heisst „Bibliothek“, wie die Überschrift daneben.",
                 "Behoben: Schlug „Rückgängig“ nach dem Verschieben fehl, stand trotzdem „Rückgängig gemacht“ da. Jetzt sagt die Meldung, warum es nicht ging."]),

@@ -1997,8 +1997,8 @@ class Katalog:
                 # Der Ordner ist entfernt: ohne ihn hat das Modell keinen Ort, und eine Datei aus einer früheren Fassung bliebe im Papierkorb von
                 # PartAtlas liegen. Erst den Ordner zurückholen, dann geht beides.
                 w = self.db.get_node_raw(ref(WURZEL, a["wurzel"])) or {}
-                raise KatalogFehler(f"Der Ordner {w.get('pfad') or a['wurzel']} ist nicht mehr eingetragen. Hole ihn zuerst unter "
-                                    f"Bereinigen › Papierkorb mit „Wieder hinzufügen“ zurück; dann lässt sich das Modell wiederherstellen.")
+                raise KatalogFehler(f"Der Ordner {w.get('pfad') or a['wurzel']} ist nicht mehr eingetragen. Hole ihn zuerst im "
+                                    f"Papierkorb (🗑 links) mit „Wieder hinzufügen“ zurück; dann lässt sich das Modell wiederherstellen.")
         orte, erledigt = [], []
         try:
             for a in (d or {}).get("papierkorb", []):

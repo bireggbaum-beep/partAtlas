@@ -387,6 +387,12 @@ async function ladeSeite({ ausMerkzettel = false } = {}) {
     const el = $("#z-" + k);
     if (el) el.textContent = z[k] || "";
   }
+  // Am Papierkorb in der Leiste ist wenig Platz: ab 1000 „999+“, der Hinweis nennt die genaue Zahl.
+  const pk = $("#z-papierkorb");
+  if (pk) {
+    pk.textContent = z.papierkorb > 999 ? "999+" : z.papierkorb || "";
+    pk.parentElement.title = `Papierkorb — Gelöschtes, zurückholbar${z.papierkorb ? ` (${anzahl(z.papierkorb)} ${z.papierkorb === 1 ? "Modell" : "Modelle"})` : ""}`;
+  }
   // Zählabzeichen am Besen: nur, wenn etwas zu tun ist (der Papierkorb zählt nicht).
   const zu = (z.duplikate || 0) + (z.fehlt || 0) + (z.unlesbar || 0) + (z.gcode || 0);
   const abz = $("#abz-bereinigen");
@@ -445,7 +451,11 @@ function zweig(k, tiefe) {
 }
 
 // Die Seitenleiste wechselt als Ganzes (wie bei VS Code): Katalog oder Bereinigen.
-const BEREINIGEN = ["aufraeumen", "gcode", "papierkorb", "archiv", "duplikate", "fehlt", "unlesbar"];
+// Archiv und Papierkorb sind seit 1.0.12 eigene Orte in der Leiste links, nicht mehr Teil von Bereinigen (dort bleibt das Aufräumen).
+const BEREINIGEN = ["aufraeumen", "gcode", "duplikate", "fehlt", "unlesbar"];
+const ORTE = ["archiv", "papierkorb"];
+// 🧹 öffnet die erste Aufräum-Liste, in der etwas zu tun ist (vorher den Papierkorb, der jetzt ein eigener Ort ist); sonst „Datei fehlt“.
+const bereinigenStart = () => { const z = zustand.seitenDaten?.[0] || {}; return ["fehlt", "duplikate", "unlesbar", "gcode"].find((k) => z[k]) || "fehlt"; };
 
 function markiereAnsicht() {
   const bereinigt = BEREINIGEN.includes(zustand.ansicht);
@@ -456,7 +466,7 @@ function markiereAnsicht() {
     b.classList.toggle("aktiv", b.dataset.ansicht === zustand.ansicht && !zustand.ordner && !zustand.tags.size && !zustand.material.size && !zustand.format && !zustand.sammlung));
   const imLager = zustand.ansicht === "lager";
   document.querySelectorAll(".rail-btn[data-rail]").forEach((b) =>
-    b.classList.toggle("aktiv", !imLager && (b.dataset.rail === "bereinigen") === bereinigt));
+    b.classList.toggle("aktiv", !imLager && !ORTE.includes(zustand.ansicht) && (b.dataset.rail === "bereinigen") === bereinigt));
   $("#lager")?.classList.toggle("aktiv", imLager);
 }
 
@@ -1430,7 +1440,7 @@ function zeichneHinweisLeiste() {
   } else if (BEREINIGEN_TEXT[zustand.ansicht] && zustand.modelle.length) {
     zeilen.push(`<div class="pk-zeile"><span>${BEREINIGEN_TEXT[zustand.ansicht](zustand.modelle.length)}</span></div>`);
   } else if (zustand.hatWurzeln === false && zustand.katalogLeer === false) {
-    zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben in PartAtlas, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du unter Bereinigen › Papierkorb zurück." : ""}</span>
+    zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben in PartAtlas, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du im Papierkorb (🗑 links) zurück." : ""}</span>
       <button class="knopf klein" id="wurzel-neu-4">Ordner hinzufügen …</button></div>`);
   }
   $("#pk-leiste").hidden = !zeilen.length;
@@ -2608,19 +2618,19 @@ async function loeschDialog(modelle, titel, ordner = null) {
     catch (e) { toast(e.message); return false; }
   }
   try {
-    const r = await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } });
-    if (r.fehler.length) toast(`${modelle.length - r.fehler.length} gelöscht, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
-    else {
-      // Rückgängig und der Weg zum Papierkorb gleich in der Meldung: ein Tester löschte versehentlich und fand das Modell nicht wieder —
-      // neu einlesen holt es bewusst nicht zurück (es soll ja weg bleiben).
-      // Derselbe Schritt für den Knopf und für Strg+Z (rueckgaengig): einmal zurück, nicht zweimal.
-      ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } }) };
-      const zurueck = () => rueckgaengig();
-      toast(`${viele ? `${modelle.length} Modelle aus PartAtlas entfernt, die Dateien bleiben.` : "Aus PartAtlas entfernt, die Datei bleibt."} Zurückholen: hier oder unter Bereinigen › Papierkorb.`,
-            { aktionen: [["Rückgängig", zurueck], ["Papierkorb", () => document.querySelector('[data-ansicht="papierkorb"]')?.click()]], dauer: 9000 });
-    }
+    entferntMelden(modelle, await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle, wert: wahl } }));
     return true;
   } catch (e) { toast(e.message); return false; }
+}
+
+// Nach dem Entfernen (Löschdialog, Entf, Ziehen auf den Papierkorb): Rückgängig und der Weg zum Papierkorb gleich in der Meldung — ein Tester löschte
+// versehentlich und fand das Modell nicht wieder; neu einlesen holt es bewusst nicht zurück (es soll ja weg bleiben). Derselbe Schritt für den
+// Knopf und für Strg+Z (rueckgaengig): einmal zurück, nicht zweimal.
+function entferntMelden(modelle, r) {
+  if (r.fehler.length) return toast(`${modelle.length - r.fehler.length} entfernt, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
+  ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } }) };
+  toast(`${modelle.length > 1 ? `${anzahl(modelle.length)} Modelle aus PartAtlas entfernt, die Dateien bleiben.` : "Aus PartAtlas entfernt, die Datei bleibt."} Zurückholen: hier oder im Papierkorb 🗑 links.`,
+        { aktionen: [["Rückgängig", rueckgaengig], ["Papierkorb", () => document.querySelector('[data-ansicht="papierkorb"]')?.click()]], dauer: 9000 });
 }
 
 // Ein Modell aus dem Papierkorb endgültig aus dem Katalog nehmen. Einzeln und mit eingetipptem Wort, weil es nicht zurückkommt; vorher
@@ -2927,7 +2937,7 @@ document.addEventListener("click", async (e) => {
   if (t.closest("#zum-lager")) return navigiere(() => { Object.assign(zustand, { ansicht: "lager", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   if (t.closest("#lager")) return navigiere(() => { Object.assign(zustand, { ansicht: "lager", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const rail = t.closest("[data-rail]");
-  if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? "papierkorb" : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
+  if (rail) return navigiere(() => { Object.assign(zustand, { ansicht: rail.dataset.rail === "bereinigen" ? bereinigenStart() : "alle", ordner: "", tags: new Set(), material: new Set(), format: "", sammlung: "" }); return ansichtLaden(); });
   const ordner = t.closest("[data-ordner]");
   if (ordner) return navigiere(() => { Object.assign(zustand, { ordner: ordner.dataset.ordner, ansicht: "alle", sammlung: "" }); return ansichtLaden(); });
   const sammlung = t.closest("[data-sammlung]");
@@ -3215,11 +3225,16 @@ function neuLaden() {
 
 async function sammlungNeu(modelle) {
   const a = await dialog(`<h2>Neue Sammlung</h2><p class="dim">Mehrere Modelle zu einem Projekt zusammenfassen.</p>
-    <input type="text" id="s-name" placeholder="z. B. Drohne V2">
+    <input type="text" id="s-name" placeholder="z. B. Drohne V2" autofocus>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Anlegen</button></div>`);
   if (a !== "ja") return;
-  try { await api("/api/sammlungen", { method: "POST", body: { name: $("#s-name").value, modelle } }); }
-  catch (e) { toast(e.message); }
+  const name = $("#s-name").value.trim();
+  try {
+    const { id } = await api("/api/sammlungen", { method: "POST", body: { name, modelle } });
+    ordnerAktion.letzte = { rueck: () => api(`/api/sammlungen/${id}`, { method: "DELETE" }) };
+    toast(`Sammlung „${name}“ angelegt${modelle.length ? ` mit ${wasGezogen(modelle)}` : ""}.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+    ladeSeite();
+  } catch (e) { toast(e.message); }
 }
 
 // ---------------------------------------------------------------- Ziehen und Ablegen
@@ -3299,7 +3314,23 @@ const wasGezogen = (ids) => {
   const m = zustand.modelle.find((x) => x.id === ids[0]);
   return m ? `„${m.name}${endung[m.format] || ""}“` : "Das Modell";
 };
+// Ein Ort in der Leiste links (Archiv, Papierkorb, Bibliothek).
+const inLeiste = (el, sel) => el.closest(`.rail ${sel}`);
+const RUECKFRAGE_AB = 25;     // ab so vielen Modellen fragt das Ziehen auf den Papierkorb einmal nach (Anwender 4.11.2026)
 const ZIELE = [
+  { name: "papierkorb", nimmt: ["modell"], finde: (el) => (zustand.ansicht !== "papierkorb" ? inLeiste(el, '[data-ansicht="papierkorb"]') : null),
+    hinweis: (z, ids) => `${wasGezogen(ids)} in den Papierkorb${ids.length >= RUECKFRAGE_AB ? " — mit Rückfrage" : ""}`, ablegen: (z, ids) => inPapierkorb(ids) },
+  { name: "archiv", nimmt: ["modell"], finde: (el) => (!ORTE.includes(zustand.ansicht) ? inLeiste(el, '[data-ansicht="archiv"]') : null),
+    hinweis: (z, ids) => `${wasGezogen(ids)} ins Archiv`, ablegen: (z, ids) => archivSetzen(ids, true) },
+  { name: "zurueck", nimmt: ["modell"], finde: (el) => (ORTE.includes(zustand.ansicht) ? inLeiste(el, '[data-rail="katalog"]') : null),
+    hinweis: (z, ids) => `${wasGezogen(ids)} ${zustand.ansicht === "papierkorb" ? "wiederherstellen" : "aus dem Archiv zurückholen"}`,
+    ablegen: (z, ids) => (zustand.ansicht === "papierkorb" ? wiederherstellen(ids) : archivSetzen(ids, false)) },
+  { name: "tag", nimmt: ["modell"], finde: (el) => el.closest('.sektion[data-sektion="tags"] .eintrag[data-tag]'),
+    hinweis: (z, ids) => `#${z.dataset.tag} für ${wasGezogen(ids)}`, ablegen: (z, ids) => tagSetzen(ids, z.dataset.tag) },
+  { name: "favoriten", nimmt: ["modell"], finde: (el) => el.closest('.ans-btn[data-ansicht="favoriten"]'),
+    hinweis: (z, ids) => `${wasGezogen(ids)} als Favorit`, ablegen: (z, ids) => favoritSetzen(ids) },
+  { name: "neue-sammlung", nimmt: ["modell"], finde: (el) => el.closest("#sammlung-neu, #sammlung-neu-2"),
+    hinweis: (z, ids) => `Neue Sammlung mit ${wasGezogen(ids)}`, ablegen: (z, ids) => sammlungNeu(ids) },
   { name: "ordner-in-ordner", nimmt: ["ordner"],
     // Ein Ordner geht in einen anderen Ordner — nicht in sich selbst, nicht in einen eigenen Unterordner, nicht dorthin, wo er schon liegt.
     finde: (el) => {
@@ -3356,6 +3387,54 @@ async function inBaugruppe(bid, name, ids) {
   } };
   toast(`${wasGezogen(ids)} in die Baugruppe „${name}“ gelegt.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
   ladeSeite();
+}
+
+// Ziehen auf den Papierkorb: ohne Rückfrage, weil umkehrbar (Rückgängig, Papierkorb) — ab RUECKFRAGE_AB Modellen aber einmal mit dem Löschdialog,
+// der nennt, was daran hängt: so viele zieht man selten mit Absicht.
+async function inPapierkorb(ids) {
+  if (ids.length >= RUECKFRAGE_AB) return loeschenViele(ids);
+  entferntMelden(ids, await api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle: ids, wert: { tags: [], sammlungen: [] } } }));
+  zustand.auswahl.clear();
+  neuLaden();
+}
+
+async function wiederherstellen(ids) {
+  const r = await api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle: ids } });
+  if (r.fehler.length) toast(`${anzahl(ids.length - r.fehler.length)} zurück, ${r.fehler.length} nicht: ${r.fehler[0].fehler}`);
+  else {
+    ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "loeschen", modelle: ids, wert: { tags: [], sammlungen: [] } } }) };
+    toast(`${wasGezogen(ids)} wiederhergestellt.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+  }
+  zustand.auswahl.clear();
+  neuLaden();
+}
+
+async function archivSetzen(ids, an) {
+  await api("/api/stapel", { method: "POST", body: { aktion: "archiv", modelle: ids, wert: an } });
+  ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "archiv", modelle: ids, wert: !an } }) };
+  toast(an ? `${wasGezogen(ids)} im Archiv — es ruht mit allem, was daran hängt.` : `${wasGezogen(ids)} zurück in PartAtlas.`,
+        { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+  zustand.auswahl.clear();
+  neuLaden();
+}
+
+// Tag und Favorit: Rückgängig nimmt nur von denen zurück, die es vorher nicht hatten.
+async function tagSetzen(ids, tag) {
+  const neu = ids.filter((id) => !(zustand.modelle.find((m) => m.id === id)?.tags || []).includes(tag));
+  if (!neu.length) return toast(`${wasGezogen(ids)} ${ids.length > 1 ? "haben" : "hat"} #${tag} schon.`);
+  await api("/api/stapel", { method: "POST", body: { aktion: "tag", modelle: neu, wert: tag } });
+  ordnerAktion.letzte = { rueck: async () => { for (const id of neu) await api(`/api/modelle/${id}/tags/${encodeURIComponent(tag)}`, { method: "DELETE" }); } };
+  toast(`#${tag} für ${wasGezogen(neu)}.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+  neuLaden();
+}
+
+async function favoritSetzen(ids) {
+  const neu = ids.filter((id) => !zustand.modelle.find((m) => m.id === id)?.favorit);
+  if (!neu.length) return toast(`${wasGezogen(ids)} ${ids.length > 1 ? "sind" : "ist"} schon Favorit.`);
+  await api("/api/stapel", { method: "POST", body: { aktion: "favorit", modelle: neu, wert: true } });
+  ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "favorit", modelle: neu, wert: false } }) };
+  toast(`${wasGezogen(neu)} als Favorit markiert.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+  neuLaden();
 }
 
 async function inWarteschlange(z, g) {
@@ -4207,7 +4286,7 @@ async function wurzelEntfernen({ id, name, pfad, anzahl }) {
   const a = await dialog(`<h2>Ordner aus PartAtlas entfernen?</h2>
     <p><b>${esc(name)}</b>${anzahl ? ` — ${anzahl} ${anzahl === 1 ? "Modell" : "Modelle"}` : ""}<br><code>${esc(pfad)}</code></p>
     <p class="dim">Die Dateien auf der Platte bleiben unberührt. Tags, Bilder und Verknüpfungen der Modelle bleiben erhalten;
-      die Modelle gelten als „Datei fehlt“, bis der Ordner wieder hinzugefügt wird. Du findest ihn unter Bereinigen › Papierkorb und holst ihn
+      die Modelle gelten als „Datei fehlt“, bis der Ordner wieder hinzugefügt wird. Du findest ihn im Papierkorb (🗑 links) und holst ihn
       dort mit einem Klick zurück.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
   if (a !== "ja") return;
