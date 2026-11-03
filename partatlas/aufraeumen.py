@@ -2,7 +2,7 @@
 Aufräumen: Vorschläge, was Platz kostet und vermutlich weg kann — mit Grund und mit dem, was daran hängt.
 
 Anlass (03.10.2026): ein Tester mit vielen Konstruktionsständen je Teil, „das Zumüllen ist echt das Problem“. Gewünscht ist eine Ansicht
-wie eine feingranulare Firewall: jede Entscheidung einzeln, nachvollziehbar, nichts geschieht von selbst. partAtlas löscht hier nichts
+wie eine feingranulare Firewall: jede Entscheidung einzeln, nachvollziehbar, nichts geschieht von selbst. PartAtlas löscht hier nichts
 (KONZEPT §3.3); es zeigt, sortiert und merkt sich, was der Anwender behalten will.
 
 Gedrucktes, Verbautes und Favoriten erscheinen nur, wo der Anwender sie selbst markiert hat (Entwurf) oder wo nichts verloren geht

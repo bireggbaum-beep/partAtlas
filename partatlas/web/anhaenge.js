@@ -71,7 +71,7 @@ document.addEventListener("click", async (e) => {
     }
     if (e.target.closest("[data-anh-weg]")) {
       const r = await rueckfrage(`<h2>Anhang entfernen?</h2><p>„${esc(zeile.querySelector(".anh-name").textContent)}“ verschwindet aus der Liste.
-        Die Datei kommt ins Archiv des Bestands — partAtlas löscht nichts, was du hineingetan hast.</p>
+        Die Datei kommt ins Archiv des Bestands — PartAtlas löscht nichts, was du hineingetan hast.</p>
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr akzent" value="ja">Entfernen</button></div>`);
       if (r.a !== "ja") return;
       await api(`/api/anhaenge/${art}/${id}/${k}`, { method: "DELETE" });

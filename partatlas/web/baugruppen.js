@@ -204,11 +204,11 @@ function stuecklisteTafel(d, leer, offenDruck) {
   <div class="bg-leer">
     <h3>Eine Baugruppe ist eine Stückliste</h3>
     <ol>
-      <li><b>Druckteile hinzufügen</b> — hier wählen, oder im Katalog Kacheln auf „${esc(d.name)}“ links ziehen.</li>
+      <li><b>Druckteile hinzufügen</b> — hier wählen, oder in der Bibliothek Kacheln auf „${esc(d.name)}“ links ziehen.</li>
       <li><b>Mengen einstellen</b> — 4 Arme, 8 Halter. Heisst eine Datei <code>Arm_x4</code>, steht die 4 schon da.</li>
-      <li><b>Kaufteile dazu</b> — Schrauben, Muttern, Magnete, Lager aus dem Katalog.</li>
+      <li><b>Kaufteile dazu</b> — Schrauben, Muttern, Magnete, Lager aus der Normteil-Liste.</li>
     </ol>
-    <p class="dim">Dann zeigt partAtlas, wie viel Filament welcher Farbe du brauchst und was du kaufen musst.</p>
+    <p class="dim">Dann zeigt PartAtlas, wie viel Filament welcher Farbe du brauchst und was du kaufen musst.</p>
     <div class="i-knoepfe"><button class="knopf akzent" data-bg-aktion="teile">＋ Druckteile wählen</button>
       <button class="knopf" data-bg-aktion="kaufteile">＋ Kaufteile</button><button class="knopf" data-bg-aktion="eigene">＋ Eigene Komponente</button><button class="knopf" data-bg-aktion="unter">＋ Unterbaugruppe</button></div>
   </div>`;
@@ -243,7 +243,7 @@ function notizenTafel(d) {
 
 function anhaengeTafel(d) {
   return `<div class="bg-tafel">
-    <p class="dim">Montageanleitungen, Konstruktionszeichnungen (PDF, CorelDRAW, SVG, DXF …), Datenblätter. partAtlas legt eine Kopie in
+    <p class="dim">Montageanleitungen, Konstruktionszeichnungen (PDF, CorelDRAW, SVG, DXF …), Datenblätter. PartAtlas legt eine Kopie in
       den Bestand: sie gehört zur Baugruppe und kommt ins Backup.</p>
     ${anhaengeHtml("baugruppe", d.id, d.anhaenge || [])}
   </div>`;
@@ -385,7 +385,7 @@ async function waehler(art) {
   $("#w-liste").addEventListener("click", async (e) => {
     const weg = e.target.closest("[data-w-kaufteil-weg]");
     if (weg) {
-      const r = await rueckfrage(`<h2>„${esc(weg.dataset.name)}“ löschen?</h2><p>Das selbst angelegte Kaufteil verschwindet aus der Liste. Es lässt sich in partAtlas nicht zurückholen.</p>
+      const r = await rueckfrage(`<h2>„${esc(weg.dataset.name)}“ löschen?</h2><p>Das selbst angelegte Kaufteil verschwindet aus der Liste. Es lässt sich in PartAtlas nicht zurückholen.</p>
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr akzent" value="ja">Löschen</button></div>`);
       if (r.a !== "ja") return;
       try { await api(`/api/kaufteile/${encodeURIComponent(weg.dataset.wKaufteilWeg)}`, { method: "DELETE" }); laden(); }
@@ -604,7 +604,7 @@ async function einstellungen() {
   // was in jedem eingestellt wurde, auch wenn man zwischendurch gewechselt hat.
   const abschnitte = [
     ["vorgaben", "Vorgaben", `
-      <p class="dim">Was partAtlas annimmt, wenn ein Druckteil keine Angabe hat (kein Slicer-Wert, nichts festgelegt).</p>
+      <p class="dim">Was PartAtlas annimmt, wenn ein Druckteil keine Angabe hat (kein Slicer-Wert, nichts festgelegt).</p>
       <div class="i-titel">STANDARDMATERIAL</div>
       <div class="kategorien">${e.materialien.map((m) => `<button type="button" class="chip ${m === e.gilt.material ? "aktiv" : ""}" data-mw-mat="${esc(m)}">${esc(m)}</button>`).join("")}</div>
       <div class="i-titel">STANDARDFARBE</div>
@@ -629,7 +629,7 @@ async function einstellungen() {
           ändern sich noch nicht — eine Einstellung ohne Wirkung gehört nicht in die Oberfläche. Zurück: den Abschnitt aus 0.98.6 holen. */ ""}`],
     ["einlesen", "Einlesen", `
       <div class="i-titel">TAGS</div>
-      <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen (wie im 3MF Katalog)</label>
+      <label><input type="checkbox" id="ein-autotags" ${e.auto_tags ? "checked" : ""}> Tags aus dem Dateinamen vorschlagen</label>
       <p class="dim">Gilt für neu eingelesene Dateien. Vorhandene Tags bleiben; umbenennen, zusammenführen, löschen oder alle automatischen
         auf einmal entfernen: <button type="button" class="knopf-text" data-tags-verwalten>Tags verwalten …</button></p>
       <div class="i-titel">VORSCHAUBILDER</div>
@@ -640,7 +640,7 @@ async function einstellungen() {
         oder in der 3D-Ansicht drehen und mit dem Kamera-Knopf als Vorschaubild speichern.</p>
       <div class="i-titel">EINLESEN</div>
       <label><input type="checkbox" id="ein-start" ${e.scan_beim_start ? "checked" : ""}> Beim Start einlesen</label>
-      <p class="dim">Aus (Vorgabe): partAtlas liest nur ein, wenn du es auslöst — mit ⟳ neben „Bibliothek“. Bei einer grossen Bibliothek auf einer langsamen
+      <p class="dim">Aus (Vorgabe): PartAtlas liest nur ein, wenn du es auslöst — mit ⟳ neben „Bibliothek“. Bei einer grossen Bibliothek auf einer langsamen
         Platte bleibt der Start ruhig. Dateien, die du ausserhalb verschoben oder gelöscht hast, erscheinen dann erst nach dem nächsten Einlesen.</p>
       <div class="i-titel">FREECAD-DOKUMENTE (FCSTD)</div>
       <label>Über FreeCAD einlesen für Maße, Gewicht und 3D-Ansicht
@@ -650,19 +650,19 @@ async function einstellungen() {
       <p class="dim">Ein FreeCAD-Dokument kann Programmcode enthalten, der beim Laden ausgeführt wird — als würdest du es in FreeCAD öffnen.
         Nur für Dateien aus Quellen, denen du vertraust.</p>
       <div class="i-titel">PROTOKOLL</div>
-      <p class="dim">Was partAtlas beim Einlesen und bei Fehlern meldet, steht auch in der Datei <code>partatlas.log</code> im Bestand.
+      <p class="dim">Was PartAtlas beim Einlesen und bei Fehlern meldet, steht auch in der Datei <code>partatlas.log</code> im Bestand.
         Bei einem Fehler: diese Datei schicken.</p>
       <button type="button" class="knopf" id="ein-protokoll">Protokoll im Dateimanager zeigen</button>
 `],
     ["sicherung", "Backup & Wiederherstellung", `
-      <p class="dim">In partAtlas schützen die <b>automatische Sicherung</b> gegen eigene Fehlgriffe und der <b>Papierkorb</b> gegen einen
-        Klick zu schnell. Gegen Plattenschaden und für den Umzug auf einen anderen Rechner hilft dein eigenes Backup — wenn der Katalog darin ist.</p>
+      <p class="dim">In PartAtlas schützen die <b>automatische Sicherung</b> gegen eigene Fehlgriffe und der <b>Papierkorb</b> gegen einen
+        Klick zu schnell. Gegen Plattenschaden und für den Umzug auf einen anderen Rechner hilft dein eigenes Backup — wenn der Ordner von PartAtlas darin ist.</p>
       <div class="i-titel">DEIN KATALOG IN DEINEM BACKUP</div>
       <p>Tags, Drucke, Baugruppen, Sammlungen, Notizen, Anhänge und eigene Bilder liegen nicht bei deinen Modelldateien, sondern im
-        Bestand von partAtlas:</p>
+        Bestand von PartAtlas:</p>
       <div class="bk-ziel"><code>${esc(e.bestand_pfad || "")}</code><button type="button" class="knopf klein" id="ein-bestand-zeigen">Ordner zeigen</button></div>
       <p class="dim">Nimm diesen Ordner in dein eigenes Backup auf (Sicherungsprogramm, Cloud, NAS). Sonst bringt es nach einem Plattenschaden
-        die Dateien zurück, aber nicht die Arbeit in partAtlas. Kopiert dein Backup, während partAtlas läuft, ist das kein Problem: im
+        die Dateien zurück, aber nicht die Arbeit in PartAtlas. Kopiert dein Backup, während PartAtlas läuft, ist das kein Problem: im
         Unterordner <code>sicherungen</code> liegt jeder automatische Stand in sich stimmig.</p>
       <div class="i-titel">AUTOMATISCHE SICHERUNG (NUR DATENBANK)</div>
       <p class="dim">Sichert die Datenbank — Modelle, Tags, Drucke, Baugruppen, Sammlungen, Ordner — beim Start und vor jeder Massenaktion.
@@ -679,7 +679,7 @@ async function einstellungen() {
       <div class="i-titel">DARSTELLUNG</div>
       ${PDF_FELDER.slice(5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}`],
     ["programme", "Programme", `
-      <p class="dim">Mit diesen beiden Programmen öffnet partAtlas ein Modell: STEP- und FCStd-Dateien im CAD, alles andere im Slicer.
+      <p class="dim">Mit diesen beiden Programmen öffnet PartAtlas ein Modell: STEP- und FCStd-Dateien im CAD, alles andere im Slicer.
         Was auf diesem Rechner installiert ist, steht schon da.</p>
       <div id="prog-teil">${progTeil()}</div>`],
   ];

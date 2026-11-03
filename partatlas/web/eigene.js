@@ -11,7 +11,7 @@ function eigeneFormular(w = {}, arten = []) {
       <input type="text" id="eig-masse" placeholder="Maße (optional), z. B. 40×17×12" value="${esc(w.masse || "")}" maxlength="60">
       <textarea id="eig-notiz" data-enter="" rows="2" placeholder="Notiz (optional)" maxlength="500">${esc(w.notiz || "")}</textarea>
       <div class="eig-datei"><button type="button" class="knopf" id="eig-datei-knopf">＋ Datei hinzufügen</button>
-        <span class="dim" id="eig-datei-name">${w.datei ? `<a href="/api/eigene/${esc(w.id)}/datei">${esc(w.datei)}</a>` : "FCStd, STEP, 3MF, STL oder OBJ — oder hierher ziehen. Nur für Bild und zum Öffnen, nicht im 3D-Katalog."}</span></div>
+        <span class="dim" id="eig-datei-name">${w.datei ? `<a href="/api/eigene/${esc(w.id)}/datei">${esc(w.datei)}</a>` : "FCStd, STEP, 3MF, STL oder OBJ — oder hierher ziehen. Nur für Bild und zum Öffnen, nicht in der 3D-Ansicht."}</span></div>
     </div>
     <input type="file" id="eig-cad" accept=".fcstd,.step,.stp,.3mf,.stl,.obj" hidden>
     <input type="file" id="eig-datei" accept="image/png,image/jpeg,image/webp" hidden>

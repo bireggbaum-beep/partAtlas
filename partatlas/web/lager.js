@@ -106,7 +106,7 @@ function zeichneLager() {
       <span class="lg-luecke"></span>
       <button type="button" class="knopf akzent" data-lg-neu>＋ Spule anlegen</button>
     </div>
-    ${leer ? `<div class="lg-leerlager">${lgSpule("", 150)}<p class="lg-leer">Noch keine Spulen. Lege deine Spulen an, dann weiss partAtlas, was du hast und was reicht.</p>
+    ${leer ? `<div class="lg-leerlager">${lgSpule("", 150)}<p class="lg-leer">Noch keine Spulen. Lege deine Spulen an, dann weiss PartAtlas, was du hast und was reicht.</p>
         <button type="button" class="knopf akzent" data-lg-neu>＋ Spule anlegen</button></div>`
       : !liste.length ? `<p class="lg-leer">Keine Spulen für diese Auswahl.</p>`
       : lg.ansicht === "liste" ? lgTabelle(liste) : `<div class="lg-karten">${lgSortiert(liste).map(lgKarte).join("")}</div>`}`;

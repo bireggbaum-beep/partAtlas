@@ -1,8 +1,8 @@
 """
-Läuft IN FreeCAD (FreeCADCmd, ohne Fenster), nicht in partAtlas: wandelt CAD-Dateien in STL um.
+Läuft IN FreeCAD (FreeCADCmd, ohne Fenster), nicht in PartAtlas: wandelt CAD-Dateien in STL um.
 
-partAtlas startet FreeCAD einmal für einen ganzen Stapel (`cad.py`); ein Start kostet Sekunden, zwölf Starte wären
-Minuten. Dieses Skript importiert deshalb nichts aus partAtlas — FreeCADs Python kennt es nicht — und nimmt nur die
+PartAtlas startet FreeCAD einmal für einen ganzen Stapel (`cad.py`); ein Start kostet Sekunden, zwölf Starte wären
+Minuten. Dieses Skript importiert deshalb nichts aus PartAtlas — FreeCADs Python kennt es nicht — und nimmt nur die
 Standardbibliothek und FreeCADs eigene Module.
 
 Eine STEP-Datei liest `Part.read`; ein FCStd-Dokument wird geöffnet (das lädt es wie beim Doppelklick) und die sichtbaren Körper
@@ -12,7 +12,7 @@ Auftrag: die JSON-Datei, auf die PARTATLAS_CAD_JOB zeigt:
     {"auftraege": [{"quelle": "...step", "ziel": "...stl"}, ...],
      "abweichung": 0.1, "winkel": 0.5, "ergebnis": "<Pfad der Ergebnisdatei>"}
 Ergebnis: je Auftrag zwei Zeilen, sofort geschrieben und geleert — wird FreeCAD beendet, weil eine Datei hängt, weiss
-partAtlas aus der letzten Zeile, welche es war:
+PartAtlas aus der letzten Zeile, welche es war:
     {"i": 0, "start": true}
     {"i": 0, "ok": true, "dreiecke": 1234}   oder   {"i": 0, "fehler": "Text"}
 Ein Fehler in einer Datei hält den Stapel nicht an.

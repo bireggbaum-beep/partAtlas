@@ -1,7 +1,7 @@
 """
 CAD-Dateien über FreeCAD in ein Netz umwandeln (STEP: Maße, Vorschau, 3D-Ansicht).
 
-partAtlas bringt kein Open CASCADE mit — das macht eine Anwendung um ein Vielfaches grösser (der 3MF Katalog mit
+PartAtlas bringt kein Open CASCADE mit — das macht eine Anwendung um ein Vielfaches grösser (der 3MF Katalog mit
 STEP-Vorschau ist fast viermal so gross wie ohne). Wer FreeCAD zum Öffnen hat, hat die Umwandlung schon auf dem Rechner:
 FreeCADCmd läuft ohne Fenster, und `cad_skript.py` erledigt darin einen ganzen Stapel mit einem Start.
 

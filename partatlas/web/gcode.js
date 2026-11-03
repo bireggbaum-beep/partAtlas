@@ -1,5 +1,5 @@
 // G-Code ohne Modell (Bereinigen): was das Einlesen nicht eindeutig zuordnen konnte (gcode_ordner.py). Je G-Code: Grund in Worten, passende
-// Modelle zum Anklicken, „Modell wählen …“ mit Suche, „Nicht zuordnen“ (ausblenden, zurücknehmbar). Die Datei im Ordner fasst partAtlas nicht an.
+// Modelle zum Anklicken, „Modell wählen …“ mit Suche, „Nicht zuordnen“ (ausblenden, zurücknehmbar). Die Datei im Ordner fasst PartAtlas nicht an.
 
 const gco = { daten: null };
 
@@ -43,7 +43,7 @@ function zeichneGcode() {
   const n = d.eintraege.length;
   abgleichen($("#gcode-offen"), `<div class="af-kopf">
       <h2>G-Code ohne Modell</h2>
-      <p>${n ? `${anzahl(n)} ${n === 1 ? "G-Code" : "G-Codes"} aus deinen Ordnern konnte partAtlas keinem Modell sicher zuordnen.` : "Alle G-Codes aus deinen Ordnern sind zugeordnet."}
+      <p>${n ? `${anzahl(n)} ${n === 1 ? "G-Code" : "G-Codes"} aus deinen Ordnern konnte PartAtlas keinem Modell sicher zuordnen.` : "Alle G-Codes aus deinen Ordnern sind zugeordnet."}
         Ordnest du einen zu, hängt er am Modell wie ein hochgeladener — als Druck „Noch nicht gedruckt“. Die Datei bleibt im Ordner.</p>
       ${d.ausgeblendet ? `<p class="dim"><button class="link" data-gc-ausgeblendet>${anzahl(d.ausgeblendet)} nicht zugeordnet (ausgeblendet)</button></p>` : ""}
     </div>
@@ -90,7 +90,7 @@ async function gcWaehlen(id, name) {
 
 async function gcAusgeblendete() {
   const liste = await api("/api/gcode_offen/ausgeblendet");
-  const a = await dialog(`<h2>Nicht zugeordnet</h2><p class="dim">Diese G-Codes zeigt partAtlas nicht mehr. Häkchen weg = wieder zeigen.</p>
+  const a = await dialog(`<h2>Nicht zugeordnet</h2><p class="dim">Diese G-Codes zeigt PartAtlas nicht mehr. Häkchen weg = wieder zeigen.</p>
     ${sammelKopf("gc-aus")}
     <div class="dl-liste">${liste.map((x) => `<label class="dl-zeile"><input type="checkbox" data-gc-aus="${esc(x.id)}" data-sammel-von="gc-aus" checked>
       <span class="dl-pfad">${esc(x.name)}</span><span></span></label>`).join("")}</div>

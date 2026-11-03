@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>partAtlas</title>
+<title>PartAtlas</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27 fill=%27none%27 stroke=%27%2326998e%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2713%27 stroke-width=%272.4%27/%3E%3Cellipse cx=%2716%27 cy=%2716%27 rx=%275.5%27 ry=%2713%27 stroke-width=%272%27 opacity=%27.55%27/%3E%3Cpath d=%27M3 16H29%27 stroke-width=%272%27 opacity=%27.55%27/%3E%3Crect x=%2711.5%27 y=%2711.5%27 width=%279%27 height=%279%27 rx=%272%27 fill=%27%2326998e%27 stroke=%27none%27/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/web/app.css">
 <script type="importmap">{"imports": {"three": "/web/vendor/three.module.min.js"}}</script>
@@ -11,7 +11,7 @@
 <body>
 <div class="app">
   <nav class="rail">
-    <button class="rail-btn aktiv" data-rail="katalog" title="Katalog">▦</button>
+    <button class="rail-btn aktiv" data-rail="katalog" title="Bibliothek">▦</button>
     <button class="rail-btn" data-rail="bereinigen" title="Bereinigen">🧹<span class="rail-abz" id="abz-bereinigen" hidden></span></button>
     <span class="rail-luecke"></span>
     <button class="rail-btn" id="lager" title="Filamentlager"><svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg></button>
@@ -98,8 +98,8 @@
         <div class="sk-gruppe">Aufräumen</div>
         <button class="eintrag" data-ansicht="fehlt" title="Modelle, deren Datei nicht mehr gefunden wird"><span>⚠ Datei fehlt</span><em id="z-fehlt"></em></button>
         <button class="eintrag" data-ansicht="duplikate" title="Dieselbe Datei mit gleichem Inhalt an mehreren Orten"><span>⧉ Gleiche Datei</span><em id="z-duplikate"></em></button>
-        <button class="eintrag" data-ansicht="unlesbar" title="Dateien, die partAtlas nicht lesen konnte"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
-        <button class="eintrag" data-ansicht="gcode" title="G-Codes aus deinen Ordnern, die partAtlas keinem Modell sicher zuordnen konnte"><span>▤ G-Code ohne Modell</span><em id="z-gcode"></em></button>
+        <button class="eintrag" data-ansicht="unlesbar" title="Dateien, die PartAtlas nicht lesen konnte"><span>✕ Unlesbar</span><em id="z-unlesbar"></em></button>
+        <button class="eintrag" data-ansicht="gcode" title="G-Codes aus deinen Ordnern, die PartAtlas keinem Modell sicher zuordnen konnte"><span>▤ G-Code ohne Modell</span><em id="z-gcode"></em></button>
         <button class="eintrag" data-ansicht="aufraeumen" title="Was Platz kostet und vermutlich weg kann"><span>🧹 Vorschläge</span><em id="z-aufraeumen"></em></button>
         <div class="sk-gruppe">Aufbewahrt</div>
         <button class="eintrag" data-ansicht="archiv" title="Modelle, die ruhen: nicht in Liste und Suche, aber mit allem, was daran hängt"><span>🗄 Archiv</span><em id="z-archiv"></em></button>

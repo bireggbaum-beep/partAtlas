@@ -68,7 +68,7 @@ function tvZeichnen() {
     </div>
     <div class="tv-fuss">
       <div class="tv-block"><b>Automatische Tags</b>
-        <p class="dim">${d.auto_tags ? "partAtlas schlägt beim Einlesen Tags aus dem Dateinamen vor (Einstellungen › Einlesen)." : "Tags aus dem Dateinamen sind ausgeschaltet (Einstellungen › Einlesen)."}
+        <p class="dim">${d.auto_tags ? "PartAtlas schlägt beim Einlesen Tags aus dem Dateinamen vor (Einstellungen › Einlesen)." : "Tags aus dem Dateinamen sind ausgeschaltet (Einstellungen › Einlesen)."}
           Alle automatisch angehängten entfernen: von Hand gesetzte bleiben, vorher wird gesichert.</p>
         <button type="button" class="knopf" data-tv="auto" ${autoN ? "" : "disabled"}>Alle automatischen entfernen …</button></div>
       ${d.gesperrt.length ? `<div class="tv-block"><b>Nicht mehr vorgeschlagen</b>
@@ -133,7 +133,7 @@ async function tvAktion(was) {
       const r = await rueckfrage(`<h2>Alle automatischen Tags entfernen?</h2>
         <p>${zahl(n.kanten, 0)} automatisch angehängte ${n.kanten === 1 ? "Zuordnung" : "Zuordnungen"} (${zahl(n.tags, 0)} Tags) werden von den Modellen gelöst.
           Tags, die du selbst gesetzt hast, bleiben. Was danach an keinem Modell mehr hängt, geht in den Papierkorb.</p>
-        <p class="dim">Vorher sichert partAtlas die Datenbank; zurückholen über Einstellungen › Sicherungen.</p>
+        <p class="dim">Vorher sichert PartAtlas die Datenbank; zurückholen über Einstellungen › Sicherungen.</p>
         <label><input type="checkbox" name="abschalten" checked> Auch künftig keine Tags aus Dateinamen</label>
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr akzent" value="ja">Entfernen</button></div>`);
       if (r.a !== "ja") return;

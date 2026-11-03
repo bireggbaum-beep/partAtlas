@@ -1,8 +1,8 @@
 // Aufräumen: Vorschläge, was Platz kostet und vermutlich weg kann — je Datei mit Grund, Grösse und dem, was daran hängt.
 //
 // Wie eine feingranulare Firewall (Wunsch eines Testers, 03.10.2026): jede Entscheidung einzeln und nachvollziehbar, nichts geschieht
-// von selbst. partAtlas löscht hier nichts (KONZEPT §3.3). Man zeigt die Datei im Dateimanager und löscht sie dort, speichert die
-// gewählten Pfade als Liste — oder sagt „Behalten“: dann schlägt partAtlas sie nicht mehr vor (eine Ausnahme, zurücknehmbar).
+// von selbst. PartAtlas löscht hier nichts (KONZEPT §3.3). Man zeigt die Datei im Dateimanager und löscht sie dort, speichert die
+// gewählten Pfade als Liste — oder sagt „Behalten“: dann schlägt PartAtlas sie nicht mehr vor (eine Ausnahme, zurücknehmbar).
 
 const aufr = { daten: null, wahl: new Set(), zu: new Set() };
 const mb = (b) => (b >= 1073741824 ? `${zahl(b / 1073741824, 2)} GB` : b >= 1048576 ? `${zahl(b / 1048576, 1)} MB` : `${zahl(b / 1024, 0)} kB`);
@@ -68,7 +68,7 @@ function zeichneAufraeumen() {
   abgleichen($("#aufraeumen"), `<div class="af-kopf">
       <h2>Vorschläge zum Aufräumen</h2>
       <p>${n ? `Vorschläge: <b>${mb(gesamt)}</b> in ${anzahl(n)} ${n === 1 ? "Modell" : "Modellen"}.` : "Nichts vorzuschlagen."}
-        partAtlas löscht hier nichts: du entscheidest je Datei und löschst sie selbst im Dateimanager (📂). „Behalten“ heisst: nicht mehr
+        PartAtlas löscht hier nichts: du entscheidest je Datei und löschst sie selbst im Dateimanager (📂). „Behalten“ heisst: nicht mehr
         vorschlagen.</p>
       <p class="dim">Danach <button class="link" data-af-neu-einlesen>neu einlesen</button>: gelöschte Entwürfe gehen dann in den Papierkorb,
         gelöschte Kopien verschwinden aus der Liste.${d.behalten ? ` · <button class="link" data-af-ausnahmen>${anzahl(d.behalten)} ${d.behalten === 1 ? "Ausnahme" : "Ausnahmen"} (Behalten)</button>` : ""}</p>
@@ -101,7 +101,7 @@ function afCsv() {
 
 async function afAusnahmen() {
   const liste = await api("/api/aufraeumen/behalten");
-  const a = await dialog(`<h2>Ausnahmen</h2><p class="dim">Diese Modelle schlägt partAtlas beim Aufräumen nicht vor. Häkchen weg = wieder vorschlagen.</p>
+  const a = await dialog(`<h2>Ausnahmen</h2><p class="dim">Diese Modelle schlägt PartAtlas beim Aufräumen nicht vor. Häkchen weg = wieder vorschlagen.</p>
     ${sammelKopf("ausnahmen")}
     <div class="dl-liste">${liste.map((m) => `<label class="dl-zeile"><input type="checkbox" data-ausnahme="${esc(m.id)}" data-sammel-von="ausnahmen" checked>
       <span class="dl-pfad">${esc(m.name)}${esc(endung[m.format] || "")}</span><span></span></label>`).join("")}</div>

@@ -11,7 +11,7 @@ Arbeitsordners — eine abgebrochene liegt als `.…arbeit` da und zählt nicht.
 
 Behalten: die neuesten 5 und dazu die neueste jedes Tages für 30 Tage (KONZEPT §3.3a, wie pDMS; Einstellungen › Backup &
 Wiederherstellung). Zurückholen in der Oberfläche (main.py tauscht die Datenbank im laufenden Betrieb, `tauschen`) oder bei beendetem
-partAtlas:
+PartAtlas:
     python -m partatlas.sicherung                 Sicherungen auflisten
     python -m partatlas.sicherung --jetzt         eine anlegen
     python -m partatlas.sicherung --zurueck NAME  diesen Stand zurückholen (der jetzige wird vorher selbst gesichert)
@@ -35,7 +35,7 @@ UPDATES = 3             # Sicherungen „vor dem Update“: die letzten drei ble
 # Der Anlass in Worten, für die Liste in den Einstellungen; ein mitgegebener Text (`anlass`) geht vor.
 ANLASS = {"start": "Beim Start", "von-hand": "Von Hand", "vor-zurueckholen": "Vor dem Zurückholen einer Sicherung",
           "vor-entfernen": "Vor dem Entfernen von Modellen", "vor-ordner-entfernen": "Vor dem Entfernen eines Ordners",
-          "vor-ordner-aus-katalog": "Vor dem Entfernen eines Ordners aus dem Katalog", "vor-endgueltig-entfernen": "Vor dem endgültigen Entfernen",
+          "vor-ordner-aus-katalog": "Vor dem Entfernen eines Ordners aus PartAtlas", "vor-endgueltig-entfernen": "Vor dem endgültigen Entfernen",
           "vor-tags-loeschen": "Vor dem Löschen von Tags", "vor-tags-zusammenfuehren": "Vor dem Zusammenführen von Tags",
           "vor-auto-tags-entfernen": "Vor dem Entfernen der automatischen Tags", "vor-archiv": "Vor dem Archivieren", "vor-fehlende": "Vor dem Entscheiden über fehlende Dateien",
           "vor-update": "Vor einem Update"}
@@ -87,7 +87,7 @@ def _kopieren(wurzel, ziel):
 
 
 def _stand(wurzel):
-    """Fingerabdruck aus Pfad, Grösse und Änderungszeit jeder gesicherten Datei. Reicht als Vergleich, weil flatgraph und partAtlas nie
+    """Fingerabdruck aus Pfad, Grösse und Änderungszeit jeder gesicherten Datei. Reicht als Vergleich, weil flatgraph und PartAtlas nie
     an Ort und Stelle schreiben (os.replace): jede Änderung ist eine neue Datei mit neuer Zeit. Nur `stat`, kein Lesen — unter Windows
     kostet das Lesen jeder Datei den Virenscanner."""
     h = hashlib.sha256()
@@ -187,12 +187,12 @@ def _aufraeumen(wurzel, neueste=NEUESTE, tage=TAGE):
 
 
 def zurueckholen(wurzel, name):
-    """Ersetzt die Datenbank durch eine Sicherung. Nur bei beendetem partAtlas: flatgraph lässt keinen zweiten Besitzer zu, und
+    """Ersetzt die Datenbank durch eine Sicherung. Nur bei beendetem PartAtlas: flatgraph lässt keinen zweiten Besitzer zu, und
     das Öffnen hier beweist, dass keiner da ist. Der jetzige Stand wird vorher gesichert und bleibt zusätzlich in `arbeit/` liegen:
     auch das Zurückholen ist umkehrbar."""
     from .bestand import Bestand
     pruefen(wurzel, name)
-    b = Bestand(wurzel)                       # wirft BestandBelegt, solange partAtlas läuft
+    b = Bestand(wurzel)                       # wirft BestandBelegt, solange PartAtlas läuft
     try:
         sichern(b, "vor-zurueckholen", immer=True, aufraeumen=False)
     finally:
@@ -209,7 +209,7 @@ def pruefen(wurzel, name):
 
 def tauschen(wurzel, name):
     """Die Datenbank gegen die der Sicherung tauschen. Der Aufrufer hat gesichert und hält die Datenbank geschlossen (CLI: beendetes
-    partAtlas; main.py: im Betrieb, nach dem Schliessen des Bestands)."""
+    PartAtlas; main.py: im Betrieb, nach dem Schliessen des Bestands)."""
     quelle = pruefen(wurzel, name)
     beiseite = os.path.join(wurzel, "arbeit", f"datenbank_ersetzt_{time.strftime('%Y-%m-%d_%H%M%S')}")
     os.makedirs(os.path.dirname(beiseite), exist_ok=True)

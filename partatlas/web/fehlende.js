@@ -4,8 +4,8 @@
 // „Später“ lässt alles, wie es ist; es steht dann unter Bereinigen › Datei fehlt und lässt sich dort wieder so entscheiden.
 
 const FEHLT_WAHL = [["archiv", "Archiv", "Ruht mit allem, was daran hängt; kommt die Datei wieder, ist das Modell von selbst zurück"],
-                    ["behalten", "Behalten", "Bleibt im Katalog, mit ruhigem Zeichen „ohne Datei“"],
-                    ["loeschen", "Löschen", "In den Papierkorb von partAtlas — dort zurückholbar"]];
+                    ["behalten", "Behalten", "Bleibt in PartAtlas, mit ruhigem Zeichen „ohne Datei“"],
+                    ["loeschen", "Löschen", "In den Papierkorb von PartAtlas — dort zurückholbar"]];
 const fw = { liste: [], wahl: new Map(), neu: false };
 
 function haengtText(h) {
@@ -43,8 +43,8 @@ function fwZeichnen() {
   const titelEndung = (x) => esc(endung[x.format] || "");
   d.innerHTML = `<div class="fw">
     <div class="fw-kopf"><h2>${n === 1 ? "Eine Datei fehlt" : `${anzahl(n)} Dateien fehlen`}</h2>
-      <p class="dim">${fw.neu ? "Beim Einlesen nicht mehr gefunden" : "Nicht mehr gefunden"} — im Dateimanager gelöscht oder ausserhalb der Ordner von partAtlas
-        verschoben. Was soll mit den Einträgen im Katalog geschehen? Deine Dateien auf der Platte betrifft das nicht.</p></div>
+      <p class="dim">${fw.neu ? "Beim Einlesen nicht mehr gefunden" : "Nicht mehr gefunden"} — im Dateimanager gelöscht oder ausserhalb der Ordner von PartAtlas
+        verschoben. Was soll mit den Einträgen in PartAtlas geschehen? Deine Dateien auf der Platte betrifft das nicht.</p></div>
     <div class="fw-alle"><span>Für alle</span>${segment("data-fw-alle", alleGleich(fw.liste.map((x) => x.id)))}</div>
     <div class="fw-liste">${[...gruppen].map(([ordner, xs]) => `
       <div class="fw-gruppe"><span class="fw-ordner" title="${esc(ordner)}">📁 ${esc(ordner || "–")} <em>${xs.length}</em></span>

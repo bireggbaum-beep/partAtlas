@@ -4,6 +4,17 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Auf dem Branch, nicht auf `main`: 1.0.11 (3.11.2026)
+
+- **„Katalog“ → „PartAtlas“ (Vorschlag des Testers, Anwender: „Vom 3MF Katalog müssen wir uns immer weiter entfernen“):** alle sichtbaren Texte (Oberfläche, Server-Meldungen,
+  Namen der Sicherungen) nach Regeln, nicht stur: „aus PartAtlas entfernen“, „Zurück in PartAtlas“, „Deine Daten in PartAtlas werden … ersetzt“; Knopf links „Bibliothek“; sichtbare
+  Hinweise „(wie im 3MF Katalog)“ entfernt. Schreibweise überall „PartAtlas“ (vorher gemischt mit „partAtlas“), ausser im Handbuch (nicht nachgezogen). Alte Einträge unter „Neu in
+  dieser Fassung“, Protokollzeilen und Code-Namen (`katalog.py`, `KatalogFehler`) bleiben. **`KONZEPT.md` (31 Stellen) noch nicht** — Entscheidung des Anwenders.
+  Alle Suiten ausser test_ui grün nach Anpassen von vier Tests an die neuen Texte.
+- **Wackliger Test `test_verschieben_ui`:** „Rückgängig nach Verschieben über das Menü“ fiel zweimal direkt nach dem Lauf aller Suiten (Datei kam nicht zurück), danach siebenmal grün;
+  Ursache nicht gefunden. Gefunden und behoben dabei: scheiterte das Zurückschieben auf dem Server, meldete die Oberfläche trotzdem „Rückgängig gemacht“ (Stapel liefert Fehler in der
+  Antwort) — jetzt die Meldung mit Grund. Beobachten; tritt es wieder auf, mit dem Protokoll des Bestands nachsehen.
+
 ## Stand: 1.0.10 auf `main` (3.11.2026) — kleine Fassung, auf Ansage des Anwenders ohne test_ui und ohne Hochzieh-Versuch; Rückweg `fassung-1.0.9`
 
 - **Änderungsdatum auf der Kachel (Wunsch des Testers: „zweimal in FreeCAD eine alte Version geöffnet“):** `geaendert` in den Kacheldaten (jüngste `mtime` der Orte, Stand des letzten

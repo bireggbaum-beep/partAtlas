@@ -1,4 +1,4 @@
-// partAtlas — Oberfläche ohne Framework (wie pDMS). Aufbau nach dem 3MF
+// PartAtlas — Oberfläche ohne Framework (wie pDMS). Aufbau nach dem 3MF
 // Katalog: Seitenleiste, Raster, Inspektor. Das Raster ist virtuell: es
 // zeichnet nur die sichtbaren Kacheln, damit 10 000 Modelle nicht den
 // Browser lahmlegen (vermutete Ursache für „nicht gescheit“ bei 5 700).
@@ -576,8 +576,8 @@ function zeichneLeer() {
   const scan = zustand.scan;
   if (erst) {
     leer.innerHTML = `<div class="willkommen">
-      <h2>Willkommen bei partAtlas</h2>
-      <p>Wähle den Ordner mit deinen 3D-Dateien. partAtlas liest ihn samt Unterordnern ein und
+      <h2>Willkommen bei PartAtlas</h2>
+      <p>Wähle den Ordner mit deinen 3D-Dateien. PartAtlas liest ihn samt Unterordnern ein und
         katalogisiert die Dateien dort, wo sie liegen — nichts wird kopiert oder verschoben.</p>
       <ul>
         <li><b>Formate:</b> 3MF (inkl. Slicer-Metadaten und Thumbnail), STL, OBJ, STEP (Vorschau und Maße über FreeCAD, wenn installiert) und FCStd (Vorschau nur aus der Datei)</li>
@@ -595,7 +595,7 @@ function zeichneLeer() {
       ? (Object.values(zustand.korbWeitere || {}).some((l) => l.length) ? "Keine Modelle im Papierkorb." : "Der Papierkorb ist leer.")
       : zustand.ansicht === "archiv" ? "Das Archiv ist leer. Was nicht mehr gebraucht wird, aber nicht verloren gehen soll, legt man hier ab: Rechtsklick › Ins Archiv."
       : zustand.filterTeile ? "Keine Treffer."
-      : zustand.ansicht === "fehlt" ? "Keine Datei fehlt. Verschwindet beim Einlesen eine, fragt partAtlas am Ende, was mit dem Modell geschehen soll."
+      : zustand.ansicht === "fehlt" ? "Keine Datei fehlt. Verschwindet beim Einlesen eine, fragt PartAtlas am Ende, was mit dem Modell geschehen soll."
       : zustand.ansicht === "duplikate" ? "Keine Datei liegt doppelt."
       : zustand.ansicht === "unlesbar" ? "Alle Dateien liessen sich lesen."
       : "Noch keine Modelle in diesem Ordner.";
@@ -616,7 +616,7 @@ function scanErgebnis(m) {
     .map(([k, s]) => `${PHASENNAME[k] || k} ${s < 60 ? zahl(s, 1) + " s" : dauer(s)}`).join(" · ");
   const weg = m.nicht_erreichbar?.length ? `; nicht erreichbar: ${m.nicht_erreichbar.join(", ")} (nichts als fehlend markiert)` : "";
   const korb = weg + (m.zurueckgeholt ? `; ${m.zurueckgeholt.toLocaleString("de-DE")} aus dem Papierkorb zurückgeholt` : "")
-    + (m.im_papierkorb ? `; ${m.im_papierkorb.toLocaleString("de-DE")} im Papierkorb (aus dem Katalog entfernt) übergangen` : "");
+    + (m.im_papierkorb ? `; ${m.im_papierkorb.toLocaleString("de-DE")} im Papierkorb (aus PartAtlas entfernt) übergangen` : "");
   return `Eingelesen: ${m.gefunden.toLocaleString("de-DE")} Dateien${m.neu ? `, ${m.neu.toLocaleString("de-DE")} neu` : ""}${korb} in ${zeit}${phasen ? ` (${phasen})` : ""}`;
 }
 
@@ -1212,13 +1212,13 @@ function fehltTeil(m) {
       wieder verbunden.</p>${zuletzt}<div class="knoepfe-zeile">${suchen}<button class="knopf" id="ohne-datei-aus">Wieder als fehlend zeigen</button></div></div>`;
   }
   return `<div class="fehlt-teil"><p><b>⚠ Datei fehlt.</b> Sie liegt an keinem bekannten Ort mehr: gelöscht, ausserhalb der Ordner von
-    partAtlas verschoben oder auf einem Laufwerk, das gerade fehlt. Tags, Drucke und Bilder sind noch da.</p>${zuletzt}
+    PartAtlas verschoben oder auf einem Laufwerk, das gerade fehlt. Tags, Drucke und Bilder sind noch da.</p>${zuletzt}
     <div class="knoepfe-zeile"><button class="knopf akzent" id="ins-archiv" title="Ruht mit allem, was daran hängt; kommt die Datei wieder, ist das Modell von selbst zurück">Ins Archiv</button>
       <button class="knopf" id="ohne-datei">Behalten</button>${suchen}
       <button class="knopf gefahr" id="fehlt-entfernen">Löschen …</button></div></div>`;
 }
 
-// Einen Ordner zeigen; partAtlas prüft, ob fehlende Dateien darin liegen (gleicher Inhalt), auch die anderer Modelle.
+// Einen Ordner zeigen; PartAtlas prüft, ob fehlende Dateien darin liegen (gleicher Inhalt), auch die anderer Modelle.
 async function dateiSuchen() {
   let pfad;
   try { pfad = await ordnerAuswahl(); } catch (e) { return toast(e.message); }
@@ -1228,15 +1228,15 @@ async function dateiSuchen() {
   const n = r.treffer.length;
   if (!n) {
     return dialog(`<h2>Nicht gefunden</h2><p>In <code>${esc(r.pfad)}</code> liegt keine der fehlenden Dateien.</p>
-      <p class="dim">Erkannt wird nur dieselbe Datei. Eine geänderte Fassung erkennt partAtlas nicht von selbst — sie kommt beim Einlesen als
+      <p class="dim">Erkannt wird nur dieselbe Datei. Eine geänderte Fassung erkennt PartAtlas nicht von selbst — sie kommt beim Einlesen als
       neues Modell.${r.vollstaendig ? "" : " Der Ordner ist sehr gross; durchsucht wurde nur ein Teil."}</p>
       <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
   }
   const liste = `<ul>${r.treffer.slice(0, 8).map((t) => `<li>${esc(t.name)} <span class="dim">· ${esc(t.pfad)}</span></li>`).join("")}${n > 8 ? `<li>… und ${n - 8} weitere</li>` : ""}</ul>`;
   if (r.wurzel) return toast(`${n} ${n === 1 ? "Datei" : "Dateien"} gefunden — wird verbunden.`);
   const a = await dialog(`<h2>${n} ${n === 1 ? "fehlende Datei" : "fehlende Dateien"} gefunden</h2>${liste}
-    <p>Der Ordner gehört noch nicht zum Katalog. Fügst du ihn hinzu, sind sie wieder verbunden, mit Tags, Drucken und Bildern.</p>
-    <p class="dim">Alle anderen Modelle in diesem Ordner kommen dabei ebenfalls in den Katalog.</p>
+    <p>Der Ordner gehört noch nicht zu PartAtlas. Fügst du ihn hinzu, sind sie wieder verbunden, mit Tags, Drucken und Bildern.</p>
+    <p class="dim">Alle anderen Modelle in diesem Ordner kommen dabei ebenfalls zu PartAtlas.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Ordner hinzufügen</button></div>`);
   if (a !== "ja") return;
   try { einlesenGestartet((await api("/api/wurzeln", { method: "POST", body: { pfad: r.pfad } })).lauf); }
@@ -1290,7 +1290,7 @@ async function stapelAktion(aktion, modelle = [...zustand.auswahl], anker = null
     case "loeschen": return loeschenViele(modelle);
     case "ins-archiv": case "aus-archiv":
       await stapel("archiv", aktion === "ins-archiv", modelle);
-      toast(aktion === "ins-archiv" ? `${modelle.length} ${modelle.length === 1 ? "Modell" : "Modelle"} im Archiv.` : "Zurück im Katalog.");
+      toast(aktion === "ins-archiv" ? `${modelle.length} ${modelle.length === 1 ? "Modell" : "Modelle"} im Archiv.` : "Zurück in PartAtlas.");
       zustand.auswahl.clear();
       return;
     case "wiederherstellen":
@@ -1356,13 +1356,13 @@ const BEREINIGEN_TEXT = {
   duplikate: (n) => `⧉ ${anzahl(n)} ${n === 1 ? "Modell liegt" : "Modelle liegen"} mit gleichem Inhalt an mehreren Orten. Jedes ist
     <i>ein</i> Modell: Tags, Drucke und Baugruppen gelten für alle Kopien. Die Orte stehen im Inspektor unter <b>Datei</b>, mit 📂 zum
     Ordner. Eine überzählige Kopie löschst du im Dateimanager — das Modell bleibt mit den übrigen, nichts geht verloren.`,
-  unlesbar: (n) => `✕ ${anzahl(n)} ${n === 1 ? "Datei konnte" : "Dateien konnte"} partAtlas nicht lesen — beschädigt, unvollständig
-    heruntergeladen oder in einer Form, die es nicht kennt. Sie stehen im Katalog, aber ohne Masse und Vorschaubild; den Grund nennt der
-    Inspektor. <b>Was hilft:</b> im Programm öffnen und am selben Ort neu speichern — beim nächsten Einlesen liest partAtlas sie neu, das
+  unlesbar: (n) => `✕ ${anzahl(n)} ${n === 1 ? "Datei konnte" : "Dateien konnte"} PartAtlas nicht lesen — beschädigt, unvollständig
+    heruntergeladen oder in einer Form, die es nicht kennt. Sie stehen in PartAtlas, aber ohne Masse und Vorschaubild; den Grund nennt der
+    Inspektor. <b>Was hilft:</b> im Programm öffnen und am selben Ort neu speichern — beim nächsten Einlesen liest PartAtlas sie neu, das
     Modell bleibt dasselbe. Nicht mehr gebraucht: Rechtsklick › Ins Archiv oder Löschen.`,
   archiv: (n) => `🗄 ${anzahl(n)} ${n === 1 ? "Modell ruht" : "Modelle ruhen"} im Archiv: nicht in Liste, Suche, Zählern und Sammlungen,
     aber mit allem, was daran hängt — Drucke, Baugruppen, Tags, Anhänge. <b>Zurückholen</b> (Rechtsklick oder im Inspektor) stellt ein
-    Modell wieder in den Katalog. Kam es ins Archiv, weil seine Datei fehlte, kehrt es von selbst zurück, sobald die Datei wieder auftaucht.`,
+    Modell wieder zu PartAtlas. Kam es ins Archiv, weil seine Datei fehlte, kehrt es von selbst zurück, sobald die Datei wieder auftaucht.`,
 };
 
 function zeichneHinweisLeiste() {
@@ -1380,12 +1380,12 @@ function zeichneHinweisLeiste() {
     const n = zustand.modelle.length;
     zeilen.push(`<div class="pk-zeile"><span>⚠ ${anzahl(n)} ${n === 1 ? "Modell, dessen Datei" : "Modelle, deren Datei"} nicht mehr gefunden
       ${n === 1 ? "wird" : "werden"}. <b>Ins Archiv:</b> das Modell ruht und kommt von selbst zurück, sobald die Datei wieder auftaucht.
-      <b>Behalten:</b> es bleibt ohne Datei im Katalog. <b>Löschen:</b> in den Papierkorb, von dort zurückholbar.</span>
+      <b>Behalten:</b> es bleibt ohne Datei in PartAtlas. <b>Löschen:</b> in den Papierkorb, von dort zurückholbar.</span>
       <button class="knopf klein akzent" data-fehlende-entscheiden>Entscheiden …</button></div>`);
   } else if (BEREINIGEN_TEXT[zustand.ansicht] && zustand.modelle.length) {
     zeilen.push(`<div class="pk-zeile"><span>${BEREINIGEN_TEXT[zustand.ansicht](zustand.modelle.length)}</span></div>`);
   } else if (zustand.hatWurzeln === false && zustand.katalogLeer === false) {
-    zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben im Katalog, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du unter Bereinigen › Papierkorb zurück." : ""}</span>
+    zeilen.push(`<div class="pk-zeile"><span>Es ist kein Ordner mehr eingetragen. Die Modelle bleiben in PartAtlas, samt Tags und Drucken, und warten auf ihre Dateien.${entf.length ? " Entfernte Ordner holst du unter Bereinigen › Papierkorb zurück." : ""}</span>
       <button class="knopf klein" id="wurzel-neu-4">Ordner hinzufügen …</button></div>`);
   }
   $("#pk-leiste").hidden = !zeilen.length;
@@ -1412,7 +1412,7 @@ document.addEventListener("click", async (e) => {
 
 async function loeschenViele(modelle) {
   const stelle = Math.min(...modelle.map((id) => zustand.idIndex.get(id) ?? Infinity));
-  if (await loeschDialog(modelle, `${modelle.length} Modelle aus dem Katalog entfernen?`)) {
+  if (await loeschDialog(modelle, `${modelle.length} Modelle aus PartAtlas entfernen?`)) {
     zustand.auswahl.clear();
     await naechstesWaehlen(Number.isFinite(stelle) ? stelle : null);
   }
@@ -1693,7 +1693,7 @@ async function druckDateiAblegen(did, datei) {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.fehler || d.detail || "Datei nicht gespeichert.");
     toast(d.werte ? `${d.werte} Einstellungen gelesen${d.gleiche_einstellungen > 1 ? ` — schon ${d.gleiche_einstellungen - 1}× so gedruckt` : ""}.`
-      : "Datei gespeichert; Einstellungen fand partAtlas darin keine.");
+      : "Datei gespeichert; Einstellungen fand PartAtlas darin keine.");
   } catch (err) { toast(err.message); }
   if (zustand.gewaehlt === id) { zustand.angezeigt = null; waehle(id); }
 }
@@ -1957,7 +1957,7 @@ document.addEventListener("click", async (e) => {
   }
   const weg = t.closest("[data-druck-weg]");
   if (weg) {
-    const a = await dialog(`<h2>Druck entfernen?</h2><p class="dim">Der Eintrag und seine Fotos verschwinden aus partAtlas; die Fotos bleiben im Archiv des Bestands (<code>vault_archive</code>). Hängt der Druck an mehreren Modellen, verschwindet er bei allen.</p>
+    const a = await dialog(`<h2>Druck entfernen?</h2><p class="dim">Der Eintrag und seine Fotos verschwinden aus PartAtlas; die Fotos bleiben im Archiv des Bestands (<code>vault_archive</code>). Hängt der Druck an mehreren Modellen, verschwindet er bei allen.</p>
       <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
     if (a !== "ja") return;
     try { await api(`/api/drucke/${weg.dataset.druckWeg}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
@@ -2243,7 +2243,7 @@ async function vorschauSetzen(wahl) {
 async function bildEntfernen(k) {
   const m = galerie.m;
   {
-    const a = await dialog(`<h2>Bild entfernen?</h2><p class="dim">Es verschwindet aus partAtlas. Die Datei bleibt im Archiv des Bestands (<code>vault_archive</code>).</p>
+    const a = await dialog(`<h2>Bild entfernen?</h2><p class="dim">Es verschwindet aus PartAtlas. Die Datei bleibt im Archiv des Bestands (<code>vault_archive</code>).</p>
       <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja">Entfernen</button></div>`);
     if (a !== "ja") return;
     await api(`/api/modelle/${m.id}/bilder/${k}`, { method: "DELETE" });
@@ -2264,8 +2264,8 @@ document.addEventListener("contextmenu", (e) => {
       <button type="button" data-km="ordner-zeigen">Im Dateimanager zeigen</button>`
       + (istWurzel ? "" : `<button type="button" data-km="ordner-umbenennen">Umbenennen <kbd>F2</kbd></button>
                            <button type="button" data-km="ordner-verschieben">Verschieben nach …</button>`)
-      + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus partAtlas entfernen …</button>`
-                   : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner aus dem Katalog entfernen …</button>`);
+      + (istWurzel ? `<button type="button" data-km="wurzel-weg" class="gefahr">Aus PartAtlas entfernen …</button>`
+                   : `<button type="button" data-km="ordner-weg" class="gefahr">Ordner aus PartAtlas entfernen …</button>`);
     kontextMenu.ziel = { ordner: { id: eintrag.dataset.ordner, name: eintrag.dataset.wurzelName || eintrag.dataset.ordner.split("/").pop() },
                          wurzel: istWurzel ? { id: eintrag.dataset.wurzel, name: eintrag.dataset.wurzelName, pfad: eintrag.title, anzahl: Number(eintrag.querySelector("em")?.textContent) || 0 } : null };
     menu.hidden = false;
@@ -2408,7 +2408,7 @@ async function neuigkeitenZeigen({ alle = false, versuch = 0 } = {}) {
     if (versuch < 8) setTimeout(() => neuigkeitenZeigen({ alle, versuch: versuch + 1 }), 4000);
     return;
   }
-  await dialog(`<h2>partAtlas ${esc(n.version)}</h2><p class="dim">${alle ? "Zuletzt dazugekommen" : "Neu seit deinem letzten Start"}</p>
+  await dialog(`<h2>PartAtlas ${esc(n.version)}</h2><p class="dim">${alle ? "Zuletzt dazugekommen" : "Neu seit deinem letzten Start"}</p>
     ${n.neu.map((e) => `<h3 class="neu-fassung">${esc(e.version)}</h3><ul class="neu">${e.zeilen.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>`).join("")}
     <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
   if (!alle) api("/api/neuigkeiten/gesehen", { method: "POST" }).catch(() => {});
@@ -2433,7 +2433,7 @@ $("#neue-fassung").addEventListener("click", async () => {
   if (!neueFassung) return;
   await dialog(`<h2>Neue Fassung ${esc(neueFassung.version)}</h2><p class="dim">Du hast ${esc($("#version").textContent || "")}. Das ist neu:</p>
     ${neueFassung.neu.map((e) => `<h3 class="neu-fassung">${esc(e.version)}</h3><ul class="neu">${e.zeilen.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>`).join("")}
-    <p class="dim">Holen: <code>git pull</code> im partAtlas-Ordner, dann partAtlas neu starten.</p>
+    <p class="dim">Holen: <code>git pull</code> im PartAtlas-Ordner, dann PartAtlas neu starten.</p>
     <div class="knoepfe"><button class="knopf akzent" value="ok">OK</button></div>`);
 });
 [8000, 30000, 90000].forEach((ms) => setTimeout(neueFassungPruefen, ms));
@@ -2447,7 +2447,7 @@ function tastenkuerzel() {
   const gruppen = [
     ["In der Bibliothek", [[k("←", "↑", "→", "↓"), "Modell wechseln"], [k("Pos1") + " " + k("Ende"), "Zum ersten oder letzten"],
       [k("Umschalt") + " + " + k("↑", "↓"), "Mehrere am Stück wählen"], [k("Leertaste"), "Zur Auswahl dazu oder weg"],
-      [k(strg, "A"), "Alle wählen"], [k("Enter"), "Im Programm öffnen"], [k("F2"), "Umbenennen"], [k(entf), "Aus dem Katalog entfernen"]]],
+      [k(strg, "A"), "Alle wählen"], [k("Enter"), "Im Programm öffnen"], [k("F2"), "Umbenennen"], [k(entf), "Aus PartAtlas entfernen"]]],
     ["Suchen", [[k("/"), "Ins Suchfeld"], [k("↓") + " oder " + k("Enter"), "Zu den Treffern"], [k("↑") + " in der ersten Reihe", "Zurück ins Suchfeld"],
       [k("Esc"), "Suche leeren"]]],
     ["Überall", [[k(strg, "Z"), "Rückgängig"], [k("Esc"), "Auswahl aufheben, schliessen"],
@@ -2508,7 +2508,7 @@ $("#dialog-inhalt").addEventListener("keydown", (e) => {
 async function loeschen(id) {
   const m = zustand.modelle.find((x) => x.id === id) || await api(`/api/modelle/${id}`);
   const stelle = zustand.idIndex.get(id);
-  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus dem Katalog entfernen?`)) await naechstesWaehlen(stelle);
+  if (await loeschDialog([id], `„${esc(m.name)}${esc(endung[m.format] || "")}“ aus PartAtlas entfernen?`)) await naechstesWaehlen(stelle);
 }
 
 // Nach dem Entfernen steht die Wahl auf dem Modell, das jetzt an derselben Stelle steht (wie im Dateimanager) — man kann gleich weitermachen.
@@ -2547,12 +2547,12 @@ async function loeschDialog(modelle, titel, ordner = null) {
         ${nurT.map((t) => `<span class="chip">#${esc(t.name)}</span>`).join(" ")}</label>
         <p class="lz-warn" hidden>Kommen beim Wiederherstellen nicht mit zurück.</p></div>` : ""}`) : "";
   const o = ordner?.inhalt;
-  const ordnerZeile = !o ? "" : zeile("📁", `<b>Der Ordner bleibt mit allem, was darin liegt, auf der Platte.</b>${o.andere_n ? ` Darin liegen auch ${o.andere_n} ${o.andere_n === 1 ? "andere Datei" : "andere Dateien"}, die keine Modelle sind.` : ""}${o.mehrfach.length ? `<br>${o.mehrfach.length} ${o.mehrfach.length === 1 ? "Modell hat" : "Modelle haben"} eine Kopie ausserhalb und bleiben im Katalog.` : ""}`);
+  const ordnerZeile = !o ? "" : zeile("📁", `<b>Der Ordner bleibt mit allem, was darin liegt, auf der Platte.</b>${o.andere_n ? ` Darin liegen auch ${o.andere_n} ${o.andere_n === 1 ? "andere Datei" : "andere Dateien"}, die keine Modelle sind.` : ""}${o.mehrfach.length ? `<br>${o.mehrfach.length} ${o.mehrfach.length === 1 ? "Modell hat" : "Modelle haben"} eine Kopie ausserhalb und bleiben in PartAtlas.` : ""}`);
   const a = await dialog(`<h2>${titel}</h2>
-    <p class="dim">Das Modell kommt in den Papierkorb von partAtlas und ist damit aus dem Katalog. <b>Die Dateien bleiben unverändert in ihren
-      Ordnern</b> — partAtlas löscht und verschiebt nichts. „Wiederherstellen“ nimmt das Modell wieder auf.</p>
+    <p class="dim">Das Modell kommt in den Papierkorb von PartAtlas und ist damit aus PartAtlas entfernt. <b>Die Dateien bleiben unverändert in ihren
+      Ordnern</b> — PartAtlas löscht und verschiebt nichts. „Wiederherstellen“ nimmt das Modell wieder auf.</p>
     <div class="loesch-liste">${ordnerZeile}${dateien}${bilder}${baugruppen}${schlange}${sammlungen}${tags}</div>
-    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja" autofocus>Aus dem Katalog entfernen</button></div>`);
+    <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf gefahr" value="ja" autofocus>Aus PartAtlas entfernen</button></div>`);
   if (a !== "ja") return false;
   const wahl = {
     tags: $("#mit-tags")?.checked ? nurT.map((t) => t.name) : [],
@@ -2571,7 +2571,7 @@ async function loeschDialog(modelle, titel, ordner = null) {
       // Derselbe Schritt für den Knopf und für Strg+Z (rueckgaengig): einmal zurück, nicht zweimal.
       ordnerAktion.letzte = { rueck: () => api("/api/stapel", { method: "POST", body: { aktion: "wiederherstellen", modelle } }) };
       const zurueck = () => rueckgaengig();
-      toast(`${viele ? `${modelle.length} Modelle aus dem Katalog entfernt, die Dateien bleiben.` : "Aus dem Katalog entfernt, die Datei bleibt."} Zurückholen: hier oder unter Bereinigen › Papierkorb.`,
+      toast(`${viele ? `${modelle.length} Modelle aus PartAtlas entfernt, die Dateien bleiben.` : "Aus PartAtlas entfernt, die Datei bleibt."} Zurückholen: hier oder unter Bereinigen › Papierkorb.`,
             { aktionen: [["Rückgängig", zurueck], ["Papierkorb", () => document.querySelector('[data-ansicht="papierkorb"]')?.click()]], dauer: 9000 });
     }
     return true;
@@ -2584,13 +2584,13 @@ async function endgueltigEntfernen(id) {
   let v;
   try { v = await api(`/api/modelle/${id}/endgueltig`); } catch (e) { return toast(e.message); }
   const datei = v.im_ordner.length
-    ? `<p><b>Die Datei bleibt in ihrem Ordner</b> — partAtlas löscht sie nicht. Beim nächsten Einlesen erscheint sie deshalb wieder, als neues
+    ? `<p><b>Die Datei bleibt in ihrem Ordner</b> — PartAtlas löscht sie nicht. Beim nächsten Einlesen erscheint sie deshalb wieder, als neues
         Modell ohne Tags, Drucke und Bilder:</p><ul>${v.im_ordner.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
-       <p class="dim">Soll sie nicht mehr im Katalog auftauchen, lass das Modell besser im Papierkorb.</p>`
+       <p class="dim">Soll sie nicht mehr in PartAtlas auftauchen, lass das Modell besser im Papierkorb.</p>`
     : `<p class="dim">Die Datei liegt nicht mehr in einem eingetragenen Ordner.</p>`;
   const a = await dialog(`<h2>„${esc(v.name)}“ endgültig entfernen?</h2>
     <p>Das Modell verschwindet aus dem Papierkorb und lässt sich dort nicht mehr wiederherstellen — mit seinen Tags, Drucken und
-      Verknüpfungen. Vorher legt partAtlas eine Sicherung der Datenbank an.</p>
+      Verknüpfungen. Vorher legt PartAtlas eine Sicherung der Datenbank an.</p>
     ${datei}
     ${v.bilder ? `<p class="dim">${v.bilder === 1 ? "Das eigene Bild kommt" : `Die ${v.bilder} eigenen Bilder kommen`} ins Archiv des Bestands (vault_archive), nicht weg.</p>` : ""}
     <p>Zum Bestätigen <b>entfernen</b> eintippen:</p>
@@ -2725,7 +2725,7 @@ async function wurzelNeu() {
 }
 
 // Der Ordnerdialog des Rechners — oder, wenn es keinen gibt oder er sich nicht zeigt, der eigene Ordnerbaum. Unter Windows kann der
-// Dialog hinter dem Browser aufgehen, ohne dass partAtlas das merkt (Anwender, 12.10.2026): dann sieht „+“ tot aus. Darum bietet nach
+// Dialog hinter dem Browser aufgehen, ohne dass PartAtlas das merkt (Anwender, 12.10.2026): dann sieht „+“ tot aus. Darum bietet nach
 // drei Sekunden ein Hinweis den eigenen Ordnerbaum an; der Knopf schliesst den Dialog des Rechners.
 async function ordnerAuswahl() {
   let imProgramm = false;
@@ -2955,7 +2955,7 @@ document.addEventListener("click", async (e) => {
     }
     case "sammlung-loeschen": {
       const alt = zustand.sammlungen.find((x) => x.id === zustand.sammlung);
-      const a = await dialog(`<h2>Sammlung „${esc(alt?.name)}“ löschen?</h2><p>Die Modelle bleiben im Katalog, nur die Sammlung geht.</p>
+      const a = await dialog(`<h2>Sammlung „${esc(alt?.name)}“ löschen?</h2><p>Die Modelle bleiben in PartAtlas, nur die Sammlung geht.</p>
         <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Löschen</button></div>`);
       if (a === "ja") { await api(`/api/sammlungen/${zustand.sammlung}`, { method: "DELETE" }); zustand.sammlung = ""; neuLaden(); }
       return;
@@ -3015,7 +3015,7 @@ document.addEventListener("click", async (e) => {
     case "ins-archiv": case "aus-archiv":
       try { await api(`/api/modelle/${id}`, { method: "PATCH", body: { archiv: t.id === "ins-archiv" } }); }
       catch (err) { return toast(err.message); }
-      toast(t.id === "ins-archiv" ? "Im Archiv — es ruht mit allem, was daran hängt." : "Zurück im Katalog.");
+      toast(t.id === "ins-archiv" ? "Im Archiv — es ruht mit allem, was daran hängt." : "Zurück in PartAtlas.");
       zustand.angezeigt = null;
       return waehle(id);
     case "ohne-datei": case "ohne-datei-aus":
@@ -3229,7 +3229,10 @@ async function modelleVerschieben(ids, ziel) {
     const je = new Map();
     for (const id of ok) je.set(vorher.get(id), [...(je.get(vorher.get(id)) || []), id]);
     ordnerAktion.letzte = { rueck: async () => {
-      for (const [ordner, liste] of je) await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: liste, wert: ordner } });
+      for (const [ordner, liste] of je) {
+        const r2 = await api("/api/stapel", { method: "POST", body: { aktion: "verschieben", modelle: liste, wert: ordner } });
+        if (r2.fehler.length) throw new Error(`Nicht zurückgeschoben: ${r2.fehler[0].fehler}`);    // sonst stünde „Rückgängig gemacht“ da
+      }
     } };
   }
   const name = (id) => { const m = zustand.modelle.find((x) => x.id === id); return m ? `„${m.name}${endung[m.format] || ""}“` : "Das Modell"; };
@@ -3364,8 +3367,8 @@ function einlesenZeichnen(m) {
 
 // Eine Meldung, die von selbst verschwindet. Was zu tun bleibt, hat einen Knopf dorthin.
 function einlesenMelden(m) {
-  if (m.phase === "fehler") return toast(`Einlesen gescheitert: ${m.abbruch || "unbekannter Fehler"}. Was schon eingelesen war, bleibt im Katalog.`, { dauer: 10000 });
-  if (m.abgebrochen) return toast("Einlesen abgebrochen. Was schon eingelesen war, bleibt im Katalog.");
+  if (m.phase === "fehler") return toast(`Einlesen gescheitert: ${m.abbruch || "unbekannter Fehler"}. Was schon eingelesen war, bleibt in PartAtlas.`, { dauer: 10000 });
+  if (m.abgebrochen) return toast("Einlesen abgebrochen. Was schon eingelesen war, bleibt in PartAtlas.");
   const modelle = (n) => `${anzahl(n)} ${n === 1 ? "Modell" : "Modelle"}`;
   const gcodes = (n) => `${anzahl(n)} ${n === 1 ? "G-Code" : "G-Codes"}`;
   const teile = [m.neu ? `${anzahl(m.neu)} ${m.neu === 1 ? "neues Modell" : "neue Modelle"}`
@@ -3626,7 +3629,7 @@ $("#scan-abbrechen").onclick = async () => {
   $("#scan-abbrechen").hidden = true;
   try { await api("/api/scan/abbrechen", { method: "POST" }); } catch (err) { toast(err.message); }
 };
-api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `partAtlas ${s.version}`; if (s.scan) zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; if (s.worker) zustand.worker = { ...s.worker, ...(zustand.worker || {}) }; hintergrundZeichnen(); abbrechenZeigen(); if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } if (s.scan) einlesenZeichnen(zustand.scan); }).catch(() => {});
+api("/api/stand").then((s) => { $("#version").textContent = s.version || ""; zuletztZeigen(s.zuletzt_eingelesen); if (s.version) document.title = `PartAtlas ${s.version}`; if (s.scan) zustand.scan = { ...s.scan, ...(zustand.scan || {}) }; if (s.worker) zustand.worker = { ...s.worker, ...(zustand.worker || {}) }; hintergrundZeichnen(); abbrechenZeigen(); if (s.scan?.fcstd_frage && !zustand.fcstdGefragt) { zustand.fcstdGefragt = true; fcstdFrage(s.scan.fcstd_frage); } if (s.scan) einlesenZeichnen(zustand.scan); }).catch(() => {});
 live();
 try { nav.nr = history.state?.nr ?? 0; nav.hoechste = nav.nr; history.replaceState(momentaufnahme(), ""); } catch { /* s. o. */ }
 $("#nav-zurueck")?.addEventListener("click", () => history.back());
@@ -3782,10 +3785,10 @@ async function kontextMenu(e, id) {
 // gefragt; „Nicht jetzt“ fragt beim nächsten Start wieder, „Nie“ merkt sich die Antwort (Einstellungen › Einlesen).
 async function fcstdFrage(n) {
   const a = await dialog(`<h2>FreeCAD-Dateien über FreeCAD einlesen?</h2>
-    <p>${n} ${n === 1 ? "FreeCAD-Datei hat" : "FreeCAD-Dateien haben"} noch keine Maße, kein Gewicht und keine 3D-Ansicht. partAtlas kann
+    <p>${n} ${n === 1 ? "FreeCAD-Datei hat" : "FreeCAD-Dateien haben"} noch keine Maße, kein Gewicht und keine 3D-Ansicht. PartAtlas kann
       sie dafür im Hintergrund in FreeCAD laden, ohne Fenster.</p>
     <p class="dim">Das Vorschaubild, das du vielleicht schon siehst, steckt in der Datei selbst (FreeCAD legt es beim Speichern hinein).
-      partAtlas liest es nur aus — FreeCAD wurde dafür nicht gestartet.</p>
+      PartAtlas liest es nur aus — FreeCAD wurde dafür nicht gestartet.</p>
     <p><b>Wichtig:</b> Ein FreeCAD-Dokument kann Programmcode enthalten, der beim Laden ausgeführt wird. Das ist dasselbe, als würdest du die
       Datei in FreeCAD öffnen. Mach das nur für Dateien aus Quellen, denen du vertraust; bei heruntergeladenen Archiven aus dem Netz ist das
       Risiko höher als bei eigenen Konstruktionen.</p>
@@ -3810,9 +3813,9 @@ function cadZeile(m) {
     text = `Die Umwandlung über FreeCAD ist gescheitert: <code>${esc(m.cad_fehler || "ohne Meldung")}</code>`;
     knopf = `<button class="knopf klein" data-cad-erneut>Alle gescheiterten erneut versuchen</button>`;
   } else if (sc.laeuft) text = "Wird gerade eingelesen …";
-  else if (sc.cad_ohne_freecad) text = `${zusatz}, aber partAtlas hat beim letzten Einlesen keinen Aufruf von FreeCAD ermittelt${sc.cad_programm ? ` (erkannt: <code>${esc(sc.cad_programm)}</code>)` : " (kein CAD-Programm erkannt)"}. Einstellungen › Programme: CAD wählen.`;
-  else if (m.format === "fcstd" && sc.fcstd_frage) text = `${zusatz}. partAtlas hat gefragt, ob FCStd-Dateien über FreeCAD eingelesen werden dürfen — noch keine Zusage (Einstellungen › Einlesen).`;
-  else if (m.format === "fcstd") text = `${zusatz}, sobald du es erlaubst: FCStd-Dateien liest partAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).`;
+  else if (sc.cad_ohne_freecad) text = `${zusatz}, aber PartAtlas hat beim letzten Einlesen keinen Aufruf von FreeCAD ermittelt${sc.cad_programm ? ` (erkannt: <code>${esc(sc.cad_programm)}</code>)` : " (kein CAD-Programm erkannt)"}. Einstellungen › Programme: CAD wählen.`;
+  else if (m.format === "fcstd" && sc.fcstd_frage) text = `${zusatz}. PartAtlas hat gefragt, ob FCStd-Dateien über FreeCAD eingelesen werden dürfen — noch keine Zusage (Einstellungen › Einlesen).`;
+  else if (m.format === "fcstd") text = `${zusatz}, sobald du es erlaubst: FCStd-Dateien liest PartAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).`;
   else text = `${zusatz}; das geschieht beim nächsten Einlesen.`;
   return `<div class="i-titel">FREECAD</div><div class="i-karte"><div class="dim" style="padding:4px 0">${bild}${text}</div>${knopf}</div>`;
 }
@@ -3857,9 +3860,9 @@ document.addEventListener("click", async (e) => {
   const x = (sicherungenZeigen.liste || []).find((s) => s.name === b.dataset.sichZurueck);
   if (!x) return;
   const r = await rueckfrage(`<h2>Stand vom ${esc(SICH_ZEIT(x.zeit))} zurückholen?</h2>
-    <p><b>${esc(x.anlass)}.</b> Der Katalog wird durch diesen Stand ersetzt: was du seitdem geändert hast — Tags, Sammlungen, Drucke,
+    <p><b>${esc(x.anlass)}.</b> Deine Daten in PartAtlas werden durch diesen Stand ersetzt: was du seitdem geändert hast — Tags, Sammlungen, Drucke,
       Baugruppen —, ist danach nicht mehr da.</p>
-    <p class="dim">Vorher sichert partAtlas den jetzigen Stand; auch das Zurückholen lässt sich so wieder rückgängig machen. Deine Dateien in
+    <p class="dim">Vorher sichert PartAtlas den jetzigen Stand; auch das Zurückholen lässt sich so wieder rückgängig machen. Deine Dateien in
       den Ordnern bleiben unberührt. Einlesen und Hintergrundarbeit halten dafür kurz an.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Abbrechen</button><button class="knopf akzent" value="ja">Zurückholen</button></div>`);
   if (r.a !== "ja") return;
@@ -3987,7 +3990,7 @@ async function ordnerBewegen(id, ziel, text) {
 }
 
 // Wie im Explorer: der neue Ordner heisst „Neuer Ordner“ (oder „Neuer Ordner (2)“) und steht gleich zum Umbenennen offen; Esc lässt
-// den Namen so. Kein Rückgängig dafür — partAtlas löscht in deinen Ordnern nichts, auch keinen eben angelegten.
+// den Namen so. Kein Rückgängig dafür — PartAtlas löscht in deinen Ordnern nichts, auch keinen eben angelegten.
 async function ordnerNeu(eltern) {
   let id;
   try { id = (await api("/api/verzeichnisse", { method: "POST", body: { eltern, frei: true } })).id; } catch (e) { return toast(e.message); }
@@ -4072,28 +4075,28 @@ async function ordnerZeigen(id) {
   try { await api("/api/ordner/im_ordner", { method: "POST", body: { id } }); } catch (e) { toast(e.message); }
 }
 
-// Ordner aus dem Katalog entfernen: die Modelle darin gehen in den Papierkorb von partAtlas. Der Ordner und alles darin bleibt auf der
-// Platte — partAtlas löscht in den Ordnern des Anwenders nichts; wer ihn auch loswerden will, tut das im Dateimanager, dorthin führt
+// Ordner aus dem Katalog entfernen: die Modelle darin gehen in den Papierkorb von PartAtlas. Der Ordner und alles darin bleibt auf der
+// Platte — PartAtlas löscht in den Ordnern des Anwenders nichts; wer ihn auch loswerden will, tut das im Dateimanager, dorthin führt
 // der Knopf. (Der Ordnerbaum zeigt nur Ordner mit Modellen: nach dem Entfernen verschwindet er aus der Seitenleiste.)
 async function ordnerLoeschen(id, name) {
   let i;
   try { i = await api(`/api/ordner/inhalt?id=${encodeURIComponent(id)}`); } catch (e) { return toast(e.message); }
   if (!i.modelle.length) {
     const a = await dialog(`<h2>Ordner „${esc(name)}“</h2>
-      <p>Es liegen keine Modelle des Katalogs darin${i.andere_n ? `, aber ${i.andere_n} ${i.andere_n === 1 ? "andere Datei" : "andere Dateien"}` : ""}. Es gibt nichts aus dem Katalog zu entfernen,
-        und partAtlas löscht in deinen Ordnern nichts.</p>
+      <p>Es liegen keine Modelle aus PartAtlas darin${i.andere_n ? `, aber ${i.andere_n} ${i.andere_n === 1 ? "andere Datei" : "andere Dateien"}` : ""}. Es gibt nichts aus PartAtlas zu entfernen,
+        und PartAtlas löscht in deinen Ordnern nichts.</p>
       <div class="knoepfe"><button class="knopf" value="nein">Schließen</button><button class="knopf akzent" value="zeigen">Im Dateimanager zeigen</button></div>`);
     if (a === "zeigen") ordnerZeigen(id);
     return;
   }
-  const r = await loeschDialog(i.modelle, `Ordner „${esc(name)}“ aus dem Katalog entfernen?`, { id, inhalt: i });
+  const r = await loeschDialog(i.modelle, `Ordner „${esc(name)}“ aus PartAtlas entfernen?`, { id, inhalt: i });
   if (!r) return;
   if (r.fehler?.length) toast(`${r.fehler.length} Modelle ließen sich nicht entfernen: ${r.fehler[0].fehler}`);
   if (zustand.ordner === id || zustand.ordner.startsWith(id + "/")) zustand.ordner = id.slice(0, id.lastIndexOf("/"));
   await ladeSeite();
   neuLaden();
-  const a = await dialog(`<h2>Aus dem Katalog entfernt</h2>
-    <p>${r.modelle} ${r.modelle === 1 ? "Modell liegt" : "Modelle liegen"} im Papierkorb von partAtlas. <b>Der Ordner und seine Dateien liegen unverändert auf der Platte:</b></p>
+  const a = await dialog(`<h2>Aus PartAtlas entfernt</h2>
+    <p>${r.modelle} ${r.modelle === 1 ? "Modell liegt" : "Modelle liegen"} im Papierkorb von PartAtlas. <b>Der Ordner und seine Dateien liegen unverändert auf der Platte:</b></p>
     <p class="dim">${esc(r.pfad)}</p>
     <p>Willst du ihn auch von der Platte löschen, geht das im Dateimanager.</p>
     <div class="knoepfe"><button class="knopf" value="nein">Schließen</button><button class="knopf akzent" value="zeigen">Im Dateimanager zeigen</button></div>`);
@@ -4101,7 +4104,7 @@ async function ordnerLoeschen(id, name) {
 }
 
 async function wurzelEntfernen({ id, name, pfad, anzahl }) {
-  const a = await dialog(`<h2>Ordner aus partAtlas entfernen?</h2>
+  const a = await dialog(`<h2>Ordner aus PartAtlas entfernen?</h2>
     <p><b>${esc(name)}</b>${anzahl ? ` — ${anzahl} ${anzahl === 1 ? "Modell" : "Modelle"}` : ""}<br><code>${esc(pfad)}</code></p>
     <p class="dim">Die Dateien auf der Platte bleiben unberührt. Tags, Bilder und Verknüpfungen der Modelle bleiben erhalten;
       die Modelle gelten als „Datei fehlt“, bis der Ordner wieder hinzugefügt wird. Du findest ihn unter Bereinigen › Papierkorb und holst ihn
