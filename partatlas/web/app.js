@@ -3182,7 +3182,7 @@ async function sammlungNeu(modelle) {
 // Kachel → Sammlung oder Warteschlange: hinzufügen. Innerhalb einer
 // Sammlung, der Warteschlange im Raster oder der Liste links: umsortieren.
 
-let gezogen = null;          // {art: "modell"|"ws", id}
+let gezogen = null;          // {art: "modell"|"ordner"|"ws", id} — die Ziele stehen in ZIELE
 
 document.addEventListener("dragstart", (e) => {
   const k = e.target.closest?.(".karte, .zeile-l, .zeile-k"), w = e.target.closest?.("[data-ws]");
@@ -3209,6 +3209,7 @@ document.addEventListener("dragstart", (e) => {
 });
 document.addEventListener("dragend", () => {
   gezogen = null;
+  ziehHinweis("", 0, 0);
   clearTimeout(ordnerAufklappen.zeit);
   document.querySelectorAll(".ziehen, .ziehziel").forEach((x) => x.classList.remove("ziehen", "ziehziel"));
 });
@@ -3243,26 +3244,87 @@ async function modelleVerschieben(ids, ziel) {
   neuLaden();
 }
 
+// Die Ziele beim Ziehen, als Tabelle statt Sonderfällen: jedes sagt, was es annimmt (`nimmt`: Art des Gezogenen), wo es liegt (`finde`: das
+// Element unter dem Zeiger oder null), was beim Darüberschweben am Zeiger steht (`hinweis`) und was es tut (`ablegen`). Wer umkehrbar ist, meldet
+// mit „Rückgängig“ und setzt ordnerAktion.letzte (Strg+Z) — so fühlt sich ein versehentliches Fallenlassen nach einem Tastendruck an, nicht nach
+// Aufräumarbeit. Ein neues Ziel ist ein Eintrag hier. Die Reihenfolge zählt: das erste, das passt, gilt.
+const zielName = (z) => (z.querySelector("span")?.textContent || z.textContent || "").trim();
+const wasGezogen = (ids) => {
+  if (ids.length !== 1) return `${anzahl(ids.length)} Modelle`;
+  const m = zustand.modelle.find((x) => x.id === ids[0]);
+  return m ? `„${m.name}${endung[m.format] || ""}“` : "Das Modell";
+};
+const ZIELE = [
+  { name: "ordner-in-ordner", nimmt: ["ordner"],
+    // Ein Ordner geht in einen anderen Ordner — nicht in sich selbst, nicht in einen eigenen Unterordner, nicht dorthin, wo er schon liegt.
+    finde: (el) => {
+      const o = el.closest(".baum .eintrag[data-ordner]");
+      const z = o?.dataset.ordner, g = gezogen.id;
+      return z && z !== g && !z.startsWith(g + "/") && z !== g.slice(0, g.lastIndexOf("/")) ? o : null;
+    },
+    hinweis: (z) => `Verschieben nach „${ordnerName(z.dataset.ordner)}“`,
+    ablegen: (z, _, g) => ordnerBewegen(g.id, { eltern: z.dataset.ordner }, () => `„${g.id.split("/").pop()}“ verschoben nach „${ordnerName(z.dataset.ordner)}“.`) },
+  { name: "baugruppe", nimmt: ["modell"], finde: (el) => el.closest("#baugruppen [data-baugruppe]"),
+    hinweis: (z, ids) => `${wasGezogen(ids)} in die Baugruppe „${zielName(z)}“`, ablegen: (z, ids) => inBaugruppe(z.dataset.baugruppe, zielName(z), ids) },
+  { name: "ordner", nimmt: ["modell"], finde: (el) => (zustand.ansicht !== "papierkorb" ? el.closest("[data-ordner]") : null),
+    hinweis: (z, ids) => `${wasGezogen(ids)} verschieben nach „${ordnerName(z.dataset.ordner)}“`, ablegen: (z, ids) => modelleVerschieben(ids, z.dataset.ordner) },
+  { name: "sammlung", nimmt: ["modell"], finde: (el) => el.closest("[data-sammlung]"),
+    hinweis: (z, ids) => `${wasGezogen(ids)} in die Sammlung „${zielName(z)}“`, ablegen: (z, ids) => inSammlung(z.dataset.sammlung, zielName(z), ids) },
+  { name: "warteschlange", nimmt: ["modell", "ws"], finde: (el) => el.closest('[data-ansicht="warteschlange"], [data-ws]'),
+    hinweis: (z) => (z.dataset.ws ? "Hier in die Warteschlange einreihen" : "In die Warteschlange"), ablegen: (z, _, g) => inWarteschlange(z, g) },
+  { name: "reihenfolge", nimmt: ["modell", "ws"],
+    finde: (el) => { const k = el.closest(".karte"); return k && k.dataset.id !== gezogen.id && (zustand.sammlung || zustand.ansicht === "warteschlange") ? k : null; },
+    hinweis: () => "Hierhin einsortieren", ablegen: (z, _, g) => umsortieren(z, g) },
+];
+
 function ablageZiel(el) {
   if (!gezogen || !el?.closest) return null;
-  if (gezogen.art === "ordner") {
-    // Ein Ordner geht in einen anderen Ordner — nicht in sich selbst, nicht in einen eigenen Unterordner, nicht dorthin, wo er schon liegt.
-    const o = el.closest(".baum .eintrag[data-ordner]");
-    const z = o?.dataset.ordner, g = gezogen.id;
-    return z && z !== g && !z.startsWith(g + "/") && z !== g.slice(0, g.lastIndexOf("/")) ? o : null;
+  for (const ziel of ZIELE) {
+    if (!ziel.nimmt.includes(gezogen.art)) continue;
+    const z = ziel.finde(el);
+    if (z) return { ziel, el: z };
   }
-  const bg = el.closest("#baugruppen [data-baugruppe]");
-  if (bg && gezogen.art === "modell") return bg;
-  const o = el.closest("[data-ordner]");
-  if (o && gezogen.art === "modell" && zustand.ansicht !== "papierkorb") return o;
-  const s = el.closest("[data-sammlung]");
-  if (s && gezogen.art === "modell") return s;
-  const ws = el.closest('[data-ansicht="warteschlange"], [data-ws]');
-  if (ws) return ws;
-  const k = el.closest(".karte");
-  if (k && k.dataset.id !== gezogen.id && (zustand.sammlung || zustand.ansicht === "warteschlange")) return k;
   return null;
 }
+
+// Rückgängig für Sammlung und Baugruppe nimmt nur zurück, was dieses Ablegen geändert hat: was schon drin war, bleibt (in einer Baugruppe
+// zählt ein vorhandenes Teil eins hoch — zurück heisst dann: die alte Menge).
+async function inSammlung(sid, name, ids) {
+  const drin = new Set((await api("/api/modelle?" + new URLSearchParams({ sammlung: sid }))).map((m) => m.id));
+  const neu = ids.filter((id) => !drin.has(id));
+  if (!neu.length) return toast(`Schon in der Sammlung „${name}“.`);
+  await api(`/api/sammlungen/${sid}/modelle`, { method: "POST", body: { modelle: neu } });
+  ordnerAktion.letzte = { rueck: async () => { for (const id of neu) await api(`/api/sammlungen/${sid}/modelle/${id}`, { method: "DELETE" }); } };
+  toast(`${wasGezogen(neu)} in die Sammlung „${name}“ gelegt.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+  ladeSeite();
+}
+
+async function inBaugruppe(bid, name, ids) {
+  const vorher = new Map(((await api(`/api/baugruppen/${bid}`)).positionen || []).map((p) => [p.ref, p.menge]));
+  const refs = ids.map((x) => `MODEL_ASSET/${x}`);
+  await api(`/api/baugruppen/${bid}/positionen`, { method: "POST", body: { refs } });
+  ordnerAktion.letzte = { rueck: async () => {
+    for (const r of refs) {
+      if (vorher.has(r)) await api(`/api/baugruppen/${bid}/positionen`, { method: "PATCH", body: { ref: r, menge: vorher.get(r) } });
+      else await api(`/api/baugruppen/${bid}/positionen?ref=${encodeURIComponent(r)}`, { method: "DELETE" });
+    }
+  } };
+  toast(`${wasGezogen(ids)} in die Baugruppe „${name}“ gelegt.`, { aktionen: [["Rückgängig", rueckgaengig]], dauer: 8000 });
+  ladeSeite();
+}
+
+async function inWarteschlange(z, g) {
+  const reihe = [...document.querySelectorAll("[data-ws]")].map((x) => x.dataset.ws);
+  if (!reihe.includes(g.id)) await api("/api/warteschlange", { method: "POST", body: { modelle: [g.id] } });
+  if (z.dataset.ws) await api("/api/warteschlange", { method: "PUT", body: { modelle: vorSetzen(reihe.includes(g.id) ? reihe : [...reihe, g.id], g.id, z.dataset.ws) } });
+}
+
+async function umsortieren(z, g) {
+  const neu = vorSetzen(zustand.modelle.map((m) => m.id), g.id, z.dataset.id);
+  if (zustand.sammlung) await api(`/api/sammlungen/${zustand.sammlung}/reihenfolge`, { method: "PUT", body: { modelle: neu } });
+  else await api("/api/warteschlange", { method: "PUT", body: { modelle: neu } });
+}
+
 // Wie im Explorer: verweilt man beim Ziehen über einem zugeklappten Ordner, klappt er auf.
 function ordnerAufklappen(z) {
   const id = z?.dataset?.ordner;
@@ -3272,40 +3334,33 @@ function ordnerAufklappen(z) {
   if (!id || !z.querySelector(".pfeil.zu")) return;
   ordnerAufklappen.zeit = setTimeout(() => { zustand.offen.add(id); localStorageSchreiben("offen", JSON.stringify([...zustand.offen])); ladeSeite(); }, 800);
 }
+// Am Zeiger steht, was beim Loslassen geschieht — das Ziehbild selbst lässt sich nach dem Ziehbeginn nicht mehr ändern.
+function ziehHinweis(text, x, y) {
+  let h = document.getElementById("ziehhinweis");
+  if (!h) { h = document.createElement("div"); h.id = "ziehhinweis"; h.setAttribute("role", "status"); document.body.append(h); }
+  h.hidden = !text;
+  if (!text) return;
+  if (h.textContent !== text) h.textContent = text;
+  h.style.left = `${Math.min(x + 16, innerWidth - h.offsetWidth - 8)}px`;
+  h.style.top = `${Math.min(y + 20, innerHeight - h.offsetHeight - 8)}px`;
+}
 document.addEventListener("dragover", (e) => {
-  const z = ablageZiel(e.target);
-  if (gezogen) ordnerAufklappen(z);
-  if (!z) return;
+  const t = ablageZiel(e.target);
+  if (gezogen) ordnerAufklappen(t?.el);
+  document.querySelectorAll(".ziehziel").forEach((x) => x !== t?.el && x.classList.remove("ziehziel"));
+  if (!t) { if (gezogen) ziehHinweis("", 0, 0); return; }
   e.preventDefault();
-  document.querySelectorAll(".ziehziel").forEach((x) => x !== z && x.classList.remove("ziehziel"));
-  z.classList.add("ziehziel");
+  t.el.classList.add("ziehziel");
+  ziehHinweis(t.ziel.hinweis(t.el, gezogen.art === "modell" ? gezogene() : [gezogen.id]), e.clientX, e.clientY);
 });
 document.addEventListener("drop", async (e) => {
-  const z = ablageZiel(e.target);
-  if (!z) return;
+  const t = ablageZiel(e.target);
+  ziehHinweis("", 0, 0);
+  if (!t) return;
   e.preventDefault();
   const g = gezogen;
-  try {
-    if (g.art === "ordner") {
-      await ordnerBewegen(g.id, { eltern: z.dataset.ordner }, (r) => `„${g.id.split("/").pop()}“ verschoben nach „${ordnerName(z.dataset.ordner)}“.`);
-    } else if (z.dataset.baugruppe) {
-      await api(`/api/baugruppen/${z.dataset.baugruppe}/positionen`, { method: "POST", body: { refs: gezogene().map((x) => `MODEL_ASSET/${x}`) } });
-      toast("Zur Baugruppe hinzugefügt.");
-    } else if (z.dataset.ordner) {
-      await modelleVerschieben(gezogene(), z.dataset.ordner);
-    } else if (z.dataset.sammlung) {
-      await api(`/api/sammlungen/${z.dataset.sammlung}/modelle`, { method: "POST", body: { modelle: gezogene() } });
-      toast("Zur Sammlung hinzugefügt.");
-    } else if (z.dataset.ws || z.dataset.ansicht === "warteschlange") {
-      const reihe = [...document.querySelectorAll("[data-ws]")].map((x) => x.dataset.ws);
-      if (!reihe.includes(g.id)) await api("/api/warteschlange", { method: "POST", body: { modelle: [g.id] } });
-      if (z.dataset.ws) await api("/api/warteschlange", { method: "PUT", body: { modelle: vorSetzen(reihe.includes(g.id) ? reihe : [...reihe, g.id], g.id, z.dataset.ws) } });
-    } else if (z.classList.contains("karte")) {
-      const neu = vorSetzen(zustand.modelle.map((m) => m.id), g.id, z.dataset.id);
-      if (zustand.sammlung) await api(`/api/sammlungen/${zustand.sammlung}/reihenfolge`, { method: "PUT", body: { modelle: neu } });
-      else await api("/api/warteschlange", { method: "PUT", body: { modelle: neu } });
-    }
-  } catch (err) { toast(err.message); }
+  try { await t.ziel.ablegen(t.el, g.art === "modell" ? gezogene() : [g.id], g); }
+  catch (err) { toast(err.message); }
 });
 
 // `wer` vor `vor` einsortieren.

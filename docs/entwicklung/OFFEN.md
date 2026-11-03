@@ -4,6 +4,20 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Ziehen und Ablegen: Fundament (4.11.2026, auf dem Branch)
+
+Anwender: erst die „No-Brainer“ (Papierkorb, aus dem Papierkorb zurück, Archiv, Tag, Favoriten, „＋ Neue Sammlung“), vorher das Fundament. **Paket 1 gebaut:**
+Ziele als Tabelle `ZIELE` in `app.js` statt einer Kette von Sonderfällen (`ablageZiel`): je Ziel `nimmt` (Art des Gezogenen), `finde`, `hinweis`, `ablegen`;
+das erste passende gilt. Vorhandene Ziele umgezogen (Ordner in Ordner, Baugruppe, Ordner, Sammlung, Warteschlange, Reihenfolge), Verhalten gleich. Neu für alle: **am Zeiger
+steht, was beim Loslassen geschieht** (`#ziehhinweis`, „2 Modelle in die Sammlung „Werkbank““); **Rückgängig** jetzt auch für Sammlung (nimmt nur heraus, was neu dazukam) und
+Baugruppe (alte Menge bzw. entfernen) — Meldung und Strg+Z. test_ziehen_ui 6/6 (3 Gegenproben fallen), test_verschieben_ui, test_ordner_ui, test_sammel_ui grün.
+Nicht geprüft: Warteschlange (ausgeblendet) und Umsortieren in Sammlungen — beides deckt test_ui ab, die läuft erst vor `main`.
+**Paket 2 offen:** die sechs neuen Ziele. **Später, als Issues (Anwender: „noch nicht jetzt“):** Modell auf Modell (Stände/Varianten), Ablageleiste, G-Code/Bild von aussen
+auf ein Modell, Datei auf „Datei fehlt“, Kachel aus dem Fenster (geht im Firefox nicht).
+**Wackliger Test `test_verschieben_ui`:** fiel wieder (Rückgängig nach Menü-Verschieben). Unter Last gemessen: Zurückschieben 0,1–0,3 s, also nicht langsam. Verdacht: der Test
+verschob, während das erste Einlesen noch lief, und das Einlesen überschrieb den Ort. Test wartet jetzt das Einlesen ab und gibt bei einem Fehlschlag die Meldung aus. Bestätigt ist der
+Verdacht nicht; fällt er wieder, steht der Grund in der Ausgabe.
+
 ## Repo aufgeräumt (3.11.2026, Anwender: „ohne Ballast, auch wenn jemand von aussen hineinschaut“)
 
 Entfernt: überholte Anforderungsspezifikation `partAtlas.pdf` (URS v1.5.0, ersetzt durch KONZEPT.md), Backup-ZIP in `tests/`, eingecheckte `.pyc`. Verschoben nach
