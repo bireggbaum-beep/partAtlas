@@ -4,6 +4,15 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Nächstes Thema (Anwender 4.11.): G-Code beim Drucken automatisch — Recherche, nichts gebaut
+
+Anwender hebt „keine Druckeranbindung“ (25.10.) auf, denkt an Senden aus dem Slicer, G-Code vom Drucker zurück, Simulator. Tester: **Kobra 3** (ACE), **Anycubic Slicer Next 1.3.9.4**.
+Kobra 3 hat keine offizielle lokale Schnittstelle. LAN-Modus nach Nachbau (kobra-connect, nicht Anycubic): Anmeldung über HTTP 18910 (signierte Anfrage, Antwort AES —
+Signatur nicht beschrieben), MQTT mit TLS und Gerätezertifikat auf 9883, Hochladen `:18910/gcode_upload?s=…`, Start über MQTT `…/print`, Dateiliste `listLocal`;
+**Herunterladen einer Datei und Druckhistorie nicht dokumentiert**, nur `project.state` („finish“). Anycubic versucht laut hass-anycubic_cloud, MQTT zu sperren. Offen ist Rinkhals
+(Fremd-Firmware, bringt Moonraker). Wege: Durchreiche (PartAtlas als OctoPrint-Ziel, falls Slicer Next das für Anycubic anbietet), Abholen, Ordner (da), Zwischenablage
+des Slicers (Vermutung). **Vorgeschlagen:** erst drei Fragen an den Tester, dann entscheiden.
+
 ## Stand: 1.0.12 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.11`
 
 Papierkorb und Archiv in der Leiste, Ziehen und Ablegen (Paket 1 und 2), Meldung hält an, zehn Fehler aus dem Audit. „Neu in dieser Fassung“ auf Wunsch des Anwenders
