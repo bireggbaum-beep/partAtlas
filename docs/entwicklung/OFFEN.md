@@ -7,8 +7,7 @@ aktualisieren.
 ## Repo aufgeräumt (3.11.2026, Anwender: „ohne Ballast, auch wenn jemand von aussen hineinschaut“)
 
 Entfernt: überholte Anforderungsspezifikation `partAtlas.pdf` (URS v1.5.0, ersetzt durch KONZEPT.md), Backup-ZIP in `tests/`, eingecheckte `.pyc`. Verschoben nach
-`docs/entwicklung/`: diese Datei, `messung/` (Pfade der Skripte angepasst), `mock/`. `CLAUDE.md` und die Verweise in `KONZEPT.md` zeigen auf den neuen Ort. **Zweige:** 28 auf GitHub;
-19 sollen weg (6 `claude/…`, 3 alte `ccr-…`, 10 `fassung-…` bis 1.0.7 — ohne `ccr-13e92d8a`… siehe Liste im Chat) — Löschen aus der Sitzung wird mit 403 abgelehnt, der Anwender löscht selbst.
+`docs/entwicklung/`: diese Datei, `messung/` (Pfade der Skripte angepasst), `mock/`. `CLAUDE.md` und die Verweise in `KONZEPT.md` zeigen auf den neuen Ort. **Zweige:** 28 auf GitHub; 20 sollen weg (6 `claude/…`, 4 alte `ccr-…` — 790df345, ad9349b7, b2d020e3, 13e92d8a —, 10 `fassung-…` bis 1.0.7). Löschen aus der Sitzung wird mit 403 abgelehnt, der Anwender löscht selbst.
 Behalten: `main`, `fassung-1.0.8…1.0.10`, `ccr-212cc51e` (Desktop, Mock „Drucken“), `ccr-d872135a` (Werkbank), `ccr-97d3e8b3` (`eingang.py`), der aktuelle.
 Issue #1: 3MF-Katalog-Verweise im Code (nur dieses eine Issue; Anwender: Repo ohne Ballast, `OFFEN.md` bleibt die Liste).
 
