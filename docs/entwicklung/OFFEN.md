@@ -12,6 +12,12 @@ Signatur nicht beschrieben), MQTT mit TLS und Gerätezertifikat auf 9883, Hochla
 **Herunterladen einer Datei und Druckhistorie nicht dokumentiert**, nur `project.state` („finish“). Anycubic versucht laut hass-anycubic_cloud, MQTT zu sperren. Offen ist Rinkhals
 (Fremd-Firmware, bringt Moonraker). Wege: Durchreiche (PartAtlas als OctoPrint-Ziel, falls Slicer Next das für Anycubic anbietet), Abholen, Ordner (da), Zwischenablage
 des Slicers (Vermutung). **Vorgeschlagen:** erst drei Fragen an den Tester, dann entscheiden.
+**Befund beim Tester (4.11., inotifywait, Manjaro, Slicer Next als Flatpak `com.anycubic.AnycubicSlicer`, Senden über die Werkbank):** Beim Slicen schreibt er
+`$XDG_RUNTIME_DIR/.flatpak/com.anycubic.AnycubicSlicer/tmp/anycubicslicer_model/<Datum>/<Sitzung>/Metadata/<Name>.gcode` (über `.tmp` + Umbenennen, bei jedem Slicen).
+**Beim Senden** entsteht `…/tmp/ACGcode3mf/9527/1103-2314-Passring-115x80-28,9mm_plate(01)_PETG_0.2_10m46s.gcode.3mf` (ebenfalls `.tmp` → MOVED_TO, also fertig geschrieben,
+wenn der Name erscheint). Name mit Anycubic-Vorsatz `MMDD-HHMM-` und Anhang `_plate(01)_Material_Schicht_Dauer`. Offen: wie lange die Datei liegt (Löschen nicht
+beobachtet), ob sie auch beim Export entsteht, Pfad beim AppImage/Windows. Folge: PartAtlas kann den Ordner `ACGcode3mf` beobachten und beim Erscheinen kopieren.
+Lücke bei uns: Ordner-Einlesen nimmt nur `.gcode`, nicht `.gcode.3mf` (`gcode_ordner.py`).
 **3MF Katalog (Stand b101ee5, 29.10.):** nur Moonraker, nur lesend (`/server/info`, `/server/history/list`), aus per Vorgabe, nur Heimnetz; Zweck: Filament nach Bestätigung
 abbuchen, Dateiname → Modell (sicher/unsicher, Anycubic-Namen `0927-1447-Name_plate(01)_PLA_0.12_3h25m13s.gcode`). Kobra nur **mit Rinkhals** (S1 im Dauerbetrieb, Kobra 3 V2
 ein Testbericht). Befund: der Kobra legt gesendete Dateien in `.3mf_temp/` und **löscht sie nach dem Druck** (`exists: false`) — G-Code vom Drucker zurück geht dort nicht,
