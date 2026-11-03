@@ -4,7 +4,11 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Auf dem Branch, nicht auf `main`: 1.0.11 (3.11.2026)
+## Stand: 1.0.11 auf `main` (3.11.2026) — Rückweg `fassung-1.0.10`; Issue #1 (3MF-Katalog-Verweise im Code)
+
+test_ui: erster Lauf 69/70 („Keine Fehler in der Browser-Konsole“, ohne Angabe welcher), gezielter Rundgang durch die Oberfläche ohne Konsolenfehler, zweiter Lauf (Anwender: ja)
+70/70 — gelegentlich, Ursache unbekannt; test_ui gibt die Meldungen jetzt aus, wenn der Check fällt.
+
 
 - **„Katalog“ → „PartAtlas“ (Vorschlag des Testers, Anwender: „Vom 3MF Katalog müssen wir uns immer weiter entfernen“):** alle sichtbaren Texte (Oberfläche, Server-Meldungen,
   Namen der Sicherungen) nach Regeln, nicht stur: „aus PartAtlas entfernen“, „Zurück in PartAtlas“, „Deine Daten in PartAtlas werden … ersetzt“; Knopf links „Bibliothek“; sichtbare
