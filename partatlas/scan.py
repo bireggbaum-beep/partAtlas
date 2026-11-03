@@ -850,7 +850,7 @@ class Scanner(_Bahn):
             # G-Code im Ordner (gcode_ordner.py): nach den Modellen, damit die neuen schon da sind; ein Fehler hier bricht das Einlesen nicht ab.
             try:
                 from .gcode_ordner import GcodeOrdner
-                self._setze(**GcodeOrdner(self.k, self.b).einlesen(self.k.wurzeln(), bool(self.status.get("neu")), self._stopp))
+                self._setze(**GcodeOrdner(self.k, self.b).einlesen(self.k.wurzeln(), bool(self.status.get("neu")), self._stopp, set(unerreichbar)))
             except Exception:
                 log.exception("G-Code aus den Ordnern nicht eingelesen")
         try:

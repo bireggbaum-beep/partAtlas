@@ -3,6 +3,7 @@ für ein Modell oder wenn „immer“ eingestellt ist. FreeCAD ist die Attrappe 
 import os
 import sys
 import tempfile
+import zipfile
 
 import muster
 from muster import check
@@ -70,6 +71,10 @@ if __name__ == "__main__":
         # -- FCStd ohne Zusage: der Wunsch wird mit Grund abgelehnt, nichts wird gestartet
         c.put("/api/einstellungen", json={"fcstd_freecad": "nein"})
         muster.fcstd(os.path.join(samm, "Neu.FCStd"))
+        # Ein eigener Inhalt: muster.fcstd schreibt immer dasselbe, nur der Zeitstempel im Zip (auf 2 s genau) unterscheidet. Entstand „Neu“ in
+        # denselben 2 s wie „Halter“, war es bytegleich — PartAtlas nahm es zu Recht als Kopie von „Halter“, und „Neu“ gab es nicht (wackelte).
+        with zipfile.ZipFile(os.path.join(samm, "Neu.FCStd"), "a") as zf:
+            zf.writestr("eigen.txt", "Neu")
         c.post("/api/scan")
         warten(z)
         r = c.post(f"/api/modelle/{modell(c, 'Neu')['id']}/vorschau/berechnen")

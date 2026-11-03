@@ -14,7 +14,7 @@ import time
 import unicodedata
 
 from . import slicer
-from .bestand import MODELL, GCODE
+from .bestand import MODELL, GCODE, DRUCK
 from .katalog import KatalogFehler
 
 log = logging.getLogger("partatlas")
@@ -45,16 +45,30 @@ def ordner_umziehen(bestand, alt, neu):
             bestand.einstellungen_setzen(**{GESEHEN: umgezogen})
 
 
+def woerter(name):
+    """Die Wörter eines Namens, je wie `vergleichsname` behandelt: „1009-Halter_Netzteil_plate01“ → [1009, halter, netzteil, plate01]."""
+    stamm = re.sub(r"\.(stl|3mf|obj|step|stp|fcstd|gcode)$", "", (name or "").strip(), flags=re.I)
+    return [w for w in (vergleichsname(t) for t in re.split(r"[\W_]+", stamm)) if w]
+
+
+def _in_folge(teil, ganz):
+    """Stehen die Wörter `teil` in dieser Reihenfolge direkt hintereinander in `ganz`?"""
+    n = len(teil)
+    return n > 0 and any(ganz[i:i + n] == list(teil) for i in range(len(ganz) - n + 1))
+
+
 class GcodeOrdner:
     def __init__(self, katalog, bestand):
         self.k, self.b, self.db = katalog, bestand, katalog.db
 
     def _modelle_nach_name(self):
         je_name = {}
+        self._woerter = {}                 # Vergleichsname → die Wörter des Namens, für den Rückfall über den Dateinamen
         for mid, m in self.db.list_nodes(MODELL, readonly=True).items():
             n = vergleichsname(m.get("name"))
             if n:
                 je_name.setdefault(n, []).append(mid)
+                self._woerter[n] = woerter(m.get("name"))
         return je_name
 
     def zuordnen(self, pfad, je_name):
@@ -63,8 +77,9 @@ class GcodeOrdner:
         namen = slicer.quellen_aus_gcode(pfad)
         if not namen:
             # Der Inhalt nennt nichts: der Dateiname, genau ein längster Treffer.
-            datei = vergleichsname(os.path.basename(pfad))
-            treffer = {n: m for n, m in je_name.items() if len(n) >= NAME_MIN and n in datei}
+            # Nur ganze Wörter in Folge: „Halter“ steckt in „Halterung_v2“, ist aber ein anderes Teil (Audit 4.11.2026).
+            datei = woerter(os.path.splitext(os.path.basename(pfad))[0])
+            treffer = {n: m for n, m in je_name.items() if len(n) >= NAME_MIN and _in_folge(getattr(self, "_woerter", {}).get(n) or (), datei)}
             if treffer:
                 laengster = max(len(n) for n in treffer)
                 beste = {n: m for n, m in treffer.items() if len(n) == laengster}
@@ -85,13 +100,19 @@ class GcodeOrdner:
             return "unklar", unklar or namen, namen   # ein Teil eindeutig, ein Teil nicht: lieber nichts als halb
         return "ohne", ohne, namen
 
-    def einlesen(self, wurzeln, neue_modelle, stopp=None):
+    def einlesen(self, wurzeln, neue_modelle, stopp=None, unerreichbar=()):
         """Alle `.gcode` unter den Wurzelordnern. `neue_modelle`: in diesem Lauf kamen Modelle dazu — dann werden auch die früher unklaren und
-        unbekannten noch einmal angesehen. Zugeordnete und ausgeblendete bleiben, wie sie sind. Gibt die Zahlen zurück."""
+        unbekannten noch einmal angesehen. Zugeordnete und ausgeblendete bleiben, wie sie sind. `unerreichbar`: Wurzeln, die das Einlesen nicht
+        erreichte (Stick ab, Netzlaufwerk weg) — ihre gemerkten G-Codes bleiben stehen, sonst wären „Nicht zuordnen“-Entscheidungen verloren
+        und beim nächsten Mal alle wieder neu (Audit 4.11.2026). Gibt die Zahlen zurück."""
         z = {"gcode_neu": 0, "gcode_unklar": 0, "gcode_ohne_modell": 0, "gcode_fehler": 0, "gcode_offen_neu": 0}   # offen_neu: erst in diesem Lauf offen (für die Meldung)
         gesehen = dict(self.b.einstellungen().get(GESEHEN) or {})
         neu_gesehen, je_name = {}, None
+        for wid in unerreichbar:
+            neu_gesehen.update({k: v for k, v in gesehen.items() if k.startswith(f"{wid}/")})
         for wid, w in wurzeln.items():
+            if wid in unerreichbar:
+                continue
             for ordner, unter, dateien in os.walk(w["pfad"], followlinks=False):
                 unter[:] = sorted(u for u in unter if not u.startswith(".") and os.path.abspath(os.path.join(ordner, u)) != os.path.abspath(self.b.wurzel))
                 for n in dateien:
@@ -229,8 +250,13 @@ class GcodeOrdner:
         return [{"id": k, "name": k.rpartition("/")[2]} for k, v in sorted(gesehen.items()) if v[2] == "ignoriert"]
 
     def _anhaengen(self, mids, name, daten, mtime):
+        """Gibt zurück, ob ein Druck angelegt wurde. Hängt derselbe Inhalt schon an einem Druck genau dieser Modelle (hochgeladen oder früher
+        gelesen), nichts doppelt — an einem anderen Modell aber schon: der Anwender hat dieses gewählt (Audit 4.11.2026: vorher meldete die
+        Oberfläche „Zugeordnet“, ohne dass am gewählten Modell etwas entstand)."""
         h = hashlib.sha256(daten).hexdigest()
-        # Derselbe Inhalt hängt schon an einem Druck (hochgeladen oder früher gelesen): nichts doppelt anlegen.
-        if self.db.get_node(f"{GCODE}/{h}", readonly=True) is not None and self.db.get_connected(f"{GCODE}/{h}", direction="in"):
-            return
+        if self.db.get_node(f"{GCODE}/{h}", readonly=True) is not None:
+            for d in self.db.get_connected(f"{GCODE}/{h}", direction="in"):
+                if d.startswith(f"{DRUCK}/") and set(mids) <= set(self.k.drucke._modelle_von(d.split("/", 1)[1])):
+                    return False
         self.k.drucke.aus_ordner(mids, name, daten, time.strftime("%Y-%m-%d", time.localtime(mtime)))
+        return True

@@ -33,7 +33,7 @@ ERLAUBT = {
     ("einmal.py", "austragen", "os.remove"): "laeuft.json im Bestand beim Beenden — nur die eigene (gleicher Prozess), nie die eines anderen",
     ("anhaenge.py", "Anhaenge.hinzufuegen", "dateien.schreibe_atomar"): "Anhang → vault/anhaenge/<Titel>__<Hash>, nur wenn dort noch keiner liegt",
     ("drucke.py", "Drucke._quelle_sichern", "os.replace"): "Kopie der Modelldatei → vault/quellen/, nur wenn dort noch keine liegt",
-    ("drucke.py", "Drucke.datei_anhaengen", "dateien.schreibe_atomar"): "G-Code/Projekt → vault/gcode/<Titel>__<Hash>, nur wenn dort noch keine liegt",
+    ("drucke.py", "Drucke._datei_vorbereiten", "dateien.schreibe_atomar"): "G-Code/Projekt → vault/gcode/<Titel>__<Hash>, nur wenn dort noch keine liegt",
     ("dateien.py", "_kopiere_ohne_ueberschreiben", "os.replace"): "eigene Arbeitsdatei → Ziel, nur wenn das Ziel frei ist",
     ("dateien.py", "_kopiere_ohne_ueberschreiben", "os.unlink"): "eigene Arbeitsdatei (.…arbeit), eben angelegt",
     ("dateien.py", "neu_anlegen", "os.replace"): "eigene Arbeitsdatei → neues Ziel, nur wenn es frei ist",

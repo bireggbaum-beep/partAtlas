@@ -15,7 +15,10 @@ NEUES = [
                 "geschieht; danach geht alles mit „Rückgängig“ oder Strg+Z zurück — auch bei Sammlungen und Baugruppen. Ab 25 Modellen fragt der "
                 "Papierkorb einmal nach.",
                 "Die Meldung unten bleibt stehen, solange die Maus darüber ist oder du in einem anderen Programm bist — „Rückgängig“ verschwindet dir nicht "
-                "mehr unter dem Zeiger."]),
+                "mehr unter dem Zeiger.",
+                "Behoben: Backups mit der alten Schreibweise „partAtlas-Backup-…“ erscheinen wieder in der Liste und werden aufgeräumt. Ein G-Code, "
+                "der von einem nicht eingesteckten Laufwerk stammt, verliert seine Entscheidung „Nicht zuordnen“ nicht mehr. Der Dateiname eines "
+                "G-Codes ordnet nur noch über ganze Wörter zu („Halterung“ ist nicht „Halter“). Beim Einlesen vieler G-Codes bleibt die Oberfläche bedienbar."]),
     ("1.0.11", ["Aus „Katalog“ wird „PartAtlas“: Meldungen und Fenster sagen jetzt etwa „Aus PartAtlas entfernen“ oder „Zurück in PartAtlas“. "
                 "Der Knopf oben links heisst „Bibliothek“, wie die Überschrift daneben.",
                 "Behoben: Schlug „Rückgängig“ nach dem Verschieben fehl, stand trotzdem „Rückgängig gemacht“ da. Jetzt sagt die Meldung, warum es nicht ging."]),

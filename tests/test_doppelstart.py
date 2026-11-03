@@ -39,7 +39,7 @@ def holen(port, pfad, daten=None, warten=0.0):
 
 
 def starten(bestand, port, ausgabe=False):
-    env = {**os.environ, "PARTATLAS_BESTAND": bestand, "PARTATLAS_PORT": str(port), "PARTATLAS_KEIN_BROWSER": "1", "PYTHONPATH": os.pathsep.join(x for x in (os.environ.get("PYTHONPATH"), muster.sys.path[0]) if x)}
+    env = {**os.environ, "PARTATLAS_BESTAND": bestand, "PARTATLAS_PORT": str(port), "PARTATLAS_KEIN_BROWSER": "1", "PARTATLAS_WARTEN_S": "5", "PYTHONPATH": os.pathsep.join(x for x in (os.environ.get("PYTHONPATH"), muster.sys.path[0]) if x)}
     return subprocess.Popen([sys.executable, "-m", "partatlas"], env=env, cwd=muster.sys.path[0], stdout=subprocess.PIPE if ausgabe else subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL, text=True)
 

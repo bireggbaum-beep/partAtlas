@@ -13,6 +13,8 @@ from .bestand import standard_ort
 from .main import erstelle_app
 from .version import VERSION
 
+WARTEN_AUF_DEN_ERSTEN_S = int(os.environ.get("PARTATLAS_WARTEN_S") or 120)     # Tests verkürzen es
+
 if __name__ == "__main__":
     FORMAT = "%(asctime)s %(threadName)s %(name)s %(levelname)s %(message)s"
     logging.basicConfig(level=logging.INFO, format=FORMAT)
@@ -67,12 +69,16 @@ if __name__ == "__main__":
         if st["bereit"]:
             einmal.eintragen(ort, port, VERSION)
         elif "BestandBelegt" in st["fehler"]:
-            for _ in range(25):                 # der andere trägt sich erst ein, wenn er offen ist
+            # Der andere trägt sich erst ein, wenn er offen ist — bei einem grossen Bestand unter Windows dauert das bis zu einer Minute
+            # (Protokoll des Anwenders: 47 s bei 8 600 Modellen). So lange warten, sonst endete dieser Start, ohne ihn zu zeigen.
+            print("PartAtlas öffnet diesen Bestand schon (in einem anderen Fenster oder Terminal) — einen Moment …")
+            ende = time.monotonic() + WARTEN_AUF_DEN_ERSTEN_S
+            while time.monotonic() < ende:
                 schon = einmal.laufender(ort)
                 if schon:
                     einmal.dorthin(schon)
                     break
-                time.sleep(0.2)
+                time.sleep(0.5)
             else:
                 print("PartAtlas hat diesen Bestand schon offen (in einem anderen Fenster oder Terminal). Dieser Start endet.")
             server.should_exit = True

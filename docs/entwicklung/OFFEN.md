@@ -4,6 +4,22 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Audit 4.11.2026: Sicherheit und Fehler (Anwender: „Bug- und Cybersecurity-Audit“)
+
+**Sicherheit:** 21 aktive Proben gegen einen laufenden Server (Skript im Scratchpad `audit/proben.py`), alle ohne Befund: fremde Herkunft (Sec-Fetch-Site, Origin) → 403;
+Pfadausbruch bei Hochladen, Archiv (`..`, absolut, Symlink, Programmdatei), Vorschau, „Im Ordner zeigen“, Wurzelordner; Programme nur eingetragene, ohne Shell; HTML-Anhänge mit
+`CSP: sandbox` und `nosniff`; Löschen nur im Bestand (Wächter). Hinweise, keine Fehler: nur 127.0.0.1, kein Passwort (KONZEPT §2) — ein lokales Skript kann alles; keine
+Grössengrenze für Anfragekörper (lokal kein Risiko).
+**Fehler (Code-Review der Änderungen seit main), alle zehn behoben:** (1) Backup-Muster erkennt die alte Schreibweise `partAtlas-Backup-…` wieder (mein Fehler beim Umbenennen,
+1.0.11 auf main betroffen!); (2) `laeuft.json` in `AUSGENOMMEN`; (3) zweiter Start wartet bis 120 s auf den ersten (`PARTATLAS_WARTEN_S`); (4) G-Codes nicht erreichbarer
+Wurzeln bleiben gemerkt; (5) `einstellungen_setzen` unter einer Sperre — ohne sie stürzte das gleichzeitige Schreiben ab (dieselbe Arbeitsdatei, FileNotFoundError); (6) Merker
+„Geändert“ auch im neuen Browser; (7) von Hand zugeordneter G-Code, dessen Inhalt an einem anderen Modell hängt, legt am gewählten einen Druck an; (8) Dateiname nur über ganze
+Wörter in Folge; (9) G-Code aus dem Ordner: lesen und Vault ausserhalb der Transaktion (`_datei_vorbereiten`/`_datei_verbinden`); (10) „−“ der Sammel-Haken beim Zeichnen
+(`teilSetzen`) statt Beobachter über das ganze Dokument. Prüfungen: test_backup (+2), test_einstellungen (neu), test_gcode_ordner (+4, 33/33), test_geaendert_ui (+1),
+test_sammel_ui; Gegenproben fallen. (3) ohne automatische Prüfung (langsames Öffnen nicht nachstellbar). Nebenbei: `test_vorschau` wackelte — zwei FCStd aus `muster.fcstd`
+waren innerhalb von 2 s bytegleich (Zip-Zeitstempel); Test gibt der Datei jetzt eigenen Inhalt. Nicht angefasst: `_quelle_sichern` kopiert die Modelldatei weiter innerhalb der
+Transaktion (einmal je Inhalt). Alle Suiten ausser test_ui grün.
+
 ## 1.0.12 auf dem Branch (4.11.2026): Papierkorb und Archiv in der Leiste, Paket 2 der Ziehziele
 
 Entschieden (Anwender 4.11.): Grundsatz „dorthin ziehen, wo es hingehört“ — keine Ablageleiste. **Leiste links ▦ 🗄 🗑 🧹**; Papierkorb mit Zahl (ruhig, ab 1000 „999+“),

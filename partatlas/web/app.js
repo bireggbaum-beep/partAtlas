@@ -42,6 +42,8 @@ const zustand = {
     if (!l.includes("geaendert") && !localStorageLesen("kachelGeaendertDazu")) { l.push("geaendert"); localStorageSchreiben("kachelZeilen", JSON.stringify(l)); }
     localStorageSchreiben("kachelGeaendertDazu", "1");
     return l; } } catch { /* Vorgabe */ }
+    // Neu in diesem Browser: die Vorgabe hat „Geändert“ schon — gemerkt, damit ein späteres Abwählen nicht beim nächsten Laden zurückkommt.
+    localStorageSchreiben("kachelGeaendertDazu", "1");
     return ["masse", "gewicht", "geaendert"]; })(),
   sortierung: "name", absteigend: false, gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
   gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
@@ -58,6 +60,13 @@ function abgleichen(ziel, html) {
   const vorlage = document.createElement("template");
   vorlage.innerHTML = html;
   kinderAbgleichen(ziel, vorlage.content);
+  teilSetzen(ziel);
+}
+
+// Ein Sammel-Haken kennt „teilweise“ (der Strich) nur als Eigenschaft, nicht im HTML: wer zeichnet, setzt sie hier aus `data-teil` — nur im eben
+// gezeichneten Bereich. Vorher tat das ein Beobachter über das ganze Dokument bei jeder Änderung, auch bei jedem Scrollen durch Tausende Kacheln.
+function teilSetzen(wurzel) {
+  for (const x of wurzel.querySelectorAll("input[data-teil]")) x.indeterminate = x.dataset.teil === "1";
 }
 
 const schluessel = (n) => (n.nodeType === 1 ? n.getAttribute("data-id") : null);
@@ -2515,8 +2524,8 @@ function tastenkuerzel() {
 }
 
 // Sammel-Haken für Häkchen-Listen (Fenster wie „Archive entpacken“): `<input type="checkbox" data-sammel="name">` steuert alle mit
-// `data-sammel-von="name"`; er zeigt an, leer oder „−“ (ein Teil). Dazu stellt der Beobachter unten jedes `data-teil="1"` auf „−“ — so tragen
-// alle Sammel-Haken (Gruppen, Aufräumen, Tags) die Teilauswahl, egal wer sie zeichnet: ein Häkchen kennt „teilweise“ nur als Eigenschaft, nicht im HTML.
+// `data-sammel-von="name"`; er zeigt an, leer oder „−“ (ein Teil). Die Sammel-Haken in Gruppen, Aufräumen und Tags tragen `data-teil`; das „−“
+// setzt teilSetzen beim Zeichnen.
 function sammelAbgleichen(wurzel = document) {
   for (const m of wurzel.querySelectorAll("[data-sammel]")) {
     const glieder = [...wurzel.querySelectorAll(`[data-sammel-von="${CSS.escape(m.dataset.sammel)}"]`)];
@@ -2535,9 +2544,6 @@ document.addEventListener("change", (e) => {
     sammelAbgleichen(wurzel);
   } else if (t.dataset?.sammelVon) sammelAbgleichen(t.closest("dialog, section, body"));
 });
-new MutationObserver(() => {
-  for (const x of document.querySelectorAll("input[data-teil]")) x.indeterminate = x.dataset.teil === "1";
-}).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-teil"] });
 const sammelKopf = (name, text = "Alle") => `<label class="sammel"><input type="checkbox" data-sammel="${name}"> ${text} <span class="sammel-zahl dim"></span></label>`;
 
 function dialog(html) {
