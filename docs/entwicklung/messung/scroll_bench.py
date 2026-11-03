@@ -10,7 +10,7 @@ sagen über eine echte Grafikkarte wenig; belastbar ist der Hauptthread
 („ms/Frame“). Die Varianten zeigen, was das Malen kostet (z. B. ohne Bilder).
 """
 import asyncio, os, subprocess, sys, tempfile, time, socket, json, copy, statistics, urllib.request
-WURZEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+WURZEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
 sys.path.insert(0, os.path.join(WURZEL, "tests"))
 import muster
 from test_ui import api, chromium

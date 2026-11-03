@@ -544,7 +544,7 @@ Druck-Objekts ändert sich nichts.
 Ein Druck mit Fehlern zählt in „wie oft gedruckt“ (er hat stattgefunden);
 den Haken „gedruckt“ zeigt die Kachel erst bei einem guten. Die Drucke
 stehen im Inspektor in einem **eigenen Reiter** — die rechte Seitenleiste
-bekommt dafür Reiter (OFFEN.md d), zuerst entworfen, dann gebaut.
+bekommt dafür Reiter (docs/entwicklung/OFFEN.md d), zuerst entworfen, dann gebaut.
 
 ---
 
@@ -709,7 +709,7 @@ geschätzt wird, wenn Phase 1 steht.
 
 **flatgraph 4.0.0 (`d2ae82f`, Speicherform 3) mit diesem Datenmodell**,
 30.09.2026, Linux-Container (4 Kerne, ext4), Python 3.11. Skript:
-`messung/partatlas_mess.py`. Median aus 15 Läufen, Öffnen 7 warm / 5 kalt.
+`docs/entwicklung/messung/partatlas_mess.py`. Median aus 15 Läufen, Öffnen 7 warm / 5 kalt.
 
 Angenommener Bestand — 10 000 Modelle mit Historie: 15 000 Dateien,
 8 000 G-Codes, 16 000 Drucke, 3 Tags je Modell, Profile, Material,
@@ -768,7 +768,7 @@ Katalog ist vorher benutzbar.
 ### Kaufteile, Einkäufe und Händler als Knoten (Entwurf)
 
 03.10.2026, derselbe Container, flatgraph 4.1.0, die echten Klassen (`Bestand`, `Katalog`, `Baugruppen`). Skript:
-`messung/kaufteile_mess.py`, Ergebnis `messung/ergebnis_kaufteile_2026-10-03.json`. Eingefügt wird **zusätzlich** zu den 199 Normteilen;
+`docs/entwicklung/messung/kaufteile_mess.py`, Ergebnis `docs/entwicklung/messung/ergebnis_kaufteile_2026-10-03.json`. Eingefügt wird **zusätzlich** zu den 199 Normteilen;
 Einkäufe sind Knoten mit zwei Kanten (zur Ware und zum Händler). Die Mengen sind eine Annahme, keine Messung eines echten Bestands:
 *klein* = ein Bastler (300 Kaufteile, 1 000 Einkäufe), *mittel* (1 500 / 8 000), *gross* = Kleinbetrieb (5 000 / 30 000, 60 Händler,
 60 Baugruppen mit je 150 Positionen). Median aus mehreren Läufen, Abfragen in einem frischen Prozess.
@@ -836,5 +836,5 @@ aber **nicht** am Ort, wo es zählt. Wer eines davon bestätigt oder widerlegt, 
 | Grosser Bestand | Anwender unter Windows mit ≈ 8 600 Modellen (Einlesen, Bereinigen, Löschen) | Ordner-Aktionen und Neuer Baum mit allen Ordnern bei so vielen Ordnern unter Windows |
 | Installation nach README | Linux aus frischem Klon (start.sh --demo); alle Suiten in einer frischen Umgebung aus den festen Fassungen | Windows: `start.bat` und die Schritte in der PowerShell (Anwender prüft) |
 
-Bewusst nicht in 1.0 (siehe OFFEN.md): Backup als ZIP und Wiederherstellen (gebaut, ausgeblendet), Versionsverlauf je Modell,
+Bewusst nicht in 1.0 (siehe docs/entwicklung/OFFEN.md): Backup als ZIP und Wiederherstellen (gebaut, ausgeblendet), Versionsverlauf je Modell,
 Zusammenführen gleichnamiger Ordner, Ordner auf andere Platten verschieben.

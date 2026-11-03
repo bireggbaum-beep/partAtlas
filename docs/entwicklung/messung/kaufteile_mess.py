@@ -19,7 +19,7 @@ import sys
 import tempfile
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 from partatlas.baugruppen import Baugruppen, KAUFTEIL, BAUGRUPPE
 from partatlas.bestand import Bestand
 from partatlas.katalog import Katalog

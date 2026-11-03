@@ -4,6 +4,14 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Repo aufgeräumt (3.11.2026, Anwender: „ohne Ballast, auch wenn jemand von aussen hineinschaut“)
+
+Entfernt: überholte Anforderungsspezifikation `partAtlas.pdf` (URS v1.5.0, ersetzt durch KONZEPT.md), Backup-ZIP in `tests/`, eingecheckte `.pyc`. Verschoben nach
+`docs/entwicklung/`: diese Datei, `messung/` (Pfade der Skripte angepasst), `mock/`. `CLAUDE.md` und die Verweise in `KONZEPT.md` zeigen auf den neuen Ort. **Zweige:** 28 auf GitHub;
+19 sollen weg (6 `claude/…`, 3 alte `ccr-…`, 10 `fassung-…` bis 1.0.7 — ohne `ccr-13e92d8a`… siehe Liste im Chat) — Löschen aus der Sitzung wird mit 403 abgelehnt, der Anwender löscht selbst.
+Behalten: `main`, `fassung-1.0.8…1.0.10`, `ccr-212cc51e` (Desktop, Mock „Drucken“), `ccr-d872135a` (Werkbank), `ccr-97d3e8b3` (`eingang.py`), der aktuelle.
+Issue #1: 3MF-Katalog-Verweise im Code (nur dieses eine Issue; Anwender: Repo ohne Ballast, `OFFEN.md` bleibt die Liste).
+
 ## Stand: 1.0.11 auf `main` (3.11.2026) — Rückweg `fassung-1.0.10`; Issue #1 (3MF-Katalog-Verweise im Code)
 
 test_ui: erster Lauf 69/70 („Keine Fehler in der Browser-Konsole“, ohne Angabe welcher), gezielter Rundgang durch die Oberfläche ohne Konsolenfehler, zweiter Lauf (Anwender: ja)
