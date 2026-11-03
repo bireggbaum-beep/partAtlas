@@ -19,7 +19,7 @@ def loeschen(pg, name):
     pg.click("#inspektor #loeschen")
     pg.wait_for_selector("#dialog[open] button[value='ja']")
     pg.click("#dialog[open] button[value='ja']")
-    pg.wait_for_function("!document.querySelector('#toast').hidden && document.querySelector('#toast').textContent.includes('Aus dem Katalog entfernt')")
+    pg.wait_for_function("!document.querySelector('#toast').hidden && document.querySelector('#toast').textContent.includes('Aus PartAtlas entfernt')")
 
 
 if __name__ == "__main__":
@@ -51,7 +51,7 @@ if __name__ == "__main__":
             check("Die Meldung nach dem Löschen bietet „Rückgängig“ und „Papierkorb“", knoepfe == ["Rückgängig", "Papierkorb"])
             pg.click("#toast button:has-text('Rückgängig')")
             pg.wait_for_selector(".karte:has-text('Versehentlich')")
-            check("„Rückgängig“ holt das Modell zurück in den Katalog", any(m["name"] == "Versehentlich" for m in abfrage(port, "/api/modelle")))
+            check("„Rückgängig“ holt das Modell zurück in PartAtlas", any(m["name"] == "Versehentlich" for m in abfrage(port, "/api/modelle")))
             loeschen(pg, "Versehentlich")
             pg.click("#toast button:has-text('Papierkorb')")
             pg.wait_for_selector(".karte:has-text('Versehentlich')")

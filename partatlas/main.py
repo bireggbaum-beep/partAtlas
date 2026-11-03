@@ -62,7 +62,7 @@ async def roh_koerper(request: Request):
 
 
 def _startinfo(b, k, s):
-    """Eine Zeile je Umstand, der später für die Fehlersuche gebraucht wird; schlägt etwas davon fehl, startet partAtlas trotzdem."""
+    """Eine Zeile je Umstand, der später für die Fehlersuche gebraucht wird; schlägt etwas davon fehl, startet PartAtlas trotzdem."""
     try:
         log.info("Umgebung: Python %s, %s, Prozessorkerne %s, Arbeiter für das Einlesen %s", platform.python_version(), platform.platform(),
                  os.cpu_count(), s.prozesse)
@@ -152,12 +152,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if faden:
             faden.join()           # flatgraph lässt sich beim Lesen nicht unterbrechen; danach sauber schliessen
         if not oeffnen_stand["bereit"]:
-            log.info("partAtlas beendet (Bestand war nicht geöffnet)")
+            log.info("PartAtlas beendet (Bestand war nicht geöffnet)")
             return
         b, s = zustand["bestand"], zustand["scanner"]
-        log.info("partAtlas wird beendet (Einlesen läuft: %s, Phase „%s“)", s.status.get("laeuft"), s.status.get("phase"))
+        log.info("PartAtlas wird beendet (Einlesen läuft: %s, Phase „%s“)", s.status.get("laeuft"), s.status.get("phase"))
         # Beenden bricht ein laufendes Einlesen ab (was fertig ist, steht in der Datenbank), statt bis zu 30 s darauf zu warten: sonst
-        # reagiert partAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
+        # reagiert PartAtlas auf Strg+C scheinbar nicht — vor allem, wenn FreeCAD an einer Datei arbeitet oder hängt — und FreeCAD bliebe
         # beim harten Beenden als eigener Prozess zurück.
         zustand["backup"].abbrechen()          # ein halbes ZIP bleibt nicht liegen: die Arbeitsdatei geht beim Abbruch weg
         zustand["backup"].warten(BEENDEN_S)
@@ -166,11 +166,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if not s.warten(BEENDEN_S):
             # Datenverlust droht nicht: was das Einlesen danach noch schreiben will, scheitert an der geschlossenen Datenbank, und jede
             # Transaktion steht ganz oder gar nicht auf der Platte. Es steht nur da, damit man sieht, wenn das Abbrechen nicht greift.
-            log.warning("Das Einlesen hat nicht binnen %s s aufgehört (Phase „%s“); partAtlas wird trotzdem beendet", BEENDEN_S, s.status.get("phase"))
+            log.warning("Das Einlesen hat nicht binnen %s s aufgehört (Phase „%s“); PartAtlas wird trotzdem beendet", BEENDEN_S, s.status.get("phase"))
         b.schliessen()
-        log.info("partAtlas beendet")
+        log.info("PartAtlas beendet")
 
-    app = FastAPI(title="partAtlas", version=VERSION, lifespan=leben)
+    app = FastAPI(title="PartAtlas", version=VERSION, lifespan=leben)
     app.state.zustand = zustand
     app.state.verteiler = verteiler
     app.state.oeffnen_stand = oeffnen_stand           # __main__: wann der Bestand offen ist (laeuft.json) oder belegt (zweiter Start)
@@ -227,7 +227,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if oeffnen_stand["bereit"] or request.url.path.startswith("/web/") or request.url.path == "/api/clientfehler":
             return await call_next(request)
         if request.url.path == "/":
-            # 200, nicht 503: start.sh erkennt am Startpunkt, dass partAtlas läuft, und startet keinen zweiten Prozess.
+            # 200, nicht 503: start.sh erkennt am Startpunkt, dass PartAtlas läuft, und startet keinen zweiten Prozess.
             return FileResponse(os.path.join(WEB, "oeffnen.html"), headers={"Cache-Control": "no-store"})
         fehler = oeffnen_stand["fehler"]
         return JSONResponse({"fehler": f"Der Bestand liess sich nicht öffnen: {fehler}" if fehler else "Der Bestand wird geöffnet …",
@@ -272,11 +272,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if isinstance(e, OSError) and e.errno == errno.ENOSPC:
             text = "Die Platte ist voll. Mach Platz frei und versuche es noch einmal."
         elif isinstance(e, PermissionError):
-            text = ("partAtlas darf dort nicht schreiben, oder eine Datei ist in einem anderen Programm geöffnet. "
+            text = ("PartAtlas darf dort nicht schreiben, oder eine Datei ist in einem anderen Programm geöffnet. "
                     "Schliesse das Programm und versuche es noch einmal.")
         elif isinstance(e, FileNotFoundError):
-            text = ("Eine Datei oder ein Ordner ist nicht mehr da — vielleicht ausserhalb von partAtlas verschoben oder gelöscht. "
-                    "Einlesen (⟳ bei „Bibliothek“) bringt den Katalog auf den Stand.")
+            text = ("Eine Datei oder ein Ordner ist nicht mehr da — vielleicht ausserhalb von PartAtlas verschoben oder gelöscht. "
+                    "Einlesen (⟳ bei „Bibliothek“) bringt PartAtlas auf den Stand.")
         else:
             text = f"Das ging nicht ({type(e).__name__}: {e})."
         return JSONResponse({"fehler": text + " Einzelheiten stehen im Protokoll (Einstellungen › Einlesen › Protokoll)."}, status_code=500)
@@ -490,7 +490,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if not os.path.exists(pfad):
             raise HTTPException(404)
         typ = anhaenge.ANZEIGEN.get(os.path.splitext(name)[1].lower())
-        # Ansehen nur für Formate, die der Browser selbst zeigt; immer in einer Sandbox ohne Skript und ohne Zugriff auf partAtlas.
+        # Ansehen nur für Formate, die der Browser selbst zeigt; immer in einer Sandbox ohne Skript und ohne Zugriff auf PartAtlas.
         return FileResponse(pfad, filename=name, media_type=typ or "application/octet-stream",
                             content_disposition_type="inline" if typ and not herunterladen else "attachment",
                             headers={"Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"})
@@ -955,7 +955,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             werte["standard_farbe"] = f
         if "vorschau_farbe" in d:
             # Für Vorschaubilder ohne eigene Farbe in der Datei. Vorgesehen, noch nicht angewendet (OFFEN.md): später rechnet der Worker
-            # die betroffenen Bilder damit neu. None = die Vorgabe von partAtlas.
+            # die betroffenen Bilder damit neu. None = die Vorgabe von PartAtlas.
             f = d["vorschau_farbe"] or None
             if f and not re.fullmatch(r"#[0-9a-fA-F]{6}", f):
                 raise KatalogFehler("Farbe als #RRGGBB angeben.")
@@ -1494,7 +1494,7 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         liste, std = _programme()
         pfad = daten.get("pfad") or std.get(m["format"])
         if pfad not in {p["pfad"] for p in liste}:
-            raise KatalogFehler("Dieses Programm kennt partAtlas nicht.")
+            raise KatalogFehler("Dieses Programm kennt PartAtlas nicht.")
         try:
             programme.oeffnen(pfad, datei, zustand["bestand"].pfad("arbeit", "programmstart.log"))
         except (OSError, subprocess.SubprocessError) as e:

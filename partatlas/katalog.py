@@ -36,12 +36,12 @@ def jetzt():
 
 def beim_start(name, arbeit):
     """Nachziehen beim Öffnen (Umzüge alter Bestände, abgeleitete Felder) darf das Öffnen nie verhindern: scheitert es, steht es im Protokoll
-    und partAtlas startet trotzdem — die Arbeit läuft in einer Transaktion, also ganz oder gar nicht, und beim nächsten Start noch einmal.
+    und PartAtlas startet trotzdem — die Arbeit läuft in einer Transaktion, also ganz oder gar nicht, und beim nächsten Start noch einmal.
     1.0.6 startete beim Tester nicht, weil eine solche Umstellung an einem Modell im Papierkorb scheiterte (29.10.2026)."""
     try:
         arbeit()
     except Exception:
-        log.exception("Nachziehen beim Start gescheitert (%s); partAtlas startet trotzdem", name)
+        log.exception("Nachziehen beim Start gescheitert (%s); PartAtlas startet trotzdem", name)
 
 
 def _json_rest(o):
@@ -100,9 +100,9 @@ class Katalog:
         bestand = os.path.abspath(self.b.wurzel)
         if pfad == bestand or pfad.startswith(bestand + os.sep) or bestand.startswith(pfad + os.sep):
             # Der eigene Bestand (Papierkorb, Cache) darf nicht Teil einer
-            # Sammlung sein und umgekehrt — sonst katalogisiert partAtlas
+            # Sammlung sein und umgekehrt — sonst katalogisiert PartAtlas
             # seine eigenen Arbeitsdateien.
-            raise KatalogFehler("Der Ordner überschneidet sich mit dem Bestand von partAtlas.")
+            raise KatalogFehler("Der Ordner überschneidet sich mit dem Bestand von PartAtlas.")
         for wid, w in self.wurzeln().items():
             vorhanden = w["pfad"]
             if wid != ausser and (pfad == vorhanden or pfad.startswith(vorhanden + os.sep) or vorhanden.startswith(pfad + os.sep)):
@@ -131,7 +131,7 @@ class Katalog:
         Liegt keine Datei mehr darunter, ändert sich nur dieser Eintrag: dann keine Sicherung (sie kopiert die ganze Datenbank samt
         Papierkorb — beim Anwender 4 s für einen leeren Ordner)."""
         if any(o["wurzel"] == wid for d in self._dateien().values() for o in d.get("orte", [])):
-            self._sichern_vor("ordner-entfernen", f"Vor dem Entfernen des Ordners „{(self.wurzeln().get(wid) or {}).get('name', wid)}“ aus partAtlas")
+            self._sichern_vor("ordner-entfernen", f"Vor dem Entfernen des Ordners „{(self.wurzeln().get(wid) or {}).get('name', wid)}“ aus PartAtlas")
         with self.db.transaction():
             n = 0
             for h, d in self._dateien().items():
@@ -193,7 +193,7 @@ class Katalog:
         teile = self.db.get_connected(ref(DATEI, h), direction="in", rel_type=HAT_DATEI, include_deleted=True)
         mid = teile[0].split("/", 1)[1] if teile else None
         ablage = (d or {}).get("papierkorb", [])
-        # Nur für Modelle, deren Dateien eine frühere Fassung in den Papierkorb von partAtlas verschoben hat. Seit 0.30 bleibt die Datei
+        # Nur für Modelle, deren Dateien eine frühere Fassung in den Papierkorb von PartAtlas verschoben hat. Seit 0.30 bleibt die Datei
         # beim Löschen im Ordner; dort ist sie kein „Zurücklegen“, sondern der Normalfall, und das Modell bleibt im Papierkorb.
         if d is None or mid is None or not ablage or any("ablage" not in a for a in ablage):
             return False
@@ -207,7 +207,7 @@ class Katalog:
             self.db.restore_node(MODELL, mid)
             self.db.update_node(DATEI, h, {"orte": [ort], "papierkorb": [], "geloescht": None})
         for a in ablage:
-            # Dieselbe Datei (gleicher Hash) liegt wieder im Ordner: die Kopie im Papierkorb von partAtlas ist überzählig.
+            # Dieselbe Datei (gleicher Hash) liegt wieder im Ordner: die Kopie im Papierkorb von PartAtlas ist überzählig.
             self.b.entfernen(self.b.pfad(a["ablage"]))
         return True
 
@@ -358,7 +358,7 @@ class Katalog:
             self.db.update_node(DATEI, h, {"vorschau": "ausstehend", "vorschau_wunsch": True})
             return "rechnen"
         if d.get("format") == "fcstd" and self.b.einstellungen().get("fcstd_freecad") != "ja":
-            raise KatalogFehler("FreeCAD-Dokumente liest partAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).")
+            raise KatalogFehler("FreeCAD-Dokumente liest PartAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).")
         self.db.update_node(DATEI, h, {"cad": "ausstehend", "cad_fehler": None, "vorschau_wunsch": True})
         return "freecad"
 
@@ -970,7 +970,7 @@ class Katalog:
         rel = ordner_id.partition("/")[2].strip("/")
         if not rel:
             raise KatalogFehler("Der Bibliotheksordner selbst lässt sich hier nicht umbenennen oder verschieben. Im Dateimanager geht es; "
-                                "danach den Ordner in partAtlas neu hinzufügen.")
+                                "danach den Ordner in PartAtlas neu hinzufügen.")
         if not os.path.isdir(quelle) or os.path.islink(quelle):
             raise KatalogFehler("Diesen Ordner gibt es auf der Platte nicht mehr.")
         alt_name = rel.rsplit("/", 1)[-1]
@@ -997,7 +997,7 @@ class Katalog:
                                 f"Benenne zuerst einen der beiden um.")
         if os.stat(quelle).st_dev != os.stat(eltern).st_dev:
             raise KatalogFehler("Das Ziel liegt auf einer anderen Platte. Dorthin würde der Ordner kopiert und das Original gelöscht — das "
-                                "tut partAtlas nicht. Verschiebe ihn im Dateimanager; partAtlas erkennt die Modelle beim nächsten Einlesen wieder.")
+                                "tut PartAtlas nicht. Verschiebe ihn im Dateimanager; PartAtlas erkennt die Modelle beim nächsten Einlesen wieder.")
 
         def umziehen(ort):
             if ort and ort.get("wurzel") == wid and (ort.get("pfad") == rel or ort.get("pfad", "").startswith(rel + "/")):
@@ -1047,7 +1047,7 @@ class Katalog:
     def ordner_inhalt(self, ordner_id):
         """Was in einem Ordner liegt, damit der Anwender vor dem Löschen sieht, was passiert: Modelle, die ganz darin liegen
         (sie gehen in den Papierkorb), Modelle mit einer Kopie ausserhalb (bleiben, sonst ginge die andere Kopie mit) und
-        alle übrigen Dateien (Bilder, PDFs, Texte aus einem entpackten Archiv — partAtlas rührt sie nie an)."""
+        alle übrigen Dateien (Bilder, PDFs, Texte aus einem entpackten Archiv — PartAtlas rührt sie nie an)."""
         wid, wpfad, pfad = self._ordner_pfad(ordner_id)
         wreal = os.path.realpath(wpfad)
         rel = os.path.relpath(pfad, wreal).replace(os.sep, "/")
@@ -1078,11 +1078,11 @@ class Katalog:
 
     def ordner_loeschen(self, ordner_id, tags=(), sammlungen=()):
         """Alle Modelle des Ordners aus dem Katalog nehmen (Papierkorb). Der Ordner und alles darin bleibt auf der Platte, auch die
-        leeren Verzeichnisse: partAtlas löscht in den Ordnern des Anwenders nichts. Ein Wurzelordner geht hier nicht: er wird nur
-        aus partAtlas entfernt."""
+        leeren Verzeichnisse: PartAtlas löscht in den Ordnern des Anwenders nichts. Ein Wurzelordner geht hier nicht: er wird nur
+        aus PartAtlas entfernt."""
         i = self.ordner_inhalt(ordner_id)
         if i["wurzel"]:
-            raise KatalogFehler("Ein Wurzelordner wird nicht gelöscht, nur aus partAtlas entfernt.")
+            raise KatalogFehler("Ein Wurzelordner wird nicht gelöscht, nur aus PartAtlas entfernt.")
         if i["modelle"]:
             self._sichern_vor("ordner-aus-katalog", f"Vor dem Entfernen des Ordners „{os.path.basename(i['pfad'] or '')}“ "
                                                     f"({len(i['modelle'])} Modelle)")
@@ -1212,7 +1212,7 @@ class Katalog:
     def ansichten(self, mid, m, d):
         """Was die Galerie im Inspektor durchblättert, in dieser Reihenfolge:
         die Bilder des Anwenders, dann was in der Datei steckt, dann was
-        partAtlas berechnet hat. Die 3D-Ansicht fügt die Oberfläche ein."""
+        PartAtlas berechnet hat. Die 3D-Ansicht fügt die Oberfläche ein."""
         art_titel = m.get("vorschau_art")
         eigene = [{"art": "eigen", "k": b["k"], "url": f"/api/modelle/{mid}/bilder/{b['k']}",
                    "titel": "Vorschaubild" if i == 0 and not art_titel else "Eigenes Bild",
@@ -1249,7 +1249,7 @@ class Katalog:
                 raise KatalogFehler("Ziel liegt ausserhalb des Wurzelordners.")
             os.makedirs(zielordner, exist_ok=True)
         if archiv.ist_archiv(name):
-            # Das Archiv selbst landet nur im Bestand (arbeit/), entpackt wird in einen neuen Unterordner des Ziels: so muss partAtlas
+            # Das Archiv selbst landet nur im Bestand (arbeit/), entpackt wird in einen neuen Unterordner des Ziels: so muss PartAtlas
             # im Ordner des Anwenders nichts wieder wegräumen.
             arbeit = dateien.freier_name(self.b.pfad("arbeit", "hochladen", name))
             dateien.neu_anlegen(arbeit, daten)
@@ -1976,7 +1976,7 @@ class Katalog:
 
     def loeschen(self, mid):
         """Das Modell aus dem Katalog nehmen: Modell samt Datei-Knoten in den Papierkorb von flatgraph. **Die Dateien auf der Platte
-        bleiben, wo sie sind** — partAtlas löscht und verschiebt dabei nichts. Gemerkt wird, wo sie lagen (samt Grösse und Zeit), damit
+        bleiben, wo sie sind** — PartAtlas löscht und verschiebt dabei nichts. Gemerkt wird, wo sie lagen (samt Grösse und Zeit), damit
         der Scan sie weiter kennt und nicht bei jedem Lauf neu liest, und damit „Wiederherstellen“ sie wiederfindet."""
         h = self.datei_von(mid)
         d = self.db.get_node(ref(DATEI, h)) if h else None
@@ -1995,7 +1995,7 @@ class Katalog:
         for a in (d or {}).get("papierkorb", []):
             if self.wurzel_pfad(a["wurzel"]) is None:
                 # Der Ordner ist entfernt: ohne ihn hat das Modell keinen Ort, und eine Datei aus einer früheren Fassung bliebe im Papierkorb von
-                # partAtlas liegen. Erst den Ordner zurückholen, dann geht beides.
+                # PartAtlas liegen. Erst den Ordner zurückholen, dann geht beides.
                 w = self.db.get_node_raw(ref(WURZEL, a["wurzel"])) or {}
                 raise KatalogFehler(f"Der Ordner {w.get('pfad') or a['wurzel']} ist nicht mehr eingetragen. Hole ihn zuerst unter "
                                     f"Bereinigen › Papierkorb mit „Wieder hinzufügen“ zurück; dann lässt sich das Modell wiederherstellen.")
@@ -2011,7 +2011,7 @@ class Katalog:
                         st = os.stat(pfad)
                         orte.append({"wurzel": a["wurzel"], "pfad": a["pfad"], "groesse": st.st_size, "mtime": st.st_mtime})
                     continue
-                # Frühere Fassungen haben die Datei in den Papierkorb von partAtlas verschoben: zurücklegen.
+                # Frühere Fassungen haben die Datei in den Papierkorb von PartAtlas verschoben: zurücklegen.
                 quelle = self.b.pfad(a["ablage"])
                 if not os.path.exists(quelle):
                     continue
@@ -2047,7 +2047,7 @@ class Katalog:
 
     def endgueltig_vorschau(self, mid):
         """Was ein endgültiges Entfernen bedeutet, ohne etwas zu ändern: vor allem, ob die Datei noch im Ordner liegt — dann kommt sie
-        beim nächsten Einlesen als neues Modell zurück, denn partAtlas löscht sie nicht."""
+        beim nächsten Einlesen als neues Modell zurück, denn PartAtlas löscht sie nicht."""
         roh = self._im_papierkorb(mid)
         h = self._datei_im_papierkorb(mid)
         d = (self.db.get_node_raw(ref(DATEI, h)) if h else None) or {}
@@ -2063,7 +2063,7 @@ class Katalog:
         """Ein Modell aus dem Papierkorb endgültig aus dem Katalog nehmen — nur dieses, mit genau dem, was mit ihm in den Papierkorb kam
         (seine Datei im Katalog). Nie „alles leeren“: der Müllsammler von flatgraph räumte auch entfernte Ordner, Baugruppen und Drucke
         ab. Vorher immer eine Sicherung. Keine Datei des Anwenders geht verloren: die Datei im Ordner bleibt, eigene Bilder und Dateien
-        aus dem alten Papierkorb von partAtlas kommen nach vault_archive/; nur Abgeleitetes (Vorschauen, Netz) wird gelöscht."""
+        aus dem alten Papierkorb von PartAtlas kommen nach vault_archive/; nur Abgeleitetes (Vorschauen, Netz) wird gelöscht."""
         roh = self._im_papierkorb(mid)
         h = self._datei_im_papierkorb(mid)
         d = (self.db.get_node_raw(ref(DATEI, h)) if h else None) or {}
@@ -2141,7 +2141,7 @@ class Katalog:
 
     def fehlende_suchen(self, pfad, grenze=60_000):
         """Liegen fehlende Dateien in diesem Ordner? Erkannt wird nur gleicher Inhalt (Hash) — eine geänderte Fassung nicht, das wäre
-        geraten. Kennt partAtlas die Grösse jeder fehlenden Datei, wird nur gehasht, was gleich gross ist. Ändert nichts; verbunden wird
+        geraten. Kennt PartAtlas die Grösse jeder fehlenden Datei, wird nur gehasht, was gleich gross ist. Ändert nichts; verbunden wird
         über den Scan, wenn der Ordner zum Katalog gehört oder hinzugefügt wird."""
         pfad = os.path.abspath(os.path.expanduser(pfad))
         if not os.path.isdir(pfad):

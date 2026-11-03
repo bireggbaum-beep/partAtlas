@@ -305,7 +305,7 @@ if __name__ == "__main__":
 
         baum = c.get("/api/ordner").json()
         check("Ordnerbaum über die API", baum[0]["name"] == "3D-Druck" and baum[0]["kinder"][0]["name"] == "Technik")
-        check("Oberfläche wird ausgeliefert", "partAtlas" in c.get("/").text)
+        check("Oberfläche wird ausgeliefert", "PartAtlas" in c.get("/").text)
 
     # -- STEP: Netz und Vorschau kommen von FreeCAD (hier die Attrappe), die 3D-Ansicht liest das Netz
     import sys
@@ -493,7 +493,7 @@ if __name__ == "__main__":
           log_sammler.hat("Umgebung: Python") and log_sammler.hat("Katalog:", "Modelle", "Wurzelordner") and log_sammler.hat("Einstellungen: Beim Start einlesen")
           and log_sammler.hat("Ausstehend im Bestand"))
     check("Protokoll: Beginn und Ende des Servers stehen drin (bereit meldet __main__, sobald der Port offen ist)",
-          log_sammler.hat("Katalog geöffnet") and log_sammler.hat("partAtlas beendet"))
+          log_sammler.hat("Katalog geöffnet") and log_sammler.hat("PartAtlas beendet"))
     with TestClient(erstelle_app(os.path.join(tmp, "bestand_protokoll"), prozesse=2)) as c:
         c.post("/api/clientfehler", json={"meldung": "x is not a function", "ort": "app.js:12:3"})
         check("Ein Fehler in der Oberfläche (JavaScript) kommt ins Protokoll, mit Ort",

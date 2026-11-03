@@ -168,7 +168,7 @@ class _Bahn:
     @staticmethod
     def _pool_beenden(pool, hart=False):
         """Hart: die Arbeiter werden beendet, statt dass man auf sie wartet. Ein hängender Arbeiter lässt sich nicht bitten aufzuhören;
-        er lebte sonst weiter, hielte die CPU, und beim Beenden von partAtlas wartete der Prozess auf ihn."""
+        er lebte sonst weiter, hielte die CPU, und beim Beenden von PartAtlas wartete der Prozess auf ihn."""
         if hart:
             for p in list((getattr(pool, "_processes", None) or {}).values()):
                 try:
@@ -533,7 +533,7 @@ class Worker(_Bahn):
             self._setze(cad_ohne_freecad=len(offen), cad_programm=prog.get("pfad") or "")
             return
         log.info("CAD: FreeCAD-Aufruf %s, %d Dateien offen", befehl, len(offen))
-        # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut partAtlas nur nach
+        # FCStd lädt FreeCAD wie beim Doppelklick, und ein Dokument kann Programmcode mitbringen: das tut PartAtlas nur nach
         # ausdrücklicher Zusage des Anwenders. Solange er nicht geantwortet hat, fragt die Oberfläche (`fcstd_frage`).
         if self.b.einstellungen().get("fcstd_freecad") != "ja":
             offen = [x for x in offen if x[1].get("format") != "fcstd"]
@@ -590,7 +590,7 @@ class Worker(_Bahn):
                 n = e.name.lower()
                 if not n.endswith((".png", ".jpg", ".jpeg", ".webp")):
                     continue
-                # Kleine PNGs (die Vorschauen von partAtlas selbst: 320 px, ca. 11 KB) braucht es nicht zu verkleinern; `Bestand.thumb` liefert
+                # Kleine PNGs (die Vorschauen von PartAtlas selbst: 320 px, ca. 11 KB) braucht es nicht zu verkleinern; `Bestand.thumb` liefert
                 # sie direkt aus. Sie hier zu öffnen kostete bei 9 000 Bildern bei JEDEM Lauf ca. 3 s, auch ohne etwas Neues (gemessen am 6.10.2026,
                 # Rückmeldung des Testers: „beim Aktualisieren unveränderter Ordner immer 3 Sekunden“); nur die Grösse abzufragen kostet 0,03 s.
                 if n.endswith(".png") and e.stat().st_size <= KLEIN_BYTES:

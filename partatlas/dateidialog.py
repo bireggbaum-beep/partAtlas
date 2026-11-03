@@ -58,7 +58,7 @@ def _lauf(befehl):
 
 
 def abbrechen():
-    """Einen offenen Dialog schliessen (beim Beenden von partAtlas)."""
+    """Einen offenen Dialog schliessen (beim Beenden von PartAtlas)."""
     with _sperre:
         if _offen is not None and _offen.poll() is None:
             _offen.kill()

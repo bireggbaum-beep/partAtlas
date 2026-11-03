@@ -1,5 +1,5 @@
 """
-Schreibwege auf Dateien — die einzigen in partAtlas.
+Schreibwege auf Dateien — die einzigen in PartAtlas.
 
 Harte Regel aus flatgraph und pDMS: jede Datei über eine Arbeitsdatei
 daneben, `fsync`, `os.replace`; nichts wird an Ort und Stelle verändert.
@@ -11,7 +11,7 @@ import shutil
 
 
 class ZielBelegt(FileExistsError):
-    """Am Ziel liegt schon eine Datei; partAtlas überschreibt nichts."""
+    """Am Ziel liegt schon eine Datei; PartAtlas überschreibt nichts."""
 
 
 def _verzeichnis_sichern(pfad):
@@ -140,7 +140,7 @@ def freier_name(ziel):
 
 
 # Die Regeln von Windows gelten überall: so bleiben die Ordner zwischen Windows und Linux tragbar, und ein Name, den der Explorer
-# ablehnt, lehnt auch partAtlas ab — mit demselben Sinn im Satz.
+# ablehnt, lehnt auch PartAtlas ab — mit demselben Sinn im Satz.
 _VERBOTEN = set('\\/:*?"<>|')
 _RESERVIERT = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
@@ -155,7 +155,7 @@ def ordnername_pruefen(name, art="Ordnername"):
         raise ValueError(f'Ein {art} darf keines dieser Zeichen enthalten: \\ / : * ? " < > |')
     if name.startswith("."):
         raise ValueError(f"Ein Name mit einem Punkt vorn wäre {'ein versteckter Ordner' if art == 'Ordnername' else 'eine versteckte Datei'} "
-                         f"— partAtlas zeigt solche nicht.")
+                         f"— PartAtlas zeigt solche nicht.")
     if name.endswith("."):
         raise ValueError(f"Ein {art} darf nicht mit einem Punkt enden.")
     if name.split(".")[0].strip().upper() in _RESERVIERT:

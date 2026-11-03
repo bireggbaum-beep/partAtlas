@@ -24,7 +24,7 @@ import numpy as np
 
 FORMATE = {".3mf": "3mf", ".stl": "stl", ".obj": "obj", ".step": "step", ".stp": "step", ".fcstd": "fcstd"}
 
-# CAD-Formate, aus denen partAtlas kein Netz bekommt: keine Masse, keine 3D-Ansicht, kein berechnetes Vorschaubild.
+# CAD-Formate, aus denen PartAtlas kein Netz bekommt: keine Masse, keine 3D-Ansicht, kein berechnetes Vorschaubild.
 # Sie öffnen im CAD; ein Bild gibt es nur, wenn die Datei eins mitbringt.
 OHNE_NETZ = ("step", "fcstd")
 

@@ -4,7 +4,7 @@ eigene Backup-Programm des Anwenders (Sync, Cloud, NAS) ohnehin mitnimmt. Gegen 
 (sicherung.py) hilft gegen eigene Fehlgriffe und liegt auf derselben Platte.
 
 Was hinein kommt, steht in ZEILEN. Regel (KONZEPT §3.3a): was der Anwender selbst hinzufügt, lässt sich nicht neu erzeugen → eigene Zeile,
-Vorgabe an; was partAtlas erzeugt → Vorgabe aus oder ausgenommen. **Wer eine neue Art von Daten im Bestand ablegt, trägt sie hier ein**
+Vorgabe an; was PartAtlas erzeugt → Vorgabe aus oder ausgenommen. **Wer eine neue Art von Daten im Bestand ablegt, trägt sie hier ein**
 — sonst fehlt sie im Backup, ohne dass es jemand merkt. `unbekannt()` findet solche Ordner (test_backup), und ein Backup nimmt sie
 vorsichtshalber trotzdem mit (Zeile „sonstiges“), statt sie still zu übergehen.
 
@@ -31,7 +31,7 @@ log = logging.getLogger("partatlas")
 INHALT = "partatlas-backup.json"
 FORMAT = 1
 BEHALTEN = 2
-NAME = re.compile(r"^partAtlas-Backup-(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.zip$")
+NAME = re.compile(r"^PartAtlas-Backup-(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.zip$")
 
 # Reihenfolge = Reihenfolge im Reiter. `teile`: Pfade im Bestand; `dateien`: die Modelldateien in den Ordnern des Anwenders.
 ZEILEN = [
@@ -39,7 +39,7 @@ ZEILEN = [
      "hinweis": "Modelle, Tags, Drucke, Baugruppen, Sammlungen, Notizen — klein, immer dabei.",
      "teile": ["datenbank", "vault_text", "einstellungen.json"]},
     {"id": "dateien", "titel": "Modelldateien", "vorgabe": True,
-     "hinweis": "Die Dateien in deinen Ordnern, die im Katalog stehen — meist der grösste Teil. Andere Dateien in den Ordnern nicht.",
+     "hinweis": "Die Dateien in deinen Ordnern, die in PartAtlas stehen — meist der grösste Teil. Andere Dateien in den Ordnern nicht.",
      "teile": []},
     {"id": "bilder", "titel": "Eigene Bilder, Druckfotos und Kaufteile", "vorgabe": True,
      "hinweis": "Lassen sich nicht neu erzeugen.", "teile": ["vault/bilder", "vault/komponenten"]},
@@ -48,10 +48,10 @@ ZEILEN = [
     {"id": "gcode", "titel": "G-Code und Slicer-Projekte an Drucken", "vorgabe": True, "hinweis": "Lassen sich nicht neu erzeugen.",
      "teile": ["vault/gcode", "vault/quellen"]},
     {"id": "aufgehoben", "titel": "Aufgehobenes", "vorgabe": True,
-     "hinweis": "Bilder und Anhänge, die du entfernt hast, und Dateien aus dem Papierkorb früherer Fassungen — partAtlas wirft nichts weg.",
+     "hinweis": "Bilder und Anhänge, die du entfernt hast, und Dateien aus dem Papierkorb früherer Fassungen — PartAtlas wirft nichts weg.",
      "teile": ["vault_archive", "papierkorb"]},
     {"id": "vorschau", "titel": "Vorschaubilder", "vorgabe": False,
-     "hinweis": "partAtlas erzeugt sie nach dem Wiederherstellen neu.", "teile": ["vault/vorschau"]},
+     "hinweis": "PartAtlas erzeugt sie nach dem Wiederherstellen neu.", "teile": ["vault/vorschau"]},
 ]
 # Bewusst nicht im Backup — abgeleitet, vorübergehend oder schon enthalten. Mit Grund, damit niemand rätselt.
 AUSGENOMMEN = {
@@ -155,7 +155,7 @@ def vorhandene(ziel):
 
 
 def ziel_pruefen(bestand, katalog, ziel):
-    """Der Zielordner: vorhanden, beschreibbar, nicht im Bestand und nicht in einem Ordner mit Modellen (dort läse partAtlas das ZIP
+    """Der Zielordner: vorhanden, beschreibbar, nicht im Bestand und nicht in einem Ordner mit Modellen (dort läse PartAtlas das ZIP
     beim Einlesen als Archiv mit). Gibt den bereinigten Pfad zurück oder wirft ValueError mit einem Satz für den Anwender."""
     if not ziel:
         raise ValueError("Wähle zuerst einen Zielordner für das Backup.")
@@ -167,12 +167,12 @@ def ziel_pruefen(bestand, katalog, ziel):
     def innen(a, b):
         return a == b or a.startswith(b.rstrip(os.sep) + os.sep)
     if innen(real, os.path.realpath(bestand.wurzel)):
-        raise ValueError("Das Backup gehört nicht in den Bestand von partAtlas — wähle einen Ordner ausserhalb.")
+        raise ValueError("Das Backup gehört nicht in den Bestand von PartAtlas — wähle einen Ordner ausserhalb.")
     for w in katalog.db.list_nodes(WURZEL, readonly=True).values():
         if w.get("pfad") and innen(real, os.path.realpath(w["pfad"])):
             raise ValueError(f"Das ist ein Ordner mit Modellen ({w.get('name') or w['pfad']}). Wähle einen Ordner ausserhalb.")
     if not os.access(ziel, os.W_OK):
-        raise ValueError("In diesen Ordner darf partAtlas nicht schreiben.")
+        raise ValueError("In diesen Ordner darf PartAtlas nicht schreiben.")
     return ziel
 
 
@@ -281,7 +281,7 @@ class Backup:
             _weg(arbeit)
             log.info("Backup abgebrochen")
             self.status = {"laeuft": False, "ergebnis": "abgebrochen"}
-        except Exception as ex:          # Platte voll, Ordner weg …: melden, Arbeitsdatei weg, partAtlas läuft weiter
+        except Exception as ex:          # Platte voll, Ordner weg …: melden, Arbeitsdatei weg, PartAtlas läuft weiter
             _weg(arbeit)
             log.exception("Backup gescheitert")
             self.status = {"laeuft": False, "ergebnis": "fehler", "fehler": f"{type(ex).__name__}: {ex}"}
@@ -316,7 +316,7 @@ def _freier_name(ziel, tag):
     belegt = [int(m.group(2) or 1) for n in os.listdir(ziel) for m in [NAME.match(n.lstrip(".").removesuffix(".arbeit"))]
               if m and m.group(1) == tag]
     n = max(belegt, default=0) + 1
-    return f"partAtlas-Backup-{tag}.zip" if n == 1 else f"partAtlas-Backup-{tag}-{n}.zip"
+    return f"PartAtlas-Backup-{tag}.zip" if n == 1 else f"PartAtlas-Backup-{tag}-{n}.zip"
 
 
 def _aufraeumen(ziel, behalten, neu):

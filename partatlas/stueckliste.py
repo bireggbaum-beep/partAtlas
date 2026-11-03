@@ -213,7 +213,7 @@ class Stueckliste:
         puffer = io.BytesIO()
         doc = SimpleDocTemplate(puffer, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm,
                                 topMargin=15 * mm, bottomMargin=18 * mm, title=f"Stückliste {d['name']}",
-                                author="partAtlas", subject="Stückliste")
+                                author="PartAtlas", subject="Stückliste")
         breite = A4[0] - 30 * mm
         inhalt = []
 
@@ -333,6 +333,6 @@ class Stueckliste:
             t.setStyle(TableStyle(tabellenstil))
             inhalt += [KeepTogether([Paragraph(f"{next(nr)}  Filament", S["h"]), t])]
 
-        fuss = f"partAtlas · Stückliste {d['name']} · Stand {heute}"
+        fuss = f"PartAtlas · Stückliste {d['name']} · Stand {heute}"
         doc.build(inhalt, canvasmaker=lambda *a, **k: _Seiten(*a, fuss=fuss, **k))
         return puffer.getvalue()

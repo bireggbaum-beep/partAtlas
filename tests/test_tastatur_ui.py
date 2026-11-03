@@ -57,7 +57,7 @@ if __name__ == "__main__":
             check("Enter im leeren Suchfeld wählt das erste Modell, → das nächste", erstes != zweites and zweites is not None)
             pg.keyboard.press("Delete")
             pg.wait_for_selector("#dialog[open]")
-            check("Entf beim einzelnen angeklickten Modell fragt nach; der Fokus steht auf „Aus dem Katalog entfernen“",
+            check("Entf beim einzelnen angeklickten Modell fragt nach; der Fokus steht auf „Aus PartAtlas entfernen“",
                   pg.evaluate("document.activeElement?.value") == "ja")
             pg.keyboard.press("Enter")
             pg.wait_for_function(f"!document.querySelector('#dialog').open && ![...document.querySelectorAll('.karte')].some((k) => k.innerText.includes({zweites!r} + '.stl'))")

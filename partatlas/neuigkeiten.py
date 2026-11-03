@@ -8,32 +8,35 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.11", ["Aus „Katalog“ wird „PartAtlas“: Meldungen und Fenster sagen jetzt etwa „Aus PartAtlas entfernen“ oder „Zurück in PartAtlas“. "
+                "Der Knopf oben links heisst „Bibliothek“, wie die Überschrift daneben.",
+                "Behoben: Schlug „Rückgängig“ nach dem Verschieben fehl, stand trotzdem „Rückgängig gemacht“ da. Jetzt sagt die Meldung, warum es nicht ging."]),
     ("1.0.10", ["Auf jeder Kachel steht jetzt, wann die Datei zuletzt geändert wurde — mit Uhrzeit, wie im Explorer. So erkennst du bei mehreren Ständen "
                 "eines Teils (etwa FreeCAD-Dateien) sofort den neuesten. Sortieren nach „Zuletzt geändert“ stellt ihn nach vorn; in der Liste gibt es die "
                 "Spalte „Geändert“. Abschalten lässt sich die Zeile unter Einstellungen › Ansicht.",
                 "Die Kachel zeigt den Stand vom letzten Einlesen; der Inspektor (Reiter „Datei“) liest das Datum direkt von der Platte."]),
-    ("1.0.9", ["Nach dem Einlesen sagt die Meldung unten, wie viele G-Codes aus deinen Ordnern zugeordnet wurden — und ob neue dazukamen, die partAtlas keinem Modell "
+    ("1.0.9", ["Nach dem Einlesen sagt die Meldung unten, wie viele G-Codes aus deinen Ordnern zugeordnet wurden — und ob neue dazukamen, die PartAtlas keinem Modell "
                "zuordnen konnte. Ein Knopf in der Meldung führt dann direkt zu Bereinigen › „G-Code ohne Modell“.",
                "Versehentlich gelöscht? Die Meldung nach dem Löschen hat jetzt „Rückgängig“ und einen Knopf zum Papierkorb. Neu einlesen holt ein gelöschtes Modell "
                "absichtlich nicht zurück — dafür ist der Papierkorb da (Bereinigen › Papierkorb › Wiederherstellen).",
-               "Startest du partAtlas ein zweites Mal, während es schon läuft, öffnet sich der Browser beim laufenden — auch auf einem anderen Port. "
+               "Startest du PartAtlas ein zweites Mal, während es schon läuft, öffnet sich der Browser beim laufenden — auch auf einem anderen Port. "
                "Vorher blieb dann eine leere Seite mit „Bestand belegt“ stehen.",
-               "Vor jedem Update sichert partAtlas deinen Katalog eigens („Vor dem Update von 1.0.8 auf 1.0.9“, Einstellungen › Backup & Wiederherstellung). "
+               "Vor jedem Update sichert PartAtlas deinen Katalog eigens („Vor dem Update von 1.0.8 auf 1.0.9“, Einstellungen › Backup & Wiederherstellung). "
                "Die letzten drei dieser Sicherungen bleiben immer — falls du einmal zur Fassung davor zurück musst.",
                "Mehr mit der Tastatur: „?“ zeigt alle Tastenkürzel. Im Suchfeld führen ↓ oder Enter zu den Treffern, ↑ in der ersten Reihe wieder zurück. "
                "Entf entfernt auch ein einzelnes angeklicktes Modell (Enter bestätigt), danach ist gleich das nächste gewählt — und Strg+Z holt es zurück.",
-               "Tags im Inspektor: Beim Tippen schlägt partAtlas deine vorhandenen Tags vor, mit Anzahl. ↑ ↓ wählt, Enter übernimmt — und das Feld bleibt offen "
+               "Tags im Inspektor: Beim Tippen schlägt PartAtlas deine vorhandenen Tags vor, mit Anzahl. ↑ ↓ wählt, Enter übernimmt — und das Feld bleibt offen "
                "für den nächsten. So entsteht nicht aus Versehen „halterung“ neben „halter“; einen neuen Tag legst du in der letzten Zeile an.",
                "Verschieben rückgängig: Nach dem Verschieben von Modellen in einen anderen Ordner nennt die Meldung das Ziel und hat „Rückgängig“ — Strg+Z geht ebenso. "
                "Ziehst du mehrere gewählte Modelle, zeigt das Ziehbild, wie viele mitgehen.",
                "Alle auswählen mit einem Haken: oben links über den Kacheln (in der Liste wie bisher im Spaltenkopf), je Gruppe und oben in Listen zum Ankreuzen "
                "wie „Archive entpacken“. Ist nur ein Teil gewählt, zeigt der Haken einen Strich."]),
-    ("1.0.8", ["G-Code im Ordner: Legst du einen G-Code aus dem Slicer in einen deiner Ordner, liest partAtlas ihn beim Einlesen mit. Das Modell erkennt es am Inhalt der Datei "
+    ("1.0.8", ["G-Code im Ordner: Legst du einen G-Code aus dem Slicer in einen deiner Ordner, liest PartAtlas ihn beim Einlesen mit. Das Modell erkennt es am Inhalt der Datei "
                "und hängt den G-Code daran; die Datei im Ordner bleibt liegen. Er erscheint als Druck „Noch nicht gedruckt“ — das Modell gilt erst als gedruckt, wenn du das sagst. "
                "Ist das Modell nicht eindeutig (etwa zwei mit demselben Namen) oder nicht vorhanden, steht der G-Code unter Bereinigen › „G-Code ohne Modell“ — "
                "dort ordnest du ihn mit einem Klick zu oder blendest ihn aus.",
                "Neben der Fassung oben links erscheint „↑ 1.0.9“, wenn auf main eine neuere Fassung liegt. Ein Klick zeigt, was darin neu ist. "
-               "(Das klappt, wenn partAtlas aus einem Git-Ordner läuft.)",
+               "(Das klappt, wenn PartAtlas aus einem Git-Ordner läuft.)",
                "Behoben: Die Tag-Zahlen in der Seitenleiste zählten Modelle im Papierkorb mit (#bar zeigte 1412 statt 1409)."]),
     ("1.0.7", ["Behoben: 1.0.6 liess sich nicht öffnen, wenn Modelle im Papierkorb lagen. Deine Daten waren davon nicht betroffen; es ging nichts verloren."]),
     ("1.0.6", ["Schneller bei vielen Modellen: Ein Klick auf Ordner, Tag oder Format holt nur noch die Liste und nicht jedes Mal die ganze Seitenleiste neu. "
@@ -58,7 +61,7 @@ NEUES = [
                "G-Code aus Cura und darauf aufbauenden Slicern: Die Druckzeit wird jetzt auch dort gelesen."]),
     ("1.0.1", ["FreeCAD-Dateien (FCStd) werden nicht mehr im Slicer angeboten — dort lassen sie sich nicht öffnen. Das galt vorher für einen Slicer, "
                "den du selbst unter Einstellungen › Programme gewählt hast; sie gehen nur noch ins CAD."]),
-    ("1.0.0", ["Handbuch in partAtlas: Knopf „?“ links unten oder F1 öffnet es — neu geschrieben, mit Bildern der Oberfläche und Kapiteln zu "
+    ("1.0.0", ["Handbuch in PartAtlas: Knopf „?“ links unten oder F1 öffnet es — neu geschrieben, mit Bildern der Oberfläche und Kapiteln zu "
                "Ordnern und Tastatur.",
                "Ordner wie im Explorer: Rechtsklick auf einen Ordner › Neuer Ordner, Umbenennen, Verschieben nach … — oder einen Ordner auf einen "
                "anderen ziehen. Alles darin geht mit, Tags und Drucke bleiben. Der Baum zeigt jetzt alle Unterordner, auch leere (grau).",
@@ -68,8 +71,8 @@ NEUES = [
                "(Archiv, Papierkorb). Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.",
                "Einstellungen › Backup & Wiederherstellung zeigt, wo dein Katalog liegt (Tags, Drucke, Baugruppen, Notizen …) — nimm diesen Ordner "
                "in dein eigenes Backup auf.",
-               "Geht etwas schief (Platte voll, Datei in einem anderen Programm offen), sagt partAtlas es in einem Satz statt „Fehler 500“.",
-               "Windows: start.bat zum Doppelklicken richtet partAtlas ein und startet es (siehe README).",
+               "Geht etwas schief (Platte voll, Datei in einem anderen Programm offen), sagt PartAtlas es in einem Satz statt „Fehler 500“.",
+               "Windows: start.bat zum Doppelklicken richtet PartAtlas ein und startet es (siehe README).",
                "Ausgeblendet: „Farbe der Vorschaubilder“ unter Einstellungen › Ansicht — sie wirkte noch nicht und kommt, wenn sie es tut."]),
     ("0.95.7", ["Kaufteile: Ein selbst angelegtes Kaufteil (etwa mit Tippfehler) lässt sich in der Auswahl „Kaufteile hinzufügen“ mit „löschen“ entfernen — "
                 "sofern es in keiner Baugruppe steckt. Die mitgelieferten Normteile bleiben."]),
@@ -78,7 +81,7 @@ NEUES = [
     ("0.95.4", ["Anhänge, die der Browser nicht zeigt (DXF, CorelDRAW …), starten beim Anklicken im Programm des Rechners — ohne Datei im Downloadordner.",
                 "Mehrfaches Öffnen legt keine neuen Kopien mehr an, solange die Datei unverändert ist."]),
     ("0.95.3", ["Bereinigen: Der Wechsel zwischen Duplikate, Papierkorb, Datei fehlt … ist deutlich schneller."]),
-    ("0.95.2", ["Ordner hinzufügen (＋): Erscheint der Ordnerdialog des Rechners nicht, bietet ein Hinweis nach drei Sekunden den Ordnerbaum von partAtlas an."]),
+    ("0.95.2", ["Ordner hinzufügen (＋): Erscheint der Ordnerdialog des Rechners nicht, bietet ein Hinweis nach drei Sekunden den Ordnerbaum von PartAtlas an."]),
     ("0.95.1", ["Windows: Der Ordnerdialog kommt nach vorn, und es ist immer nur einer offen.",
                 "Beenden mit Strg+C endet ohne lange Fehlermeldung."]),
 ]

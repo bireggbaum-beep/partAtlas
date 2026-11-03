@@ -686,6 +686,8 @@ async def oberflaeche(port):
         check("Zurück im Katalog: die Kacheln sind wieder da", await pg.locator("#raster").is_visible())
         check("Keine Fehler in der Browser-Konsole", fehler == [])
         if fehler:
+            print("   Konsole:", *fehler[:10], sep="\n     ")      # sonst weiss man nach einem langen Lauf nicht, was es war
+        if fehler:
             print("   ", fehler)
         await b.close()
 

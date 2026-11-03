@@ -1,10 +1,10 @@
 """
-Der Bestand von partAtlas: Ort, Aufteilung, flatgraph-Instanz.
+Der Bestand von PartAtlas: Ort, Aufteilung, flatgraph-Instanz.
 
     <bestand>/datenbank/   flatgraph                        gesichert
     <bestand>/vault/       Anhänge der Knoten                gesichert
       vorschau/<hash>.extrahiert.png  Bild aus der Datei (3MF)  ─┐ gehören zur Datei
-      vorschau/<hash>.berechnet.png   von partAtlas gerendert   ─┘ (PART_GEOMETRY)
+      vorschau/<hash>.berechnet.png   von PartAtlas gerendert   ─┘ (PART_GEOMETRY)
       bilder/<Name>__<k>.png          Bilder des Anwenders, Liste am Modell
     <bestand>/vault_text/  lange Texte (ab LANGTEXT_AB Zeichen)  gesichert
     <bestand>/netz/        Netze aus FreeCAD für STEP (<hash>.stl)   abgeleitet, nicht gesichert
@@ -102,12 +102,12 @@ class Bestand:
         return os.path.join(self.wurzel, *teile)
 
     def entfernen(self, pfad):
-        """Der einzige Weg, auf dem partAtlas eine Datei löscht: nur innerhalb des eigenen Bestands (Vorschauen, Netze, Arbeitsdateien,
+        """Der einzige Weg, auf dem PartAtlas eine Datei löscht: nur innerhalb des eigenen Bestands (Vorschauen, Netze, Arbeitsdateien,
         überzählige Kopien). Ein Pfad ausserhalb — etwa in einem Ordner des Anwenders — wird verweigert, nicht still übergangen:
         das wäre ein Fehler im Aufrufer, und der soll laut auffallen (KONZEPT §3.3)."""
         echt, bestand = os.path.realpath(pfad), os.path.realpath(self.wurzel)
         if not echt.startswith(bestand + os.sep):
-            raise PermissionError(f"partAtlas löscht nichts ausserhalb seines Bestands: {pfad}")
+            raise PermissionError(f"PartAtlas löscht nichts ausserhalb seines Bestands: {pfad}")
         try:
             os.unlink(echt)
             return True
@@ -127,7 +127,7 @@ class Bestand:
             from PIL import Image, ImageOps
             roh = Image.open(quelle)                    # liest zunächst nur den Kopf
             if quelle.endswith(".png") and max(roh.size) <= THUMB_PX and st.st_size <= KLEIN_BYTES:
-                # Die Vorschauen von partAtlas selbst sind schon 320 px und ca. 11 KB: eine kleinere Fassung brächte nichts, kostete aber
+                # Die Vorschauen von PartAtlas selbst sind schon 320 px und ca. 11 KB: eine kleinere Fassung brächte nichts, kostete aber
                 # beim ersten Abruf ca. 17 ms je Bild (auf einem älteren Rechner das Drei- bis Vierfache — 60 Kacheln = Sekunden bis zum Bild).
                 return quelle
             bild = ImageOps.exif_transpose(roh).convert("RGBA")

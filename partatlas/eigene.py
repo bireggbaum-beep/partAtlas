@@ -72,7 +72,7 @@ class Eigene:
         self.db.update_node(EIGEN, eid, self._felder(werte))
 
     def bild_setzen(self, eid, daten):
-        """Das Bild kommt wie die eigenen Bilder der Modelle in den Vault; ein ersetztes bleibt dort liegen (partAtlas löscht nichts)."""
+        """Das Bild kommt wie die eigenen Bilder der Modelle in den Vault; ein ersetztes bleibt dort liegen (PartAtlas löscht nichts)."""
         n = self._knoten(eid)
         k, rel = self.k.bild_ablegen(self.k.png_aus(daten), n["name"])
         self.db.update_node(EIGEN, eid, {"bild": {"k": k, "datei": rel}, "bild_aus_datei": False})

@@ -1,6 +1,6 @@
-"""„Neue Fassung verfügbar“ für den Testzeitraum (Anwender 30.10.2026): Der Tester holt partAtlas mit `git pull` von `main`, es gibt keine Releases.
+"""„Neue Fassung verfügbar“ für den Testzeitraum (Anwender 30.10.2026): Der Tester holt PartAtlas mit `git pull` von `main`, es gibt keine Releases.
 
-Läuft partAtlas aus einem Git-Ordner, holt es im Hintergrund `origin/main` (`git fetch` — verändert weder Arbeitsordner noch Zweig) und liest dort
+Läuft PartAtlas aus einem Git-Ordner, holt es im Hintergrund `origin/main` (`git fetch` — verändert weder Arbeitsordner noch Zweig) und liest dort
 `version.py` und `neuigkeiten.py`. Ist die Fassung dort höher, zeigt die Seite ein Zeichen neben der Fassung; ein Klick nennt, was in der neuen Fassung
 steht. Geholt wird vom Git des Testers (seine Zugangsdaten, auch bei einem privaten Repo), kein Netzwerkcode von uns. Ohne Git-Ordner, ohne Netz oder
 bei jedem Fehler bleibt es still: das Zeichen fehlt, nichts sonst. Die Quelle lässt sich mit PARTATLAS_KANAL ändern (Vorgabe `origin/main`)."""

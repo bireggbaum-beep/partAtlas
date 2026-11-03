@@ -215,7 +215,7 @@ class GcodeOrdner:
             gesehen = dict(self.b.einstellungen().get(GESEHEN) or {})
             v = gesehen.get(schluessel)
             if v is None:
-                raise KatalogFehler("Diesen G-Code kennt partAtlas nicht.")
+                raise KatalogFehler("Diesen G-Code kennt PartAtlas nicht.")
             v = list(v) + [None] * (5 - len(v))
             if an and v[2] in OFFEN:
                 v[4], v[2] = v[2], "ignoriert"
