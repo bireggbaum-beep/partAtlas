@@ -4,6 +4,13 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Auf dem Branch, nicht auf `main`: 1.0.10 (3.11.2026)
+
+- **Änderungsdatum auf der Kachel (Wunsch des Testers: „zweimal in FreeCAD eine alte Version geöffnet“):** `geaendert` in den Kacheldaten (jüngste `mtime` der Orte, Stand des letzten
+  Einlesens); Kachelzeile „Geändert“ mit Datum und Uhrzeit wie im Explorer (`03.11.2026 14:32`), Vorgabe an, für bestehende Einstellungen einmal ergänzt (`kachelGeaendertDazu`);
+  Sortierung „Zuletzt geändert“, Spalte „GEÄNDERT“ in der Liste; im Inspektor (Datei) „Geändert“ direkt von der Platte (`mtime_jetzt`), also auch für eben Gespeichertes. Grenze: die
+  Kachel zeigt den Stand vom letzten Einlesen — nach dem Speichern in FreeCAD erst nach ⟳ aktuell. test_geaendert_ui 5/5 (3 Gegenproben fallen), test_api 94/94, test_ansicht_ui 3/3.
+
 ## Stand: 1.0.9 auf `main` (2.11.2026, für den Tester)
 
 Neu: G-Code-Bilanz nach dem Einlesen, Rückgängig und Papierkorb in der Meldung nach dem Löschen, zweiter Start zeigt den laufenden (`laeuft.json`), Sicherung vor einem Update

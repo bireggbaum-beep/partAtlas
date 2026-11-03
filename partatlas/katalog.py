@@ -490,6 +490,9 @@ class Katalog:
             "ordner": [f'{o["wurzel"]}/{o["pfad"].rsplit("/", 1)[0] if "/" in o["pfad"] else ""}' for o in orte],
             "tags": self.tags_von(mid) if not papierkorb else [],
             "angelegt": m.get("angelegt"), "warteschlange": m.get("warteschlange"),
+            # Wann die Datei zuletzt gespeichert wurde (Stand beim letzten Einlesen) — der Tester öffnete in FreeCAD zweimal einen alten
+            # Stand, weil alle Kacheln gleich aussahen (3.11.2026). Bei mehreren Orten der jüngste.
+            "geaendert": max((o.get("mtime") or 0 for o in orte), default=0) or None,
             # Kurzer Hash des eigenen Bilds: ändert sich mit dem Bild und macht
             # die Adresse im Browser-Cache eindeutig.
             # Kennung des Titelbilds (das erste der Liste) — ändert sich mit
@@ -722,6 +725,12 @@ class Katalog:
         wurzeln = self.wurzeln()
         orte = [{**o, "absolut": self.absoluter_pfad(o),
                  "wurzel_name": wurzeln.get(o["wurzel"], {}).get("name")} for o in d.get("orte", [])]
+        # Im Inspektor das Datum direkt von der Platte: eine eben in FreeCAD gespeicherte Datei zeigt es sofort, nicht erst nach dem Einlesen.
+        for o in orte:
+            try:
+                o["mtime_jetzt"] = os.stat(o["absolut"]).st_mtime if o["absolut"] else None
+            except OSError:
+                o["mtime_jetzt"] = None
         return {
             **kurz, "papierkorb": papierkorb, "orte": orte,
             "volumen_cm3": d.get("volumen_cm3"), "dreiecke": d.get("dreiecke"),

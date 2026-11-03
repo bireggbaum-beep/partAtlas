@@ -37,8 +37,12 @@ const zustand = {
   // Einstellungen › Ansicht: Dateiformat unten links auf dem Vorschaubild (je Browser gemerkt, wie Layout und Thema).
   formatEtikett: localStorageLesen("formatEtikett") === "1",
   kachelGroesse: ["klein", "mittel", "gross"].includes(localStorageLesen("kachelGroesse")) ? localStorageLesen("kachelGroesse") : "mittel",
-  kachelZeilen: (() => { try { const l = JSON.parse(localStorageLesen("kachelZeilen") || "null"); if (Array.isArray(l)) return l; } catch { /* Vorgabe */ }
-    return ["masse", "gewicht"]; })(),
+  kachelZeilen: (() => { try { const l = JSON.parse(localStorageLesen("kachelZeilen") || "null"); if (Array.isArray(l)) {
+    // 1.0.10: „Geändert“ einmal dazu, auch wer schon eigene Zeilen gewählt hat (Wunsch des Testers) — danach gilt wieder seine Wahl.
+    if (!l.includes("geaendert") && !localStorageLesen("kachelGeaendertDazu")) { l.push("geaendert"); localStorageSchreiben("kachelZeilen", JSON.stringify(l)); }
+    localStorageSchreiben("kachelGeaendertDazu", "1");
+    return l; } } catch { /* Vorgabe */ }
+    return ["masse", "gewicht", "geaendert"]; })(),
   sortierung: "name", absteigend: false, gruppierung: ["ordner", "format", "material", "status", "angelegt"].includes(localStorageLesen("gruppierung")) ? localStorageLesen("gruppierung") : "keine",
   gruppen: [], eingeklappt: new Set(), wurzelNamen: new Map(), gewaehlt: null, offen: new Set(JSON.parse(localStorageLesen("offen") || "[]")),
 };
@@ -264,6 +268,7 @@ const STATUS_RANG = { offen: 0, gedruckt: 1, fehlt: 2, unlesbar: 3 };
 const SORTIERUNGEN = {
   name: { wert: (m) => m.name || "", ab: false },
   neu: { wert: (m) => m.angelegt || "", ab: true },
+  geaendert: { wert: (m) => m.geaendert || 0, ab: true },
   gewicht: { wert: (m) => m.gewicht_g || 0, ab: true },
   groesse: { wert: (m) => Math.max(...(m.masse || [0])), ab: true },
   format: { wert: (m) => m.format || "", ab: false },
@@ -784,7 +789,10 @@ const KACHEL_ZEILEN = {
   gewicht: { titel: "Gewicht", zeile: (m) => (m.gewicht_g ? `${zahl(m.gewicht_g, 1)} g` : "") },
   material: { titel: "Material", zeile: (m) => esc((m.materialien || []).join(", ")) },
   tags: { titel: "Tags", zeile: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
+  geaendert: { titel: "Geändert", zeile: (m) => (m.geaendert ? `<span title="Zuletzt geändert (Datei)">${datumZeit(m.geaendert)}</span>` : "") },
 };
+// Datum und Uhrzeit wie im Explorer: 03.11.2026 14:32 (Sekunden seit 1970, wie die Platte sie liefert).
+const datumZeit = (s) => new Date(s * 1000).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(", ", " ");
 // Kachelgrösse (Einstellungen › Ansicht) nach den Fibonacci-Abständen: 144, 144 + 34, 233. Das Bild bleibt quadratisch.
 const KACHEL_BREITE = { klein: 144, mittel: 178, gross: 233 };
 const kachelBreite = () => KACHEL_BREITE[zustand.kachelGroesse];
@@ -879,6 +887,7 @@ const SPALTEN = {
   tags: { titel: "TAGS", sort: "", min: 64, w: 160, zelle: (m) => esc((m.tags || []).map((t) => "#" + t).join(" ")) },
   datei: { titel: "DATEI", sort: "datei", min: 56, w: 80, zelle: (m) => (m.groesse ? groesseText(m.groesse) : "") },
   neu: { titel: "EINGELESEN", sort: "neu", min: 72, w: 96, zelle: (m) => (m.angelegt ? new Date(m.angelegt).toLocaleDateString("de-DE") : "") },
+  geaendert: { titel: "GEÄNDERT", sort: "geaendert", min: 96, w: 128, zelle: (m) => (m.geaendert ? datumZeit(m.geaendert) : "") },
   ordner: { titel: "ORDNER", sort: "ordner", min: 72, w: 180, zelle: (m) => esc(ordnerText(m)) },
   drucke: { titel: "DRUCKE", sort: "drucke", min: 48, w: 64, zelle: (m) => (m.drucke_n ? String(m.drucke_n) : "") },
   gcode: { titel: "G-CODE", sort: "gcode", min: 56, w: 72, zelle: (m) => (m.gcode ? `<span title="${m.gcode === "druck" ? "G-Code bei den Drucken" : "geslictes 3MF"}">G-Code</span>` : "") },
@@ -1499,6 +1508,7 @@ const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><
     ["Dreiecke", m.dreiecke != null ? esc(zahl(m.dreiecke, 0)) : "–"],
     ["Ersteller", esc(m.designer || "–")],
     ["Dateigrösse", m.groesse ? esc(zahl(m.groesse / 1024, 0)) + " KB" : "–"],
+    ["Geändert", (() => { const t = Math.max(0, ...(m.orte || []).map((o) => o.mtime_jetzt || o.mtime || 0)); return t ? esc(datumZeit(t)) : "–"; })()],
     ["Eingelesen", m.eingelesen ? new Date(m.eingelesen).toLocaleDateString("de-DE") : "–"],
   ];
   // Je Ort 📂 zum Ordner: bei gleicher Datei an mehreren Orten der Weg, eine Kopie im Dateimanager zu löschen.
