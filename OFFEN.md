@@ -4,7 +4,7 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Auf dem Branch, nicht auf `main`: 1.0.10 (3.11.2026)
+## Stand: 1.0.10 auf `main` (3.11.2026) — kleine Fassung, auf Ansage des Anwenders ohne test_ui und ohne Hochzieh-Versuch; Rückweg `fassung-1.0.9`
 
 - **Änderungsdatum auf der Kachel (Wunsch des Testers: „zweimal in FreeCAD eine alte Version geöffnet“):** `geaendert` in den Kacheldaten (jüngste `mtime` der Orte, Stand des letzten
   Einlesens); Kachelzeile „Geändert“ mit Datum und Uhrzeit wie im Explorer (`03.11.2026 14:32`), Vorgabe an, für bestehende Einstellungen einmal ergänzt (`kachelGeaendertDazu`);
