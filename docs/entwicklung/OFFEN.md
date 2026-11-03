@@ -4,6 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.12 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.11`
+
+Papierkorb und Archiv in der Leiste, Ziehen und Ablegen (Paket 1 und 2), Meldung hält an, zehn Fehler aus dem Audit. „Neu in dieser Fassung“ auf Wunsch des Anwenders
+ausführlich: eine Zeile je Änderung (18 Zeilen), das Fenster rollt. Vor dem Push: alle Suiten ausser test_ui grün (nach dem Audit), test_neuigkeiten 9/9, test_ui einmal
+komplett 70/70. Handbuch nicht nachgezogen (zeigt noch „Besen › Papierkorb“). Der Anwender testet selbst.
+
 ## Audit 4.11.2026: Sicherheit und Fehler (Anwender: „Bug- und Cybersecurity-Audit“)
 
 **Sicherheit:** 21 aktive Proben gegen einen laufenden Server (Skript im Scratchpad `audit/proben.py`), alle ohne Befund: fremde Herkunft (Sec-Fetch-Site, Origin) → 403;
