@@ -4,6 +4,14 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Meldung unten: hält an, solange man sie benutzt (4.11.2026, auf dem Branch)
+
+Anwender: „robust und Premium quality“. Die Zeit der Meldung (`toast`) hält an, solange die Maus darüber steht, ein Knopf darin den Fokus hat oder das Fenster im
+Hintergrund liegt (`visibilitychange`); danach Restzeit, mindestens 2 s (`NACH_PAUSE_MS`). Esc schliesst sie, wenn sie den Fokus hat; `role="status"`, `aria-live`.
+Die Gründe „Maus“ und „Fokus“ werden bei jeder neuen Meldung aus dem wirklichen Zustand abgeleitet — verschwindet eine Meldung unter der Maus, kommt nicht in jedem Browser
+ein mouseleave (Chromium schickt es, Firefox ungeprüft). test_meldung_ui 9/9 (4 Gegenproben fallen), Suiten mit Meldungen grün. Konzeptseite Ziehen und Ablegen (Mock) beim
+Anwender, Entscheidungen offen (Papierkorb/Archiv in die Leiste, Zahl am Papierkorb, Rückfrage ab 50?).
+
 ## Ziehen und Ablegen: Fundament (4.11.2026, auf dem Branch)
 
 Anwender: erst die „No-Brainer“ (Papierkorb, aus dem Papierkorb zurück, Archiv, Tag, Favoriten, „＋ Neue Sammlung“), vorher das Fundament. **Paket 1 gebaut:**

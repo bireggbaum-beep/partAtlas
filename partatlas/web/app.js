@@ -111,19 +111,64 @@ async function api(pfad, optionen = {}) {
 }
 
 // `aktionen`: [[Beschriftung, Aufruf]] — Knöpfe in der Meldung („Zeigen“). `dauer` in ms.
+// Eine Meldung, die von selbst verschwindet — aber nie, während man sie gerade benutzt: die Zeit hält an, solange die Maus darüber steht, ein Knopf
+// darin den Tastaturfokus hat oder das Fenster im Hintergrund liegt (man ist kurz im Slicer). Danach zählt sie die Restzeit weiter, mindestens
+// NACH_PAUSE_MS — wer gerade zum „Rückgängig“ fährt und kurz zögert, verliert es nicht unter dem Zeiger. Esc schliesst sie, wenn sie den Fokus hat.
+const NACH_PAUSE_MS = 2000;
+const meldung = { rest: 0, start: 0, zeit: null, pausen: new Set() };
+function meldungWeg() {
+  clearTimeout(meldung.zeit);
+  meldung.zeit = null;
+  $("#toast").hidden = true;
+  // Eine versteckte Meldung bekommt kein mouseleave mehr — sonst hielte der alte Grund die nächste Meldung für immer fest.
+  meldung.pausen.delete("maus");
+  meldung.pausen.delete("fokus");
+}
+function meldungZaehlen() {
+  clearTimeout(meldung.zeit);
+  meldung.zeit = null;
+  if (meldung.pausen.size || $("#toast").hidden) return;
+  meldung.start = Date.now();
+  meldung.zeit = setTimeout(meldungWeg, meldung.rest);
+}
+function meldungPause(grund, an) {
+  if (an) {
+    if (meldung.zeit) { clearTimeout(meldung.zeit); meldung.zeit = null; meldung.rest -= Date.now() - meldung.start; }
+    meldung.pausen.add(grund);
+  } else if (meldung.pausen.delete(grund) && !meldung.pausen.size) {
+    meldung.rest = Math.max(meldung.rest, NACH_PAUSE_MS);
+    meldungZaehlen();
+  }
+}
 function toast(text, { aktionen = [], dauer = 3500 } = {}) {
   const t = $("#toast");
   t.textContent = text;
   for (const [was, aufruf] of aktionen) {
     const k = document.createElement("button");
+    k.type = "button";
     k.textContent = was;
-    k.onclick = () => { t.hidden = true; aufruf(); };
+    k.onclick = () => { meldungWeg(); aufruf(); };
     t.append(k);
   }
   t.hidden = false;
-  clearTimeout(toast.zeit);
-  toast.zeit = setTimeout(() => (t.hidden = true), dauer);
+  // Maus und Fokus aus dem, was jetzt wirklich ist: steht die Maus schon darüber, kommt kein neues mouseenter. Die Zeit beginnt neu.
+  clearTimeout(meldung.zeit);
+  meldung.zeit = null;
+  t.matches(":hover") ? meldung.pausen.add("maus") : meldung.pausen.delete("maus");
+  t.contains(document.activeElement) ? meldung.pausen.add("fokus") : meldung.pausen.delete("fokus");
+  document.hidden ? meldung.pausen.add("versteckt") : meldung.pausen.delete("versteckt");
+  meldung.rest = dauer;
+  meldungZaehlen();
 }
+(() => {
+  const t = $("#toast");
+  t.addEventListener("mouseenter", () => meldungPause("maus", true));
+  t.addEventListener("mouseleave", () => meldungPause("maus", false));
+  t.addEventListener("focusin", () => meldungPause("fokus", true));
+  t.addEventListener("focusout", (e) => { if (!t.contains(e.relatedTarget)) meldungPause("fokus", false); });
+  t.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); meldungWeg(); } });
+  document.addEventListener("visibilitychange", () => meldungPause("versteckt", document.hidden));
+})();
 
 const zahl = (x, stellen = 1) => x == null ? "–" : Number(x).toLocaleString("de-DE", { maximumFractionDigits: stellen });
 const masse = (m) => m ? m.map((v) => zahl(v)).join(" × ") + " mm" : "";
