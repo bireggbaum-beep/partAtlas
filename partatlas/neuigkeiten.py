@@ -8,6 +8,10 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.10", ["Auf jeder Kachel steht jetzt, wann die Datei zuletzt geändert wurde — mit Uhrzeit, wie im Explorer. So erkennst du bei mehreren Ständen "
+                "eines Teils (etwa FreeCAD-Dateien) sofort den neuesten. Sortieren nach „Zuletzt geändert“ stellt ihn nach vorn; in der Liste gibt es die "
+                "Spalte „Geändert“. Abschalten lässt sich die Zeile unter Einstellungen › Ansicht.",
+                "Die Kachel zeigt den Stand vom letzten Einlesen; der Inspektor (Reiter „Datei“) liest das Datum direkt von der Platte."]),
     ("1.0.9", ["Nach dem Einlesen sagt die Meldung unten, wie viele G-Codes aus deinen Ordnern zugeordnet wurden — und ob neue dazukamen, die partAtlas keinem Modell "
                "zuordnen konnte. Ein Knopf in der Meldung führt dann direkt zu Bereinigen › „G-Code ohne Modell“.",
                "Versehentlich gelöscht? Die Meldung nach dem Löschen hat jetzt „Rückgängig“ und einen Knopf zum Papierkorb. Neu einlesen holt ein gelöschtes Modell "
