@@ -4,6 +4,17 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.16 auf dem Branch (4.11.2026): „Mit dem System öffnen“ meldet Fehler; „nicht da“ mit Pfad (Rückmeldung des Testers)
+
+Tester: 3MF im System auf FreeCAD gestellt → „Mit dem System öffnen“ startet FreeCAD (richtig, sein Rechner entscheidet). **.obj:** mit ASN 2.0.0.5
+oder FreeCAD als Standard passiert nichts, nur „Wird geöffnet …“ oder „Die Datei ist nicht da“; direkt in FreeCAD/Slicer gehen dieselben .obj.
+Ursache unbekannt — **Vermutung:** xdg-mime hält .obj für `application/x-tgif` (tgif-Grafik), seine Zuordnung gilt `model/obj`. Bei uns war der
+Mangel: `mit_system` startete xdg-open blind (`Popen`, Ausgabe weg) — jeder Fehler still. Jetzt über `oeffnen` (Ausgabe in `arbeit/programmstart.log`,
+1,2 s warten, Code 2/3/4 in Worten, dazu `xdg-mime query filetype`). „Die Datei ist nicht da“ nennt den gesuchten Pfad (`modell_oeffnen`). Die
+übrigen Aufrufer (Anhang, Zielordner, Bestand, Sicherungen, Ordner zeigen) fangen OSError schon ab — sie melden jetzt den Grund statt nichts.
+test_api 96/96 (+2; Attrappe xdg-open mit Code 3), Gegenprobe (alter Code) fällt; test_schutz, test_verwalten grün. **Offen:** „nicht da“ bei
+seinen .obj — Pfad abwarten (Sonderzeichen? Ort im Papierkorb/Archiv?).
+
 ## Stand: 1.0.15 auf `main` (4.11.2026) — Rückweg `fassung-1.0.14`. Ohne test_ui (Oberfläche nur minimal: `geslict` vom Server).
 
 ### 1.0.15: geslictes 3MF auf jedem Weg nur in den Slicer; .gcode.3mf nicht an die eigene Kachel

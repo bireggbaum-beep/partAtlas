@@ -8,6 +8,10 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.16", ["„Mit dem System öffnen“ sagt jetzt, wenn es nicht klappt — statt „Wird geöffnet …“ zu zeigen, während nichts passiert. Die "
+                "Meldung nennt den Grund (etwa: für diese Art Datei ist kein Programm hinterlegt), die Art, für die dein Rechner die Datei hält, "
+                "und wie du es im Dateimanager einstellst.",
+                "„Die Datei ist nicht da“ nennt jetzt den Ort, an dem PartAtlas sie sucht."]),
     ("1.0.15", ["Ein geslictes 3MF (.gcode.3mf oder ein 3MF mit Platten) öffnet jetzt auf jedem Weg nur der Slicer — auch mit Enter, Doppelklick "
                 "oder „Öffnen“ an einem Druck. Ist kein Slicer eingerichtet, sagt PartAtlas das, statt FreeCAD zu starten.",
                 "Behoben (seit 1.0.14): Nannte der G-Code in einer .gcode.3mf kein Modell, konnte sie sich über ihren Dateinamen an ihre eigene "

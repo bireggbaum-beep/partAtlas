@@ -40,6 +40,11 @@ if __name__ == "__main__":
         with open(os.path.join(attrappen, name), "w") as f:
             f.write(f'#!/bin/sh\necho "{name} $*" >> "{protokoll}"\n')
         os.chmod(os.path.join(attrappen, name), 0o755)
+    # xdg-open scheitert wie auf dem Rechner des Testers, solange kein_programm.txt da ist: Code 3, „kein Programm“.
+    kein_programm = os.path.join(tmp, "kein_programm.txt")
+    with open(os.path.join(attrappen, "xdg-open"), "w") as f:
+        f.write(f'#!/bin/sh\necho "xdg-open $*" >> "{protokoll}"\n'
+                f'[ -e "{kein_programm}" ] && {{ echo "xdg-open: no method available for opening \'$1\'" >&2; exit 3; }}\nexit 0\n')
     # Der Dateidialog des Rechners: gibt aus, was in antwort.txt steht (leer = „Abbrechen“).
     antwort = os.path.join(tmp, "antwort.txt")
     with open(os.path.join(attrappen, "zenity"), "w") as f:
@@ -216,8 +221,19 @@ if __name__ == "__main__":
               r.json().get("programm") == "PrusaSlicer" and gestartet("prusa-slicer " + os.path.join(sammlung, "Technik", "Zahnrad.3mf")))
         c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"pfad": fc})
         check("Öffnen mit: gewähltes Programm", gestartet("freecad " + os.path.join(sammlung, "Haken.stl")))
-        c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"system": True})
-        check("Mit dem System öffnen: xdg-open", gestartet("xdg-open " + os.path.join(sammlung, "Haken.stl")))
+        r = c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"system": True})
+        check("Mit dem System öffnen: xdg-open", r.status_code == 200 and gestartet("xdg-open " + os.path.join(sammlung, "Haken.stl")))
+        open(kein_programm, "w").close()
+        r = c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"system": True})
+        fehler = r.json().get("fehler", "")
+        check(f"Mit dem System öffnen scheitert (kein Programm hinterlegt): Meldung mit Grund und Protokoll statt „Wird geöffnet“ ({fehler[:90]} …)",
+              r.status_code == 400 and "kein Programm hinterlegt" in fehler and "programmstart.log" in fehler)
+        os.remove(kein_programm)
+        os.rename(os.path.join(sammlung, "Haken.stl"), os.path.join(sammlung, "Haken.weg"))
+        r = c.post(f"/api/modelle/{haken['id']}/oeffnen", json={"system": True})
+        check("Datei nicht da: die Meldung nennt den Ort, an dem PartAtlas sucht",
+              r.status_code == 400 and os.path.join(sammlung, "Haken.stl") in r.json().get("fehler", ""))
+        os.rename(os.path.join(sammlung, "Haken.weg"), os.path.join(sammlung, "Haken.stl"))
         c.post(f"/api/modelle/{haken['id']}/im_ordner")
         check("Im Ordner zeigen: Dateimanager über ShowItems mit der Datei markiert (file://-Adresse)",
               gestartet("dbus-send --session") and "ShowItems array:string:file://" + os.path.join(sammlung, "Haken.stl") in open(protokoll).read())
