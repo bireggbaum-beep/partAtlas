@@ -787,6 +787,10 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 
 .eintrag .wz-ort { margin-left: 6px; color: var(--ink-3); font-size: 12.5px; }
 .eintrag .wz-ort::before { content: "· "; }
+/* Wurzel nicht erreichbar: Name gedämpft, ein kleiner Hinweis in der Warnfarbe — ruhig, kein Alarm; die Modelle sind ja da. */
+.seite .baum .eintrag.unerreichbar:not(.aktiv) > span { color: var(--ink-3); }
+.eintrag .wz-weg { margin-left: 6px; color: var(--warn); font-size: 12px; white-space: nowrap; }
+.eintrag .wz-weg::before { content: "⚠ "; }
 
 /* Hover-Knöpfe: eine eigene Spalte am rechten Rand (nie über Text), 26 × 26 mit 3 Abstand = 55 in beiden Richtungen:
    in der Liste nebeneinander, in den Karten übereinander auf der Mittellinie. Dieselbe Linienschrift wie die Ansichtsleiste. */

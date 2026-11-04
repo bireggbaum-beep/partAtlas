@@ -1,6 +1,7 @@
 """Ordner im Baum wie im Dateimanager: Umbenennen per Rechtsklick oder F2 direkt im Baum, Enter übernimmt, Esc bricht ab, eine Ablehnung
 lässt das Feld offen; Rückgängig mit Strg+Z. Verschieben per Ziehen auf einen anderen Ordner oder Rechtsklick › Verschieben nach …
-Die Regeln selbst prüft test_ordner."""
+Die Regeln selbst prüft test_ordner. Am Ende: ein nicht erreichbarer Wurzelordner (Stick ab) bekommt nach dem Einlesen ein Zeichen im Baum,
+ohne dass man die Seite neu lädt — und verliert es nach dem nächsten Einlesen mit eingestecktem Stick."""
 import os
 import socket
 import subprocess
@@ -23,6 +24,9 @@ if __name__ == "__main__":
     muster.stl_binaer(os.path.join(samm, "Projekt", "Teil.stl"), 10, 20, 30)
     os.makedirs(os.path.join(samm, "Ziel"))
     muster.stl_binaer(os.path.join(samm, "Ziel", "Anderes.stl"), 12, 20, 30)
+    stick = os.path.join(tmp, "Stick")
+    os.makedirs(stick)
+    muster.stl_binaer(os.path.join(stick, "Clip.stl"), 13, 20, 30)
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
@@ -33,6 +37,9 @@ if __name__ == "__main__":
         warte(lambda: abfrage(port, "/api/zaehler") is not None)
         wid = abfrage(port, "/api/wurzeln", {"pfad": samm})["id"]
         warte(lambda: len(abfrage(port, "/api/modelle")) == 2)
+        sw = abfrage(port, "/api/wurzeln", {"pfad": stick})["id"]
+        warte(lambda: len(abfrage(port, "/api/modelle")) == 3)
+        warte(lambda: not abfrage(port, "/api/scan")["laeuft"])
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
             pg = b.new_page()
@@ -166,6 +173,18 @@ if __name__ == "__main__":
                   and "Dateiname darf keines dieser Zeichen" in pg.inner_text("#toast"))
             pg.locator(".namens-feld").press("Escape")
             check("Esc: Feld weg, Datei unverändert", pg.locator(".namens-feld").count() == 0 and os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")))
+
+            wurzel = f'.eintrag[data-wurzel="{sw}"]'
+            check("Stick eingesteckt: kein Zeichen am Wurzelordner", pg.locator(f"{wurzel}.unerreichbar").count() == 0)
+            os.rename(stick, stick + "-ab")
+            abfrage(port, "/api/scan", {})
+            pg.wait_for_selector(f"{wurzel}.unerreichbar", timeout=20000)
+            check("Stick ab und eingelesen: „nicht erreichbar“ am Wurzelordner, ohne die Seite neu zu laden, das Modell bleibt gezählt",
+                  "nicht erreichbar" in pg.inner_text(wurzel) and pg.inner_text(f"{wurzel} em").strip() == "1")
+            os.rename(stick + "-ab", stick)
+            abfrage(port, "/api/scan", {})
+            pg.wait_for_selector(f"{wurzel}:not(.unerreichbar)", timeout=20000)
+            check("Wieder eingesteckt und eingelesen: das Zeichen ist weg", "nicht erreichbar" not in pg.inner_text(wurzel))
             b.close()
     finally:
         server.terminate()

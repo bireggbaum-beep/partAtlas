@@ -70,6 +70,7 @@ class Katalog:
         self._kurz_bau = threading.Lock()    # immer nur ein Nachbau: zwei gleichzeitig verlören die Änderungen des einen
         bestand.hoeren(self._kurz_veraltet)
         self._ordner_platte = None           # {Wurzel: [Unterordner …]} von der Platte — siehe ordner_platte_lesen
+        self._wurzel_leer = {}               # {Wurzel: True}, wenn sie beim selben Lesen fehlte oder ganz leer war
         self.suche = Suchindex(self)
         beim_start("Material", self._material_nachziehen)
         beim_start("Vault", self._vault_nachziehen)
@@ -1850,14 +1851,19 @@ class Katalog:
         und nach eigenen Ordner-Aktionen, nicht bei jeder Abfrage: der Baum wird bei jeder Änderung geholt, und unter Windows kostet jedes
         Verzeichnis. Was ausserhalb angelegt wird, erscheint wie neue Dateien mit dem nächsten Einlesen."""
         bestand = os.path.abspath(self.b.wurzel)
-        aus = {}
+        aus, leer = {}, {}
         for wid, w in self.wurzeln().items():
             liste = []
-            for ordner, unter, _ in os.walk(w["pfad"], followlinks=False):
+            # Fehlt die Wurzel oder ist sie ganz leer, steckt das Laufwerk vermutlich nicht (gleiches Zeichen wie beim Einlesen, scan.py) —
+            # hier nebenbei festgestellt, ohne zusätzlichen Plattenzugriff: os.walk liefert die Wurzel zuerst oder gar nichts.
+            leer[wid] = True
+            for ordner, unter, dateien in os.walk(w["pfad"], followlinks=False):
+                if ordner == w["pfad"] and (unter or dateien):
+                    leer[wid] = False
                 unter[:] = sorted(u for u in unter if not u.startswith((".", "$")) and os.path.abspath(os.path.join(ordner, u)) != bestand)
                 liste += [os.path.relpath(os.path.join(ordner, u), w["pfad"]).replace(os.sep, "/") for u in unter]
             aus[wid] = liste
-        self._ordner_platte = aus
+        self._ordner_platte, self._wurzel_leer = aus, leer
         return aus
 
     def ordnerbaum(self):
@@ -1884,6 +1890,11 @@ class Katalog:
                     weg += "/" + t
                     knoten = knoten["kinder"].setdefault(t, {"id": weg, "name": t, "anzahl": 0, "kinder": {}})
                     knoten["anzahl"] += 1
+
+        # Nicht erreichbar heisst wie beim Einlesen: leer oder fehlend, obwohl Modelle darin bekannt sind (oder der Ordner ganz fehlt).
+        # Eine eben hinzugefügte, wirklich leere Wurzel ist erreichbar. Stand: das letzte Lesen der Platte (Start, Einlesen, Ordner-Aktion).
+        for wid, b in baeume.items():
+            b["erreichbar"] = not (self._wurzel_leer.get(wid) and (b["anzahl"] or not os.path.isdir(b["pfad"])))
 
         def liste(k):
             return {**k, "kinder": [liste(c) for c in sorted(k["kinder"].values(), key=lambda c: c["name"].lower())]}

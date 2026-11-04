@@ -453,8 +453,11 @@ function zweig(k, tiefe) {
     ? `<small class="wz-ort">${esc((k.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || (k.pfad || ""))}</small>` : "";
   // Ordner ohne Modelle stehen da wie im Dateimanager, aber grau und ohne Zahl.
   const ohne = tiefe > 0 && !k.anzahl ? "ohne-modelle" : "";
-  let html = `<button class="eintrag ${aktiv} ${ohne}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
-    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}</span><em>${ohne ? "" : k.anzahl}</em></button>`;
+  // Eine Wurzel, die beim letzten Lesen fehlte oder leer war (Stick ab, Netzlaufwerk weg): ruhig markiert, die Modelle bleiben.
+  const weg = tiefe === 0 && k.erreichbar === false;
+  const titel = weg ? `Nicht erreichbar: ${k.pfad || k.name}\nLaufwerk einstecken oder verbinden, dann einlesen. Die Modelle bleiben, nichts gilt als fehlend.` : (k.pfad || k.name);
+  let html = `<button class="eintrag ${aktiv} ${ohne} ${weg ? "unerreichbar" : ""}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(titel)}">
+    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}${weg ? `<small class="wz-weg" aria-label="nicht erreichbar">nicht erreichbar</small>` : ""}</span><em>${ohne ? "" : k.anzahl}</em></button>`;
   if (hatKinder && offen) html += k.kinder.map((c) => zweig(c, tiefe + 1)).join("");
   return html;
 }
@@ -3668,6 +3671,9 @@ function liveScan(m) {
   const vorher = zustand.scan || {};
   zustand.scan = m;
   if (m.zuletzt_eingelesen) zuletztEingelesen = m.zuletzt_eingelesen;
+  // Am Ende jedes Einlesens die Seitenleiste neu: auch ohne neue Dateien kann ein Laufwerk wieder (oder nicht mehr) erreichbar sein,
+  // und das Zeichen am Wurzelordner soll das gleich zeigen (das Einlesen liest dafür die Ordner neu von der Platte).
+  if (vorher.laeuft && !m.laeuft) ladeSeite();
   einlesenZeichnen(m);
   hintergrundZeichnen();
   if (!zustand.modelle.length) zeichneLeer();

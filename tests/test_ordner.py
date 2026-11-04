@@ -139,4 +139,32 @@ if __name__ == "__main__":
               n1 == f"{wid}/Neuer Ordner" and n2 == f"{wid}/Neuer Ordner (2)" and os.path.isdir(os.path.join(samm, "Neuer Ordner (2)"))
               and baum_ids().get(n2) == 0)
         check("Ordner anlegen prüft die Windows-Regeln", c.post("/api/verzeichnisse", json={"eltern": wid, "name": "a|b"}).status_code == 400)
+
+        # -- Nicht erreichbare Wurzel im Baum (Stick ab, Netzlaufwerk weg): ruhig markiert, die Modelle bleiben
+        def erreichbar():
+            return {w["id"]: w.get("erreichbar") for w in c.get("/api/ordner").json()}
+        stick = os.path.join(tmp, "Stick")
+        os.makedirs(stick)
+        muster.stl_binaer(os.path.join(stick, "Clip.stl"), 13, 20, 30)
+        sw = c.post("/api/wurzeln", json={"pfad": stick}).json()["id"]
+        z["scanner"].warten(120)
+        leer_ordner = os.path.join(tmp, "Neu und leer")
+        os.makedirs(leer_ordner)
+        lw = c.post("/api/wurzeln", json={"pfad": leer_ordner}).json()["id"]
+        z["scanner"].warten(120)
+        z["katalog"].ordner_platte_lesen()                   # wie beim Start: alle Wurzeln frisch von der Platte
+        e = erreichbar()
+        check(f"Eingesteckt: alle Wurzeln erreichbar, auch eine neue leere ohne Modelle ({e})", e.get(sw) is True and e.get(wid) is True and e.get(lw) is True)
+        os.rename(stick, stick + "-ab")                      # Stick abgezogen: der Pfad fehlt
+        z["katalog"].ordner_platte_lesen()                   # wie nach einem Einlesen oder beim Start
+        e = erreichbar()
+        check(f"Stick fehlt: diese Wurzel nicht erreichbar, die anderen schon ({e})", e.get(sw) is False and e.get(wid) is True and e.get(lw) is True)
+        check("… und ihr Modell bleibt im Baum gezählt", next(w["anzahl"] for w in c.get("/api/ordner").json() if w["id"] == sw) == 1)
+        os.makedirs(stick)                                   # leerer Einhängepunkt: der Ordner ist da, aber nichts darin
+        z["katalog"].ordner_platte_lesen()
+        check("Leerer Einhängepunkt mit bekannten Modellen: ebenfalls nicht erreichbar", erreichbar().get(sw) is False)
+        os.rmdir(stick)
+        os.rename(stick + "-ab", stick)                      # wieder eingesteckt
+        z["katalog"].ordner_platte_lesen()
+        check("Wieder eingesteckt: erreichbar", erreichbar().get(sw) is True)
     muster.ende()

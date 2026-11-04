@@ -12,6 +12,14 @@ CAD-Hinweis, und „Mit dem System öffnen“ nur, wenn kein Slicer da ist (sons
 Gegenprobe (geslict → false) fällt. Server unverändert: wer ein CAD selbst wählt, darf weiter alles öffnen.
 **Handbuch** (Anwender: ja): Abschnitt Bereinigen nachgezogen — Besen öffnet die erste Liste mit Arbeit, Zeile „G-Code ohne Modell“, neuer Teil „Archiv und
 Papierkorb“ (Knöpfe in der Leiste, Ziehen), in „Auswählen“ ein Absatz „Ziehen und Ablegen“; Bild `bereinigen` neu (nur dieses Motiv). Schreibweise im Handbuch weiter „partAtlas“.
+**Nicht erreichbarer Bibliotheksordner im Baum** (Anwender: Punkt 3): `ordner_platte_lesen` merkt nebenbei, ob eine Wurzel fehlt oder ganz leer ist (`_wurzel_leer`,
+kein zusätzlicher Plattenzugriff); `ordnerbaum` setzt `erreichbar: False` wie das Einlesen (leer/fehlend und Modelle bekannt, oder fehlend). Baum: Name gedämpft,
+„⚠ nicht erreichbar“ in der Warnfarbe, Titel mit Hinweis. Neu: am Ende jedes Einlesens lädt die Seitenleiste neu (`liveScan`) — sonst blieb das Zeichen nach dem
+Einstecken stehen, wenn das Einlesen nichts Neues fand. test_ordner 23/23 (+5), test_ordner_ui 21/21 (+3); zwei Gegenproben fallen (nur `isdir` übersieht den leeren
+Einhängepunkt; ohne die Bedingung „Modelle bekannt“ gilt eine neue leere Wurzel als unerreichbar). Stand des Zeichens: letztes Lesen (Start, Einlesen, Ordner-Aktion).
+**Wackler beobachtet (nicht behoben):** test_ordner_ui fiel einmal (19/21, zweiter Lauf 21/21): Modell umbenannt, Strg+Z meldete „Rückgängig gemacht.“, die Datei blieb
+„Anderes v2.stl“. Verdacht wie bei test_verschieben_ui (3.11.): ein Schreiber mit altem Stand der Orte (Einlesen/Hintergrund) überschreibt den neuen Ort; dann sieht
+`umbenennen` beim Rückgängig `ziel == alt` und tut still nichts. Mit drei statt zwei Modellen läuft der Hintergrund länger — passt dazu. Nächster Schritt: nachstellen.
 
 ## Nächstes Thema (Anwender 4.11.): G-Code beim Drucken automatisch — Recherche, nichts gebaut
 
