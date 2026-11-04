@@ -2400,6 +2400,7 @@ function hoverAktionen(m) {
 function programmKnoepfe(m, programmDaten) {
   const { je } = programmeFuer(m, programmDaten);
   const knoepfe = ["slicer", "cad"].map((a) => {
+    if (a === "cad" && geslict(m)) return "";
     if (je[a]?.length) {
       const p = je[a][0];
       return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" data-hv-art="${a}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
@@ -2428,11 +2429,15 @@ function ladeProgramme() {
 // Standardprogramm der Art vorn. Slicen und Bearbeiten sind verschiedene
 // Absichten — deshalb zwei Wege statt eines „Öffnen“.
 const ART_SYMBOL = { slicer: "🖨", cad: "📐" };
+// Ein geslictes 3MF (Platten mit G-Code) versteht nur der Slicer: kein CAD-Programm, und solange ein Slicer da ist auch nicht das
+// Standardprogramm des Rechners — das ist für 3MF meist ein CAD (Tester 4.11.2026: FreeCAD und SolidCraft scheiterten daran).
+const geslict = (m) => m.gcode === "3mf";
+const nurSlicer = (m, je) => geslict(m) && je.slicer?.length > 0;
 function programmeFuer(m, prog) {
   const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);
   const je = {};
   for (const art of Object.keys(prog.arten)) {
-    const liste = prog.programme.filter((p) => p.art === art && p.formate.includes(m.format));
+    const liste = art === "cad" && geslict(m) ? [] : prog.programme.filter((p) => p.art === art && p.formate.includes(m.format));
     je[art] = std && std.art === art ? [std, ...liste.filter((p) => p !== std)] : liste;
   }
   return { je, hauptArt: std ? std.art : null };
@@ -2443,7 +2448,8 @@ function oeffnenMitEintraege(m, prog) {
   const { je } = programmeFuer(m, prog);
   const gruppen = Object.entries(prog.arten || {}).filter(([art]) => je[art]?.length).map(([art, titel]) =>
     `<div class="menu-titel">${esc(titel.toUpperCase())}</div>${je[art].map((p) => `<button data-oeffne-pfad="${esc(p.pfad)}">${esc(p.name)}</button>`).join("")}`).join("");
-  return `${gruppen}<button id="oeffnen-system">Mit dem System öffnen</button><button id="prog-einstellen">Programme einstellen …</button>`;
+  const system = nurSlicer(m, je) ? "" : `<button id="oeffnen-system">Mit dem System öffnen</button>`;
+  return `${gruppen}${system}<button id="prog-einstellen">Programme einstellen …</button>`;
 }
 
 async function modellOeffnen(body, id = $("#inspektor").dataset.id) {
@@ -3933,7 +3939,7 @@ async function kontextMenu(e, id) {
     const { je } = programmeFuer(m, prog);
     const da = !m.fehlt;
     const kein = { slicer: "Kein Slicer für dieses Format", cad: "Kein CAD-Programm für dieses Format" };
-    const oeffnen = Object.keys(prog.arten).map((art) => {
+    const oeffnen = Object.keys(prog.arten).filter((art) => !(art === "cad" && geslict(m))).map((art) => {
       const liste = je[art];
       if (!liste.length) return ["einrichten", `${ART_SYMBOL[art] || "↗"} ${kein[art] || "Kein Programm"} — einrichten …`, "aus"];
       if (liste.length === 1) return ["oeffnen", `${ART_SYMBOL[art] || "↗"} In ${esc(liste[0].name)} öffnen`, "", liste[0].pfad];
@@ -3941,7 +3947,7 @@ async function kontextMenu(e, id) {
         liste.map((p, i) => `<button data-km="oeffnen" data-pfad="${esc(p.pfad)}">${esc(p.name)}${i === 0 ? ' <small class="dim">Standard</small>' : ""}</button>`).join("")];
     });
     eintraege = [
-      ...(da ? [...oeffnen, ["system", "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
+      ...(da ? [...oeffnen, ...(nurSlicer(m, je) ? [] : [["system", "↗ Mit dem System öffnen"]]), ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
       ["ws", m.warteschlange != null ? "☰ Aus der Warteschlange" : "☰ In die Warteschlange"],
       ["druck1", "🖨 Druck anlegen …"],
       ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],

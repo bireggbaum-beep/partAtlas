@@ -4,6 +4,13 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.13 auf dem Branch (4.11.2026): geslictes 3MF nur in den Slicer (Fehler vom Tester)
+
+Tester: bei einem 3MF mit G-Code bot „Öffnen mit“ FreeCAD an, „Mit dem System öffnen“ startete SolidCraft — beides scheitert. Ursache: `programmeFuer` sah nur das
+Format (3mf), nicht ob die Datei geslict ist (`m.gcode === "3mf"`, aus den Platten). Jetzt `geslict(m)`: kein CAD (Knopf, Menü, Kontextmenü), kein gedämpfter
+CAD-Hinweis, und „Mit dem System öffnen“ nur, wenn kein Slicer da ist (sonst bliebe keine Datei ohne Weg nach draussen). test_programme_ui 10/10 (+7),
+Gegenprobe (geslict → false) fällt. Server unverändert: wer ein CAD selbst wählt, darf weiter alles öffnen.
+
 ## Nächstes Thema (Anwender 4.11.): G-Code beim Drucken automatisch — Recherche, nichts gebaut
 
 Anwender hebt „keine Druckeranbindung“ (25.10.) auf, denkt an Senden aus dem Slicer, G-Code vom Drucker zurück, Simulator. Tester: **Kobra 3** (ACE), **Anycubic Slicer Next 1.3.9.4**.
