@@ -481,6 +481,9 @@ class Katalog:
             "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None, "gewicht_herkunft": gewicht_herkunft,
             "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
             "gcode": "druck" if m.get("gcode_n") else ("3mf" if platten else None),
+            # Geslictes Projekt: Platten in der Datei oder die Endung .gcode.3mf (der Name ist dann „….gcode“). Öffnen nur im Slicer — ein CAD
+            # sieht darin nichts Brauchbares (Tester 4.11.2026); so prüft es auch der Server (main.py, _nur_slicer).
+            "geslict": bool(platten) or (d.get("format") == "3mf" and str(m.get("name") or "").lower().endswith(".gcode")),
             "drucke_n": m.get("drucke_n", 0),
             "favorit": m.get("favorit", False), "entwurf": bool(m.get("entwurf")), "hash": h,
             "vorschau": d.get("vorschau"), "cad": d.get("cad"), "fehlt": not orte and not papierkorb,

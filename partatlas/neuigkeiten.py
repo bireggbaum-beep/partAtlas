@@ -8,6 +8,10 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.15", ["Ein geslictes 3MF (.gcode.3mf oder ein 3MF mit Platten) öffnet jetzt auf jedem Weg nur der Slicer — auch mit Enter, Doppelklick "
+                "oder „Öffnen“ an einem Druck. Ist kein Slicer eingerichtet, sagt PartAtlas das, statt FreeCAD zu starten.",
+                "Behoben (seit 1.0.14): Nannte der G-Code in einer .gcode.3mf kein Modell, konnte sie sich über ihren Dateinamen an ihre eigene "
+                "Kachel hängen. Jetzt steht sie dann unter Bereinigen › „G-Code ohne Modell“."]),
     ("1.0.14", ["G-Code im Ordner jetzt auch als geslictes Projekt (.gcode.3mf, etwa aus Anycubic Slicer Next oder Bambu Studio): PartAtlas "
                 "erkennt das Modell am G-Code darin und hängt die Datei als Druck „Noch nicht gedruckt“ an, mit Dauer, Gewicht und Einstellungen. "
                 "Die Datei bleibt im Ordner liegen und erscheint wie bisher auch als eigene Kachel."]),

@@ -2449,7 +2449,7 @@ function ladeProgramme() {
 const ART_SYMBOL = { slicer: "🖨", cad: "📐" };
 // Ein geslictes 3MF (Platten mit G-Code) versteht nur der Slicer: kein CAD-Programm, und solange ein Slicer da ist auch nicht das
 // Standardprogramm des Rechners — das ist für 3MF meist ein CAD (Tester 4.11.2026: FreeCAD und SolidCraft scheiterten daran).
-const geslict = (m) => m.gcode === "3mf";
+const geslict = (m) => m.geslict ?? m.gcode === "3mf";
 const nurSlicer = (m, je) => geslict(m) && je.slicer?.length > 0;
 function programmeFuer(m, prog) {
   const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);

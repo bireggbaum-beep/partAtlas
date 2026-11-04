@@ -76,6 +76,8 @@ if __name__ == "__main__":
     # Der Dateiname verrät nichts: nur der G-Code im Zip nennt das Modell
     muster.stl_binaer(os.path.join(sammlung, "Zahnradgetriebe.stl"), 16, 20, 30)
     schreibe(os.path.join(sammlung, "export_A.gcode.3mf"), gcode_3mf(["Zahnradgetriebe.stl"], gewicht=4.2))
+    # Der G-Code nennt kein Modell, und es gibt keins mit passendem Namen — ausser der Kachel dieser Datei selbst (sie heisst „Abdeckplatte.gcode“)
+    schreibe(os.path.join(sammlung, "Abdeckplatte.gcode.3mf"), gcode_3mf([]))
 
     with TestClient(erstelle_app(os.path.join(tmp, "bestand"), prozesse=1)) as c:
         z = c.app.state.zustand
@@ -96,9 +98,13 @@ if __name__ == "__main__":
               len(dh) == 2 and {x["ergebnis"] for x in dh} == {"offen"} and any(x["gewicht_g"] == 12.5 and x["dauer_s"] == 3600 for x in dh)
               and all(x["datum"] == time.strftime("%Y-%m-%d") for x in dh))
         check("Ein G-Code mit zwei Objekten hängt an beiden Modellen", len(druecke(p)) == 2 and len(dh) == 2)
-        check("Die Bilanz zählt: 7 neu (mit den zwei .gcode.3mf), 1 unklar, 1 ohne Modell",
-              (st["gcode_neu"], st["gcode_unklar"], st["gcode_ohne_modell"]) == (7, 1, 1))
+        check(f"Die Bilanz zählt: 7 neu (mit den zwei .gcode.3mf), 1 unklar, 2 ohne Modell (fremd und Abdeckplatte) "
+              f"({st['gcode_neu']}, {st['gcode_unklar']}, {st['gcode_ohne_modell']})",
+              (st["gcode_neu"], st["gcode_unklar"], st["gcode_ohne_modell"]) == (7, 1, 2))
         check(".gcode.3mf ohne sprechenden Dateinamen: das Modell aus dem G-Code im Zip", (modell(c, "Zahnradgetriebe") or {}).get("gcode") == "druck")
+        selbst = modell(c, "Abdeckplatte.gcode") or {}
+        check(f".gcode.3mf hängt sich nicht über den Namen an ihre eigene Kachel ({selbst.get('gcode')}, {selbst.get('drucke_n')})",
+              selbst and selbst.get("gcode") != "druck" and not druecke(selbst))
         ring = modell(c, "Passring-115x80-28,9mm")
         dr = druecke(ring) if ring else []
         check(".gcode.3mf: das Quellmodell steht im G-Code der Platte, der Druck hängt am Modell (Zeichen G-Code)", ring and ring["gcode"] == "druck" and len(dr) == 1)
@@ -109,7 +115,7 @@ if __name__ == "__main__":
         check("… und die .gcode.3mf bleibt daneben eine Kachel wie bisher (Anwender: erst zusätzlich)",
               any(m["name"].endswith("_10m46s.gcode") for m in c.get("/api/modelle").json()))
         check("Die Datei bleibt im Ordner liegen", os.path.exists(os.path.join(sammlung, "1009-Halter.gcode")))
-        check("Für die Meldung: 2 G-Codes in diesem Lauf neu ohne Modell (unklar und fremd)", st["gcode_offen_neu"] == 2)
+        check("Für die Meldung: 3 G-Codes in diesem Lauf neu ohne Modell (unklar, fremd, Abdeckplatte)", st["gcode_offen_neu"] == 3)
 
         # -- zweites Einlesen: nichts doppelt
         c.post("/api/scan")
