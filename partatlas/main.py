@@ -1489,10 +1489,12 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         m = K().modell(mid)
         datei = next((o["absolut"] for o in m["orte"] if o["absolut"] and os.path.exists(o["absolut"])), None)
         if not datei:
-            raise KatalogFehler("Die Datei ist nicht da.")
+            # Mit dem Ort, an dem gesucht wurde: sonst weiss niemand, warum eine Datei „nicht da“ ist, die man im Dateimanager sieht.
+            gesucht = next((o["absolut"] for o in m["orte"] if o["absolut"]), None)
+            raise KatalogFehler(f"Die Datei ist nicht da: {gesucht}" if gesucht else "Die Datei ist nicht da.")
         if daten.get("system"):
             try:
-                programme.mit_system(datei)
+                programme.mit_system(datei, zustand["bestand"].pfad("arbeit", "programmstart.log"))
             except OSError as e:
                 raise KatalogFehler(f"Mit dem System öffnen ging nicht: {e}")
             return {"ok": True}

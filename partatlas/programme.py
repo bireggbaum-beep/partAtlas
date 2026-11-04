@@ -246,19 +246,53 @@ def oeffnen(programm, datei, protokoll=None):
             f.seek(start)
             ausgabe = f.read(600).decode("utf-8", "replace").strip()
     hinweis = (" AppImages brauchen FUSE — auf Manjaro/Arch: sudo pacman -S fuse2." if programm.lower().endswith(".appimage") else "")
-    raise OSError(f"{os.path.basename(programm)} beendete sich sofort (Code {code}).{hinweis}"
-                  + (f" Ausgabe: {ausgabe}" if ausgabe else "") + (f" — Protokoll: {protokoll}" if protokoll else ""))
+    fehler = OSError(f"{os.path.basename(programm)} beendete sich sofort (Code {code}).{hinweis}"
+                     + (f" Ausgabe: {ausgabe}" if ausgabe else "") + (f" — Protokoll: {protokoll}" if protokoll else ""))
+    fehler.code = code                  # für mit_system: der Rückgabewert von xdg-open sagt, warum
+    raise fehler
 
 
-def mit_system(datei):
-    """Was der Dateimanager bei Doppelklick täte."""
+# Was xdg-open mit seinem Rückgabewert sagt (xdg-utils): in Worten, damit „Wird geöffnet …“ nicht stehen bleibt, während nichts geschieht
+# (Tester 4.11.2026: .obj mit FreeCAD oder dem Slicer als Standard — nichts passierte, ohne Meldung).
+XDG_OPEN_CODES = {
+    2: "die Datei gibt es an diesem Ort nicht",
+    3: "für diese Art Datei ist auf dem Rechner kein Programm hinterlegt, oder das Werkzeug dafür fehlt",
+    4: "das hinterlegte Programm liess sich nicht starten",
+}
+
+
+def mit_system(datei, protokoll=None):
+    """Was der Dateimanager bei Doppelklick täte. Unter Linux wie `oeffnen`: die Ausgabe von xdg-open ins Protokoll, und endet es in den
+    ersten 1,2 s mit Fehler, wird das gemeldet — mit dem Grund in Worten, der Art Datei, die der Rechner erkannt hat, und dem Anfang der Ausgabe."""
     if sys.platform.startswith("win"):
         os.startfile(datei)  # noqa: kennt nur Windows
         return
     befehl = "open" if sys.platform == "darwin" else shutil.which("xdg-open")
     if not befehl:
         raise FileNotFoundError("xdg-open fehlt — ohne Desktop kein Standardprogramm.")
-    subprocess.Popen([befehl, datei], **_optionen())
+    try:
+        oeffnen(befehl, datei, protokoll)
+    except OSError as e:
+        code = getattr(e, "code", None)
+        grund = XDG_OPEN_CODES.get(code)
+        art = _dateiart(datei)
+        raise OSError((f"{grund[0].upper()}{grund[1:]}" if grund else str(e))
+                      + (f" (der Rechner hält sie für „{art}“)" if art else "")
+                      + ". Im Dateimanager: Rechtsklick › Öffnen mit › Immer damit öffnen — oder hier ein Programm wählen."
+                      + (f" Protokoll: {protokoll}" if protokoll else "")) from e
+
+
+def _dateiart(datei):
+    """Die Art (MIME-Typ), die xdg-mime der Datei zuschreibt — oft der Grund, warum das hinterlegte Programm nicht greift
+    (.obj gilt manchen Rechnern als Grafik von tgif, nicht als 3D-Modell). Leer, wenn es sich nicht feststellen lässt."""
+    werkzeug = shutil.which("xdg-mime")
+    if not werkzeug:
+        return ""
+    try:
+        r = subprocess.run([werkzeug, "query", "filetype", datei], capture_output=True, text=True, timeout=3)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
 
 
 def im_ordner_zeigen(datei):
