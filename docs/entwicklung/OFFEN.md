@@ -22,6 +22,11 @@ Lücke bei uns: Ordner-Einlesen nimmt nur `.gcode`, nicht `.gcode.3mf` (`gcode_o
 Plattenbilder, `project_settings.config`, `slice_info.config`. Kopf `AnycubicSlicerNext 2.0.0.5` (Tester nannte 1.3.9.4 — Flatpak vermutlich neuer). `EXCLUDE_OBJECT_DEFINE
 NAME=Passring-115x80-28_9mm.stl…` vorhanden. Die Datei lag nach 5 Minuten noch da — Nachsehen alle paar Sekunden genügt, kein Live-Beobachten nötig. Ob sie das
 Schliessen des Slicers überlebt, ist nicht sicher.
+**Nachtrag 2 (Tester, 4.11.):** die `.gcode.3mf` in `ACGcode3mf` bleibt bis zum **Neustart des Slicers** liegen, dann wird der Ordner geleert und beim nächsten Senden neu
+befüllt → Nachsehen alle paar Sekunden genügt, aber PartAtlas muss vor dem nächsten Slicer-Start gelaufen sein. **Druckzustand aus den Slicer-Protokollen: nichts.**
+`cloud_mqtt_*.log` enthält nur „unbekanntes Ereignis“ (user, hardwareProfile, buried = Nutzungsstatistik), `mach_mqtt_*` und `debug_*` nichts zum Druck. Weg B ist damit
+mit den normalen Einstellungen erledigt. Kobra-Anmeldung im LAN-Modus steht vollständig im Code von kobra-connect (`handshake.py`: GET :18910/info → sign = md5(md5(token[:16])+ts+nonce)
+→ POST ctrlInfoUrl → AES-CBC, Schlüssel token[16:32]) — braucht `paho-mqtt` und `cryptography` oder Eigenbau; LAN-Modus schliesst die Cloud aus, Tester druckt über die Cloud.
 **3MF Katalog (Stand b101ee5, 29.10.):** nur Moonraker, nur lesend (`/server/info`, `/server/history/list`), aus per Vorgabe, nur Heimnetz; Zweck: Filament nach Bestätigung
 abbuchen, Dateiname → Modell (sicher/unsicher, Anycubic-Namen `0927-1447-Name_plate(01)_PLA_0.12_3h25m13s.gcode`). Kobra nur **mit Rinkhals** (S1 im Dauerbetrieb, Kobra 3 V2
 ein Testbericht). Befund: der Kobra legt gesendete Dateien in `.3mf_temp/` und **löscht sie nach dem Druck** (`exists: false`) — G-Code vom Drucker zurück geht dort nicht,
