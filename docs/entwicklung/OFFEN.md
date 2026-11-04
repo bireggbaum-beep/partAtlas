@@ -4,7 +4,10 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## 1.0.16 auf dem Branch (4.11.2026): „Mit dem System öffnen“ meldet Fehler; „nicht da“ mit Pfad (Rückmeldung des Testers)
+## Stand: 1.0.16 auf `main` (4.11.2026) — Rückweg `fassung-1.0.15`. Ohne test_ui (Oberfläche unverändert). Tester hat `model/obj` in KDE auf FreeCAD
+gestellt (Bild); offen: was `xdg-mime query filetype` für seine .obj sagt und ob `xdg-open` im Terminal öffnet.
+
+### 1.0.16: „Mit dem System öffnen“ meldet Fehler; „nicht da“ mit Pfad (Rückmeldung des Testers)
 
 Tester: 3MF im System auf FreeCAD gestellt → „Mit dem System öffnen“ startet FreeCAD (richtig, sein Rechner entscheidet). **.obj:** mit ASN 2.0.0.5
 oder FreeCAD als Standard passiert nichts, nur „Wird geöffnet …“ oder „Die Datei ist nicht da“; direkt in FreeCAD/Slicer gehen dieselben .obj.
