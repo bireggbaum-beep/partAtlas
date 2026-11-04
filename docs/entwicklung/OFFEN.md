@@ -4,6 +4,62 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.13 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.12`
+
+Geslictes 3MF nur in den Slicer, Handbuch (Bereinigen, Archiv/Papierkorb, Ziehen), „⚠ nicht erreichbar“ am Wurzelordner, Strg+Z wartet laufende Änderungen ab.
+Vor dem Push: test_ui einmal komplett 70/70 (Anwender fand es übertrieben; gelaufen wegen der Änderung in `api()`, die jede ändernde Anfrage betrifft),
+test_api 94/94, test_scan 110/110, test_schutz 28/28, die geänderten Suiten grün.
+
+### Einzelheiten 1.0.13
+
+Tester: bei einem 3MF mit G-Code bot „Öffnen mit“ FreeCAD an, „Mit dem System öffnen“ startete SolidCraft — beides scheitert. Ursache: `programmeFuer` sah nur das
+Format (3mf), nicht ob die Datei geslict ist (`m.gcode === "3mf"`, aus den Platten). Jetzt `geslict(m)`: kein CAD (Knopf, Menü, Kontextmenü), kein gedämpfter
+CAD-Hinweis, und „Mit dem System öffnen“ nur, wenn kein Slicer da ist (sonst bliebe keine Datei ohne Weg nach draussen). test_programme_ui 10/10 (+7),
+Gegenprobe (geslict → false) fällt. Server unverändert: wer ein CAD selbst wählt, darf weiter alles öffnen.
+**Handbuch** (Anwender: ja): Abschnitt Bereinigen nachgezogen — Besen öffnet die erste Liste mit Arbeit, Zeile „G-Code ohne Modell“, neuer Teil „Archiv und
+Papierkorb“ (Knöpfe in der Leiste, Ziehen), in „Auswählen“ ein Absatz „Ziehen und Ablegen“; Bild `bereinigen` neu (nur dieses Motiv). Schreibweise im Handbuch weiter „partAtlas“.
+**Nicht erreichbarer Bibliotheksordner im Baum** (Anwender: Punkt 3): `ordner_platte_lesen` merkt nebenbei, ob eine Wurzel fehlt oder ganz leer ist (`_wurzel_leer`,
+kein zusätzlicher Plattenzugriff); `ordnerbaum` setzt `erreichbar: False` wie das Einlesen (leer/fehlend und Modelle bekannt, oder fehlend). Baum: Name gedämpft,
+„⚠ nicht erreichbar“ in der Warnfarbe, Titel mit Hinweis. Neu: am Ende jedes Einlesens lädt die Seitenleiste neu (`liveScan`) — sonst blieb das Zeichen nach dem
+Einstecken stehen, wenn das Einlesen nichts Neues fand. test_ordner 23/23 (+5), test_ordner_ui 21/21 (+3); zwei Gegenproben fallen (nur `isdir` übersieht den leeren
+Einhängepunkt; ohne die Bedingung „Modelle bekannt“ gilt eine neue leere Wurzel als unerreichbar). Stand des Zeichens: letztes Lesen (Start, Einlesen, Ordner-Aktion).
+**Wackler war ein Fehler (behoben):** test_ordner_ui fiel einmal (Modell umbenannt, Strg+Z meldete „Rückgängig gemacht.“, Datei blieb „Anderes v2.stl“). Mein erster
+Verdacht (alter Stand der Orte überschreibt) war falsch — dann hätte der Server einen Fehler gemeldet. **Ursache:** jede Aktion setzt `ordnerAktion.letzte` erst nach der
+Antwort; der Server ist früher fertig. Strg+Z in dieser Lücke nahm die **vorige** Aktion zurück (im Test: Ordner „Teile“ → „Leer“). Nachgestellt mit verzögerter Antwort
+(Skript im Scratchpad `wackler/nachstellen.py`), betrifft alle 13 Rückgängig-Stellen. **Behoben zentral in `api()`:** ändernde Anfragen (nicht GET) stehen in
+`laufendeAenderungen`; `rueckgaengig()` wartet sie ab (`aenderungenAbwarten`, danach ein Takt für die Fortsetzung der Aktion), nach 400 ms Hinweis „Einen Moment …“.
+test_ordner_ui: Prüfung jetzt bestimmt statt zufällig — Antwort in der Seite um 1,5 s verzögert (fetch, nicht pg.route: dessen Handler hält Playwright an); 21/21,
+Gegenprobe mit altem app.js fällt. Suiten mit Rückgängig grün (verschieben, tastatur, loeschen, ziehen, ablegen, meldung). Vermutlich auch die Ursache des Wacklers
+in test_verschieben_ui vom 3.11.
+
+## Nächstes Thema (Anwender 4.11.): G-Code beim Drucken automatisch — Recherche, nichts gebaut
+
+Anwender hebt „keine Druckeranbindung“ (25.10.) auf, denkt an Senden aus dem Slicer, G-Code vom Drucker zurück, Simulator. Tester: **Kobra 3** (ACE), **Anycubic Slicer Next 1.3.9.4**.
+Kobra 3 hat keine offizielle lokale Schnittstelle. LAN-Modus nach Nachbau (kobra-connect, nicht Anycubic): Anmeldung über HTTP 18910 (signierte Anfrage, Antwort AES —
+Signatur nicht beschrieben), MQTT mit TLS und Gerätezertifikat auf 9883, Hochladen `:18910/gcode_upload?s=…`, Start über MQTT `…/print`, Dateiliste `listLocal`;
+**Herunterladen einer Datei und Druckhistorie nicht dokumentiert**, nur `project.state` („finish“). Anycubic versucht laut hass-anycubic_cloud, MQTT zu sperren. Offen ist Rinkhals
+(Fremd-Firmware, bringt Moonraker). Wege: Durchreiche (PartAtlas als OctoPrint-Ziel, falls Slicer Next das für Anycubic anbietet), Abholen, Ordner (da), Zwischenablage
+des Slicers (Vermutung). **Vorgeschlagen:** erst drei Fragen an den Tester, dann entscheiden.
+**Befund beim Tester (4.11., inotifywait, Manjaro, Slicer Next als Flatpak `com.anycubic.AnycubicSlicer`, Senden über die Werkbank):** Beim Slicen schreibt er
+`$XDG_RUNTIME_DIR/.flatpak/com.anycubic.AnycubicSlicer/tmp/anycubicslicer_model/<Datum>/<Sitzung>/Metadata/<Name>.gcode` (über `.tmp` + Umbenennen, bei jedem Slicen).
+**Beim Senden** entsteht `…/tmp/ACGcode3mf/9527/1103-2314-Passring-115x80-28,9mm_plate(01)_PETG_0.2_10m46s.gcode.3mf` (ebenfalls `.tmp` → MOVED_TO, also fertig geschrieben,
+wenn der Name erscheint). Name mit Anycubic-Vorsatz `MMDD-HHMM-` und Anhang `_plate(01)_Material_Schicht_Dauer`. Offen: wie lange die Datei liegt (Löschen nicht
+beobachtet), ob sie auch beim Export entsteht, Pfad beim AppImage/Windows. Folge: PartAtlas kann den Ordner `ACGcode3mf` beobachten und beim Erscheinen kopieren.
+Lücke bei uns: Ordner-Einlesen nimmt nur `.gcode`, nicht `.gcode.3mf` (`gcode_ordner.py`).
+**Nachtrag:** Tester schickte die `.gcode.3mf` (125 KB) und die exportierte `.gcode` (1,1 MB): `Metadata/plate_1.gcode` darin ist bytegleich mit der exportierten, dazu
+Plattenbilder, `project_settings.config`, `slice_info.config`. Kopf `AnycubicSlicerNext 2.0.0.5` (Tester nannte 1.3.9.4 — Flatpak vermutlich neuer). `EXCLUDE_OBJECT_DEFINE
+NAME=Passring-115x80-28_9mm.stl…` vorhanden. Die Datei lag nach 5 Minuten noch da — Nachsehen alle paar Sekunden genügt, kein Live-Beobachten nötig. Ob sie das
+Schliessen des Slicers überlebt, ist nicht sicher.
+**Nachtrag 2 (Tester, 4.11.):** die `.gcode.3mf` in `ACGcode3mf` bleibt bis zum **Neustart des Slicers** liegen, dann wird der Ordner geleert und beim nächsten Senden neu
+befüllt → Nachsehen alle paar Sekunden genügt, aber PartAtlas muss vor dem nächsten Slicer-Start gelaufen sein. **Druckzustand aus den Slicer-Protokollen: nichts.**
+`cloud_mqtt_*.log` enthält nur „unbekanntes Ereignis“ (user, hardwareProfile, buried = Nutzungsstatistik), `mach_mqtt_*` und `debug_*` nichts zum Druck. Weg B ist damit
+mit den normalen Einstellungen erledigt. Kobra-Anmeldung im LAN-Modus steht vollständig im Code von kobra-connect (`handshake.py`: GET :18910/info → sign = md5(md5(token[:16])+ts+nonce)
+→ POST ctrlInfoUrl → AES-CBC, Schlüssel token[16:32]) — braucht `paho-mqtt` und `cryptography` oder Eigenbau; LAN-Modus schliesst die Cloud aus, Tester druckt über die Cloud.
+**3MF Katalog (Stand b101ee5, 29.10.):** nur Moonraker, nur lesend (`/server/info`, `/server/history/list`), aus per Vorgabe, nur Heimnetz; Zweck: Filament nach Bestätigung
+abbuchen, Dateiname → Modell (sicher/unsicher, Anycubic-Namen `0927-1447-Name_plate(01)_PLA_0.12_3h25m13s.gcode`). Kobra nur **mit Rinkhals** (S1 im Dauerbetrieb, Kobra 3 V2
+ein Testbericht). Befund: der Kobra legt gesendete Dateien in `.3mf_temp/` und **löscht sie nach dem Druck** (`exists: false`) — G-Code vom Drucker zurück geht dort nicht,
+nur Name, Länge, teils Material/Gewicht. Simulator: `fake_moonraker.rs` (nur Tests) spielt echte Antworten aus anonymen Testberichten ab. OctoPrint, Bambu LAN „geplant“.
+
 ## Stand: 1.0.12 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.11`
 
 Papierkorb und Archiv in der Leiste, Ziehen und Ablegen (Paket 1 und 2), Meldung hält an, zehn Fehler aus dem Audit. „Neu in dieser Fassung“ auf Wunsch des Anwenders

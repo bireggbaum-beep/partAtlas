@@ -1,6 +1,7 @@
 """Ordner im Baum wie im Dateimanager: Umbenennen per Rechtsklick oder F2 direkt im Baum, Enter übernimmt, Esc bricht ab, eine Ablehnung
 lässt das Feld offen; Rückgängig mit Strg+Z. Verschieben per Ziehen auf einen anderen Ordner oder Rechtsklick › Verschieben nach …
-Die Regeln selbst prüft test_ordner."""
+Die Regeln selbst prüft test_ordner. Am Ende: ein nicht erreichbarer Wurzelordner (Stick ab) bekommt nach dem Einlesen ein Zeichen im Baum,
+ohne dass man die Seite neu lädt — und verliert es nach dem nächsten Einlesen mit eingestecktem Stick."""
 import os
 import socket
 import subprocess
@@ -23,6 +24,9 @@ if __name__ == "__main__":
     muster.stl_binaer(os.path.join(samm, "Projekt", "Teil.stl"), 10, 20, 30)
     os.makedirs(os.path.join(samm, "Ziel"))
     muster.stl_binaer(os.path.join(samm, "Ziel", "Anderes.stl"), 12, 20, 30)
+    stick = os.path.join(tmp, "Stick")
+    os.makedirs(stick)
+    muster.stl_binaer(os.path.join(stick, "Clip.stl"), 13, 20, 30)
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
@@ -33,6 +37,9 @@ if __name__ == "__main__":
         warte(lambda: abfrage(port, "/api/zaehler") is not None)
         wid = abfrage(port, "/api/wurzeln", {"pfad": samm})["id"]
         warte(lambda: len(abfrage(port, "/api/modelle")) == 2)
+        sw = abfrage(port, "/api/wurzeln", {"pfad": stick})["id"]
+        warte(lambda: len(abfrage(port, "/api/modelle")) == 3)
+        warte(lambda: not abfrage(port, "/api/scan")["laeuft"])
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
             pg = b.new_page()
@@ -137,22 +144,32 @@ if __name__ == "__main__":
             feld = pg.locator(".namens-feld")
             check("Langsamer Klick auf den Namen eines gewählten Modells: Feld mit dem Namen ohne Endung, kein Fenster",
                   feld.input_value() == "Anderes" and not pg.evaluate("document.querySelector('#dialog').open"))
+            # Die Seite erfährt die Antwort auf das Umbenennen erst 1,5 s später, der Server ist dann längst fertig. Strg+Z genau in dieser Lücke
+            # nahm früher die Aktion davor zurück (den Ordner „Teile“) und meldete „Rückgängig gemacht.“ (nachgestellt 4.11.2026). Verzögert wird
+            # in der Seite (fetch), nicht mit pg.route: dessen Handler hielte die Schleife von Playwright an, die Lücke wäre schon zu.
+            pg.evaluate("""() => { const f = window.fetchEcht = window.fetch; window.fetch = async (...a) => { const r = await f(...a);
+                if ((a[1]?.method || "") === "PATCH") await new Promise((ok) => setTimeout(ok, 1500)); return r; }; }""")
             feld.fill("Anderes v2")
             feld.press("Enter")
             warte(lambda: os.path.isfile(os.path.join(samm, "Ziel", "Anderes v2.stl")), 10)
-            check("Enter: Datei auf der Platte umbenannt, Endung geblieben, Meldung mit „Rückgängig“",
-                  os.path.isfile(os.path.join(samm, "Ziel", "Anderes v2.stl")) and "Rückgängig" in pg.inner_text("#toast"))
+            check("Enter: Datei auf der Platte umbenannt, Endung geblieben", os.path.isfile(os.path.join(samm, "Ziel", "Anderes v2.stl")))
             pg.evaluate("document.activeElement?.blur()")
-            vorher = pg.evaluate("[!!ordnerAktion.letzte, document.activeElement.tagName, !!document.querySelector('dialog[open]')]")
-            pg.keyboard.press("Control+z")
+            pg.keyboard.press("Control+z")          # die Antwort ist in der Seite noch nicht angekommen
             try:
-                # 20 s: im Gesamtlauf aller Suiten fiel das einmal mit 10 s (16.10.2026), siebenmal nachgestellt nie — auch nicht unter Volllast.
                 warte(lambda: os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")), 20)
             except Exception:
                 pass
-            zustand_text = f"vorher (Rückgängig gemerkt, Fokus, Fenster offen) {vorher}, Meldung „{pg.inner_text('#toast')}“, Ordner {sorted(os.listdir(os.path.join(samm, 'Ziel')))}"
-            ok = os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl"))
-            check("Strg+Z: Modell wieder unter altem Namen" + ("" if ok else f" — {zustand_text}"), ok)
+            time.sleep(0.5)
+            zustand_text = f"Meldung „{pg.inner_text('#toast')}“, Ordner {sorted(os.listdir(os.path.join(samm, 'Ziel')))}, Wurzel {sorted(os.listdir(samm))}"
+            ok = os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")) and os.path.isdir(os.path.join(samm, "Teile"))
+            check("Strg+Z, während die Antwort aufs Umbenennen noch unterwegs ist: genau dieses Umbenennen zurück, der Ordner davor bleibt"
+                  + ("" if ok else f" — {zustand_text}"), ok)
+            pg.evaluate("window.fetch = window.fetchEcht")      # wieder ohne Verzögerung weiter
+            try:                                    # Rückgängig lädt danach Liste und Inspektor neu: abwarten, sonst trifft F2 ein halb gezeichnetes Modell
+                warte(lambda: "Rückgängig gemacht" in pg.inner_text("#toast"), 10)
+            except Exception:
+                pass
+            time.sleep(1)
 
             # -- F2 auf dem gezeigten Modell; verbotenes Zeichen lässt das Feld offen
             time.sleep(0.5)
@@ -166,6 +183,18 @@ if __name__ == "__main__":
                   and "Dateiname darf keines dieser Zeichen" in pg.inner_text("#toast"))
             pg.locator(".namens-feld").press("Escape")
             check("Esc: Feld weg, Datei unverändert", pg.locator(".namens-feld").count() == 0 and os.path.isfile(os.path.join(samm, "Ziel", "Anderes.stl")))
+
+            wurzel = f'.eintrag[data-wurzel="{sw}"]'
+            check("Stick eingesteckt: kein Zeichen am Wurzelordner", pg.locator(f"{wurzel}.unerreichbar").count() == 0)
+            os.rename(stick, stick + "-ab")
+            abfrage(port, "/api/scan", {})
+            pg.wait_for_selector(f"{wurzel}.unerreichbar", timeout=20000)
+            check("Stick ab und eingelesen: „nicht erreichbar“ am Wurzelordner, ohne die Seite neu zu laden, das Modell bleibt gezählt",
+                  "nicht erreichbar" in pg.inner_text(wurzel) and pg.inner_text(f"{wurzel} em").strip() == "1")
+            os.rename(stick + "-ab", stick)
+            abfrage(port, "/api/scan", {})
+            pg.wait_for_selector(f"{wurzel}:not(.unerreichbar)", timeout=20000)
+            check("Wieder eingesteckt und eingelesen: das Zeichen ist weg", "nicht erreichbar" not in pg.inner_text(wurzel))
             b.close()
     finally:
         server.terminate()

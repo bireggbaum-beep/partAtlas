@@ -108,7 +108,22 @@ function knotenAbgleichen(a, n) {
 function localStorageLesen(k) { try { return localStorage.getItem("partatlas." + k); } catch { return null; } }
 function localStorageSchreiben(k, v) { try { localStorage.setItem("partatlas." + k, v); } catch { /* egal */ } }
 
+// Ändernde Anfragen, deren Antwort noch aussteht. Rückgängig wartet auf sie: eine Aktion merkt sich ihr Rückgängig erst mit der Antwort —
+// wer vorher Strg+Z drückt, nähme sonst die Aktion davor zurück (nachgestellt 4.11.2026: Modell umbenannt, Strg+Z benannte den Ordner zurück).
+const laufendeAenderungen = new Set();
 async function api(pfad, optionen = {}) {
+  if ((optionen.method || "GET").toUpperCase() === "GET") return apiAnfrage(pfad, optionen);
+  const anfrage = apiAnfrage(pfad, optionen);
+  laufendeAenderungen.add(anfrage);
+  try { return await anfrage; } finally { laufendeAenderungen.delete(anfrage); }
+}
+async function aenderungenAbwarten() {
+  while (laufendeAenderungen.size) {
+    await Promise.allSettled([...laufendeAenderungen]);
+    await new Promise((r) => setTimeout(r, 0));     // erst danach hat die Aktion ihr Rückgängig gesetzt (und vielleicht noch eine Anfrage gestartet)
+  }
+}
+async function apiAnfrage(pfad, optionen) {
   const antwort = await fetch(pfad, {
     ...optionen,
     headers: optionen.body ? { "Content-Type": "application/json" } : {},
@@ -453,8 +468,11 @@ function zweig(k, tiefe) {
     ? `<small class="wz-ort">${esc((k.pfad || "").split(/[\\/]/).filter(Boolean).slice(-2, -1)[0] || (k.pfad || ""))}</small>` : "";
   // Ordner ohne Modelle stehen da wie im Dateimanager, aber grau und ohne Zahl.
   const ohne = tiefe > 0 && !k.anzahl ? "ohne-modelle" : "";
-  let html = `<button class="eintrag ${aktiv} ${ohne}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(k.pfad || k.name)}">
-    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}</span><em>${ohne ? "" : k.anzahl}</em></button>`;
+  // Eine Wurzel, die beim letzten Lesen fehlte oder leer war (Stick ab, Netzlaufwerk weg): ruhig markiert, die Modelle bleiben.
+  const weg = tiefe === 0 && k.erreichbar === false;
+  const titel = weg ? `Nicht erreichbar: ${k.pfad || k.name}\nLaufwerk einstecken oder verbinden, dann einlesen. Die Modelle bleiben, nichts gilt als fehlend.` : (k.pfad || k.name);
+  let html = `<button class="eintrag ${aktiv} ${ohne} ${weg ? "unerreichbar" : ""}" style="--tiefe:${tiefe}" data-ordner="${esc(k.id)}" ${tiefe > 0 ? `draggable="true"` : ""} ${tiefe === 0 ? `data-wurzel="${esc(k.id)}" data-wurzel-name="${esc(k.name)}"` : ""} title="${esc(titel)}">
+    <span><span class="pfeil ${hatKinder ? (offen ? "auf" : "zu") : ""}" data-klappe="${esc(k.id)}"></span>${esc(k.name)}${ort}${weg ? `<small class="wz-weg" aria-label="nicht erreichbar">nicht erreichbar</small>` : ""}</span><em>${ohne ? "" : k.anzahl}</em></button>`;
   if (hatKinder && offen) html += k.kinder.map((c) => zweig(c, tiefe + 1)).join("");
   return html;
 }
@@ -2400,6 +2418,7 @@ function hoverAktionen(m) {
 function programmKnoepfe(m, programmDaten) {
   const { je } = programmeFuer(m, programmDaten);
   const knoepfe = ["slicer", "cad"].map((a) => {
+    if (a === "cad" && geslict(m)) return "";
     if (je[a]?.length) {
       const p = je[a][0];
       return `<button type="button" class="hv-btn" data-hv="${esc(p.pfad)}" data-hv-id="${esc(m.id)}" data-hv-art="${a}" title="In ${esc(p.name)} öffnen" aria-label="In ${esc(p.name)} öffnen">${HV_ICONS[a]}</button>`;
@@ -2428,11 +2447,15 @@ function ladeProgramme() {
 // Standardprogramm der Art vorn. Slicen und Bearbeiten sind verschiedene
 // Absichten — deshalb zwei Wege statt eines „Öffnen“.
 const ART_SYMBOL = { slicer: "🖨", cad: "📐" };
+// Ein geslictes 3MF (Platten mit G-Code) versteht nur der Slicer: kein CAD-Programm, und solange ein Slicer da ist auch nicht das
+// Standardprogramm des Rechners — das ist für 3MF meist ein CAD (Tester 4.11.2026: FreeCAD und SolidCraft scheiterten daran).
+const geslict = (m) => m.gcode === "3mf";
+const nurSlicer = (m, je) => geslict(m) && je.slicer?.length > 0;
 function programmeFuer(m, prog) {
   const std = prog.programme.find((p) => p.pfad === prog.standard[m.format]);
   const je = {};
   for (const art of Object.keys(prog.arten)) {
-    const liste = prog.programme.filter((p) => p.art === art && p.formate.includes(m.format));
+    const liste = art === "cad" && geslict(m) ? [] : prog.programme.filter((p) => p.art === art && p.formate.includes(m.format));
     je[art] = std && std.art === art ? [std, ...liste.filter((p) => p !== std)] : liste;
   }
   return { je, hauptArt: std ? std.art : null };
@@ -2443,7 +2466,8 @@ function oeffnenMitEintraege(m, prog) {
   const { je } = programmeFuer(m, prog);
   const gruppen = Object.entries(prog.arten || {}).filter(([art]) => je[art]?.length).map(([art, titel]) =>
     `<div class="menu-titel">${esc(titel.toUpperCase())}</div>${je[art].map((p) => `<button data-oeffne-pfad="${esc(p.pfad)}">${esc(p.name)}</button>`).join("")}`).join("");
-  return `${gruppen}<button id="oeffnen-system">Mit dem System öffnen</button><button id="prog-einstellen">Programme einstellen …</button>`;
+  const system = nurSlicer(m, je) ? "" : `<button id="oeffnen-system">Mit dem System öffnen</button>`;
+  return `${gruppen}${system}<button id="prog-einstellen">Programme einstellen …</button>`;
 }
 
 async function modellOeffnen(body, id = $("#inspektor").dataset.id) {
@@ -3662,6 +3686,9 @@ function liveScan(m) {
   const vorher = zustand.scan || {};
   zustand.scan = m;
   if (m.zuletzt_eingelesen) zuletztEingelesen = m.zuletzt_eingelesen;
+  // Am Ende jedes Einlesens die Seitenleiste neu: auch ohne neue Dateien kann ein Laufwerk wieder (oder nicht mehr) erreichbar sein,
+  // und das Zeichen am Wurzelordner soll das gleich zeigen (das Einlesen liest dafür die Ordner neu von der Platte).
+  if (vorher.laeuft && !m.laeuft) ladeSeite();
   einlesenZeichnen(m);
   hintergrundZeichnen();
   if (!zustand.modelle.length) zeichneLeer();
@@ -3933,7 +3960,7 @@ async function kontextMenu(e, id) {
     const { je } = programmeFuer(m, prog);
     const da = !m.fehlt;
     const kein = { slicer: "Kein Slicer für dieses Format", cad: "Kein CAD-Programm für dieses Format" };
-    const oeffnen = Object.keys(prog.arten).map((art) => {
+    const oeffnen = Object.keys(prog.arten).filter((art) => !(art === "cad" && geslict(m))).map((art) => {
       const liste = je[art];
       if (!liste.length) return ["einrichten", `${ART_SYMBOL[art] || "↗"} ${kein[art] || "Kein Programm"} — einrichten …`, "aus"];
       if (liste.length === 1) return ["oeffnen", `${ART_SYMBOL[art] || "↗"} In ${esc(liste[0].name)} öffnen`, "", liste[0].pfad];
@@ -3941,7 +3968,7 @@ async function kontextMenu(e, id) {
         liste.map((p, i) => `<button data-km="oeffnen" data-pfad="${esc(p.pfad)}">${esc(p.name)}${i === 0 ? ' <small class="dim">Standard</small>' : ""}</button>`).join("")];
     });
     eintraege = [
-      ...(da ? [...oeffnen, ["system", "↗ Mit dem System öffnen"], ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
+      ...(da ? [...oeffnen, ...(nurSlicer(m, je) ? [] : [["system", "↗ Mit dem System öffnen"]]), ["ordner", "📂 Im Ordner zeigen"], ["-"]] : []),
       ["ws", m.warteschlange != null ? "☰ Aus der Warteschlange" : "☰ In die Warteschlange"],
       ["druck1", "🖨 Druck anlegen …"],
       ["gedruckt1", m.gedruckt ? "○ Als nicht gedruckt markieren" : "✓ Als gedruckt markieren"],
@@ -4199,6 +4226,11 @@ async function ordnerVerschiebenNach(id) {
 
 // Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen oder verschieben, Modelle entfernen) — Knopf in der Meldung und Strg+Z.
 async function rueckgaengig() {
+  if (laufendeAenderungen.size) {
+    const hinweis = setTimeout(() => toast("Einen Moment — die letzte Änderung läuft noch …"), 400);
+    await aenderungenAbwarten();
+    clearTimeout(hinweis);
+  }
   const l = ordnerAktion.letzte;
   if (!l) return;
   ordnerAktion.letzte = null;
