@@ -4,7 +4,13 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## 1.0.13 auf dem Branch (4.11.2026): geslictes 3MF nur in den Slicer (Fehler vom Tester)
+## Stand: 1.0.13 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.12`
+
+Geslictes 3MF nur in den Slicer, Handbuch (Bereinigen, Archiv/Papierkorb, Ziehen), „⚠ nicht erreichbar“ am Wurzelordner, Strg+Z wartet laufende Änderungen ab.
+Vor dem Push: test_ui einmal komplett 70/70 (Anwender fand es übertrieben; gelaufen wegen der Änderung in `api()`, die jede ändernde Anfrage betrifft),
+test_api 94/94, test_scan 110/110, test_schutz 28/28, die geänderten Suiten grün.
+
+### Einzelheiten 1.0.13
 
 Tester: bei einem 3MF mit G-Code bot „Öffnen mit“ FreeCAD an, „Mit dem System öffnen“ startete SolidCraft — beides scheitert. Ursache: `programmeFuer` sah nur das
 Format (3mf), nicht ob die Datei geslict ist (`m.gcode === "3mf"`, aus den Platten). Jetzt `geslict(m)`: kein CAD (Knopf, Menü, Kontextmenü), kein gedämpfter
