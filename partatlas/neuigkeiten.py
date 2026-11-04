@@ -8,6 +8,9 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.14", ["G-Code im Ordner jetzt auch als geslictes Projekt (.gcode.3mf, etwa aus Anycubic Slicer Next oder Bambu Studio): PartAtlas "
+                "erkennt das Modell am G-Code darin und hängt die Datei als Druck „Noch nicht gedruckt“ an, mit Dauer, Gewicht und Einstellungen. "
+                "Die Datei bleibt im Ordner liegen und erscheint wie bisher auch als eigene Kachel."]),
     ("1.0.13", ["Behoben: Ein geslictes 3MF (mit G-Code darin) wurde zum Öffnen auch dem CAD-Programm und dem Standardprogramm des Rechners angeboten — "
                 "beide können damit nichts anfangen. Jetzt steht dafür nur noch der Slicer zur Wahl; „Mit dem System öffnen“ bleibt nur, solange kein "
                 "Slicer eingerichtet ist.",
