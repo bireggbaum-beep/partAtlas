@@ -234,6 +234,11 @@ figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; 
   <p>Sind mehrere gewählt, gilt die Leiste unten für alle: <b>Tag, Material, Sammlung, Baugruppe</b> öffnen ein Fenster mit Suchfeld und dem
   Stand („2 von 5“); ein Klick fügt allen hinzu, das Fenster bleibt offen. <b>Favorit, Entwurf, Gedruckt</b> schalten direkt; <b>Verschieben,
   Archiv, Löschen</b> fragen nach. Ein Rechtsklick auf eine Kachel bietet dasselbe für die Auswahl.</p>
+  <h3>Ziehen und Ablegen</h3>
+  <p>Gewählte Modelle lassen sich dorthin ziehen, wo sie hingehören: auf einen Ordner, eine Sammlung oder Baugruppe, auf 🗑 (Papierkorb),
+  🗄 (Archiv), auf einen Tag in der Seitenleiste, auf ♥ Favoriten oder auf ＋ bei den Sammlungen (neue Sammlung). Aus Papierkorb oder Archiv
+  zurück geht es auf ▦ Bibliothek. Am Zeiger steht, was beim Loslassen geschieht. Danach macht <b>Rückgängig</b> in der Meldung oder
+  <kbd>Strg</kbd>+<kbd>Z</kbd> alles wieder zurück. Ab 25 Modellen fragt der Papierkorb einmal nach.</p>
 </section>
 
 <section id="suche">
@@ -419,17 +424,24 @@ figure.bild figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; 
 
 <section id="bereinigen">
   <h2>Bereinigen und Löschen</h2>
-  <p>Der Besen in der Leiste ganz links zeigt, wo aufzuräumen ist; das Abzeichen zählt fehlende, mehrfach liegende und unlesbare Dateien.
-  Die Seitenleiste ist zweigeteilt: <b>Aufräumen</b> und <b>Aufbewahrt</b>. Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.</p>
+  <p>Der Besen 🧹 in der Leiste ganz links zeigt, wo aufzuräumen ist; das Abzeichen zählt fehlende, mehrfach liegende und unlesbare Dateien.
+  Ein Klick öffnet die erste Liste, in der etwas zu tun ist. Jede Ansicht sagt oben, was sie zeigt und was ihre Aktionen tun.
+  <a href="#archiv-papierkorb">Archiv und Papierkorb</a> haben eigene Knöpfe in der Leiste.</p>
   <figure class="bild"><img class="hell" src="bilder/bereinigen-hell.webp" alt="Bereinigen › Gleiche Datei: oben die Erklärung, was man sieht und was man tun kann." width="1060" height="420" loading="lazy"><img class="dunkel" src="bilder/bereinigen-dunkel.webp" alt="Bereinigen › Gleiche Datei: oben die Erklärung, was man sieht und was man tun kann." width="1060" height="420" loading="lazy"><figcaption>Bereinigen › Gleiche Datei: oben die Erklärung, was man sieht und was man tun kann.</figcaption></figure>
   <table>
     <tr><th>Ansicht</th><th>Inhalt</th></tr>
     <tr><td>Datei fehlt</td><td>Im Katalog vorhanden, auf der Platte nicht mehr. <b>Entscheiden …</b> öffnet das Fenster vom Ende des Einlesens: <b>Ins Archiv</b> (taucht die Datei wieder auf, kehrt das Modell von selbst zurück), <b>Behalten</b> (bleibt ohne Datei im Katalog) oder <b>Löschen</b> (Papierkorb).</td></tr>
     <tr><td>Gleiche Datei</td><td>Dieselbe Datei mit gleichem Inhalt an mehreren Orten. Es ist ein Modell; im Inspektor unter <b>Datei</b> stehen alle Orte, ein Klick zeigt den Ordner. Eine überzählige Kopie löschst du im Dateimanager — das Modell bleibt mit den übrigen.</td></tr>
     <tr><td>Unlesbar</td><td>Dateien, die partAtlas nicht lesen konnte; den Grund nennt der Inspektor. Im Programm öffnen und am selben Ort neu speichern — beim nächsten Einlesen liest partAtlas sie neu.</td></tr>
+    <tr><td>G-Code ohne Modell</td><td>G-Codes aus deinen Ordnern, die partAtlas beim Einlesen keinem Modell sicher zuordnen konnte — etwa weil zwei Modelle gleich heissen oder das Modell fehlt. Je G-Code steht der Grund; mit einem Klick ordnest du ihn zu oder blendest ihn aus.</td></tr>
     <tr><td>Vorschläge</td><td>Was Platz kostet und vermutlich weg kann, in Gruppen mit Summe: Entwürfe, Kopien gleichen Inhalts, grosse Dateien ohne Verwendung, lange nicht angefasste — je Zeile mit Grund, Grösse, Pfad (📂) und was daran hängt. partAtlas löscht hier nichts; du löschst im Dateimanager oder speicherst die Pfade als CSV. „Behalten“ heisst: nicht mehr vorschlagen.</td></tr>
-    <tr><td>Archiv</td><td>Modelle, die ruhen: nicht in Liste, Suche, Zählern und Sammlungen, aber mit allem, was daran hängt. Hinein über Rechtsklick › Ins Archiv, die Leiste oder das Fenster bei fehlenden Dateien; zurück über Rechtsklick oder „Zurückholen“ im Inspektor.</td></tr>
-    <tr><td>Papierkorb</td><td>Aus dem Katalog entfernte Modelle, Ordner, Sammlungen, Baugruppen, Drucke, Tags und Kaufteile — einzeln oder alle wiederherstellbar. Er wird nie von selbst und nie als Ganzes geleert. Ein einzelnes Modell lässt sich mit <b>Endgültig entfernen …</b> für immer herausnehmen, nach Eintippen von „entfernen“ und mit einer Sicherung vorher.</td></tr>
+  </table>
+  <h3 id="archiv-papierkorb">Archiv und Papierkorb</h3>
+  <p>Beide stehen links in der Leiste, gleich unter ▦ Bibliothek: 🗄 <b>Archiv</b> und 🗑 <b>Papierkorb</b>. Am Papierkorb steht, wie viele Modelle darin liegen.</p>
+  <table>
+    <tr><th>Ort</th><th>Inhalt</th></tr>
+    <tr><td>Archiv</td><td>Modelle, die ruhen: nicht in Liste, Suche, Zählern und Sammlungen, aber mit allem, was daran hängt. Hinein über Rechtsklick › Ins Archiv, die Leiste, das Fenster bei fehlenden Dateien oder durch Ziehen auf 🗄; zurück über Rechtsklick, „Zurückholen“ im Inspektor oder durch Ziehen auf ▦ Bibliothek.</td></tr>
+    <tr><td>Papierkorb</td><td>Aus dem Katalog entfernte Modelle, Ordner, Sammlungen, Baugruppen, Drucke, Tags und Kaufteile — einzeln oder alle wiederherstellbar, auch durch Ziehen auf ▦ Bibliothek. Er wird nie von selbst und nie als Ganzes geleert. Ein einzelnes Modell lässt sich mit <b>Endgültig entfernen …</b> für immer herausnehmen, nach Eintippen von „entfernen“ und mit einer Sicherung vorher.</td></tr>
   </table>
   <h3>Löschen mit Auskunft</h3>
   <p>Vor dem Löschen zeigt partAtlas, was am Modell hängt: Dateien, eigene Bilder, Baugruppen, Sammlungen, Tags — jeweils mit der

@@ -10,6 +10,8 @@ Tester: bei einem 3MF mit G-Code bot „Öffnen mit“ FreeCAD an, „Mit dem Sy
 Format (3mf), nicht ob die Datei geslict ist (`m.gcode === "3mf"`, aus den Platten). Jetzt `geslict(m)`: kein CAD (Knopf, Menü, Kontextmenü), kein gedämpfter
 CAD-Hinweis, und „Mit dem System öffnen“ nur, wenn kein Slicer da ist (sonst bliebe keine Datei ohne Weg nach draussen). test_programme_ui 10/10 (+7),
 Gegenprobe (geslict → false) fällt. Server unverändert: wer ein CAD selbst wählt, darf weiter alles öffnen.
+**Handbuch** (Anwender: ja): Abschnitt Bereinigen nachgezogen — Besen öffnet die erste Liste mit Arbeit, Zeile „G-Code ohne Modell“, neuer Teil „Archiv und
+Papierkorb“ (Knöpfe in der Leiste, Ziehen), in „Auswählen“ ein Absatz „Ziehen und Ablegen“; Bild `bereinigen` neu (nur dieses Motiv). Schreibweise im Handbuch weiter „partAtlas“.
 
 ## Nächstes Thema (Anwender 4.11.): G-Code beim Drucken automatisch — Recherche, nichts gebaut
 
