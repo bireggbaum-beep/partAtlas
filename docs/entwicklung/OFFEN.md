@@ -4,7 +4,9 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## 1.0.15 auf dem Branch (4.11.2026): geslictes 3MF auf jedem Weg nur in den Slicer; .gcode.3mf nicht an die eigene Kachel
+## Stand: 1.0.15 auf `main` (4.11.2026) — Rückweg `fassung-1.0.14`. Ohne test_ui (Oberfläche nur minimal: `geslict` vom Server).
+
+### 1.0.15: geslictes 3MF auf jedem Weg nur in den Slicer; .gcode.3mf nicht an die eigene Kachel
 
 Anwender: „.gcode.3mf sollen auch nicht in FreeCAD geöffnet werden können“. Die Regel aus 1.0.13 galt nur in der Oberfläche (Menüs, Knöpfe); Enter,
 Doppelklick und „Öffnen“ am Druck nahmen das Standardprogramm für 3MF — ohne Slicer FreeCAD —, und der Server hätte FreeCAD auch auf Anfrage gestartet.
