@@ -14,7 +14,10 @@ NEUES = [
                 "Handbuch (? links unten oder F1): Papierkorb und Archiv mit ihren Knöpfen in der Leiste, Ziehen und Ablegen und die Liste "
                 "„G-Code ohne Modell“ sind beschrieben.",
                 "Steckt ein Laufwerk nicht (USB-Stick, Netzlaufwerk), steht am Ordner in der Bibliothek jetzt „⚠ nicht erreichbar“. Die Modelle darin "
-                "bleiben, nichts gilt als fehlend. Einstecken und einlesen — dann verschwindet das Zeichen wieder."]),
+                "bleiben, nichts gilt als fehlend. Einstecken und einlesen — dann verschwindet das Zeichen wieder.",
+                "Behoben: Wer gleich nach dem Umbenennen, Verschieben oder Löschen Strg+Z drückte, bevor PartAtlas fertig geantwortet hatte, machte die "
+                "Aktion davor rückgängig — und die Meldung sagte trotzdem „Rückgängig gemacht“. Jetzt wartet Strg+Z einen Augenblick und nimmt genau "
+                "das zurück, was du zuletzt getan hast."]),
     ("1.0.12", ["Papierkorb und Archiv haben eigene Knöpfe in der Leiste links, gleich unter ▦ Bibliothek: 🗄 Archiv und 🗑 Papierkorb — ein Klick öffnet sie. "
                 "Am Papierkorb steht, wie viele Modelle darin liegen. Unter 🧹 Bereinigen bleibt nur noch das Aufräumen; der Besen öffnet gleich die erste Liste, "
                 "in der etwas zu tun ist.",

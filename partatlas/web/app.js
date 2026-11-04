@@ -108,7 +108,22 @@ function knotenAbgleichen(a, n) {
 function localStorageLesen(k) { try { return localStorage.getItem("partatlas." + k); } catch { return null; } }
 function localStorageSchreiben(k, v) { try { localStorage.setItem("partatlas." + k, v); } catch { /* egal */ } }
 
+// Ändernde Anfragen, deren Antwort noch aussteht. Rückgängig wartet auf sie: eine Aktion merkt sich ihr Rückgängig erst mit der Antwort —
+// wer vorher Strg+Z drückt, nähme sonst die Aktion davor zurück (nachgestellt 4.11.2026: Modell umbenannt, Strg+Z benannte den Ordner zurück).
+const laufendeAenderungen = new Set();
 async function api(pfad, optionen = {}) {
+  if ((optionen.method || "GET").toUpperCase() === "GET") return apiAnfrage(pfad, optionen);
+  const anfrage = apiAnfrage(pfad, optionen);
+  laufendeAenderungen.add(anfrage);
+  try { return await anfrage; } finally { laufendeAenderungen.delete(anfrage); }
+}
+async function aenderungenAbwarten() {
+  while (laufendeAenderungen.size) {
+    await Promise.allSettled([...laufendeAenderungen]);
+    await new Promise((r) => setTimeout(r, 0));     // erst danach hat die Aktion ihr Rückgängig gesetzt (und vielleicht noch eine Anfrage gestartet)
+  }
+}
+async function apiAnfrage(pfad, optionen) {
   const antwort = await fetch(pfad, {
     ...optionen,
     headers: optionen.body ? { "Content-Type": "application/json" } : {},
@@ -4211,6 +4226,11 @@ async function ordnerVerschiebenNach(id) {
 
 // Rückgängig für den letzten Schritt (Ordner umbenennen oder verschieben, Modell umbenennen oder verschieben, Modelle entfernen) — Knopf in der Meldung und Strg+Z.
 async function rueckgaengig() {
+  if (laufendeAenderungen.size) {
+    const hinweis = setTimeout(() => toast("Einen Moment — die letzte Änderung läuft noch …"), 400);
+    await aenderungenAbwarten();
+    clearTimeout(hinweis);
+  }
   const l = ordnerAktion.letzte;
   if (!l) return;
   ordnerAktion.letzte = null;

@@ -17,9 +17,14 @@ kein zusätzlicher Plattenzugriff); `ordnerbaum` setzt `erreichbar: False` wie d
 „⚠ nicht erreichbar“ in der Warnfarbe, Titel mit Hinweis. Neu: am Ende jedes Einlesens lädt die Seitenleiste neu (`liveScan`) — sonst blieb das Zeichen nach dem
 Einstecken stehen, wenn das Einlesen nichts Neues fand. test_ordner 23/23 (+5), test_ordner_ui 21/21 (+3); zwei Gegenproben fallen (nur `isdir` übersieht den leeren
 Einhängepunkt; ohne die Bedingung „Modelle bekannt“ gilt eine neue leere Wurzel als unerreichbar). Stand des Zeichens: letztes Lesen (Start, Einlesen, Ordner-Aktion).
-**Wackler beobachtet (nicht behoben):** test_ordner_ui fiel einmal (19/21, zweiter Lauf 21/21): Modell umbenannt, Strg+Z meldete „Rückgängig gemacht.“, die Datei blieb
-„Anderes v2.stl“. Verdacht wie bei test_verschieben_ui (3.11.): ein Schreiber mit altem Stand der Orte (Einlesen/Hintergrund) überschreibt den neuen Ort; dann sieht
-`umbenennen` beim Rückgängig `ziel == alt` und tut still nichts. Mit drei statt zwei Modellen läuft der Hintergrund länger — passt dazu. Nächster Schritt: nachstellen.
+**Wackler war ein Fehler (behoben):** test_ordner_ui fiel einmal (Modell umbenannt, Strg+Z meldete „Rückgängig gemacht.“, Datei blieb „Anderes v2.stl“). Mein erster
+Verdacht (alter Stand der Orte überschreibt) war falsch — dann hätte der Server einen Fehler gemeldet. **Ursache:** jede Aktion setzt `ordnerAktion.letzte` erst nach der
+Antwort; der Server ist früher fertig. Strg+Z in dieser Lücke nahm die **vorige** Aktion zurück (im Test: Ordner „Teile“ → „Leer“). Nachgestellt mit verzögerter Antwort
+(Skript im Scratchpad `wackler/nachstellen.py`), betrifft alle 13 Rückgängig-Stellen. **Behoben zentral in `api()`:** ändernde Anfragen (nicht GET) stehen in
+`laufendeAenderungen`; `rueckgaengig()` wartet sie ab (`aenderungenAbwarten`, danach ein Takt für die Fortsetzung der Aktion), nach 400 ms Hinweis „Einen Moment …“.
+test_ordner_ui: Prüfung jetzt bestimmt statt zufällig — Antwort in der Seite um 1,5 s verzögert (fetch, nicht pg.route: dessen Handler hält Playwright an); 21/21,
+Gegenprobe mit altem app.js fällt. Suiten mit Rückgängig grün (verschieben, tastatur, loeschen, ziehen, ablegen, meldung). Vermutlich auch die Ursache des Wacklers
+in test_verschieben_ui vom 3.11.
 
 ## Nächstes Thema (Anwender 4.11.): G-Code beim Drucken automatisch — Recherche, nichts gebaut
 
