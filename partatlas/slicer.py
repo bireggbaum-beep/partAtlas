@@ -238,8 +238,7 @@ def quellen_aus_gcode(pfad, grenze=4 << 20):
     """Die Namen der Modelle, aus denen ein G-Code gesliced wurde, wie der Slicer sie schreibt (ohne `_id_n_copy_m`), in der Reihenfolge des
     Auftretens, ohne Doppelte. Gelesen wird nur der Anfang: dort stehen Objektliste und das erste `printing object`. Leer, wenn die Datei
     nichts nennt (dann bleibt der Dateiname)."""
-    with open(pfad, "rb") as f:
-        text = f.read(grenze).decode("utf-8", "replace")
+    text = _gcode_anfang(pfad, grenze)
     roh = _QUELLE_OBJEKT.findall(text) + [a or b for a, b in _QUELLE_KOMMENTAR.findall(text)]
     namen = []
     for n in roh:
@@ -247,6 +246,26 @@ def quellen_aus_gcode(pfad, grenze=4 << 20):
         if n and n not in namen:
             namen.append(n)
     return namen
+
+
+_PLATTEN_GCODE = re.compile(r"^Metadata/plate_\d+\.gcode$")
+
+
+def _gcode_anfang(pfad, grenze):
+    """Der Anfang des G-Codes als Text. Eine `.gcode.3mf` (Bambu, Orca, Anycubic: der G-Code jeder Platte als `Metadata/plate_N.gcode` in einem
+    Zip) liefert den Anfang jeder Platte — die Objektliste steht in jeder vorn."""
+    if pfad.lower().endswith(".3mf"):
+        try:
+            with zipfile.ZipFile(pfad) as z:
+                teile = []
+                for n in sorted(x for x in z.namelist() if _PLATTEN_GCODE.match(x)):
+                    with z.open(n) as f:
+                        teile.append(f.read(grenze).decode("utf-8", "replace"))
+                return "\n".join(teile)
+        except (zipfile.BadZipFile, OSError, KeyError):
+            return ""
+    with open(pfad, "rb") as f:
+        return f.read(grenze).decode("utf-8", "replace")
 
 
 def dauer_s(text):

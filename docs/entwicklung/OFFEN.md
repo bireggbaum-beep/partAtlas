@@ -4,6 +4,16 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.14 auf dem Branch (4.11.2026): .gcode.3mf beim Einlesen aus dem Ordner (Paket 1 der G-Code-Thematik)
+
+Anwender: Weg A — die `.gcode.3mf` bleibt eine Kachel wie bisher (das Einlesen nimmt sie als 3MF-Modell auf) und hängt **zusätzlich** als G-Code am
+Quellmodell (Druck „offen“). **Offen, Entscheidung Anwender (Weg B):** `.gcode.3mf` nur noch als G-Code, keine Kachel — braucht einen Umzug der schon
+eingelesenen (Tags, Drucke aufs Quellmodell), sonst stünden sie als „Datei fehlt“ da; Aufwand 3. Gebaut: `gcode_ordner.ist_gcode` (.gcode, .gcode.3mf),
+`vergleichsname`/`woerter` kennen die Doppelendung, `slicer._gcode_anfang` liest bei einer 3MF den Anfang jeder `Metadata/plate_N.gcode`. Anhängen über
+den vorhandenen Weg (`aus_ordner` → `_datei_vorbereiten`: Art 3mf, Dauer/Gewicht aus slice_info). test_gcode_ordner 38/38 (+5; nachgebaute Datei nach dem
+Muster der echten des Testers, nicht seine Datei — Anwender), zwei Gegenproben fallen (nur `.gcode` im Filter; Zip nicht lesen). test_drucke, test_slicer,
+test_gcode_ui, test_gcode_offen_ui, test_scan grün.
+
 ## Stand: 1.0.13 auf `main` (4.11.2026, für den Tester) — Rückweg `fassung-1.0.12`
 
 Geslictes 3MF nur in den Slicer, Handbuch (Bereinigen, Archiv/Papierkorb, Ziehen), „⚠ nicht erreichbar“ am Wurzelordner, Strg+Z wartet laufende Änderungen ab.

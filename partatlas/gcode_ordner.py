@@ -4,7 +4,10 @@ Der Tester exportiert G-Code aus dem Slicer in den Ordner seiner Modelle. Das Ei
 (slicer.quellen_aus_gcode), der Slicer schreibt Sonderzeichen um („Testscheibe_45mm“ im Dateinamen, „Testscheibe_4_5mm“ im Inhalt) — verglichen
 wird darum ohne Gross-/Kleinschreibung, Endung und alles ausser Buchstaben und Ziffern. Zugeordnet wird nur, was eindeutig ist; sonst bleibt die
 Datei unberührt im Ordner und wird gezählt (`gcode_unklar`, `gcode_ohne_modell`). Der G-Code kommt über denselben Weg in den Bestand wie beim
-Hochladen (Drucke.datei_anhaengen), an einen neuen Druck mit Ergebnis „offen“. Die Datei im Ordner bleibt liegen."""
+Hochladen (Drucke.datei_anhaengen), an einen neuen Druck mit Ergebnis „offen“. Die Datei im Ordner bleibt liegen.
+
+Auch `.gcode.3mf` (geslictes Projekt: der G-Code jeder Platte im Zip, dazu Gewicht, Dauer, Plattenbild). Sie bleibt daneben ein Modell, wie
+das Einlesen sie bisher schon aufnahm (Anwender 4.11.2026: erst zusätzlich; ob sie nur noch G-Code sein soll, entscheidet er später)."""
 import hashlib
 import logging
 import os
@@ -27,9 +30,14 @@ OFFEN = ("unklar", "ohne")
 _SPERRE = threading.Lock()
 
 
+def ist_gcode(name):
+    n = (name or "").lower()
+    return n.endswith(".gcode") or n.endswith(".gcode.3mf")
+
+
 def vergleichsname(name):
     """Der Name, mit dem Modell und G-Code verglichen werden: ohne Endung, Gross-/Kleinschreibung, Umlaute und Satzzeichen."""
-    name = re.sub(r"\.(stl|3mf|obj|step|stp|fcstd|gcode)$", "", (name or "").strip(), flags=re.I)
+    name = re.sub(r"(\.gcode\.3mf|\.(stl|3mf|obj|step|stp|fcstd|gcode))$", "", (name or "").strip(), flags=re.I)
     name = unicodedata.normalize("NFKD", name)
     return re.sub(r"[\W_]+", "", "".join(c for c in name if not unicodedata.combining(c))).lower()
 
@@ -47,7 +55,7 @@ def ordner_umziehen(bestand, alt, neu):
 
 def woerter(name):
     """Die Wörter eines Namens, je wie `vergleichsname` behandelt: „1009-Halter_Netzteil_plate01“ → [1009, halter, netzteil, plate01]."""
-    stamm = re.sub(r"\.(stl|3mf|obj|step|stp|fcstd|gcode)$", "", (name or "").strip(), flags=re.I)
+    stamm = re.sub(r"(\.gcode\.3mf|\.(stl|3mf|obj|step|stp|fcstd|gcode))$", "", (name or "").strip(), flags=re.I)
     return [w for w in (vergleichsname(t) for t in re.split(r"[\W_]+", stamm)) if w]
 
 
@@ -78,7 +86,7 @@ class GcodeOrdner:
         if not namen:
             # Der Inhalt nennt nichts: der Dateiname, genau ein längster Treffer.
             # Nur ganze Wörter in Folge: „Halter“ steckt in „Halterung_v2“, ist aber ein anderes Teil (Audit 4.11.2026).
-            datei = woerter(os.path.splitext(os.path.basename(pfad))[0])
+            datei = woerter(os.path.basename(pfad))
             treffer = {n: m for n, m in je_name.items() if len(n) >= NAME_MIN and _in_folge(getattr(self, "_woerter", {}).get(n) or (), datei)}
             if treffer:
                 laengster = max(len(n) for n in treffer)
@@ -101,7 +109,7 @@ class GcodeOrdner:
         return "ohne", ohne, namen
 
     def einlesen(self, wurzeln, neue_modelle, stopp=None, unerreichbar=()):
-        """Alle `.gcode` unter den Wurzelordnern. `neue_modelle`: in diesem Lauf kamen Modelle dazu — dann werden auch die früher unklaren und
+        """Alle `.gcode` und `.gcode.3mf` unter den Wurzelordnern. `neue_modelle`: in diesem Lauf kamen Modelle dazu — dann werden auch die früher unklaren und
         unbekannten noch einmal angesehen. Zugeordnete und ausgeblendete bleiben, wie sie sind. `unerreichbar`: Wurzeln, die das Einlesen nicht
         erreichte (Stick ab, Netzlaufwerk weg) — ihre gemerkten G-Codes bleiben stehen, sonst wären „Nicht zuordnen“-Entscheidungen verloren
         und beim nächsten Mal alle wieder neu (Audit 4.11.2026). Gibt die Zahlen zurück."""
@@ -116,7 +124,7 @@ class GcodeOrdner:
             for ordner, unter, dateien in os.walk(w["pfad"], followlinks=False):
                 unter[:] = sorted(u for u in unter if not u.startswith(".") and os.path.abspath(os.path.join(ordner, u)) != os.path.abspath(self.b.wurzel))
                 for n in dateien:
-                    if n.startswith(".") or not n.lower().endswith(".gcode"):
+                    if n.startswith(".") or not ist_gcode(n):
                         continue
                     if stopp is not None and stopp.is_set():
                         self._merken(gesehen, neu_gesehen, vollstaendig=False)
