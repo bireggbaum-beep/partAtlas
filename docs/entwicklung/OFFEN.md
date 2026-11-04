@@ -4,7 +4,10 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## 1.0.14 auf dem Branch (4.11.2026): .gcode.3mf beim Einlesen aus dem Ordner (Paket 1 der G-Code-Thematik)
+## Stand: 1.0.14 auf `main` (4.11.2026) — Rückweg `fassung-1.0.13`. Ohne test_ui (Oberfläche unverändert, CLAUDE.md); Paket 2 (Slicer-Ordner) kommt
+separat und wird vorher beim Tester geprüft (Anwender).
+
+### 1.0.14: .gcode.3mf beim Einlesen aus dem Ordner (Paket 1 der G-Code-Thematik)
 
 Anwender: Weg A — die `.gcode.3mf` bleibt eine Kachel wie bisher (das Einlesen nimmt sie als 3MF-Modell auf) und hängt **zusätzlich** als G-Code am
 Quellmodell (Druck „offen“). **Offen, Entscheidung Anwender (Weg B):** `.gcode.3mf` nur noch als G-Code, keine Kachel — braucht einen Umzug der schon
