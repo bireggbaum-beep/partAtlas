@@ -1,13 +1,19 @@
 """Öffnen-Knöpfe im Inspektor: für ein Format, das kein Programm einer Art je öffnet (FCStd im Slicer), gibt es keinen Knopf dieser Art —
 auch keinen gedämpften „noch kein Slicer eingerichtet“. Ohne erkannte Programme (leerer PATH) bleibt er für STL, wo er hilft.
 Ein geslictes 3MF (Platten mit G-Code) geht nur in den Slicer: kein CAD-Knopf, kein CAD im Menü „Öffnen mit“, und sobald ein Slicer da ist
-auch kein „Mit dem System öffnen“ (Tester 4.11.2026: FreeCAD und das Standardprogramm des Rechners scheiterten an einem G-Code-3MF)."""
+auch kein „Mit dem System öffnen“ (Tester 4.11.2026: FreeCAD und das Standardprogramm des Rechners scheiterten an einem G-Code-3MF).
+Der Server hält sich an dieselbe Regel: auch über Enter, Doppelklick oder eine ausdrückliche Anfrage startet er für ein geslictes 3MF kein CAD.
+Geslict heisst: Platten in der Datei, oder die Endung .gcode.3mf (auch ohne Platten-Angaben)."""
 import os
 import socket
 import subprocess
 import sys
 import tempfile
 import time
+
+import json
+import urllib.error
+import urllib.request
 
 import muster
 from muster import check
@@ -25,6 +31,8 @@ if __name__ == "__main__":
     muster.fcstd(os.path.join(samm, "Konstruktion.fcstd"))
     muster.dreimf(os.path.join(samm, "Geslict.3mf"), slice_info=True)
     muster.dreimf(os.path.join(samm, "Roh.3mf"), slice_info=False)
+    # Nur die Endung sagt: geslict. Eigener Inhalt — bytegleich mit Roh.3mf wäre es dasselbe Modell an zwei Orten.
+    muster.dreimf(os.path.join(samm, "Export.gcode.3mf"), slice_info=False, einstellungen={"layer_height": "0.2"})
     # Zwei „Programme“: ausführbare Skripte, die nichts tun — nur damit Slicer und CAD eingerichtet sind.
     slicer, cad = os.path.join(tmp, "meinslicer"), os.path.join(tmp, "meincad")
     for pfad in (slicer, cad):
@@ -43,13 +51,23 @@ if __name__ == "__main__":
         abfrage(port, "/api/neuigkeiten/gesehen", {})          # das Fenster „Neu in dieser Fassung“ verdeckte sonst die Kacheln
         abfrage(port, "/api/einstellungen", {"fcstd_freecad": "nein"}, "PUT")           # ebenso die Frage „FCStd über FreeCAD einlesen?“
         abfrage(port, "/api/wurzeln", {"pfad": samm})
-        warte(lambda: len(abfrage(port, "/api/modelle")) == 4)
+        warte(lambda: len(abfrage(port, "/api/modelle")) == 5)
         warte(lambda: any(m["gcode"] == "3mf" for m in abfrage(port, "/api/modelle")))
         prog = abfrage(port, "/api/programme")
+
+        def oeffnen(name, daten):
+            """(Status, Antwort) — die Fehler der API als Text, nicht als Ausnahme."""
+            mid = next(m["id"] for m in abfrage(port, "/api/modelle") if m["name"] == name)
+            r = urllib.request.Request(f"http://127.0.0.1:{port}/api/modelle/{mid}/oeffnen", method="POST", data=json.dumps(daten).encode(),
+                                       headers={"Content-Type": "application/json"})
+            try:
+                return 200, json.loads(urllib.request.urlopen(r).read())
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read() or b"{}")
         check("Ohne erkannte Programme: keine Programme in der Liste", prog["programme"] == [])
         with sync_playwright() as p:
             b = p.chromium.launch(executable_path=chromium())
-            pg = b.new_page()
+            pg = b.new_page(viewport={"width": 1600, "height": 1100})      # alle fünf Kacheln sichtbar: das Raster zeichnet nur, was man sieht
             pg.goto(f"http://127.0.0.1:{port}/")
             pg.wait_for_selector(".karte")
 
@@ -73,6 +91,11 @@ if __name__ == "__main__":
             check(f"Geslictes 3MF ohne Programme: nur der Hinweisknopf für den Slicer, keiner fürs CAD ({ge})", ge == ["slicer"])
             check("Geslictes 3MF ohne Slicer: „Mit dem System öffnen“ bleibt — der einzige Weg nach draussen", "oeffnen-system" in menue())
             check(f"Rohes 3MF ohne Programme: Hinweisknöpfe für beide ({knoepfe('Roh')})", sorted(knoepfe("Roh")) == ["cad", "slicer"])
+            ex = knoepfe("Export.gcode")
+            check(f".gcode.3mf ohne Platten-Angaben: an der Endung erkannt, nur der Slicer-Hinweis ({ex})", ex == ["slicer"])
+            code, r = oeffnen("Geslict", {})
+            check(f"Server: geslictes 3MF ohne Slicer — Enter/Doppelklick öffnet nichts, sondern sagt, warum ({code}, {r.get('fehler')})",
+                  code == 400 and "Slicer" in (r.get("fehler") or ""))
 
             abfrage(port, "/api/einstellungen", {"programm": {"slicer": slicer, "cad": cad}}, "PUT")
             pg.reload()
@@ -85,6 +108,14 @@ if __name__ == "__main__":
             check(f"Geslictes 3MF mit Slicer und CAD: nur der Slicer-Knopf ({ge})", ge == ["slicer"])
             m = menue()
             check(f"Geslictes 3MF: Slicer im Menü, kein CAD, kein „Mit dem System öffnen“ ({m})", slicer in m and cad not in m and "oeffnen-system" not in m)
+            code, r = oeffnen("Geslict", {"pfad": cad})
+            check(f"Server: geslictes 3MF ausdrücklich im CAD — abgelehnt ({code}, {r.get('fehler')})", code == 400 and "Slicer" in (r.get("fehler") or ""))
+            code, r = oeffnen("Export.gcode", {"pfad": cad})
+            check(f"Server: .gcode.3mf ausdrücklich im CAD — abgelehnt ({code})", code == 400)
+            code, r = oeffnen("Geslict", {})
+            check(f"Server: geslictes 3MF ohne Wahl — der Slicer ({code}, {r.get('programm')})", code == 200 and r.get("programm") == "meinslicer")
+            code, r = oeffnen("Roh", {"pfad": cad})
+            check(f"Server: rohes 3MF im CAD — geht weiter ({code})", code == 200)
             b.close()
     finally:
         server.terminate()

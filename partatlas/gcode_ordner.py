@@ -73,6 +73,8 @@ class GcodeOrdner:
         je_name = {}
         self._woerter = {}                 # Vergleichsname → die Wörter des Namens, für den Rückfall über den Dateinamen
         for mid, m in self.db.list_nodes(MODELL, readonly=True).items():
+            if str(m.get("name") or "").lower().endswith(".gcode"):
+                continue                   # die Kachel einer .gcode.3mf ist kein Quellmodell — sonst hinge die Datei über ihren Namen an sich selbst
             n = vergleichsname(m.get("name"))
             if n:
                 je_name.setdefault(n, []).append(mid)

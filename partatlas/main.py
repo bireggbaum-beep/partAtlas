@@ -898,8 +898,10 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         info = K().drucke.datei_von(did)
         if not info:
             raise KatalogFehler("Dieser Druck hat keine Datei.")
-        liste, std = _programme()
-        pfad = std.get("3mf")
+        liste, _ = _programme()
+        # Nur ein Slicer: G-Code und geslictes Projekt versteht kein CAD. Das Standardprogramm für 3MF wäre ohne Slicer FreeCAD.
+        slicer = _nur_slicer(liste, "3mf")
+        pfad = slicer[0]["pfad"] if slicer else None
         if not pfad:
             raise KatalogFehler("Kein Slicer eingerichtet (Einstellungen › Programme).")
         programme.oeffnen(pfad, zustand["bestand"].pfad(*info["datei"].split("/")), zustand["bestand"].pfad("arbeit", "programmstart.log"))
@@ -1186,6 +1188,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         return _bild_antwort(pfad, bool(t))
 
     # ---------------------------------------------------------------- Öffnen in …
+
+    def _nur_slicer(liste, format_):
+        return [p for p in liste if p["art"] == programme.SLICER and format_ in p["formate"]]
 
     def _programme():
         e = zustand["bestand"].einstellungen()
@@ -1492,7 +1497,16 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
                 raise KatalogFehler(f"Mit dem System öffnen ging nicht: {e}")
             return {"ok": True}
         liste, std = _programme()
-        pfad = daten.get("pfad") or std.get(m["format"])
+        if m.get("geslict"):
+            # Ein geslictes 3MF geht nur in den Slicer — auch über Enter, Doppelklick oder eine ausdrückliche Anfrage, nicht nur im Menü.
+            slicer = _nur_slicer(liste, "3mf")
+            pfad = daten.get("pfad") or (slicer[0]["pfad"] if slicer else None)
+            if not slicer:
+                raise KatalogFehler("Ein geslictes 3MF öffnet nur der Slicer — und es ist keiner eingerichtet (Einstellungen › Programme).")
+            if pfad not in {p["pfad"] for p in slicer}:
+                raise KatalogFehler("Ein geslictes 3MF öffnet nur der Slicer.")
+        else:
+            pfad = daten.get("pfad") or std.get(m["format"])
         if pfad not in {p["pfad"] for p in liste}:
             raise KatalogFehler("Dieses Programm kennt PartAtlas nicht.")
         try:

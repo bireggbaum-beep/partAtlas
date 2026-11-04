@@ -4,6 +4,17 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.15 auf dem Branch (4.11.2026): geslictes 3MF auf jedem Weg nur in den Slicer; .gcode.3mf nicht an die eigene Kachel
+
+Anwender: „.gcode.3mf sollen auch nicht in FreeCAD geöffnet werden können“. Die Regel aus 1.0.13 galt nur in der Oberfläche (Menüs, Knöpfe); Enter,
+Doppelklick und „Öffnen“ am Druck nahmen das Standardprogramm für 3MF — ohne Slicer FreeCAD —, und der Server hätte FreeCAD auch auf Anfrage gestartet.
+Jetzt: `_kurz` liefert `geslict` (Platten **oder** Format 3mf mit Name „….gcode“, also Endung .gcode.3mf); `modell_oeffnen` nimmt dann nur Slicer
+(ohne: Meldung; CAD ausdrücklich: abgelehnt); `druck_oeffnen` immer nur Slicer (`_nur_slicer`). Oberfläche: `geslict(m)` nimmt `m.geslict`.
+**Dabei gefunden, Fehler seit 1.0.14 (auf main):** nannte der G-Code einer .gcode.3mf kein Modell, fand der Rückfall über den Dateinamen ihre eigene
+Kachel (gleicher Name) — Druck an sich selbst. `_modelle_nach_name` überspringt Modelle „….gcode“. test_gcode_ordner 39/39 (+1, Gegenprobe fällt),
+test_programme_ui 16/16 (+6; zwei Gegenproben fallen: ohne Server-Regel, ohne Endung). Testfalle: bytegleiche 3MF sind ein Modell — Testdatei mit
+eigenem Inhalt. test_api, test_drucke, test_gcode_ui grün. Tester: Drucker laut slice_info „Anycubic Kobra 3 V2“.
+
 ## Stand: 1.0.14 auf `main` (4.11.2026) — Rückweg `fassung-1.0.13`. Ohne test_ui (Oberfläche unverändert, CLAUDE.md); Paket 2 (Slicer-Ordner) kommt
 separat und wird vorher beim Tester geprüft (Anwender).
 
