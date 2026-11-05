@@ -1,93 +1,93 @@
 PartAtlas – geplante Funktionen (Stand 5.11.2026)
-Das sind Ideen, keine Zusagen. Die Nummer ist die Issue-Nummer auf GitHub:
+Ideen und Pläne, keine Zusagen. Die Nummer ist die Issue-Nummer auf GitHub:
 https://github.com/bireggbaum-beep/partatlas/issues
 
 ----------------------------------------------------------------------
 #2  G-Code automatisch übernehmen
-    Wenn dein Slicer eine Datei an den Drucker schickt, legt er sie kurz in
-    einem eigenen Ordner ab. PartAtlas sieht dort nach und hängt den G-Code
-    selbst an das passende Modell. Du musst ihn nicht mehr exportieren.
-    Dazu brauchen wir dich: Prüfen, ob das bei deinem Slicer zuverlässig geht.
+    Beim Senden an den Drucker legt der Slicer die Datei kurz in einem
+    eigenen Ordner ab. PartAtlas liest sie dort aus und ordnet den G-Code
+    dem passenden Modell zu. Ein Export entfällt.
+    Offene Frage: Funktioniert das mit dem eingesetzten Slicer zuverlässig?
 
-#5  Weitere Ziehmöglichkeiten
-    Zum Beispiel einen G-Code oder ein Bild von außen auf ein Modell ziehen,
-    oder eine Datei auf ein Modell ziehen, dessen Datei fehlt.
+#5  Weitere Ziehziele
+    G-Code oder Bild von außen auf ein Modell ziehen; eine Datei auf ein
+    Modell ziehen, dessen Datei fehlt.
 
-#7  Tags, Material und Sammlungen wieder entfernen
-    Du kannst Tags für viele Modelle auf einmal hinzufügen, aber nicht für
-    viele auf einmal wegnehmen. Das soll gehen, mit „Rückgängig“. Dasselbe
-    Fenster soll auch im Inspektor für ein einzelnes Modell dienen.
+#7  Tags, Material und Sammlungen entfernen
+    Hinzufügen für viele Modelle gleichzeitig ist möglich, Entfernen bisher
+    nicht. Kommt mit Rückgängig; dasselbe Fenster auch im Inspektor für ein
+    einzelnes Modell.
 
-#8  Besseres Vorschaubild aus dem G-Code
-    Das Bild aus dem G-Code wird auf das Teil zugeschnitten, damit es größer
-    zu sehen ist. Später vielleicht die Druckbahnen Schicht für Schicht in
-    der 3D-Ansicht.
+#8  Vorschaubild aus dem G-Code verbessern
+    Bild auf das Teil zuschneiden, damit es größer erscheint. Später
+    eventuell die Druckbahnen Schicht für Schicht in der 3D-Ansicht.
 
-#9  Alte Stände einer Datei aufbewahren
-    Speicherst du eine Datei am selben Ort neu, ist der alte Inhalt heute weg.
-    PartAtlas soll ihn aufbewahren. Du siehst die früheren Stände mit Datum
-    und holst einen als Kopie daneben zurück. Deine Datei wird nie überschrieben.
+#9  Frühere Stände einer Datei aufbewahren
+    Wird eine Datei am selben Ort neu gespeichert, geht der alte Inhalt
+    heute verloren. Künftig bewahrt PartAtlas ihn auf. Frühere Stände
+    erscheinen mit Datum und lassen sich als Kopie neben der Datei
+    wiederherstellen. Die aktuelle Datei wird nie überschrieben.
 
 #10 Sicherung als ZIP-Datei und Wiederherstellen
-    Die Sicherung ist gebaut, aber ausgeblendet, bis es auch den Rückweg gibt:
-    deinen Bestand aus einer Sicherung wieder aufbauen, ohne den jetzigen zu
-    überschreiben.
+    Die Sicherung ist gebaut, bleibt aber ausgeblendet, bis das
+    Wiederherstellen fertig ist. Der Bestand wird dabei neu aufgebaut, der
+    jetzige bleibt unberührt.
 
 #11 Programm zum Anklicken
-    Ein Menüeintrag mit Symbol, ein Beenden-Knopf, Aktualisierung ohne
-    Terminal und später eine Fassung für Windows.
+    Menüeintrag mit Symbol, Beenden-Knopf, Aktualisierung ohne Terminal,
+    später eine Fassung für Windows.
 
 #12 STEP und FCStd ohne FreeCAD
-    Heute braucht PartAtlas FreeCAD, um Bilder von STEP-Dateien zu rechnen.
-    Ein eingebauter Kern würde das ersparen. Das ist ein großes Vorhaben.
+    Bilder und Maße von STEP-Dateien entstehen heute über FreeCAD. Ein
+    eingebauter Geometriekern macht FreeCAD dafür überflüssig.
+    Größeres Vorhaben.
 
-#13 Mehr Dateiformate
-    IGES, AMF, PLY und glTF, dazu das Entpacken von 7z und rar.
+#13 Weitere Dateiformate
+    IGES, AMF, PLY und glTF; Entpacken von 7z und rar.
 
 #14 Messen und Schnitt in der 3D-Ansicht
-    Den Abstand zweier Punkte messen und das Teil an einer Ebene aufschneiden.
+    Abstand zweier Punkte messen, Teil an einer Ebene aufschneiden.
 
-#15 3D-Ansicht auf alten Rechnern
-    Ohne Grafikkarte läuft die Ansicht schon, gröber als sonst. Offen sind ein
+#15 3D-Ansicht auf älteren Rechnern
+    Die Darstellung ohne Grafikkarte ist vorhanden (gröber). Offen: ein
     Schalter dafür in den Einstellungen und schnelleres Laden großer Teile.
-    Dazu brauchen wir dich: Ist die 3D-Ansicht bei dir flüssig genug?
+    Offene Frage: Läuft die 3D-Ansicht auf dem Testrechner flüssig genug?
 
 #19 Dateien aus PartAtlas löschen
-    Du willst PartAtlas anstelle des Dateimanagers benutzen. Dafür müsste es
-    Dateien auch von der Platte löschen können, nur in den Papierkorb deines
-    Systems, nie endgültig, immer mit Vorschau und Sicherung davor.
+    Damit PartAtlas den Dateimanager ersetzen kann, muss es Dateien auch von
+    der Platte löschen. Nur in den Papierkorb des Systems, nie endgültig,
+    immer mit Vorschau und vorheriger Sicherung.
 
 #20 Warteschlange
-    Eine Liste dessen, was du als Nächstes drucken willst, mit Baugruppen und
-    Stückzahlen. Sie ist im Programm heute ausgeblendet.
-    Dazu brauchen wir dich: Soll sie sichtbar werden?
+    Liste der als Nächstes zu druckenden Teile, mit Baugruppen und
+    Stückzahlen. Derzeit im Programm ausgeblendet.
+    Offene Frage: Soll sie sichtbar werden?
 
-#22 Ordner automatisch beobachten
-    PartAtlas bemerkt neue oder geänderte Dateien selbst, ohne dass du auf ⟳
-    klickst. Dazu kommt das Einlesen nur eines einzelnen Ordners.
+#22 Ordner automatisch überwachen
+    Neue und geänderte Dateien werden ohne Klick auf ⟳ erkannt. Dazu das
+    Einlesen eines einzelnen Ordners.
 
-#23 Zurechtfinden in sehr großen Beständen
-    Wird erst gebaut, wenn du merkst, dass du dieselbe Suche immer wieder
-    tippst oder etwas nicht findest, das sicher da ist. Sag dann Bescheid.
+#23 Orientierung in sehr großen Beständen
+    Erst bei Bedarf: wenn dieselbe Suche immer wieder getippt wird oder
+    Vorhandenes nicht auffindbar ist. Rückmeldung in diesem Fall erbeten.
 
 #24 Kaufteile und eigene Komponenten
-    Verwaltung deiner Kaufteile mit Einkäufen und Händlern, und mehr für Teile,
-    die du weder druckst noch kaufst.
+    Verwaltung von Kaufteilen mit Einkäufen und Händlern; Ausbau der Teile,
+    die weder gedruckt noch gekauft werden.
 
-#27 G-Code direkt zum Drucker schicken
-    Ein Knopf „Direkt drucken“ am Modell und ein Reiter „Drucken“. Beim
-    Kobra 3 ist das schwierig: Der Hersteller bietet keine offene Schnittstelle,
-    und du druckst über die Cloud. Möglich wären der Umweg über die
-    Fremd-Firmware Rinkhals oder ein Nachbau des LAN-Modus.
-    Dazu brauchen wir dich: Druckst du über die Cloud oder im Heimnetz? Bietet
-    dein Slicer OctoPrint an? Käme Rinkhals für dich infrage?
+#27 G-Code direkt an den Drucker senden
+    Knopf „Direkt drucken“ am Modell und ein Reiter „Drucken“. Beim Kobra 3
+    schwierig: keine offene Schnittstelle des Herstellers, Druck über die
+    Cloud. Möglich wären die Fremd-Firmware Rinkhals oder ein Nachbau des
+    LAN-Modus.
+    Offene Fragen: Druck über Cloud oder Heimnetz? Bietet der Slicer
+    OctoPrint an? Kommt Rinkhals infrage?
 
 #28 Stände und Varianten eines Teils bündeln
-    Du speicherst beim Konstruieren oft unter neuem Namen weiter und hast
-    irgendwann zehn Dateien vom gleichen Teil. Du ziehst eine Datei auf eine
-    andere und sagst, ob es ein weiterer Stand oder eine andere Variante ist.
-    Daraus wird ein Stapel in der Bibliothek, oben liegt, woran du zuletzt
-    gearbeitet hast. Mit einem Stern markierst du die Lösung, die gilt, und
-    je Stand kannst du eine Notiz schreiben. Keine Datei wird verschoben oder
-    umbenannt.
-    Dazu brauchen wir dich: ein paar echte Dateinamen, wie sie bei dir vorkommen.
+    Beim Konstruieren entstehen durch „Speichern unter“ oft viele Dateien
+    desselben Teils. Eine Datei wird auf eine andere gezogen, dazu die
+    Angabe „weiterer Stand“ oder „andere Variante“. In der Bibliothek
+    erscheint ein Stapel, oben der zuletzt geänderte Stand. Ein Stern
+    markiert die gültige Lösung, je Stand ist eine Notiz möglich. Dateien
+    werden dabei weder verschoben noch umbenannt.
+    Offene Frage: Einige echte Dateinamen als Beispiel wären hilfreich.
