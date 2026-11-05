@@ -2,25 +2,9 @@ PartAtlas – geplante Funktionen (Stand 5.11.2026)
 Ideen und Pläne, keine Zusagen. Die Nummer ist die Issue-Nummer auf GitHub:
 https://github.com/bireggbaum-beep/partatlas/issues
 
-----------------------------------------------------------------------
-#2  G-Code automatisch übernehmen
-    Beim Senden an den Drucker legt der Slicer die Datei kurz in einem
-    eigenen Ordner ab. PartAtlas liest sie dort aus und ordnet den G-Code
-    dem passenden Modell zu. Ein Export entfällt.
-    Offene Frage: Funktioniert das mit dem eingesetzten Slicer zuverlässig?
-
-#5  Weitere Ziehziele
-    G-Code oder Bild von außen auf ein Modell ziehen; eine Datei auf ein
-    Modell ziehen, dessen Datei fehlt.
-
-#7  Tags, Material und Sammlungen entfernen
-    Hinzufügen für viele Modelle gleichzeitig ist möglich, Entfernen bisher
-    nicht. Kommt mit Rückgängig; dasselbe Fenster auch im Inspektor für ein
-    einzelnes Modell.
-
-#8  Vorschaubild aus dem G-Code verbessern
-    Bild auf das Teil zuschneiden, damit es größer erscheint. Später
-    eventuell die Druckbahnen Schicht für Schicht in der 3D-Ansicht.
+======================================================================
+GRÖSSERE VORHABEN
+======================================================================
 
 #9  Frühere Stände einer Datei aufbewahren
     Wird eine Datei am selben Ort neu gespeichert, geht der alte Inhalt
@@ -40,18 +24,6 @@ https://github.com/bireggbaum-beep/partatlas/issues
 #12 STEP und FCStd ohne FreeCAD
     Bilder und Maße von STEP-Dateien entstehen heute über FreeCAD. Ein
     eingebauter Geometriekern macht FreeCAD dafür überflüssig.
-    Größeres Vorhaben.
-
-#13 Weitere Dateiformate
-    IGES, AMF, PLY und glTF; Entpacken von 7z und rar.
-
-#14 Messen und Schnitt in der 3D-Ansicht
-    Abstand zweier Punkte messen, Teil an einer Ebene aufschneiden.
-
-#15 3D-Ansicht auf älteren Rechnern
-    Die Darstellung ohne Grafikkarte ist vorhanden (gröber). Offen: ein
-    Schalter dafür in den Einstellungen und schnelleres Laden großer Teile.
-    Offene Frage: Läuft die 3D-Ansicht auf dem Testrechner flüssig genug?
 
 #19 Dateien aus PartAtlas löschen
     Damit PartAtlas den Dateimanager ersetzen kann, muss es Dateien auch von
@@ -62,18 +34,6 @@ https://github.com/bireggbaum-beep/partatlas/issues
     Liste der als Nächstes zu druckenden Teile, mit Baugruppen und
     Stückzahlen. Derzeit im Programm ausgeblendet.
     Offene Frage: Soll sie sichtbar werden?
-
-#22 Ordner automatisch überwachen
-    Neue und geänderte Dateien werden ohne Klick auf ⟳ erkannt. Dazu das
-    Einlesen eines einzelnen Ordners.
-
-#23 Orientierung in sehr großen Beständen
-    Erst bei Bedarf: wenn dieselbe Suche immer wieder getippt wird oder
-    Vorhandenes nicht auffindbar ist. Rückmeldung in diesem Fall erbeten.
-
-#24 Kaufteile und eigene Komponenten
-    Verwaltung von Kaufteilen mit Einkäufen und Händlern; Ausbau der Teile,
-    die weder gedruckt noch gekauft werden.
 
 #27 G-Code direkt an den Drucker senden
     Knopf „Direkt drucken“ am Modell und ein Reiter „Drucken“. Beim Kobra 3
@@ -91,3 +51,53 @@ https://github.com/bireggbaum-beep/partatlas/issues
     markiert die gültige Lösung, je Stand ist eine Notiz möglich. Dateien
     werden dabei weder verschoben noch umbenannt.
     Offene Frage: Einige echte Dateinamen als Beispiel wären hilfreich.
+
+======================================================================
+MITTLERE PAKETE
+======================================================================
+
+#2  G-Code automatisch übernehmen
+    Beim Senden an den Drucker legt der Slicer die Datei kurz in einem
+    eigenen Ordner ab. PartAtlas liest sie dort aus und ordnet den G-Code
+    dem passenden Modell zu. Ein Export entfällt.
+    Offene Frage: Funktioniert das mit dem eingesetzten Slicer zuverlässig?
+
+#7  Tags, Material und Sammlungen entfernen
+    Hinzufügen für viele Modelle gleichzeitig ist möglich, Entfernen bisher
+    nicht. Kommt mit Rückgängig; dasselbe Fenster auch im Inspektor für ein
+    einzelnes Modell.
+
+#8  Vorschaubild aus dem G-Code verbessern
+    Bild auf das Teil zuschneiden, damit es größer erscheint. Später
+    eventuell die Druckbahnen Schicht für Schicht in der 3D-Ansicht.
+
+#14 Messen und Schnitt in der 3D-Ansicht
+    Abstand zweier Punkte messen, Teil an einer Ebene aufschneiden.
+
+#22 Ordner automatisch überwachen
+    Neue und geänderte Dateien werden ohne Klick auf ⟳ erkannt. Dazu das
+    Einlesen eines einzelnen Ordners.
+
+#24 Kaufteile und eigene Komponenten
+    Verwaltung von Kaufteilen mit Einkäufen und Händlern; Ausbau der Teile,
+    die weder gedruckt noch gekauft werden.
+
+======================================================================
+KLEINERE ODER SPÄTERE IDEEN
+======================================================================
+
+#5  Weitere Ziehziele
+    G-Code oder Bild von außen auf ein Modell ziehen; eine Datei auf ein
+    Modell ziehen, dessen Datei fehlt.
+
+#13 Weitere Dateiformate
+    IGES, AMF, PLY und glTF; Entpacken von 7z und rar.
+
+#15 3D-Ansicht auf älteren Rechnern
+    Die Darstellung ohne Grafikkarte ist vorhanden (gröber). Offen: ein
+    Schalter dafür in den Einstellungen und schnelleres Laden großer Teile.
+    Offene Frage: Läuft die 3D-Ansicht auf dem Testrechner flüssig genug?
+
+#23 Orientierung in sehr großen Beständen
+    Erst bei Bedarf: wenn dieselbe Suche immer wieder getippt wird oder
+    Vorhandenes nicht auffindbar ist. Rückmeldung in diesem Fall erbeten.
