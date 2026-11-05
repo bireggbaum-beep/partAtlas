@@ -15,8 +15,14 @@ Ursache unbekannt — **Vermutung:** xdg-mime hält .obj für `application/x-tgi
 Mangel: `mit_system` startete xdg-open blind (`Popen`, Ausgabe weg) — jeder Fehler still. Jetzt über `oeffnen` (Ausgabe in `arbeit/programmstart.log`,
 1,2 s warten, Code 2/3/4 in Worten, dazu `xdg-mime query filetype`). „Die Datei ist nicht da“ nennt den gesuchten Pfad (`modell_oeffnen`). Die
 übrigen Aufrufer (Anhang, Zielordner, Bestand, Sicherungen, Ordner zeigen) fangen OSError schon ab — sie melden jetzt den Grund statt nichts.
-test_api 96/96 (+2; Attrappe xdg-open mit Code 3), Gegenprobe (alter Code) fällt; test_schutz, test_verwalten grün. **Offen:** „nicht da“ bei
-seinen .obj — Pfad abwarten (Sonderzeichen? Ort im Papierkorb/Archiv?).
+test_api 96/96 (+2; Attrappe xdg-open mit Code 3), Gegenprobe (alter Code) fällt; test_schutz, test_verwalten grün.
+**Geklärt (5.11.2026), kein Fehler von PartAtlas:** FreeCAD-Knopf und „Öffnen mit › FreeCAD“ gingen bei ihm für dieselben .obj; nur „Mit dem
+System öffnen“ blieb still — und ebenso der Doppelklick im Dateimanager. Sein Rechner ordnete diese .obj nicht `model/obj` zu (shared-mime-info
+kennt `*.obj` auch als `application/x-tgif`; ohne Magic entscheidet der Inhalt, darum je Datei anders), seine FreeCAD-Zuordnung galt nur für
+`model/obj`. Abhilfe im Dateimanager: Rechtsklick › Öffnen mit › FreeCAD, „Immer damit öffnen“ — er hat es umgestellt, Doppelklick geht.
+Eine Fassung 1.0.17 (Meldung nennt erkannte Art und hinterlegtes Programm; „nicht da“ mit Grund) war gebaut und wurde auf Wunsch des
+Anwenders wieder entfernt (Branch auf 1.0.16 zurückgesetzt). Nicht weiterverfolgt: Programm über `model/obj` statt über xdg-open suchen
+(Umgehen eines Systemproblems, Aufwand 2) — nur, wenn es mehrere Anwender trifft.
 
 ## Stand: 1.0.15 auf `main` (4.11.2026) — Rückweg `fassung-1.0.14`. Ohne test_ui (Oberfläche nur minimal: `geslict` vom Server).
 
