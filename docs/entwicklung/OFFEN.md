@@ -1,8 +1,22 @@
-# partAtlas — Stand und nächste Schritte
+# partAtlas — Stand und Entscheidungen
 
-Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
-was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
-aktualisieren.
+Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`. **Offene Punkte stehen seit dem 5.11.2026 als Issues in
+`bireggbaum-beep/partatlas`** (Anwender: die Entscheidung vom 3.11., OFFEN.md als Liste zu führen, beruhte auf einer nicht sinnvollen
+Annahme). Hier bleibt je Fassung der Stand mit den Entscheidungen; die älteren Abschnitte sind Protokoll — was darin als „offen“,
+„Backlog“ oder „Vorschlag“ steht, ist in die Issues übernommen oder bewusst nicht (erledigt, überholt, entschieden nein).
+
+## Issues (angelegt 5.11.2026 aus dieser Datei)
+
+#1 3MF-Katalog-Verweise im Code · #2 G-Code beim Drucken automatisch, Slicer-Ordner beobachten · #3 Entscheidung .gcode.3mf ohne Kachel
+(Weg B) · #4 Reiter Slicer/Drucke entflechten · #5 weitere Ziehziele · #6 Schreibweise PartAtlas in KONZEPT.md und Handbuch ·
+#7 Zuordnen-Fenster: entfernen, Inspektor · #8 G-Code-Vorschau zuschneiden, Bahnen · #9 Versionsverlauf je Modell · #10 Backup als ZIP
+und Wiederherstellen · #11 Desktop-Programm (Einzeldatei, Updates, Windows) · #12 STEP/FCStd ohne FreeCAD (Open CASCADE) · #13 mehr
+Formate · #14 Messen und Schnitt · #15 3D-Ansicht ohne Grafikkarte, Pakete 3–4 · #16 wartet auf Prüfung: Windows, echte Slicer-Dateien ·
+#17 Abschusstests Hochziehen, voller Datenträger · #18 Performance-Feinschliff · #19 Explorer-Ersatz: Dateien löschen · #20 Warteschlange ·
+#21 Gestaltung: Farbschema, GTK-4-Formen, Zeichen · #22 automatische Überwachung, Teilbaum · #23 Navigation in grossen Beständen ·
+#24 Kaufteile-Verwaltung, eigene Komponenten · #25 wacklige Prüfungen · #26 kleine offene Punkte (Sammelissue mit Haken).
+Nicht übernommen, weil entschieden nein oder erledigt: Ablageleiste, Resin, Drucker-Vielfalt/Fächer, Tastatur in „Modell wählen …“,
+„Nicht unterscheidbar“ (weglassen, bis es stört), Druckeranbindung über Moonraker/LAN (Kobra ohne Rinkhals nicht möglich).
 
 ## Stand: 1.0.16 auf `main` (4.11.2026) — Rückweg `fassung-1.0.15`. Ohne test_ui (Oberfläche unverändert). Tester hat `model/obj` in KDE auf FreeCAD
 gestellt (Bild); offen: was `xdg-mime query filetype` für seine .obj sagt und ob `xdg-open` im Terminal öffnet.

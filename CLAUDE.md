@@ -1,8 +1,10 @@
 # partAtlas — Arbeitsweise
 
 - Führend ist `KONZEPT.md`. Alles auf Deutsch.
-- Stand, Entscheidungen und nächste Schritte: `docs/entwicklung/OFFEN.md` — zu Beginn lesen,
-  nach jeder erledigten Sache aktualisieren.
+- **Offene Punkte sind Issues in `bireggbaum-beep/partatlas`** (Anwender, 5.11.2026): ein Punkt, ein Issue, mit Herkunft,
+  Stand, Aufwand 1–5 und was dagegen spricht. Erledigt → Issue schliessen. Keine neue Liste offener Punkte in OFFEN.md.
+- Stand und Entscheidungen je Fassung: `docs/entwicklung/OFFEN.md` — zu Beginn den Kopf lesen, nach jeder erledigten
+  Sache den Stand nachziehen (kurz, mit Verweis auf das Issue).
 - **Tests sparsam:** nach einer Änderung nur die Suite, die sie prüft,
   und deren Gegenprobe. Alle Suiten nur ab und zu (vor einer Fassung).
   `tests/test_ui.py` nur, wenn sich die Oberfläche geändert hat — sie
