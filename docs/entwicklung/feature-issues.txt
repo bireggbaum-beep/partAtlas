@@ -7,49 +7,72 @@ GRÖSSERE VORHABEN
 ======================================================================
 
 #9  Frühere Stände einer Datei aufbewahren
-    Wird eine Datei am selben Ort neu gespeichert, geht der alte Inhalt
-    heute verloren. Künftig bewahrt PartAtlas ihn auf. Frühere Stände
-    erscheinen mit Datum und lassen sich als Kopie neben der Datei
-    wiederherstellen. Die aktuelle Datei wird nie überschrieben.
+    Speichert FreeCAD oder ein anderes Programm eine Datei unter demselben
+    Namen, überschreibt es den vorherigen Stand. PartAtlas kennt danach nur
+    noch den neuen; eine Kopie gibt es heute nur von Ständen, die gedruckt
+    wurden. Geplant: Beim Einlesen legt PartAtlas von jedem neuen Stand eine
+    Kopie in seinem Datenordner ab. Im Inspektor erscheinen alle Stände mit
+    Datum; jeder lässt sich als eigene Datei neben das Original kopieren.
+    Grenze: Wird zwischen zwei Einlesevorgängen mehrmals gespeichert, ist
+    nur der letzte dieser Stände erfasst.
 
 #10 Sicherung als ZIP-Datei und Wiederherstellen
-    Die Sicherung ist gebaut, bleibt aber ausgeblendet, bis das
-    Wiederherstellen fertig ist. Der Bestand wird dabei neu aufgebaut, der
-    jetzige bleibt unberührt.
+    PartAtlas kann seine Daten (Katalog, Tags, Drucke, Anhänge, auf Wunsch
+    auch die Modelldateien) in eine ZIP-Datei schreiben. Die Funktion ist
+    fertig, aber ausgeblendet, solange das Zurückspielen fehlt. Geplant:
+    Zurückspielen in einen neuen Datenordner neben dem bisherigen; der
+    bisherige bleibt erhalten, bis bewusst umgeschaltet wird.
+    Unabhängig davon sichert PartAtlas seine Datenbank schon heute
+    automatisch (Einstellungen › Automatische Sicherung).
 
 #11 Programm zum Anklicken
-    Menüeintrag mit Symbol, Beenden-Knopf, Aktualisierung ohne Terminal,
-    später eine Fassung für Windows.
+    Heute startet PartAtlas über start.sh im Terminal und wird mit git pull
+    aktualisiert. Geplant: eine einzelne Programmdatei, Eintrag im
+    Startmenü mit Symbol, Beenden-Knopf in der Oberfläche, Aktualisierung
+    aus dem Programm heraus; später eine Fassung für Windows.
 
-#12 STEP und FCStd ohne FreeCAD
-    Bilder und Maße von STEP-Dateien entstehen heute über FreeCAD. Ein
-    eingebauter Geometriekern macht FreeCAD dafür überflüssig.
+#12 STEP ohne FreeCAD lesen
+    Für Vorschaubild, Maße und 3D-Ansicht einer STEP-Datei startet PartAtlas
+    heute FreeCAD im Hintergrund. Ohne installiertes FreeCAD bleiben
+    STEP-Dateien ohne Bild und Maße. Geplant: STEP direkt mit Open CASCADE
+    lesen, dem Geometriekern, den auch FreeCAD verwendet. FreeCAD wäre dann
+    nur noch für FCStd-Dateien ohne eingebettetes Vorschaubild nötig.
 
 #19 Dateien aus PartAtlas löschen
-    Damit PartAtlas den Dateimanager ersetzen kann, muss es Dateien auch von
-    der Platte löschen. Nur in den Papierkorb des Systems, nie endgültig,
-    immer mit Vorschau und vorheriger Sicherung.
+    „Löschen“ entfernt in PartAtlas heute nur den Eintrag im Katalog; die
+    Datei bleibt im Ordner. Umbenennen, Verschieben und Ordner anlegen
+    wirken bereits auf der Platte. Geplant: Datei in den Papierkorb des
+    Systems verschieben, vorher Anzeige, was daran hängt (Drucke,
+    Baugruppen, Kopien), und eine Sicherung. Endgültiges Löschen bleibt
+    ausgeschlossen.
 
 #20 Warteschlange
-    Liste der als Nächstes zu druckenden Teile, mit Baugruppen und
-    Stückzahlen. Derzeit im Programm ausgeblendet.
-    Offene Frage: Soll sie sichtbar werden?
+    Eine Liste der als Nächstes zu druckenden Teile ist angelegt, aber im
+    Programm ausgeblendet. Geplant: Einträge sind ganze Baugruppen oder
+    einzelne Modelle, jeweils mit Anzahl Sätze; je Eintrag die Angabe, ob
+    das Filament im Lager reicht und ob das Teil in den Bauraum passt.
+    Offene Frage: Soll die Warteschlange sichtbar werden?
 
 #27 G-Code direkt an den Drucker senden
-    Knopf „Direkt drucken“ am Modell und ein Reiter „Drucken“. Beim Kobra 3
-    schwierig: keine offene Schnittstelle des Herstellers, Druck über die
-    Cloud. Möglich wären die Fremd-Firmware Rinkhals oder ein Nachbau des
-    LAN-Modus.
-    Offene Fragen: Druck über Cloud oder Heimnetz? Bietet der Slicer
-    OctoPrint an? Kommt Rinkhals infrage?
+    Geplant: Knopf „Drucken“ am Modell, der den G-Code an den Drucker
+    schickt und den Druck startet, dazu ein Reiter mit dem Druckstatus.
+    Beim Kobra 3 schwierig: Anycubic bietet keine dokumentierte
+    Schnittstelle, gedruckt wird über die Anycubic-Cloud. Mögliche Wege:
+    (a) Fremd-Firmware Rinkhals, die eine offene Schnittstelle (Moonraker)
+    mitbringt; (b) Nachbau des LAN-Modus nach einem inoffiziellen Projekt –
+    schließt dann den Druck über die Cloud aus.
+    Offene Fragen: Druck über Cloud oder LAN-Modus? Bietet der Slicer
+    „OctoPrint“ als Ziel an? Kommt Rinkhals infrage?
 
 #28 Stände und Varianten eines Teils bündeln
-    Beim Konstruieren entstehen durch „Speichern unter“ oft viele Dateien
-    desselben Teils. Eine Datei wird auf eine andere gezogen, dazu die
-    Angabe „weiterer Stand“ oder „andere Variante“. In der Bibliothek
-    erscheint ein Stapel, oben der zuletzt geänderte Stand. Ein Stern
-    markiert die gültige Lösung, je Stand ist eine Notiz möglich. Dateien
-    werden dabei weder verschoben noch umbenannt.
+    Wer beim Konstruieren mit „Speichern unter“ weiterarbeitet, hat bald
+    viele Dateien desselben Teils, jede als eigene Kachel. Geplant: Eine
+    Datei auf eine andere ziehen und wählen: „weiterer Stand“ (zeitlich
+    nacheinander) oder „andere Variante“ (Alternative). Die Bibliothek
+    zeigt dann einen Stapel statt einzelner Kacheln; oben liegt die Datei
+    mit dem jüngsten Änderungsdatum. Ein Stern markiert die gültige
+    Lösung, je Stand ist eine Notiz möglich. Dateien werden dabei weder
+    verschoben noch umbenannt.
     Offene Frage: Einige echte Dateinamen als Beispiel wären hilfreich.
 
 ======================================================================
@@ -57,47 +80,70 @@ MITTLERE PAKETE
 ======================================================================
 
 #2  G-Code automatisch übernehmen
-    Beim Senden an den Drucker legt der Slicer die Datei kurz in einem
-    eigenen Ordner ab. PartAtlas liest sie dort aus und ordnet den G-Code
-    dem passenden Modell zu. Ein Export entfällt.
-    Offene Frage: Funktioniert das mit dem eingesetzten Slicer zuverlässig?
+    Anycubic Slicer Next legt beim Senden an den Drucker eine Kopie als
+    .gcode.3mf in einem temporären Ordner ab; sie bleibt dort bis zum
+    nächsten Start des Slicers. Geplant: PartAtlas prüft diesen Ordner
+    alle paar Sekunden, übernimmt neue Dateien und hängt sie als Druck
+    „noch nicht gedruckt“ an das Modell, aus dem sie erzeugt wurden. Der
+    Export in einen Bibliotheksordner entfällt. Voraussetzung: PartAtlas
+    läuft, bevor der Slicer neu gestartet wird.
+    Offene Frage: Gilt der Ordner auch für die AppImage-Fassung des Slicers?
 
 #7  Tags, Material und Sammlungen entfernen
-    Hinzufügen für viele Modelle gleichzeitig ist möglich, Entfernen bisher
-    nicht. Kommt mit Rückgängig; dasselbe Fenster auch im Inspektor für ein
-    einzelnes Modell.
+    Bei mehreren gewählten Modellen fügt das Fenster „Zuordnen“ Tags,
+    Material, Sammlung und Baugruppe hinzu, kann sie aber nicht entfernen.
+    Geplant: Entfernen im selben Fenster, mit Rückgängig; entfernte
+    automatische Tags kommen beim nächsten Einlesen nicht wieder. Das
+    Fenster ersetzt außerdem im Inspektor die heutigen Einzelfelder.
 
 #8  Vorschaubild aus dem G-Code verbessern
-    Bild auf das Teil zuschneiden, damit es größer erscheint. Später
+    Das Vorschaubild, das der Slicer in den G-Code schreibt, zeigt das Teil
+    klein auf weißem Grund. Geplant: auf das Teil zuschneiden. Später
     eventuell die Druckbahnen Schicht für Schicht in der 3D-Ansicht.
 
 #14 Messen und Schnitt in der 3D-Ansicht
-    Abstand zweier Punkte messen, Teil an einer Ebene aufschneiden.
+    Abstand zwischen zwei angeklickten Punkten anzeigen; Schnittebene, die
+    das Teil aufschneidet, um das Innere zu sehen.
 
 #22 Ordner automatisch überwachen
-    Neue und geänderte Dateien werden ohne Klick auf ⟳ erkannt. Dazu das
-    Einlesen eines einzelnen Ordners.
+    Neue und geänderte Dateien in den Bibliotheksordnern erkennt PartAtlas
+    heute nur beim Einlesen (⟳ oder beim Start, falls eingeschaltet).
+    Geplant: Ordner überwachen und Änderungen selbst einlesen; außerdem
+    Einlesen nur eines Ordners per Rechtsklick statt aller.
 
 #24 Kaufteile und eigene Komponenten
-    Verwaltung von Kaufteilen mit Einkäufen und Händlern; Ausbau der Teile,
-    die weder gedruckt noch gekauft werden.
+    Kaufteile (Schrauben, Lager, Normteile) stehen heute als Positionen in
+    Baugruppen. Geplant: Verwaltung mit Einkäufen, Preisen und Händlern.
+    Eigene Komponenten (weder gedruckt noch gekauft, etwa ein altes Lager
+    ohne Datenblatt) gibt es nur im Baugruppen-Dialog; geplant ist eine
+    eigene Ansicht mit mehreren Bildern und Öffnen der Datei in FreeCAD.
 
 ======================================================================
 KLEINERE ODER SPÄTERE IDEEN
 ======================================================================
 
 #5  Weitere Ziehziele
-    G-Code oder Bild von außen auf ein Modell ziehen; eine Datei auf ein
-    Modell ziehen, dessen Datei fehlt.
+    Ziehen und Ablegen funktioniert heute auf Ordner, Sammlungen, Tags,
+    Favoriten, Archiv, Papierkorb und Baugruppen. Geplant: G-Code oder Bild
+    aus dem Dateimanager auf ein Modell ziehen; eine Datei auf ein Modell
+    mit fehlender Datei ziehen, um es wieder damit zu verbinden. Modell auf
+    Modell: siehe #28.
 
 #13 Weitere Dateiformate
-    IGES, AMF, PLY und glTF; Entpacken von 7z und rar.
+    Heute: 3MF, STL, OBJ, STEP, FCStd; Archive nur als ZIP. Kandidaten:
+    IGES (über FreeCAD wie STEP), AMF, PLY, glTF; Archive als 7z und rar.
 
 #15 3D-Ansicht auf älteren Rechnern
-    Die Darstellung ohne Grafikkarte ist vorhanden (gröber). Offen: ein
-    Schalter dafür in den Einstellungen und schnelleres Laden großer Teile.
+    Kann die Grafikkarte kein WebGL 2 oder bricht es ab, zeichnet PartAtlas
+    die 3D-Ansicht bereits ohne Grafikkarte (gröber). Offen: ein Schalter,
+    der diese Darstellung von Hand erzwingt (für Treiber, die ohne
+    Fehlermeldung falsch zeichnen), und vereinfachte Netze, damit große
+    Teile schneller laden.
     Offene Frage: Läuft die 3D-Ansicht auf dem Testrechner flüssig genug?
 
 #23 Orientierung in sehr großen Beständen
-    Erst bei Bedarf: wenn dieselbe Suche immer wieder getippt wird oder
+    Bei vielen tausend Modellen trägt die Suche, solange der Name bekannt
+    ist. Erwogen: dasselbe Teil in mehreren Formaten als eine Kachel,
+    Einstieg „zuletzt angesehen“, Filter mit Trefferzahl. Gebaut wird erst
+    bei Bedarf – wenn dieselbe Suche immer wieder getippt wird oder
     Vorhandenes nicht auffindbar ist. Rückmeldung in diesem Fall erbeten.
