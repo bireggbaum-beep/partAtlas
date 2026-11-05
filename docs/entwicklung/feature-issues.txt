@@ -1,29 +1,108 @@
-PartAtlas - Feature-Issues (Stand 5.11.2026)
-Quelle: https://github.com/bireggbaum-beep/partatlas/issues
+PartAtlas – was als Nächstes kommen könnte
+Stand 5.11.2026
 
-GROESSERE VORHABEN
-#9  Versionsverlauf je Modell: Reiter "Versionen", alter Inhalt einer am selben Ort neu gespeicherten Datei bleibt, Wiederherstellen als Kopie. Aufwand 3-4.
-#10 Backup als ZIP und Wiederherstellen: Backup ist gebaut, aber ausgeblendet; es fehlt das sichere Wiederherstellen. Aufwand 4-5.
-#11 Desktop-Programm: Einzeldatei mit Starter, Menueeintrag, Updates, Windows. Aufwand 4-5.
-#12 STEP und FCStd ohne FreeCAD: Open CASCADE als Geometriekern. Aufwand 3-4.
-#19 Explorer-Ersatz: Dateien in den Papierkorb des Systems loeschen. Aufwand 3-4.
-#20 Warteschlange: sichtbar machen, Eintraege mit Saetzen, "Passt auf den Drucker?". Aufwand 3.
-#27 G-Code direkt drucken: Druckanbindung und Reiter "Drucken". Aufwand 4-5, nur lesend ueber Moonraker 2-3.
-#28 Staende und Varianten buendeln: Ziehen von Modell auf Modell, Stapel in der Bibliothek, Stern "gilt", Reiter "Alles von diesem Teil". Aufwand etwa 3 plus 2-3.
+Das sind Ideen und Pläne, keine Zusagen. Was davon gebaut wird und in welcher
+Reihenfolge, entscheidet sich nach deinen Rückmeldungen. Bei manchen Punkten
+brauchen wir dich: Sie sind mit „Dazu brauchen wir dich“ gekennzeichnet.
 
-MITTLERE PAKETE
-#2  G-Code beim Drucken automatisch: Slicer-Ordner beobachten. Aufwand 2-3.
-#7  Zuordnen-Fenster: Tag, Material, Sammlung von der Auswahl entfernen, auch im Inspektor. Aufwand 2-3.
-#8  G-Code-Vorschau: Bild zuschneiden (1-2), Bahnen in der 3D-Ansicht (3-4).
-#14 Messen und Schnittebene in der 3D-Ansicht. Aufwand 3.
-#22 Automatische Ueberwachung der Ordner und Einlesen eines Teilbaums. Aufwand 2 je Teil.
-#24 Kaufteile-Verwaltung und Ausbau der eigenen Komponenten.
 
-KLEINERE ODER SPAETERE IDEEN
-#5  Weitere Ziehziele: Modell auf Modell (laeuft jetzt ueber #28), G-Code oder Bild von aussen, Datei auf "Datei fehlt".
-#13 Mehr Formate: IGES, AMF, PLY, glTF, 7z und rar.
-#15 3D-Ansicht ohne Grafikkarte: nur noch Pakete 3-4, der Hauptteil ist gebaut (Vorschlag: kuerzen oder schliessen).
-#23 Navigation in grossen Bestaenden: erst, wenn die Anzeichen da sind.
+1. Ordnung in deinen Dateien
 
-KEINE FEATURES
-#1, #3 (Entscheidung), #4 (Entscheidung), #6, #16, #17, #18, #21, #25, #26
+Mehrere Stände und Varianten eines Teils bündeln
+  Du speicherst beim Konstruieren oft unter neuem Namen weiter und hast
+  irgendwann zehn Dateien vom gleichen Teil. PartAtlas soll sie zu einem Stapel
+  zusammenfassen: Du ziehst eine Datei auf eine andere und sagst, ob es ein
+  weiterer Stand oder eine andere Variante ist. Oben im Stapel liegt, woran du
+  zuletzt gearbeitet hast. Mit einem Stern markierst du die Lösung, die gilt,
+  und je Stand kannst du eine Notiz schreiben. Keine Datei wird dabei
+  verschoben oder umbenannt.
+  Dazu brauchen wir dich: ein paar echte Dateinamen von dir, wie sie bei dir
+  vorkommen.
+
+Alle alten Stände einer Datei behalten
+  Speicherst du eine Datei am selben Ort neu, ist der alte Inhalt heute weg.
+  Künftig soll PartAtlas ihn aufbewahren. Du siehst die früheren Stände mit
+  Datum und kannst einen als Kopie daneben zurückholen. Deine aktuelle Datei
+  wird nie überschrieben.
+
+Tags, Material und Sammlungen wieder entfernen
+  Heute kannst du Tags für viele Modelle auf einmal hinzufügen, aber nicht
+  für viele auf einmal wieder wegnehmen. Das kommt, mit „Rückgängig“.
+
+Weitere Ziehmöglichkeiten
+  Zum Beispiel einen G-Code oder ein Bild von außen auf ein Modell ziehen,
+  oder eine Datei auf ein Modell ziehen, dessen Datei fehlt.
+
+Dateien aus PartAtlas löschen
+  Du willst PartAtlas anstelle des Dateimanagers benutzen. Dafür müsste es
+  Dateien auch von der Platte löschen können, und zwar nur in den Papierkorb
+  deines Systems, nie endgültig, immer mit Vorschau und Sicherung davor.
+
+Ordner automatisch beobachten
+  PartAtlas bemerkt neue oder geänderte Dateien selbst, ohne dass du auf ⟳
+  klickst. Dazu kommt das Einlesen nur eines einzelnen Ordners.
+
+
+2. Drucken und G-Code
+
+G-Code automatisch übernehmen
+  Wenn der Slicer eine Datei an den Drucker schickt, legt er sie kurz in einem
+  eigenen Ordner ab. PartAtlas soll dort nachsehen und den G-Code von selbst
+  zum richtigen Modell hängen, ohne dass du exportierst.
+  Dazu brauchen wir dich: Prüfen, ob das bei deinem Slicer zuverlässig
+  funktioniert (auch bei AppImage).
+
+G-Code direkt zum Drucker schicken
+  Ein Knopf „Direkt drucken“ am Modell und ein Reiter „Drucken“. Beim
+  Kobra 3 ist das schwierig: Der Hersteller bietet keine offene Schnittstelle,
+  und du druckst über die Cloud. Möglich wären der Umweg über eine
+  Fremd-Firmware (Rinkhals) oder ein Nachbau des LAN-Modus.
+  Dazu brauchen wir dich: Würdest du die Fremd-Firmware aufspielen? Druckst
+  du über die Cloud oder im Heimnetz? Bietet dein Slicer OctoPrint an?
+
+Besseres Vorschaubild aus dem G-Code
+  Das Bild aus dem G-Code zuschneiden, damit das Teil größer zu sehen ist.
+  Später vielleicht die Druckbahnen Schicht für Schicht in der 3D-Ansicht.
+
+Warteschlange
+  Eine Liste dessen, was du als Nächstes drucken willst, mit Baugruppen und
+  Stückzahlen. Sie ist im Programm heute ausgeblendet.
+  Dazu brauchen wir dich: Soll sie sichtbar werden?
+
+
+3. Mehr Formate und bessere 3D-Ansicht
+
+STEP und FCStd ohne FreeCAD
+  Heute braucht PartAtlas FreeCAD, um Bilder von STEP-Dateien zu rechnen.
+  Ein eingebauter Kern würde das ersparen. Das ist ein größeres Vorhaben.
+
+Weitere Dateiformate
+  IGES, AMF, PLY, glTF, und das Entpacken von 7z und rar.
+
+Messen und Schnitt in der 3D-Ansicht
+  Abstand zweier Punkte messen und das Teil an einer Ebene aufschneiden.
+
+3D-Ansicht auf alten Rechnern
+  Läuft bei dir ohne Grafikkarte, gröber als sonst. Offen sind noch ein
+  Schalter dafür in den Einstellungen und schnelleres Laden großer Teile.
+  Dazu brauchen wir dich: Ist die 3D-Ansicht flüssig genug?
+
+
+4. Programm und Sicherheit
+
+Programm zum Anklicken
+  Ein Menüeintrag mit Symbol, ein Beenden-Knopf, Aktualisierung ohne
+  Terminal, später eine Fassung für Windows.
+
+Sicherung als ZIP-Datei und Wiederherstellen
+  Die Sicherung ist gebaut, aber ausgeblendet, bis es auch den Rückweg gibt:
+  deinen Bestand aus einer Sicherung wieder aufbauen, ohne den jetzigen zu
+  überschreiben.
+
+Kaufteile und eigene Komponenten
+  Verwaltung deiner Kaufteile mit Einkäufen und Händlern, und mehr für Teile,
+  die du weder druckst noch kaufst.
+
+Zurechtfinden in sehr großen Beständen
+  Wird erst gebaut, wenn du merkst, dass du dieselbe Suche immer wieder
+  tippst oder etwas nicht findest, das sicher da ist. Sag Bescheid.
