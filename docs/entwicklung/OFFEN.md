@@ -4,6 +4,12 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Offene Punkte als Issues (5.11.2026)
+
+Auf GitHub stehen jetzt 28 Issues (#2–#27 am 5.11. angelegt). **Stände und Varianten** (Ablauf des Testers mit „Speichern unter“, zwei Achsen, Bündeln durch
+Ziehen von Modell auf Modell, Reihenfolge nach „zuletzt geändert“, ★ gilt, Reiter „Alles von diesem Teil“, offene Entscheidungen) war nur als eine Zeile in #5
+erfasst — jetzt vollständig in **#28**, #5 verweist darauf. Nicht verwechseln mit #9 (Verlauf *einer* Datei am selben Ort).
+
 ## Stand: 1.0.16 auf `main` (4.11.2026) — Rückweg `fassung-1.0.15`. Ohne test_ui (Oberfläche unverändert). Tester hat `model/obj` in KDE auf FreeCAD
 gestellt (Bild); offen: was `xdg-mime query filetype` für seine .obj sagt und ob `xdg-open` im Terminal öffnet.
 
