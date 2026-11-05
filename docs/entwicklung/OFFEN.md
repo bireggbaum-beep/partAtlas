@@ -14,7 +14,8 @@ und Wiederherstellen · #11 Desktop-Programm (Einzeldatei, Updates, Windows) · 
 Formate · #14 Messen und Schnitt · #15 3D-Ansicht ohne Grafikkarte, Pakete 3–4 · #16 wartet auf Prüfung: Windows, echte Slicer-Dateien ·
 #17 Abschusstests Hochziehen, voller Datenträger · #18 Performance-Feinschliff · #19 Explorer-Ersatz: Dateien löschen · #20 Warteschlange ·
 #21 Gestaltung: Farbschema, GTK-4-Formen, Zeichen · #22 automatische Überwachung, Teilbaum · #23 Navigation in grossen Beständen ·
-#24 Kaufteile-Verwaltung, eigene Komponenten · #25 wacklige Prüfungen · #26 kleine offene Punkte (Sammelissue mit Haken) · #27 G-Code direkt drucken: Druckanbindung und Reiter „Drucken“.
+#24 Kaufteile-Verwaltung, eigene Komponenten · #25 wacklige Prüfungen · #26 kleine offene Punkte (Sammelissue mit Haken) · #27 G-Code direkt drucken: Druckanbindung und Reiter „Drucken“ · #28 Stände und Varianten bündeln, durch Ziehen von Modell auf Modell
+(vom Anwender aus dem Gespräch 3./4.11. angelegt; #9 ist ein anderes Thema: Verlauf einer Datei am selben Ort).
 Nicht übernommen, weil entschieden nein oder erledigt: Ablageleiste, Resin, Drucker-Vielfalt/Fächer, Tastatur in „Modell wählen …“,
 „Nicht unterscheidbar“ (weglassen, bis es stört). Die Druckanbindung steht in #27 (Kobra ohne Rinkhals nur über den Nachbau des LAN-Modus).
 
