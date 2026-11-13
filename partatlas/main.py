@@ -1258,7 +1258,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
                 raise KatalogFehler("Die Datei ist nicht ausführbar. Im Dateimanager: Rechtsklick › Eigenschaften › Berechtigungen › "
                                     "„Als Programm ausführen“ — danach erneut auswählen.")
             raise KatalogFehler("Das ist kein ausführbares Programm.")
-        return {**programme.eintrag_fuer(pfad, art), "automatisch": False}
+        # Herkunft und Art des Eintrags gleich mitgeben: die Einstellungen hängen ihn damit ohne zweite Anfrage in die Liste.
+        return {**programme.eintrag_fuer(pfad, art), "automatisch": False, "quelle": "eigen", "standard": False, "ort": programme.ort(pfad, True)}
 
     @app.get("/api/ordner/inhalt")
     def ordner_inhalt(id: str):

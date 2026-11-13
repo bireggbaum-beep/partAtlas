@@ -273,13 +273,17 @@ async def oberflaeche(port):
         check("… und startet ihn mit der Datei des Modells",
               os.path.exists(PROTOKOLL) and "prusa-slicer " in open(PROTOKOLL).read() and "Vase.stl" in open(PROTOKOLL).read())
         await pg.click("#einstellungen")
-        await pg.click('[data-ein="programme"]')
-        await pg.wait_for_selector('[data-prog-aendern="slicer"]')
-        check("Einstellungen › Programme: Slicer und CAD stehen schon drin, ohne Textfeld",
-              "PrusaSlicer" in await pg.inner_text(".prog-wahl >> nth=0") and "FreeCAD" in await pg.inner_text(".prog-wahl >> nth=1")
-              and await pg.locator("#prog-teil input").count() == 0)
-        await pg.click('[data-prog-aendern="slicer"]')                 # der Dateidialog (Attrappe) wählt FreeCAD
-        await pg.wait_for_function("document.querySelector('.prog-wahl').innerText.includes('FreeCAD')")
+        await pg.click('[data-ein="slicer"]')
+        await pg.wait_for_selector('[data-prog-neu]')
+        check("Einstellungen › Slicer: PrusaSlicer steht schon drin, als Standard gewählt, ohne Textfeld",
+              "PrusaSlicer" in await pg.inner_text("#prog-slicer .prog-zeile >> nth=0") and await pg.locator("#prog-slicer input:not([type=radio])").count() == 0
+              and await pg.locator("#prog-slicer input[type=radio]:checked").count() == 1)
+        await pg.click('[data-ein="cad"]')
+        check("Einstellungen › CAD: FreeCAD steht schon drin", "FreeCAD" in await pg.inner_text("#prog-cad .prog-wahl"))
+        await pg.click('[data-ein="slicer"]')
+        await pg.click('[data-prog-neu]')                              # der Dateidialog (Attrappe) liefert FreeCAD: als weiterer Slicer in die Liste
+        await pg.wait_for_selector('#prog-slicer .prog-zeile >> nth=1')
+        await pg.click('#prog-slicer label:text-is("FreeCAD")')        # … und zum Standard gewählt
         await pg.click('dialog button[value="ja"]')
         await pg.wait_for_timeout(1000)
         check("Einstellungen: FreeCAD als Slicer gewählt, der Slicer-Knopf folgt",

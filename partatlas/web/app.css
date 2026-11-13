@@ -782,6 +782,27 @@ dialog.einst { width: min(780px, 92vw); max-width: none; padding: 0; overflow: h
 .prog-wahl code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ink-3); }
 .prog-gefunden { font: 12px var(--mono); color: var(--accent); margin-left: 8px; }
 .prog-aktion { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.prog-art-kopf { padding: 12px 0 6px; }
+.prog-art-kopf small { display: block; color: var(--ink-3); font-size: 12px; line-height: 1.35; margin-top: 3px; }
+.prog-liste { border: 0; margin: 0; padding: 0; min-width: 0; }
+.prog-liste legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }      /* für Vorleseprogramme: benennt die Radio-Gruppe */
+.prog-zeile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 6px 8px; margin-bottom: 3px;
+  border: 1px solid var(--line); border-radius: 8px; }
+.prog-zeile.ist { border-color: var(--accent); background: var(--accent-soft); }
+.prog-zeile input[type=radio] { margin: 4px 0 0; }
+.prog-text { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.prog-text label { font-weight: 600; cursor: pointer; }
+.prog-text code { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ink-3); }
+.prog-ort { font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+.prog-marke { font: 12px var(--mono); color: var(--accent); }
+.prog-weg { background: none; border: 0; color: var(--ink-3); font-size: 18px; line-height: 1; padding: 0 6px; border-radius: 6px; cursor: pointer; }
+.prog-weg:hover, .prog-weg:focus-visible { color: var(--ink); background: var(--panel-2); }
+.prog-weg[aria-disabled=true] { opacity: .35; cursor: not-allowed; }
+.prog-neu { width: 100%; background: none; border: 1px dashed var(--line); border-radius: 8px; color: var(--ink-2); font: inherit; padding: 8px; cursor: pointer; }
+.prog-neu:hover, .prog-neu:focus-visible { border-color: var(--accent); color: var(--accent); }
+.prog-fuss { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+.prog-leer { margin: 2px 0 6px; }
+.prog-hilfe { margin: 12px 0 4px; font-size: 12.5px; line-height: 1.45; }
 .knopf-text { background: none; border: 0; color: var(--ink-3); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
 .knopf-text:hover { color: var(--accent); }
 

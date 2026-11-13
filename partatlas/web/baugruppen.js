@@ -595,8 +595,8 @@ ladeBaugruppenLeiste();
 // einmal ein und muss nie wieder ein Teil anfassen.
 
 async function einstellungen() {
-  const e = await api("/api/einstellungen");
-  Object.assign(progWahl, { ...e.programm, geaendert: {} });
+  const [e, programmListe] = await Promise.all([api("/api/einstellungen"), api("/api/programme")]);
+  progListeLaden(e, programmListe);
   Object.assign(mwWahl, { material: e.gilt.material, farbe: e.gilt.farbe });
   vfWahl.farbe = e.vorschau_farbe || null;
   $("#dialog").classList.add("einst");
@@ -678,12 +678,11 @@ async function einstellungen() {
       ${PDF_FELDER.slice(0, 5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}
       <div class="i-titel">DARSTELLUNG</div>
       ${PDF_FELDER.slice(5).map(([k, t]) => pdfSchalter(k, t, e.pdf)).join("")}`],
-    ["programme", "Programme", `
-      <p class="dim">Mit diesen beiden Programmen öffnet PartAtlas ein Modell: STEP- und FCStd-Dateien im CAD, alles andere im Slicer.
-        Was auf diesem Rechner installiert ist, steht schon da.</p>
-      <div id="prog-teil">${progTeil()}</div>`],
+    ["slicer", "Slicer", `<div id="prog-slicer">${slicerTeil()}</div>`],
+    ["cad", "CAD", `<div id="prog-cad">${cadTeil()}</div>`],
   ];
-  const gemerkt = localStorageLesen("einstellungen-abschnitt");
+  // „programme“ war bis 1.0.16 ein Reiter für beide; wer ihn gemerkt hat, landet jetzt beim Slicer.
+  const gemerkt = localStorageLesen("einstellungen-abschnitt") === "programme" ? "slicer" : localStorageLesen("einstellungen-abschnitt");
   const zeige = abschnitte.some(([k]) => k === gemerkt) ? gemerkt : abschnitte[0][0];
   const a = await dialog(`<div class="ein">
     <nav class="ein-nav">${abschnitte.map(([k, t]) => `<button type="button" data-ein="${k}" class="${k === zeige ? "aktiv" : ""}">${t}</button>`).join("")}</nav>
@@ -700,7 +699,7 @@ async function einstellungen() {
                                                           sicherung_neueste: Number($("#ein-sich-neueste").value) || 5, sicherung_tage: Number($("#ein-sich-tage").value) || 0,
                                                           vorschau_berechnen: document.querySelector("[name=ein-vorschau]:checked")?.value || "ohne_bild",
                                                           fcstd_freecad: $("#ein-fcstd").value || null,
-                                                          programm: progWahl.geaendert,
+                                                          programm: progWahl.geaendert, ...progListePaket(),
                                                           pdf: Object.fromEntries([...document.querySelectorAll("[data-pdf]")].map((c) => [c.dataset.pdf, c.checked])) } });
     toast("Gespeichert.");
     programmeAktualisieren();
@@ -714,46 +713,132 @@ const PDF_FELDER = [["struktur", "Strukturstückliste (jede Ebene mit Positionsn
   ["bilder", "Vorschaubilder"], ["kaestchen", "Abhakkästchen zum Ausdrucken"], ["pfade", "Dateipfade unter den Namen"]];
 const pdfSchalter = (k, t, wert) => `<label><input type="checkbox" data-pdf="${k}" ${wert[k] ? "checked" : ""}> ${t}</label>`;
 
-// Zwei Plätze, keine Liste: ein Slicer und ein CAD. Der Pfad kommt aus dem Dateidialog des
-// Rechners, nie aus einem Textfeld. `geaendert` merkt, was erst mit „Speichern“ gilt
-// (Pfad, oder "" für „wieder automatisch“).
-const progWahl = { slicer: null, cad: null, geaendert: {} };
-const PROG_ARTEN = [["slicer", "Slicer", "zum Aufbereiten und Drucken, z. B. PrusaSlicer, Bambu Studio, OrcaSlicer"],
-                    ["cad", "CAD", "zum Konstruieren und Ändern, z. B. FreeCAD"]];
+// Der Slicer ist eine Liste (Radio = Standard, × = ausblenden bzw. entfernen, ＋ = hinzufügen), das CAD bleibt ein Platz. Der Pfad kommt aus dem
+// Dateidialog des Rechners, nie aus einem Textfeld. Gespeichert wird erst mit „Speichern“: `geaendert` hält die Wahl des Standards
+// (Pfad, oder "" für „wieder automatisch“), `listeGeaendert` ob Hinzugefügtes oder Ausgeblendetes mitgeschickt werden muss.
+const progWahl = { slicer: null, cad: null, geaendert: {}, liste: [], versteckt: [], standard: null, auto: true, listeGeaendert: false };
+const CAD_HILFE = "Das CAD dient zum Konstruieren und Ändern, z. B. FreeCAD";
 
-function progTeil() {
-  return PROG_ARTEN.map(([art, name, hilfe]) => {
-    const p = progWahl[art];
-    return `<div class="prog-feld">
-      <div class="prog-art"><b>${name}</b><small>${hilfe}</small></div>
-      <div class="prog-wahl">${p ? `<div><b>${esc(p.name)}</b>${p.automatisch ? '<span class="prog-gefunden">gefunden</span>' : ""}</div><code title="${esc(p.pfad)}">${esc(p.pfad)}</code>`
-                                : progWahl.geaendert[art] === "" ? '<span class="dim">Automatisch — wird beim Speichern gewählt.</span>'
-                                : '<span class="dim">Nichts gefunden — bitte ein Programm auswählen.</span>'}</div>
-      <div class="prog-aktion"><button type="button" class="knopf" data-prog-aendern="${art}">${p ? "Ändern …" : "Auswählen …"}</button>
-        ${p && !p.automatisch ? `<button type="button" class="knopf-text" data-prog-auto="${art}">Automatisch</button>` : ""}</div>
-    </div>`;
-  }).join("");
+function progListeLaden(e, pl) {
+  const liste = pl.programme.filter((p) => p.art === "slicer");
+  Object.assign(progWahl, { ...e.programm, geaendert: {}, listeGeaendert: false, liste,
+    versteckt: (pl.ausgeblendet || []).filter((p) => p.art === "slicer"),
+    standard: liste.find((p) => p.standard)?.pfad ?? null, auto: e.programm.slicer ? e.programm.slicer.automatisch : true });
 }
 
+// Was beim Speichern zusätzlich zur Wahl des Standards mitgeht: alle selbst hinzugefügten (auch ein früher gewählter, sonst
+// verschwände er aus der Liste, sobald ein anderer Standard wird) und alle ausgeblendeten Slicer.
+function progListePaket() {
+  if (!progWahl.listeGeaendert) return {};
+  return { programme_eigene: { slicer: progWahl.liste.filter((p) => p.quelle === "eigen").map((p) => p.pfad) },
+           programme_aus: { slicer: progWahl.versteckt.map((p) => p.pfad) } };
+}
+
+function slicerTeil() {
+  const l = progWahl.liste;
+  const zeile = (p, i) => {
+    const ist = progWahl.standard === p.pfad;
+    const gleichnamig = l.filter((x) => x.name === p.name).length > 1;     // dann sagt die Herkunft, welcher gemeint ist
+    const wegText = p.quelle === "eigen" ? "Entfernen" : "Ausblenden";
+    return `<div class="prog-zeile${ist ? " ist" : ""}">
+      <input type="radio" name="prog-std" id="prog-std-${i}" value="${esc(p.pfad)}" ${ist ? "checked" : ""} aria-describedby="prog-pfad-${i}">
+      <div class="prog-text"><label for="prog-std-${i}">${esc(p.name)}</label>${gleichnamig && p.ort ? `<span class="prog-ort">${esc(p.ort)}</span>` : ""}${ist ? `<span class="prog-marke">Standard${progWahl.auto ? " (automatisch)" : ""}</span>` : ""}
+        <code id="prog-pfad-${i}" title="${esc(p.pfad)}">${esc(p.pfad)}</code></div>
+      <button type="button" class="prog-weg" data-prog-weg="${esc(p.pfad)}" ${ist ? 'aria-disabled="true"' : ""}
+        aria-label="${wegText}: ${esc(p.name)}" title="${ist ? "Der Standard lässt sich nicht entfernen — wähle erst einen anderen." : wegText}">×</button>
+    </div>`;
+  };
+  const leer = !l.length ? `<p class="dim prog-leer">${progWahl.geaendert.slicer === "" ? "Automatisch — wird beim Speichern gewählt." : "Noch kein Slicer gefunden. Füge einen hinzu."}</p>` : "";
+  const keinStandard = l.length && !progWahl.standard ? '<p class="dim prog-leer">Automatisch — nach dem Speichern steht der erste gefundene Slicer als Standard da.</p>' : "";
+  return `<p class="dim">Der Slicer bereitet Modelle zum Drucken auf. Alles außer STEP und FCStd öffnet sich in ihm.</p>
+    <fieldset class="prog-liste"><legend>Slicer</legend>${l.map(zeile).join("")}${leer}${keinStandard}
+    <button type="button" class="prog-neu" data-prog-neu="1">＋ Hinzufügen</button></fieldset>
+    <div class="prog-fuss">
+      ${progWahl.versteckt.length ? `<button type="button" class="knopf-text" data-prog-zeigen="1">${progWahl.versteckt.length === 1 ? "Einen ausgeblendeten Slicer wieder anzeigen" : `${progWahl.versteckt.length} ausgeblendete Slicer wieder anzeigen`}</button>` : ""}
+      ${!progWahl.auto ? '<button type="button" class="knopf-text" data-prog-auto="slicer">Standard wieder automatisch wählen</button>' : ""}
+    </div>
+    <p class="dim prog-hilfe">PartAtlas sucht beim Start an den bekannten Orten nach Slicern und trägt gefundene selbst ein. Weitere — auch selbst kompilierte — kannst du
+      hinzufügen. Der Slicer, den du hier auswählst, ist der Standard: mit ihm öffnet sich ein Modell, wenn du es einfach öffnest.</p>`;
+}
+
+function cadTeil() {
+  const p = progWahl.cad;
+  return `<p class="dim">${CAD_HILFE}. STEP- und FCStd-Dateien öffnen sich in diesem Programm.</p>
+    <div class="prog-feld">
+      <div class="prog-wahl">${p ? `<div><b>${esc(p.name)}</b>${p.automatisch ? '<span class="prog-gefunden">gefunden</span>' : ""}</div><code title="${esc(p.pfad)}">${esc(p.pfad)}</code>`
+                                : progWahl.geaendert.cad === "" ? '<span class="dim">Automatisch — wird beim Speichern gewählt.</span>'
+                                : '<span class="dim">Nichts gefunden — bitte ein Programm auswählen.</span>'}</div>
+      <div class="prog-aktion"><button type="button" class="knopf" data-prog-aendern="cad">${p ? "Ändern …" : "Auswählen …"}</button>
+        ${p && !p.automatisch ? '<button type="button" class="knopf-text" data-prog-auto="cad">Automatisch</button>' : ""}</div>
+    </div>`;
+}
+
+// Beide Reiter (Slicer, CAD) neu zeichnen; `fokus` ist der Auswahlstring des Elements, das den Fokus behalten soll.
+function progTeil() {
+  $("#prog-slicer").innerHTML = slicerTeil();
+  $("#prog-cad").innerHTML = cadTeil();
+}
+
+// Nach jeder Änderung neu zeichnen, den Fokus aber dort lassen, wo er war (Tastatur: sonst springt er nach oben).
+function progNeuZeichnen(fokus) {
+  progTeil();
+  if (fokus) ($(`#prog-slicer ${fokus}, #prog-cad ${fokus}`) || $("#prog-slicer input[name=prog-std]:checked"))?.focus();
+}
+
+document.addEventListener("change", (e) => {
+  const r = e.target.closest?.("input[name=prog-std]");
+  if (!r) return;
+  progWahl.standard = r.value;
+  progWahl.geaendert.slicer = r.value;
+  progWahl.auto = false;
+  progNeuZeichnen("input[name=prog-std]:checked");
+});
+
 document.addEventListener("click", async (e) => {
+  const weg = e.target.closest?.("[data-prog-weg]"), neu = e.target.closest?.("[data-prog-neu]"), zeigen = e.target.closest?.("[data-prog-zeigen]");
   const aendern = e.target.closest?.("[data-prog-aendern]"), auto = e.target.closest?.("[data-prog-auto]");
-  if (!aendern && !auto) return;
+  if (!(weg || neu || zeigen || aendern || auto)) return;
+  if (weg) {
+    if (weg.getAttribute("aria-disabled")) return toast("Der Standard lässt sich nicht entfernen — wähle erst einen anderen.");
+    const p = progWahl.liste.find((x) => x.pfad === weg.dataset.progWeg);
+    progWahl.liste = progWahl.liste.filter((x) => x !== p);
+    if (p.quelle !== "eigen") progWahl.versteckt.push(p);          // ein gefundener kommt beim nächsten Start nicht wieder, ein hinzugefügter ist einfach weg
+    progWahl.listeGeaendert = true;
+    return progNeuZeichnen("input[name=prog-std]:checked");
+  }
+  if (zeigen) {
+    progWahl.liste = [...progWahl.liste, ...progWahl.versteckt];
+    progWahl.versteckt = [];
+    progWahl.listeGeaendert = true;
+    return progNeuZeichnen("input[name=prog-std]:checked");
+  }
   if (auto) {
     const art = auto.dataset.progAuto;
     progWahl.geaendert[art] = "";
     // Wie es automatisch wäre, weiss der Server; die Anzeige zeigt es nach dem Speichern.
-    progWahl[art] = null;
-    $("#prog-teil").innerHTML = progTeil();
-    return;
+    if (art === "slicer") Object.assign(progWahl, { standard: null, auto: true });
+    else progWahl.cad = null;
+    return progNeuZeichnen(art === "slicer" ? "[data-prog-neu]" : "[data-prog-aendern]");
   }
-  const art = aendern.dataset.progAendern;
-  aendern.disabled = true;
-  aendern.textContent = "Dialog geöffnet …";
+  const art = neu ? "slicer" : aendern.dataset.progAendern;
+  const knopf = neu || aendern;
+  const text = knopf.textContent;
+  knopf.disabled = true;
+  knopf.textContent = "Dialog geöffnet …";
   try {
     const p = await api("/api/programme/waehlen", { method: "POST", body: { art } });
-    if (!p.abgebrochen) { progWahl[art] = p; progWahl.geaendert[art] = p.pfad; }
-  } catch (err) { toast(err.message); }
-  $("#prog-teil").innerHTML = progTeil();
+    if (!p.abgebrochen && art === "cad") { progWahl.cad = p; progWahl.geaendert.cad = p.pfad; }
+    else if (!p.abgebrochen) {
+      if (progWahl.liste.some((x) => x.pfad === p.pfad)) toast(`${p.name} steht schon in der Liste.`);
+      else {
+        // Ein zuvor ausgeblendeter, der jetzt von Hand gewählt wird, ist wieder da (und nicht mehr ausgeblendet).
+        progWahl.versteckt = progWahl.versteckt.filter((x) => x.pfad !== p.pfad);
+        progWahl.liste.push({ ...p, quelle: "eigen", standard: false });
+        progWahl.listeGeaendert = true;
+      }
+    }
+  } catch (err) { toast(err.message); knopf.textContent = text; }
+  progNeuZeichnen(art === "cad" ? "[data-prog-aendern]" : "[data-prog-neu]");
 });
 document.addEventListener("click", (e) => {
   if (e.target.closest?.("#einstellungen")) return einstellungen();

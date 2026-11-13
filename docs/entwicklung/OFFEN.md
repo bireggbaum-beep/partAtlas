@@ -4,8 +4,40 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Mehrere Slicer in den Einstellungen (13.11.2026, Branch `claude/mehrere-slicer`, auf 1.0.16, Fassungsnummer unverändert, nicht auf `main`)
+
+Anwender: der Dialog zeigt alle erkannten Slicer als Liste — Standard wählen (Radio), eigene hinzufügen (＋, Dateidialog), Unerwünschte ausblenden (×).
+**Hart:** der bisherige Standard bleibt Standard. `programm.slicer` behält seine Bedeutung („Standard“), `programm_fuer(SLICER)` ist unverändert
+(gewählt → alter Eintrag aus früheren Fassungen → erster Fund von `erkennen()`); neu nur dazugekommen: `programme_eigene {art: [Pfade]}` und
+`programme_aus {art: [Pfade]}` (je Art, damit das CAD später dieselbe Liste bekommt: `programme.LISTEN_ARTEN = (SLICER,)`, dort eine Zeile mehr).
+Alte Einstellungsdateien laufen ohne sie unverändert; nichts wird umgedeutet. Nur ein **ausgeblendeter** erster Fund wird bei „automatisch“ übersprungen
+(neues Verhalten, nur wer ausgeblendet hat).
+
+**Paket 1 (Server, ohne Oberfläche):** `programme.alle()` liefert den Slicer als Liste — Standard zuerst, dann erkannte (Reihenfolge von `erkennen()`),
+dann selbst hinzugefügte; Ausgeblendete fehlen, der Standard steht immer da; ein hinzugefügter Pfad, den es nicht mehr gibt, ist keine Geisterzeile. Felder
+je Eintrag: `standard`, `quelle` (erkannt | eigen), `ort` (System | Flatpak | AppImage | eigener Ort — nur aus dem Pfad, kein `--version`). Das CAD bleibt
+genau ein Platz (`scan.py` und `eigene.py` unangetastet: `programm_fuer(CAD)` → `cad.konsole_befehl`). `standard()` (Hauptknopf je Format) nimmt von den
+Slicern **nur den Standard-Slicer** — ein weiterer springt nicht für ein Format ein, das der Standard nicht kennt (SuperSlicer kein STEP). `_nur_slicer`,
+`modell_oeffnen` (geslictes 3MF) und `druck_oeffnen` nehmen `programme.standard_slicer(liste)`, nie „das erste Element“; ein ausdrücklicher Pfad gilt
+weiter nur, wenn er in der Liste steht. `PUT /api/einstellungen`: `programme_eigene` (nur ausführbare), `programme_aus`; der Standard — gemessen an dem, was
+nach diesem Speichern der Standard wäre — lässt sich weder ausblenden noch entfernen (400). `GET /api/programme` zusätzlich `ausgeblendet`, `listen`.
+`tests/test_programmliste.py` (neu, 44 Checks); `test_api` Prüfung „genau zwei“ ersetzt. Gegenproben (mutierte Kopie, `PARTATLAS_QUELLE`): Hauptknopf nimmt
+den letzten Slicer, gewählter Standard ignoriert, alter Eintrag ignoriert, weitere Slicer zählen im Hauptknopf, Standard ausblendbar, Herkunft immer „System“,
+CAD bekommt Liste — jede lässt die passenden Checks fallen.
+
+**Paket 2 (Dialog):** Einstellungen › Programme ist zwei Reiter: **Slicer** (Liste: Radio-Gruppe mit Beschriftung, Marke „Standard“ / „Standard
+(automatisch)“, Pfad darunter, Herkunft nur bei gleichnamigen, × (beim Standard gesperrt, mit Hinweis), gestrichelt „＋ Hinzufügen“, „N ausgeblendete wieder
+anzeigen“, „Standard wieder automatisch wählen“) und **CAD** (ein Platz wie bisher). Zwei Reiter, weil die Liste mit sechs Slicern den Dialog (500 px) sonst
+sprengt (Bild: nur 4 Zeilen sichtbar, CAD und Erklärtext unter dem Rand); der Reiter „Slicer“ scrollt bei sehr vielen Zeilen. Gespeichert wird erst mit
+„Speichern“. Ein gemerkter alter Reiter „programme“ führt zum Slicer; der gedämpfte Knopf und „Öffnen mit › Programme einstellen“ führen zum Reiter der Art
+(Slicer bzw. CAD; bei STEP/FCStd → CAD). Hover-Knopf „Im Slicer“ nur für den Standard-Slicer; Menüs „Öffnen mit“ nennen bei Gleichnamigen die Herkunft und
+markieren den Standard. `tests/test_programmliste_ui.py` (neu, 33 Checks, eigener Server mit Attrappen); `test_ui.py` Abschnitt Programme angepasst.
+**Nicht geprüft:** `test_ui.py` komplett (CLAUDE.md); nur die ersten ~290 Zeilen bis einschließlich Programme-Abschnitt (24/24). Handbuch und Neuigkeiten
+nicht nachgezogen (keine neue Fassung). Echte Flatpak-/AppImage-Installationen nicht ausprobiert (nur Attrappen). **Offen:** CAD-Liste (eigenes Paket, die
+Umwandlung STEP/FCStd in `scan.py` hängt noch an der einen CAD-Wahl), Eintrag in `neuigkeiten.py` bei der nächsten Fassung.
+
 ## Stand: 1.0.16 auf `main` (4.11.2026) — Rückweg `fassung-1.0.15`. Ohne test_ui (Oberfläche unverändert). Tester hat `model/obj` in KDE auf FreeCAD
-gestellt (Bild); offen: was `xdg-mime query filetype` für seine .obj sagt und ob `xdg-open` im Terminal öffnet.
+gestellt (Bild). **Erledigt (13.11.2026):** das .obj-Problem war ein Fehler in der Linux-Einrichtung des Testers, kein Fehler in PartAtlas.
 
 ### 1.0.16: „Mit dem System öffnen“ meldet Fehler; „nicht da“ mit Pfad (Rückmeldung des Testers)
 
@@ -16,7 +48,7 @@ Mangel: `mit_system` startete xdg-open blind (`Popen`, Ausgabe weg) — jeder Fe
 1,2 s warten, Code 2/3/4 in Worten, dazu `xdg-mime query filetype`). „Die Datei ist nicht da“ nennt den gesuchten Pfad (`modell_oeffnen`). Die
 übrigen Aufrufer (Anhang, Zielordner, Bestand, Sicherungen, Ordner zeigen) fangen OSError schon ab — sie melden jetzt den Grund statt nichts.
 test_api 96/96 (+2; Attrappe xdg-open mit Code 3), Gegenprobe (alter Code) fällt; test_schutz, test_verwalten grün. **Offen:** „nicht da“ bei
-seinen .obj — Pfad abwarten (Sonderzeichen? Ort im Papierkorb/Archiv?).
+seinen .obj — erledigt, siehe oben (Fehler in seiner Einrichtung).
 
 ## Stand: 1.0.15 auf `main` (4.11.2026) — Rückweg `fassung-1.0.14`. Ohne test_ui (Oberfläche nur minimal: `geslict` vom Server).
 
