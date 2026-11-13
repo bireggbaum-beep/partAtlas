@@ -167,27 +167,120 @@ def eintrag_fuer(pfad, art):
     return {**_eintrag(stamm, art, formate_fuer(stamm, art), pfad), "eigen": True}
 
 
+# Die Arten, für die der Anwender eine Liste führt (mehrere Programme, eines davon der Standard). Der Slicer seit dieser Fassung;
+# das CAD hat weiter genau einen Platz — die Umwandlung von STEP und FCStd (scan.py) hängt an dieser einen Wahl. Kommt das CAD später
+# dazu, ist es hier ein Eintrag mehr; die Schlüssel in den Einstellungen („programme_eigene“, „programme_aus“) tragen die Art schon.
+LISTEN_ARTEN = (SLICER,)
+
+
+def _echt(pfad):
+    return os.path.realpath(pfad)
+
+
+def pfade_von(einstellungen, schluessel, art):
+    """Die Pfade einer Art aus „programme_eigene“ bzw. „programme_aus“ — nur Texte, alles andere in der Datei wird übergangen."""
+    liste = (einstellungen.get(schluessel) or {}).get(art) or []
+    return [p for p in liste if isinstance(p, str) and p]
+
+
+def ausgeblendet(einstellungen, art):
+    return {_echt(p) for p in pfade_von(einstellungen, "programme_aus", art)}
+
+
 def programm_fuer(art, einstellungen, erkannt=None):
-    """Das Programm für „Slicer“ bzw. „CAD“: was der Anwender gewählt hat, sonst ein
-    Eintrag aus früheren Fassungen, sonst das erste gefundene. None, wenn es keines gibt."""
+    """Das Programm für „Slicer“ bzw. „CAD“ — beim Slicer der Standard: was der Anwender gewählt hat, sonst ein
+    Eintrag aus früheren Fassungen, sonst das erste gefundene. None, wenn es keines gibt. Ein ausgeblendetes Programm
+    wird nie von selbst zum Standard (nur durch ausdrückliche Wahl); ohne „programme_aus“ bleibt alles wie vor der Liste."""
     gewaehlt = (einstellungen.get("programm") or {}).get(art)
     if gewaehlt and ausfuehrbar(gewaehlt):
         return eintrag_fuer(gewaehlt, art)
     alt = next((s for s in eigene(einstellungen) if s["art"] == art), None)
     if alt:
         return alt
-    return next((s for s in (erkannt if erkannt is not None else erkennen()) if s["art"] == art), None)
+    aus = ausgeblendet(einstellungen, art)
+    return next((s for s in (erkannt if erkannt is not None else erkennen())
+                 if s["art"] == art and _echt(s["pfad"]) not in aus), None)
 
 
-def alle(einstellungen):
-    """Genau zwei Plätze: ein Slicer und ein CAD."""
-    gefunden = erkennen()
-    return [p for p in (programm_fuer(art, einstellungen, gefunden) for art in (SLICER, CAD)) if p]
+def ort(pfad, eigen=False):
+    """Woher ein Programm kommt — damit zwei gleichnamige (OrcaSlicer als Flatpak und als AppImage) in der Liste zu unterscheiden sind.
+    Nur aus dem Pfad gelesen; eine Version würde das Programm zu starten verlangen, und ein Programm mit Oberfläche startet man nicht zum Fragen."""
+    klein = pfad.lower()
+    if "flatpak" in klein:
+        return "Flatpak"
+    if klein.endswith(".appimage"):
+        return "AppImage"
+    return "eigener Ort" if eigen else "System"
+
+
+def _beschriften(eintrag, quelle, standard):
+    # „quelle“: erkannt (die App hat es gefunden: lässt sich ausblenden) oder eigen (vom Anwender eingetragen: lässt sich entfernen).
+    return {**eintrag, "quelle": quelle, "standard": standard, "ort": ort(eintrag["pfad"], quelle == "eigen")}
+
+
+def _slicerliste(einstellungen, erkannt, art):
+    """Alle Programme einer Listen-Art, der Standard zuerst, dann die erkannten (in der Reihenfolge von `erkennen`), dann die
+    selbst hinzugefügten. Ausgeblendete fehlen; der Standard steht immer da, auch wenn sein Pfad ausgeblendet wäre."""
+    std = programm_fuer(art, einstellungen, erkannt)
+    aus = ausgeblendet(einstellungen, art)
+    gefunden = {_echt(s["pfad"]) for s in erkannt if s["art"] == art}
+    liste, gesehen = [], set()
+
+    def dazu(eintrag, quelle):
+        echt = _echt(eintrag["pfad"])
+        if echt not in gesehen:
+            gesehen.add(echt)
+            liste.append(_beschriften(eintrag, quelle, bool(std) and echt == _echt(std["pfad"])))
+
+    if std:
+        dazu(std, "erkannt" if _echt(std["pfad"]) in gefunden else "eigen")
+    for s in erkannt:
+        if s["art"] == art and _echt(s["pfad"]) not in aus:
+            dazu(s, "erkannt")
+    for pfad in pfade_von(einstellungen, "programme_eigene", art):
+        if ausfuehrbar(pfad):           # ein Pfad, den es nicht mehr gibt, bleibt nicht als Geisterzeile stehen
+            dazu(eintrag_fuer(pfad, art), "eigen")
+    return liste
+
+
+def alle(einstellungen, erkannt=None):
+    """Der Slicer als Liste (Standard zuerst), das CAD als genau ein Platz."""
+    erkannt = erkennen() if erkannt is None else erkannt
+    ergebnis = []
+    for art in ARTEN:
+        if art in LISTEN_ARTEN:
+            ergebnis += _slicerliste(einstellungen, erkannt, art)
+        else:
+            p = programm_fuer(art, einstellungen, erkannt)
+            if p:
+                ergebnis.append(_beschriften(p, "erkannt" if any(_echt(s["pfad"]) == _echt(p["pfad"]) for s in erkannt) else "eigen", True))
+    return ergebnis
+
+
+def ausgeblendete(einstellungen, erkannt=None):
+    """Erkannte Programme, die der Anwender ausgeblendet hat und die es noch gibt — für „Ausgeblendete wieder anzeigen“."""
+    erkannt = erkennen() if erkannt is None else erkannt
+    ergebnis = []
+    for art in LISTEN_ARTEN:
+        aus = ausgeblendet(einstellungen, art)
+        ergebnis += [_beschriften(s, "erkannt", False) for s in erkannt if s["art"] == art and _echt(s["pfad"]) in aus]
+    return ergebnis
+
+
+def standard_slicer(programme):
+    """Der Slicer, den der Hauptknopf nimmt — der mit der Marke „standard“; ohne Marke (eine Liste aus anderer Quelle) der erste.
+    Überall, wo „der Slicer“ gemeint ist und nicht „irgendein Slicer“, kommt er von hier."""
+    slicer = [p for p in programme if p["art"] == SLICER]
+    return next((p for p in slicer if p.get("standard")), slicer[0] if slicer else None)
 
 
 def standard(programme, einstellungen=None):
     """Je Format das Programm, das der Hauptknopf nimmt: STEP und FCStd ins CAD (ein Slicer
-    würde STEP nur vernetzen und FCStd gar nicht kennen), alles andere in den Slicer — so wie man druckt."""
+    würde STEP nur vernetzen und FCStd gar nicht kennen), alles andere in den Slicer — so wie man druckt.
+    Weitere Slicer der Liste zählen hier nicht: sie stehen im Menü „Öffnen mit“, der Hauptknopf nimmt nur den Standard-Slicer
+    (so wie vor der Liste, als es nur diesen einen gab)."""
+    std = standard_slicer(programme)
+    programme = [p for p in programme if p["art"] != SLICER or p is std]
     ergebnis = {}
     for fmt in FORMATE:
         passend = [p for p in programme if fmt in p["formate"]]

@@ -256,8 +256,8 @@ if __name__ == "__main__":
         c.put("/api/einstellungen", json={"programm": {"slicer": mein}})
         c.post(f"/api/modelle/{haken['id']}/oeffnen", json={})
         check("Eigener Slicer übernimmt den Hauptknopf für STL", gestartet("meincad " + os.path.join(sammlung, "Haken.stl")))
-        check("Es bleiben genau zwei Programme zur Auswahl: der gewählte Slicer und das CAD",
-              [p["name"] for p in c.get("/api/programme").json()["programme"]] == ["meincad", "FreeCAD"])
+        check("Die Liste führt den gewählten Slicer vorn (Standard), dahinter die übrigen erkannten, am Ende das eine CAD",
+              [p["name"] for p in c.get("/api/programme").json()["programme"]] == ["meincad", "PrusaSlicer", "FreeCAD"])
         with open(antwort, "w") as f:
             f.write(sammlung + "\n")
         w = c.post("/api/wurzeln/waehlen").json()

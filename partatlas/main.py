@@ -900,8 +900,9 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
             raise KatalogFehler("Dieser Druck hat keine Datei.")
         liste, _ = _programme()
         # Nur ein Slicer: G-Code und geslictes Projekt versteht kein CAD. Das Standardprogramm für 3MF wäre ohne Slicer FreeCAD.
-        slicer = _nur_slicer(liste, "3mf")
-        pfad = slicer[0]["pfad"] if slicer else None
+        # Der Standard-Slicer, nicht „der erste“: bei mehreren Slicern darf nie zufällig ein anderer starten.
+        std = programme.standard_slicer(liste)
+        pfad = std["pfad"] if std and std in _nur_slicer(liste, "3mf") else None
         if not pfad:
             raise KatalogFehler("Kein Slicer eingerichtet (Einstellungen › Programme).")
         programme.oeffnen(pfad, zustand["bestand"].pfad(*info["datei"].split("/")), zustand["bestand"].pfad("arbeit", "programmstart.log"))
@@ -1000,6 +1001,43 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
                 else:
                     raise KatalogFehler(f"Das ist kein ausführbares Programm: {pfad}")
             werte["programm"] = wahl
+        if "programme_eigene" in d or "programme_aus" in d:
+            # {art: [Pfad, …]} — die ganze Liste je Art, nur Arten mit Liste (programme.LISTEN_ARTEN); alles andere wird übergangen.
+            # Eigene nur, wenn es ausführbare Programme sind (wie beim Standard); Ausgeblendete sind Pfade erkannter Programme.
+            alt = zustand["bestand"].einstellungen()
+            for schluessel in ("programme_eigene", "programme_aus"):
+                if schluessel not in d:
+                    continue
+                if not isinstance(d[schluessel] or {}, dict):
+                    raise KatalogFehler("Programmliste: {Art: [Pfade]}.")
+                neu = dict(alt.get(schluessel) or {})
+                for art in programme.LISTEN_ARTEN:
+                    if art not in (d[schluessel] or {}):
+                        continue
+                    pfade, gesehen = [], set()
+                    for pfad in (d[schluessel][art] or [])[:200]:
+                        pfad = str(pfad or "").strip()
+                        if not pfad or os.path.realpath(pfad) in gesehen:
+                            continue
+                        if schluessel == "programme_eigene" and not programme.ausfuehrbar(pfad):
+                            raise KatalogFehler(f"Das ist kein ausführbares Programm: {pfad}")
+                        gesehen.add(os.path.realpath(pfad))
+                        pfade.append(pfad)
+                    neu[art] = pfade
+                werte[schluessel] = neu
+            # Der Standard lässt sich weder ausblenden noch entfernen — gemessen an dem, was nach diesem Speichern der Standard wäre
+            # (die Oberfläche kann im selben Zug einen anderen Standard wählen und den alten ausblenden).
+            nachher = {**alt, **werte}
+            for art in programme.LISTEN_ARTEN:
+                std = programme.programm_fuer(art, nachher)
+                if not std:
+                    continue
+                echt = os.path.realpath(std["pfad"])
+                vorher_eigen = {os.path.realpath(x) for x in programme.pfade_von(alt, "programme_eigene", art)}
+                nachher_eigen = {os.path.realpath(x) for x in programme.pfade_von(nachher, "programme_eigene", art)}
+                weg = programme.ausgeblendet(nachher, art) | (vorher_eigen - nachher_eigen)
+                if echt in weg:
+                    raise KatalogFehler(f"{std['name']} ist der Standard und lässt sich nicht entfernen oder ausblenden — erst einen anderen als Standard wählen.")
         zustand["bestand"].einstellungen_setzen(**werte)
         verteiler.senden("einstellungen", werte)
         return B().standard()
@@ -1200,7 +1238,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.get("/api/programme")
     def programme_liste():
         liste, std = _programme()
-        return {"programme": liste, "standard": std, "arten": programme.ARTEN, "moeglich": programme.moegliche_formate()}
+        return {"programme": liste, "standard": std, "arten": programme.ARTEN, "moeglich": programme.moegliche_formate(),
+                "ausgeblendet": programme.ausgeblendete(zustand["bestand"].einstellungen()), "listen": list(programme.LISTEN_ARTEN)}
 
     @app.post("/api/programme/waehlen")
     def programm_waehlen(koerper: dict = Depends(json_koerper)):
@@ -1502,7 +1541,8 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
         if m.get("geslict"):
             # Ein geslictes 3MF geht nur in den Slicer — auch über Enter, Doppelklick oder eine ausdrückliche Anfrage, nicht nur im Menü.
             slicer = _nur_slicer(liste, "3mf")
-            pfad = daten.get("pfad") or (slicer[0]["pfad"] if slicer else None)
+            std = programme.standard_slicer(liste)
+            pfad = daten.get("pfad") or (std["pfad"] if std in slicer else None)
             if not slicer:
                 raise KatalogFehler("Ein geslictes 3MF öffnet nur der Slicer — und es ist keiner eingerichtet (Einstellungen › Programme).")
             if pfad not in {p["pfad"] for p in slicer}:
