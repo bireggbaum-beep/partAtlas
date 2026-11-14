@@ -8,6 +8,13 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.17", ["Mehrere Slicer: Einstellungen › Programme hat jetzt zwei Reiter, „Slicer“ und „CAD“. Im Reiter „Slicer“ siehst du alle erkannten Slicer "
+                "als Liste: den Standard wählst du mit dem Auswahlknopf, mit „＋ Hinzufügen“ trägst du einen eigenen ein, mit × blendest du einen aus, "
+                "den du nicht brauchst (zurückholen mit „ausgeblendete wieder anzeigen“). Der bisherige Standard bleibt, was er war.",
+                "„Vorschaubild berechnen“ lässt das alte Bild stehen, bis das neue da ist (mit dem Hinweis „wird neu berechnet …“). Gelingt die "
+                "Berechnung nicht, bleibt das alte Bild, und der Inspektor nennt den Grund.",
+                "Ein 3MF ohne Slicer-Daten zeigt im Inspektor jetzt „Kein Verbrauch angegeben“ — mit dem Weg dorthin: im Slicer öffnen, slicen, als "
+                "geslictes 3MF speichern, neu einlesen."]),
     ("1.0.16", ["„Mit dem System öffnen“ sagt jetzt, wenn es nicht klappt — statt „Wird geöffnet …“ zu zeigen, während nichts passiert. Die "
                 "Meldung nennt den Grund (etwa: für diese Art Datei ist kein Programm hinterlegt), die Art, für die dein Rechner die Datei hält, "
                 "und wie du es im Dateimanager einstellst.",

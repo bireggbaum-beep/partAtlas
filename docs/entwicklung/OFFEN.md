@@ -13,6 +13,15 @@ im Vault) und `vorschau_fehler` (Grund, wenn ein bestelltes Bild scheitert, auch
 `tests/test_vorschau.py` 12/12 (+3), Gegenprobe: `bild_da` nur aus dem Status → 2 Checks fallen; Grund nicht gespeichert → 1 fällt. test_cad 14/14, test_scan 110/110.
 **Nicht geprüft:** die Oberfläche selbst (Kachelhinweis, Inspektorzeile) — kein UI-Lauf; kein Toast beim Scheitern, nur die Zeile im Inspektor.
 
+## Stand: 1.0.17 auf dem Branch `claude/mehrere-slicer`, vorbereitet (14.11.2026) — **`test_ui.py` komplett noch nicht gelaufen, nicht auf `main`**
+
+Drei Änderungen seit 1.0.16: mehrere Slicer in den Einstellungen (Reiter Slicer/CAD, siehe unten), das alte Vorschaubild bleibt beim Neuberechnen stehen
+(Grund bei Misserfolg), Hinweis „Kein Verbrauch angegeben“ bei 3MF ohne Slicer-Daten (Pakete A, A2, B oben). `version.py` 1.0.17, `neuigkeiten.py`-Eintrag,
+Handbuch nur die Stelle Einstellungen › Programme (keine neuen Bilder). Geprüft: test_neuigkeiten 9/9, test_handbuch 4/4, test_programmliste 44/44,
+test_programmliste_ui 33/33, test_programme_ui 16/16, test_einstellungen 1/1 (die UI-Suiten mit `PARTATLAS_CHROMIUM`), vorher test_vorschau 12/12,
+test_verbrauch 4/4. **Offen:** `test_ui.py` einmal komplett unmittelbar vor dem Push auf `main` (CLAUDE.md: Vorgabe des Anwenders); der Lauf wurde in dieser
+Session von der Rechteprüfung abgelehnt und nicht umgangen.
+
 ## Paket A2 + B (14.11.2026, Branch `claude/mehrere-slicer`)
 
 **A2:** `bild_da` in `_kurz` ohne `vorschauen(d)` (das las `einstellungen.json` bei jeder Kachel): `any(d.get(f"vorschau_{art}") …)`. test_vorschau 12/12.
