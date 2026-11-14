@@ -4,6 +4,15 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Paket A (14.11.2026, Branch `claude/mehrere-slicer`): „Vorschaubild berechnen“ behält das alte Bild — behoben
+
+Ursache: `vorschau_anfordern` setzt den Status auf „ausstehend“, und die Kachel (`bildUrl` in `app.js`) zeigte ein Bild nur bei „eingebettet“/„gerendert“ — das Bild
+auf der Platte war da, die Oberfläche blendete es aus (ebenso nach einem gescheiterten Rechnen, Status „fehler“). Jetzt meldet der Server `bild_da` (liegt ein Bild
+im Vault) und `vorschau_fehler` (Grund, wenn ein bestelltes Bild scheitert, auch über FreeCAD); die Kachel zeigt bei „ausstehend“ das alte Bild mit dem Hinweis
+„wird neu berechnet …“, der Inspektor bei Misserfolg „… ließ sich nicht berechnen (Grund) — das alte bleibt“. Ohne altes Bild wie bisher (Platzhalter).
+`tests/test_vorschau.py` 12/12 (+3), Gegenprobe: `bild_da` nur aus dem Status → 2 Checks fallen; Grund nicht gespeichert → 1 fällt. test_cad 14/14, test_scan 110/110.
+**Nicht geprüft:** die Oberfläche selbst (Kachelhinweis, Inspektorzeile) — kein UI-Lauf; kein Toast beim Scheitern, nur die Zeile im Inspektor.
+
 ## Mehrere Slicer in den Einstellungen (13.11.2026, Branch `claude/mehrere-slicer`, auf 1.0.16, Fassungsnummer unverändert, nicht auf `main`)
 
 Anwender: der Dialog zeigt alle erkannten Slicer als Liste — Standard wählen (Radio), eigene hinzufügen (＋, Dateidialog), Unerwünschte ausblenden (×).

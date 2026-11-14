@@ -503,7 +503,7 @@ class Worker(_Bahn):
             status, fehler = ("fehler", fehler) if fehler else erg
             if fehler:
                 log.warning("Vorschau %s: %s", h[:12], fehler)
-            stapel.append((h, status))
+            stapel.append((h, status, fehler))
             rest -= 1
             if len(stapel) >= GRUPPE or time.monotonic() - zuletzt >= SPEICHERN_ALLE_S:
                 self._vorschauen_speichern(stapel)
@@ -625,8 +625,8 @@ class Worker(_Bahn):
         if not stapel:
             return
         with self.b.db.transaction():
-            for h, status in stapel:
-                self.k.vorschau_setzen(h, status)
+            for h, status, fehler in stapel:
+                self.k.vorschau_setzen(h, status, fehler)
         self._setze(bearbeitet=self.status["bearbeitet"] + len(stapel))
 
 

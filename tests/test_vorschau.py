@@ -56,6 +56,23 @@ if __name__ == "__main__":
         check("… ebenso für eine 3MF; das Bild aus der Datei bleibt in der Galerie",
               arten(c, p["id"]) == [("extrahiert", False), ("berechnet", True)])
 
+        # -- Das alte Bild bleibt, solange das neue gerechnet wird, und auch, wenn die Berechnung scheitert (Tester, 23.10.2026)
+        k, d = z["katalog"], c.get(f"/api/modelle/{p['id']}").json()
+        h = d["hash"]
+        k.vorschau_anfordern(p["id"])                       # Status „ausstehend“, der Worker läuft noch nicht
+        m = c.get(f"/api/modelle/{p['id']}").json()
+        check("Während „Vorschaubild berechnen“ läuft: Status ausstehend, aber das Bild ist gemeldet (die Kachel behält es)",
+              m["vorschau"] == "ausstehend" and m["bild_da"] is True and c.get(f"/api/vorschau/{h}.png").status_code == 200)
+        k.vorschau_setzen(h, "fehler", "Netz nicht lesbar")
+        m = c.get(f"/api/modelle/{p['id']}").json()
+        check("Scheitert die Berechnung: das alte Bild bleibt, der Grund wird gemeldet",
+              m["bild_da"] is True and m["vorschau_fehler"] == "Netz nicht lesbar" and c.get(f"/api/vorschau/{h}.png").status_code == 200)
+        c.post(f"/api/modelle/{p['id']}/vorschau/berechnen")     # über die Schnittstelle: sie stößt den Worker an
+        check("Neue Bestellung löscht die alte Meldung", c.get(f"/api/modelle/{p['id']}").json()["vorschau_fehler"] is None)
+        warten(z)
+        check("Gelingt sie: berechnetes Bild vorn, keine Meldung",
+              c.get(f"/api/modelle/{p['id']}").json()["vorschau"] == "gerendert" and arten(c, p["id"])[-1] == ("berechnet", True))
+
         # -- Einstellung „immer“: auch Dateien mit Bild bekommen beim Einlesen ein berechnetes, und es steht vorn
         check("Ungültiger Wert wird abgewiesen", c.put("/api/einstellungen", json={"vorschau_berechnen": "manchmal"}).status_code == 400)
         c.put("/api/einstellungen", json={"vorschau_berechnen": "immer"})

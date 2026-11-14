@@ -1493,3 +1493,6 @@ body.im-lager #inspektor > * { visibility: hidden; }
 /* Zahl am Papierkorb in der Leiste: ruhig (kein „zu tun“ wie am Besen), weg, wenn er leer ist */
 .rail-abz.ruhig { background: var(--line-strong); color: var(--ink); }
 .rail-abz:empty { display: none; }
+
+/* Hinweis auf der Kachel, solange ein neues Vorschaubild gerechnet wird; das alte bleibt darunter sichtbar. */
+.karte .rechnet { position: absolute; left: var(--s3); bottom: var(--s3); font: 11px var(--mono); padding: 1px 6px; border-radius: 999px; color: var(--ink-2); background: var(--panel); border: 1px dashed var(--line-strong); }

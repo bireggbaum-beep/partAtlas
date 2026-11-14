@@ -322,11 +322,13 @@ class Katalog:
             if m is not None and m.get("name") != stamm:
                 self.db.update_node(MODELL, mid, {"name": stamm})
 
-    def vorschau_setzen(self, h, status):
+    def vorschau_setzen(self, h, status, fehler=None):
         d = self.db.get_node(ref(DATEI, h), readonly=True)
         if d is not None:
             wunsch = d.get("vorschau_wunsch")       # vorher lesen: `readonly` ist der lebende Knoten, update_node ändert ihn mit
-            self.db.update_node(DATEI, h, {"vorschau": status, "vorschau_wunsch": None,
+            # Scheitert ein bestellter Wunsch, merken wir den Grund: das alte Bild bleibt stehen, und der Anwender erfährt, warum kein neues kam.
+            grund = (fehler or "kein Bild berechnet") if wunsch and status in ("fehler", "keine") else None
+            self.db.update_node(DATEI, h, {"vorschau": status, "vorschau_wunsch": None, "vorschau_fehler": grund,
                                            **({"vorschau_berechnet": self.b.vorschau_rel(h, "berechnet")} if status == "gerendert" else {})})
             if wunsch and status == "gerendert":
                 self._wunsch_als_titel(h)
@@ -356,11 +358,11 @@ class Katalog:
         if d is None or not d.get("orte"):
             raise KatalogFehler("Die Datei ist nicht da — ohne sie lässt sich kein Bild berechnen.")
         if d.get("format") not in formate.OHNE_NETZ or (d.get("cad") == "ok" and os.path.exists(self.b.netz_pfad(h))):
-            self.db.update_node(DATEI, h, {"vorschau": "ausstehend", "vorschau_wunsch": True})
+            self.db.update_node(DATEI, h, {"vorschau": "ausstehend", "vorschau_wunsch": True, "vorschau_fehler": None})
             return "rechnen"
         if d.get("format") == "fcstd" and self.b.einstellungen().get("fcstd_freecad") != "ja":
             raise KatalogFehler("FreeCAD-Dokumente liest PartAtlas nur nach deiner Zusage über FreeCAD (Einstellungen › Einlesen).")
-        self.db.update_node(DATEI, h, {"cad": "ausstehend", "cad_fehler": None, "vorschau_wunsch": True})
+        self.db.update_node(DATEI, h, {"cad": "ausstehend", "cad_fehler": None, "vorschau_wunsch": True, "vorschau_fehler": None})
         return "freecad"
 
     def _reicht_von(self, d):
@@ -412,7 +414,10 @@ class Katalog:
 
     def cad_fehler(self, h, text):
         if self.db.get_node(ref(DATEI, h), readonly=True) is not None:
-            self.db.update_node(DATEI, h, {"cad": "fehler", "cad_fehler": text})
+            d = self.db.get_node(ref(DATEI, h), readonly=True)
+            wunsch = bool(d.get("vorschau_wunsch"))     # vorher lesen (lebender Knoten); ein bestelltes Bild kommt nun nicht mehr
+            self.db.update_node(DATEI, h, {"cad": "fehler", "cad_fehler": text,
+                                           **({"vorschau_wunsch": None, "vorschau_fehler": text} if wunsch else {})})
 
     def _netz_weg(self, h):
         self.b.entfernen(self.b.netz_pfad(h))
@@ -486,7 +491,10 @@ class Katalog:
             "geslict": bool(platten) or (d.get("format") == "3mf" and str(m.get("name") or "").lower().endswith(".gcode")),
             "drucke_n": m.get("drucke_n", 0),
             "favorit": m.get("favorit", False), "entwurf": bool(m.get("entwurf")), "hash": h,
-            "vorschau": d.get("vorschau"), "cad": d.get("cad"), "fehlt": not orte and not papierkorb,
+            "vorschau": d.get("vorschau"), "cad": d.get("cad"),
+            # Ein Bild liegt schon da, auch wenn gerade ein neues berechnet wird (Status „ausstehend“) oder die Berechnung scheiterte:
+            # die Kachel zeigt das alte, bis das neue kommt.
+            "bild_da": bool(self.vorschauen(d)), "vorschau_fehler": d.get("vorschau_fehler"), "fehlt": not orte and not papierkorb,
             # Der Anwender hat gesagt: die Datei ist absichtlich weg. Dann kein Problem mehr, nur ein ruhiges Zeichen.
             "ohne_datei": bool(d.get("ohne_datei")) and not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),

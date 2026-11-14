@@ -846,7 +846,8 @@ const bildTag = (url) => (schnellScrollen ? '<img alt="">' : `<img loading="lazy
 function bildUrl(m) {
   if (m.bild) return `/api/modelle/${m.id}/bild?t=1&v=${m.bild}`;
   if (m.vorschau_art && m.hash) return `/api/vorschau/${m.hash}.${m.vorschau_art}.png?t=1`;
-  return m.hash && ["eingebettet", "gerendert"].includes(m.vorschau) ? `/api/vorschau/${m.hash}.png?t=1` : null;
+  // `bild_da`: ein Bild liegt schon da — es bleibt, solange ein neues berechnet wird („ausstehend“) oder wenn die Berechnung scheitert.
+  return m.hash && (m.bild_da || ["eingebettet", "gerendert"].includes(m.vorschau)) ? `/api/vorschau/${m.hash}.png?t=1` : null;
 }
 
 // „G-Code“ auf der Kachel, wenn zum Modell irgendwo ein G-Code gehört: an einem Druck angehängt oder weil das 3MF schon geslict ist. Ein Klick öffnet den Reiter.
@@ -921,6 +922,7 @@ function karte(m, x, y) {
   const markiert = zustand.auswahl.has(m.id);
   return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <div class="bild">${url ? bildTag(url) : `<div class="platzhalter">${platz}</div>`}
+      ${m.vorschau === "ausstehend" && m.bild_da ? '<span class="rechnet" title="Das Bild wird neu berechnet, bis dahin bleibt das alte">wird neu berechnet …</span>' : ""}
       ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
@@ -1638,6 +1640,7 @@ const filamentZeile = (name, liste) => `<div class="zeile"><span>${name}</span><
       <div class="galerie" id="i-galerie" data-sig="${esc(sig)}"></div>
       <div class="i-griff" title="Höhe der Vorschau ziehen (Doppelklick: zurücksetzen)"></div>
     </div>
+    ${m.vorschau_fehler ? `<p class="fehler">Das neue Vorschaubild ließ sich nicht berechnen (${esc(m.vorschau_fehler)}) — das alte bleibt.</p>` : ""}
     ${m.fehler_text ? `<p class="fehler">Unlesbar: ${esc(m.fehler_text)}</p>` : ""}
     ${m.fehlt ? fehltTeil(m) : ""}
 
