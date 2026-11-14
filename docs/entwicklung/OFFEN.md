@@ -4,6 +4,14 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## Stand: 1.0.17 auf `main` (14.11.2026, für den Tester) — Rückweg `fassung-1.0.16`
+
+Mehrere Slicer in den Einstellungen (Liste, Standard, hinzufügen, ausblenden; Reiter Slicer und CAD; der bisherige Standard bleibt),
+altes Vorschaubild bleibt beim Neuberechnen stehen (Grund bei Misserfolg), Hinweis „Kein Verbrauch angegeben“ bei 3MF ohne Slicer-Daten.
+Vor dem Push: test_ui einmal komplett 70/71 — die eine rote Prüfung (Rechtsklick-Menü) erwartete noch einen einzigen Slicer; an das
+Untermenü „Im Slicer öffnen“ angepasst, Teillauf bis dahin 43/43. test_api 96/96, test_vorschau 12/12, test_verbrauch 4/4, test_drucke 42/42,
+test_neuigkeiten 9/9, test_handbuch 4/4, Programm-Suiten grün. Nächste Fassung: Logo „Mutter“ (freies Sechseck in der Akzentfarbe) im Titel.
+
 ## Paket A (14.11.2026, Branch `claude/mehrere-slicer`): „Vorschaubild berechnen“ behält das alte Bild — behoben
 
 Ursache: `vorschau_anfordern` setzt den Status auf „ausstehend“, und die Kachel (`bildUrl` in `app.js`) zeigte ein Bild nur bei „eingebettet“/„gerendert“ — das Bild
