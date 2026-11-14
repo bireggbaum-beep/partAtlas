@@ -484,6 +484,9 @@ class Katalog:
         return {
             "id": mid, "name": m.get("name"), "format": d.get("format"),
             "masse": d.get("masse_mm"), "gewicht_g": round(gewicht, 2) if gewicht else None, "gewicht_herkunft": gewicht_herkunft,
+            # Ein 3MF ohne Slicer-Daten (und ohne Referenzdruck mit Gewicht) trägt keinen Verbrauch: der Inspektor sagt dann, wie man ihn bekommt.
+            # Nur 3MF — STL/OBJ/STEP können keine Slicer-Daten tragen, dort wäre der Hinweis falsch.
+            "verbrauch_fehlt": bool(h) and d.get("format") == "3mf" and not gewicht,
             "material": material, "materialien": materialien, "gedruckt": m.get("gedruckt", False),
             "gcode": "druck" if m.get("gcode_n") else ("3mf" if platten else None),
             # Geslictes Projekt: Platten in der Datei oder die Endung .gcode.3mf (der Name ist dann „….gcode“). Öffnen nur im Slicer — ein CAD
@@ -493,8 +496,9 @@ class Katalog:
             "favorit": m.get("favorit", False), "entwurf": bool(m.get("entwurf")), "hash": h,
             "vorschau": d.get("vorschau"), "cad": d.get("cad"),
             # Ein Bild liegt schon da, auch wenn gerade ein neues berechnet wird (Status „ausstehend“) oder die Berechnung scheiterte:
-            # die Kachel zeigt das alte, bis das neue kommt.
-            "bild_da": bool(self.vorschauen(d)), "vorschau_fehler": d.get("vorschau_fehler"), "fehlt": not orte and not papierkorb,
+            # die Kachel zeigt das alte, bis das neue kommt. Nur Ja/Nein, die Reihenfolge ist egal — darum nicht `vorschauen(d)`: das liest
+            # über `vorschau_immer` die Einstellungen von der Platte, und `_kurz` läuft für jede Kachel.
+            "bild_da": any(d.get(f"vorschau_{art}") for art in VORSCHAU_ARTEN), "vorschau_fehler": d.get("vorschau_fehler"), "fehlt": not orte and not papierkorb,
             # Der Anwender hat gesagt: die Datei ist absichtlich weg. Dann kein Problem mehr, nur ein ruhiges Zeichen.
             "ohne_datei": bool(d.get("ohne_datei")) and not orte and not papierkorb,
             "duplikat": len(orte) > 1, "fehler": bool(d.get("fehler")),

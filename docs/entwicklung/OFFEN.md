@@ -13,6 +13,15 @@ im Vault) und `vorschau_fehler` (Grund, wenn ein bestelltes Bild scheitert, auch
 `tests/test_vorschau.py` 12/12 (+3), Gegenprobe: `bild_da` nur aus dem Status → 2 Checks fallen; Grund nicht gespeichert → 1 fällt. test_cad 14/14, test_scan 110/110.
 **Nicht geprüft:** die Oberfläche selbst (Kachelhinweis, Inspektorzeile) — kein UI-Lauf; kein Toast beim Scheitern, nur die Zeile im Inspektor.
 
+## Paket A2 + B (14.11.2026, Branch `claude/mehrere-slicer`)
+
+**A2:** `bild_da` in `_kurz` ohne `vorschauen(d)` (das las `einstellungen.json` bei jeder Kachel): `any(d.get(f"vorschau_{art}") …)`. test_vorschau 12/12.
+**B: Hinweis „Kein Verbrauch angegeben“** im Inspektor (Zeile „Verbrauch“ unter Gewicht): Server liefert `verbrauch_fehlt` — nur bei 3MF, ohne Gewicht aus
+den Platten und ohne Referenzdruck mit Gewicht; STL/OBJ/STEP nie. Text: Datei enthält keine Slicer-Daten → im Slicer öffnen, slicen, als geslictes 3MF speichern,
+neu einlesen. Kachel/Karte unverändert. `tests/test_verbrauch.py` (neu, 4 Checks); Gegenproben: ohne Formatprüfung fällt „STL“, ohne Gewichtsprüfung fallen
+„geslictes 3MF“ und „Referenzdruck“. **Nicht geprüft:** die Zeile in der Oberfläche (kein UI-Lauf). Ein Druck ohne Referenz, aber mit Gewicht, gilt nicht
+als Verbrauch (nur der Referenzdruck zählt, wie beim Gewicht selbst).
+
 ## Mehrere Slicer in den Einstellungen (13.11.2026, Branch `claude/mehrere-slicer`, auf 1.0.16, Fassungsnummer unverändert, nicht auf `main`)
 
 Anwender: der Dialog zeigt alle erkannten Slicer als Liste — Standard wählen (Radio), eigene hinzufügen (＋, Dateidialog), Unerwünschte ausblenden (×).

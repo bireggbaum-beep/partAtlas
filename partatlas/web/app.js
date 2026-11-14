@@ -1562,6 +1562,7 @@ async function waehle(id, live = false) {
   const drucken = [
     ["Grösse", esc(masse(m.masse) || "–")],
     ["Gewicht", m.gewicht_g ? esc(zahl(m.gewicht_g, 1)) + ` g <small class="dim">${m.gewicht_herkunft === "druck" ? "Referenzdruck" : "aus Slicer"}</small>` : "–"],
+    ...(m.verbrauch_fehlt ? [["Verbrauch", `<small class="dim" title="Öffne die Datei im Slicer, slice sie und speichere sie als geslictes 3MF (Projekt mit G-Code exportieren). Danach liest partAtlas sie neu ein.">Kein Verbrauch angegeben — die Datei enthält keine Slicer-Daten. Im Slicer öffnen, slicen und als geslictes 3MF speichern, dann neu einlesen.</small>`]] : []),
     ...(zeit ? [["Druckzeit", esc(dauer(zeit)) + ` <small class="dim">${zeitQuelle}</small>`]] : []),
     ...(m.platten.length > 1 ? [["Druckplatten", m.platten.length]] : []),
   ];
