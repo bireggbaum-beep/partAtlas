@@ -433,9 +433,12 @@ async def oberflaeche(port):
         vorher = next(m for m in api(port, "/api/modelle") if m["id"] == mid)["favorit"]
         await pg.click('[data-km="favorit1"]')
         await pg.wait_for_timeout(600)
-        # Oben ist FreeCAD als Slicer gewählt worden: beide Plätze zeigen es, getrennt als zwei Einträge; PrusaSlicer ist es nicht mehr.
-        check("Rechtsklick: Slicer und CAD als zwei Einträge, mit den in den Einstellungen gewählten Programmen",
-              menu.count("In FreeCAD öffnen") == 2 and "PrusaSlicer" not in menu)
+        # Oben ist FreeCAD als weiterer Slicer dazugekommen und zum Standard gewählt: mit zwei Slicern ein Untermenü „Im Slicer öffnen“,
+        # darin beide, FreeCAD als Standard markiert; das CAD bleibt ein eigener Eintrag.
+        flyout = await pg.locator("#kontext .km-unter").first.inner_text() if await pg.locator("#kontext .km-unter").count() else ""
+        check("Rechtsklick: Slicer und CAD getrennt — Slicer als Untermenü mit beiden, Standard markiert",
+              "Im Slicer öffnen" in menu and "PrusaSlicer" in flyout and "FreeCAD Standard" in " ".join(flyout.split())
+              and menu.count("In FreeCAD öffnen") == 1)
         check("Rechtsklick: Öffnen, Im Ordner zeigen, Löschen im Menü; Favorit umschalten wirkt",
               "Im Ordner zeigen" in menu and "Löschen" in menu
               and next(m for m in api(port, "/api/modelle") if m["id"] == mid)["favorit"] != vorher
