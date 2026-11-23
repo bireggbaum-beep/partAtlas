@@ -177,7 +177,9 @@ button, input, select { font: inherit; color: inherit; }
 /* Schalter auf der Kachel erst beim Darüberfahren — oder ständig, wenn schon etwas gewählt ist */
 .karte .wahl, .karte .herz { opacity: 0; transition: opacity 0.12s; }
 .karte:hover .wahl, .karte:hover .herz, .karte.mit-auswahl .wahl, .karte.markiert .wahl, .karte .herz.an { opacity: 1; }
-.herz { position: absolute; bottom: var(--s2); left: var(--s2); width: 24px; height: 24px; border-radius: 50%; border: 0;
+/* Oben rechts neben dem Häkchen: unten links liegt das Formatetikett, unten rechts Gedruckt und G-Code — dort lag das Herz
+   eines Favoriten unsichtbar unter dem Etikett oder stiess an „✓ 2×“. */
+.herz { position: absolute; top: calc(var(--s3) - 4px); right: calc(var(--s3) + 16px + var(--s1)); width: 24px; height: 24px; border-radius: 50%; border: 0;
         background: transparent; color: var(--ink-2); font-size: 15px; line-height: 24px; text-align: center; padding: 0; cursor: pointer; }
 .herz:hover { color: var(--accent); }
 .herz.an { color: var(--accent); }
