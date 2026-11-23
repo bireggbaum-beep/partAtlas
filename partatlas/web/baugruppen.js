@@ -624,7 +624,11 @@ async function einstellungen() {
       <p class="dim">Unten links auf jeder Kachel, etwa STL, 3MF, STEP — in der Farbe des Formats.</p>
       <div class="i-titel">UNTER DEM NAMEN</div>
       ${Object.entries(KACHEL_ZEILEN).map(([k, z]) => `<label><input type="checkbox" data-kachel-zeile="${k}" ${zustand.kachelZeilen.includes(k) ? "checked" : ""}> ${z.titel}</label>`).join("")}
-      <p class="dim">Mehr Zeilen machen die Kachel etwas höher. Gilt für diesen Browser und wirkt sofort.</p>
+      <p class="dim">Mehr Zeilen machen die Kachel höher, weniger niedriger. Gilt für diesen Browser und wirkt sofort.</p>
+      <div class="i-titel">STÄNDE</div>
+      <label><input type="checkbox" id="ein-staende" ${zustand.staendeBuendeln ? "checked" : ""}> Stände eines Teils als Stapel zeigen</label>
+      <p class="dim">Für Dateien nach dem Muster JJKW_Name_NN (etwa 2647_Peltierhalter_06): gleicher Name, gleiches Format, gleicher Ordner.
+        Oben liegt der zuletzt geänderte Stand, ▸ am Namen klappt auf. Nur die Anzeige — keine Datei wird umbenannt oder verschoben.</p>
       ${/* „Farbe der Vorschaubilder“ ausgeblendet bis sie wirkt (1.0, Anwender): gespeichert wird sie weiter (`vorschau_farbe`), die Bilder
           ändern sich noch nicht — eine Einstellung ohne Wirkung gehört nicht in die Oberfläche. Zurück: den Abschnitt aus 0.98.6 holen. */ ""}`],
     ["einlesen", "Einlesen", `

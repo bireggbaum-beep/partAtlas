@@ -1508,3 +1508,12 @@ body.im-lager #inspektor > * { visibility: hidden; }
                  color: var(--accent); cursor: pointer; white-space: nowrap; }
 .stand-zeichen:hover, .stand-zeichen:focus-visible { background: var(--accent-soft); }
 .zeile-l span.mit-stand { display: flex; }
+/* Zugeklappter Stapel im Raster: zwei Kanten dahinter, versetzt nach oben rechts (im Abstand zwischen den Kacheln). */
+.karte.stand-kopf { --stapel: 4px -4px 0 -1px var(--panel), 4px -4px 0 0 var(--line-strong), 8px -8px 0 -2px var(--panel), 8px -8px 0 -1px var(--line);
+                    box-shadow: var(--stapel); }
+.karte.stand-kopf.gewaehlt, .karte.stand-kopf.markiert { box-shadow: 0 0 0 1px var(--accent), var(--stapel); }
+/* Aufgeklappt: die älteren Stände tragen links einen Rand in der Akzentfarbe; Liste und Karten rücken sie ein. */
+.karte.im-stand:not(.gewaehlt):not(.markiert) { box-shadow: inset 3px 0 0 var(--accent); }
+.zeile-l.im-stand > span:nth-child(3) { padding-left: var(--s4); border-left: 2px solid var(--accent); }
+.zeile-k.im-stand { box-shadow: inset 3px 0 0 var(--accent); }
+.zeile-k.im-stand .k-text { padding-left: var(--s4); }

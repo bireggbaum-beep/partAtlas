@@ -378,6 +378,7 @@ const STAND_MUSTER = /^(\d{4})_(.+)_(\d{1,3})$/;
 function staendeBilden(liste) {
   zustand.staende = new Map();       // id des obersten Stands → { schluessel, glieder: Modelle, zuletzt geänderter zuerst }
   zustand.imStand = new Map();       // id eines aufgeklappten älteren Stands → id des obersten
+  zustand.staendeZu = 0;
   if (!zustand.staendeBuendeln || zustand.sammlung || zustand.ansicht === "warteschlange" || zustand.ansicht === "papierkorb") return liste;
   const art = GRUPPEN[zustand.gruppierung];
   const je = new Map();
@@ -395,6 +396,8 @@ function staendeBilden(liste) {
     zustand.staende.set(l[0].id, { schluessel: k, glieder: l });
     for (const m of l.slice(1)) kopfVon.set(m.id, l[0].id);
   }
+  zustand.staendeZu = [...zustand.staende.values()].filter((st) => !zustand.staendeOffen.has(st.schluessel))
+    .reduce((n, st) => n + st.glieder.length - 1, 0);
   const aus = [];
   for (const m of liste) {          // der Stapel steht dort, wo die Sortierung seinen obersten Stand hinstellt
     if (kopfVon.has(m.id)) continue;
@@ -413,6 +416,8 @@ function standZeichen(m) {
     ? "zuklappen" : "aufklappen"} (oben der zuletzt geänderte)" aria-expanded="${auf}">${auf ? "▾" : "▸"} ${n}</button>`;
 }
 // Der Name mit Zeichen: der Name kürzt sich mit „…“, das Zeichen bleibt immer ganz sichtbar.
+const standKlasse = (m) => (zustand.imStand.has(m.id) ? " im-stand"
+  : zustand.staende.has(m.id) ? (zustand.staendeOffen.has(zustand.staende.get(m.id).schluessel) ? " stand-offen" : " stand-kopf") : "");
 const mitStand = (m, inhalt) => (zustand.staende.has(m.id) ? `<span class="n-text">${inhalt}</span>${standZeichen(m)}` : inhalt);
 
 // zustand.roh (sortiert, mit Entwürfen) → was das Raster zeigt.
@@ -564,13 +569,16 @@ function zeichneLeiste(l) {
   const entwuerfe = zustand.entwuerfeN || zustand.ohneEntwuerfe
     ? `<button class="chip ${zustand.ohneEntwuerfe ? "aktiv" : ""}" id="entwuerfe-aus" title="Als Entwurf markierte Modelle ausblenden">${zustand.ohneEntwuerfe
       ? `${zustand.entwuerfeN || 0} ${zustand.entwuerfeN === 1 ? "Entwurf" : "Entwürfe"} ausgeblendet ×` : `Entwürfe ausblenden<em>${zustand.entwuerfeN}</em>`}</button>` : "";
+  const staende = zustand.staendeZu
+    ? `<button class="chip" id="staende-auf" title="Alle Stapel aufklappen">${zustand.staendeZu} ältere ${zustand.staendeZu === 1 ? "Stand" : "Stände"} eingeklappt</button>`
+    : zustand.staende.size ? `<button class="chip aktiv" id="staende-zu" title="Alle Stapel zuklappen">Stände zuklappen ×</button>` : "";
   const sammel = zustand.layout !== "liste" && zustand.modelle.length
     ? `<label class="leiste-alle"><input type="checkbox" id="leiste-alle" aria-label="Alle gezeigten auswählen"></label><span class="leiste-luecke klein"></span>` : "";
   abgleichen($("#tagleiste"), sammel + `<button class="chip ${leer ? "aktiv" : ""}" data-tag="">Alle</button>`
     + (mat ? `<span class="leiste-titel">MATERIAL</span>${mat}` : "")
     + (fmt ? `<span class="leiste-titel">FORMAT</span>${fmt}` : "")
     + (tags ? `<span class="leiste-titel">TAGS</span>${tags}` : "")
-    + (entwuerfe ? `<span class="leiste-luecke"></span>${entwuerfe}` : ""));
+    + (entwuerfe || staende ? `<span class="leiste-luecke"></span>${staende}${entwuerfe}` : ""));
   kopfWahlZeichnen();
 }
 
@@ -970,7 +978,7 @@ function karte(m, x, y) {
   const url = bildUrl(m);
   const platz = m.vorschau === "ausstehend" ? "Vorschau wird gerendert …" : (nurCad(m) ? nurCadText(m) : "keine Vorschau");
   const markiert = zustand.auswahl.has(m.id);
-  return `<div class="karte ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
+  return `<div class="karte${standKlasse(m)} ${zustand.gewaehlt === m.id ? "gewaehlt" : ""} ${markiert ? "markiert" : ""} ${zustand.auswahl.size ? "mit-auswahl" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="left:${x}px;top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <div class="bild">${url ? bildTag(url) : `<div class="platzhalter">${platz}</div>`}
       ${m.vorschau === "ausstehend" && m.bild_da ? '<span class="rechnet" title="Das Bild wird neu berechnet, bis dahin bleibt das alte">wird neu berechnet …</span>' : ""}
       ${istNeu(m) ? '<span class="neu-punkt" title="Neu hinzugefügt"></span>' : ""}
@@ -991,7 +999,7 @@ function zeileK(m, y) {
   const status = m.ohne_datei ? "ohne Datei" : m.fehlt ? "⚠ Datei fehlt" : m.fehler ? "unlesbar" : m.drucke_n ? `✓ ${m.drucke_n}× gedruckt` : (m.warteschlange != null && PHASE >= 2 ? "☰ Warteschlange" : "");
   const fakten = [masse(m.masse), m.gewicht_g ? zahl(m.gewicht_g, 1) + " g" : "", m.groesse ? zahl(m.groesse / 1024, 0) + " KB" : ""].filter(Boolean).join(" · ");
   const chips = [...(m.materialien || []).map((x) => `<span class="chip-k mat">${esc(x)}</span>`), ...m.tags.map((t) => `<span class="chip-k">#${esc(t)}</span>`)].join("");
-  return `<div class="zeile-k ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
+  return `<div class="zeile-k${standKlasse(m)} ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
     <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : m.format === "fcstd" ? "FCStd" : ""}</div>`}</div>
     <div class="k-text">
@@ -1068,7 +1076,7 @@ new ResizeObserver(() => spaltenRaster()).observe($("#listenkopf"));       // Fe
 function zeileL(m, y) {
   const url = bildUrl(m);
   const markiert = zustand.auswahl.has(m.id);
-  return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
+  return `<div class="zeile-l${standKlasse(m)} ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
     <span title="${esc(m.name)}"${zustand.staende.has(m.id) ? ' class="mit-stand"' : ""}>${mitStand(m, `${m.favorit ? "♥ " : ""}${esc(m.name)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</span>
@@ -3083,6 +3091,12 @@ document.addEventListener("click", async (e) => {
   }
   const id = $("#inspektor").dataset.id;
   switch (t.id) {
+    case "staende-auf":
+      for (const st of zustand.staende.values()) zustand.staendeOffen.add(st.schluessel);
+      return listeAnwenden();
+    case "staende-zu":
+      zustand.staendeOffen.clear();
+      return listeAnwenden();
     case "entwuerfe-aus":
       zustand.ohneEntwuerfe = !zustand.ohneEntwuerfe;
       localStorageSchreiben("ohneEntwuerfe", zustand.ohneEntwuerfe ? "1" : "0");
@@ -3222,6 +3236,11 @@ document.addEventListener("change", async (e) => {
   if (e.target.name === "ein-farbe") {                                                      // Farbschema, gemerkt in diesem Browser
     document.documentElement.dataset.farbe = e.target.value;
     return localStorageSchreiben("farbe", e.target.value);
+  }
+  if (e.target.id === "ein-staende") {                 // wirkt sofort, auch ohne „Speichern“
+    zustand.staendeBuendeln = e.target.checked;
+    localStorageSchreiben("staendeBuendeln", e.target.checked ? "1" : "0");
+    return listeAnwenden();
   }
   if (e.target.id === "ein-format-etikett") {          // wirkt sofort, auch ohne „Speichern“
     zustand.formatEtikett = e.target.checked;
