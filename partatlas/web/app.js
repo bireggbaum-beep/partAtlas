@@ -879,11 +879,13 @@ const datumZeit = (s) => new Date(s * 1000).toLocaleString("de-DE", { day: "2-di
 // Kachelgrösse (Einstellungen › Ansicht) nach den Fibonacci-Abständen: 144, 144 + 34, 233. Das Bild bleibt quadratisch.
 const KACHEL_BREITE = { klein: 144, mittel: 178, gross: 233 };
 const kachelBreite = () => KACHEL_BREITE[zustand.kachelGroesse];
-// Bild + oben 13 + Name 21 + Zeilen + unten 13; nie kleiner als Bild + 89 (die Höhe von früher).
-const kachelHoehe = () => Math.max(kachelBreite() + 89, kachelBreite() + 13 + 21 + 18 * zustand.kachelZeilen.length + 13);
+// Bild + oben 13 + Name 21 + Zeilen + unten 13. Ausgeschaltete Zeilen machen die Kachel niedriger — die frühere Untergrenze
+// (Bild + 89) liess bei wenigen Zeilen nur Leerraum stehen.
+const kachelHoehe = () => kachelBreite() + 13 + 21 + 18 * zustand.kachelZeilen.length + 13;
 function kachelHoeheSetzen() {
   document.documentElement.style.setProperty("--karte-h", `${kachelHoehe()}px`);
   document.documentElement.style.setProperty("--karte-b", `${kachelBreite()}px`);
+  document.documentElement.dataset.kachel = zustand.kachelGroesse;   // für Regeln, die nur bei kleinen Kacheln gelten (app.css)
 }
 kachelHoeheSetzen();
 

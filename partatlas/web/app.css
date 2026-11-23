@@ -1446,6 +1446,8 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .badges { position: absolute; bottom: var(--s3); right: var(--s3); display: flex; align-items: center; gap: var(--s2); }
 .badges > .badge, .badges .slot-g .badge { position: static; bottom: auto; right: auto; }
 .badges .slot-g { display: flex; justify-content: flex-end; min-width: 5.2em; }
+/* Kleine Kacheln: kein freigehaltener Platz für G-Code — sonst schob sich „✓ 2×“ über das Formatetikett unten links. */
+:root[data-kachel="klein"] .badges .slot-g { min-width: 0; }
 .badge.gcode { border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--panel); cursor: pointer; font: 12px var(--mono); }
 .badge.gcode:hover { color: var(--accent); border-color: var(--accent); }
 
