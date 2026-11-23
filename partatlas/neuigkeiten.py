@@ -8,6 +8,14 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.18", ["Stände: Dateien nach dem Muster JJKW_Name_NN (etwa 2647_Peltierhalter_06) mit gleichem Namen, gleichem Format und im gleichen "
+                "Ordner liegen jetzt als ein Stapel da — oben der Stand, an dem du zuletzt gearbeitet hast (nach „zuletzt geändert“, nicht nach der "
+                "Nummer). ▸ 6 am Namen klappt die älteren Stände auf, in Raster, Liste und Karten gleich. Die Leiste sagt, wie viele eingeklappt "
+                "sind, und klappt alle auf einmal auf. Keine Datei wird umbenannt oder verschoben; abschalten unter Einstellungen › Ansicht › Stände.",
+                "Kacheln werden niedriger, wenn du Zeilen unter dem Namen ausschaltest (Einstellungen › Ansicht).",
+                "Behoben: Mit eingeschaltetem Dateiformat auf dem Vorschaubild lag das Herz eines Favoriten unsichtbar darunter. Das Herz sitzt "
+                "jetzt oben rechts neben dem Auswahlhäkchen.",
+                "Behoben: Bei kleinen Kacheln lag „✓ gedruckt“ über dem Dateiformat."]),
     ("1.0.17", ["Mehrere Slicer: Einstellungen › Programme hat jetzt zwei Reiter, „Slicer“ und „CAD“. Im Reiter „Slicer“ siehst du alle erkannten Slicer "
                 "als Liste: den Standard wählst du mit dem Auswahlknopf, mit „＋ Hinzufügen“ trägst du einen eigenen ein, mit × blendest du einen aus, "
                 "den du nicht brauchst (zurückholen mit „ausgeblendete wieder anzeigen“). Der bisherige Standard bleibt, was er war.",

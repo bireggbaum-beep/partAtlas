@@ -182,6 +182,18 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   Dateisystem `rename`; über Dateisystemgrenzen kopieren, `fsync`, dann
   erst die Quelle entfernen. Nie etwas überschreiben.
 
+- **Stände (1.0.18, 23.11.2026).** Dateien nach dem Muster `JJKW_Name_NN`
+  (Jahr, Kalenderwoche, Name, Nummer — das Schema des Testers) mit gleichem
+  Namen, gleichem Format, im gleichen Ordner und in derselben Gruppe liegen
+  als ein Stapel da; oben der zuletzt geänderte Stand (nicht die höchste
+  Nummer). Nur Anzeige (`staendeBilden` in `app.js`): kein Feld, keine
+  Kante, keine Datei angefasst, die Speicherform bleibt. Gebündelt wird nur,
+  was Suche und Filter zeigen; Sammlung, Warteschlange und Papierkorb
+  bündeln nicht. Ein Zeichen `▸ n` am Namen (Raster, Liste, Karten) klappt
+  auf; die Leiste nennt die eingeklappten. Abschaltbar (Einstellungen ›
+  Ansicht). Bündeln von Hand, ★ „gilt“, Notizen je Stand: Issue #28, offen.
+  Geprüft in `tests/test_staende_ui.py`.
+
 ### 3.2 Der Bestand von partAtlas
 
 | Bereich | Inhalt | Verlust heisst | Sicherung |
