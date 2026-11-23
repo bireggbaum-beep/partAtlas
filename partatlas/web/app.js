@@ -33,6 +33,7 @@ const ordnerAktion = { letzte: null, bearbeitet: null };
 const zustand = {
   modelle: [], ansicht: "alle", tags: new Set(), material: new Set(), ordner: "", format: "", suche: "", sammlung: "", sammlungen: [],
   ohneEntwuerfe: localStorageLesen("ohneEntwuerfe") === "1",
+  staendeBuendeln: localStorageLesen("staendeBuendeln") !== "0", staendeOffen: new Set(), staende: new Map(), imStand: new Map(),
   auswahl: new Set(), layout: ["liste", "karten"].includes(localStorageLesen("layout")) ? localStorageLesen("layout") : "raster",
   // Einstellungen › Ansicht: Dateiformat unten links auf dem Vorschaubild (je Browser gemerkt, wie Layout und Thema).
   formatEtikett: localStorageLesen("formatEtikett") === "1",
@@ -367,13 +368,60 @@ function sortiere(liste) {
   liste.sort((a, b) => dreh * vergleich(art.wert(a), art.wert(b)) || natuerlich(a.name || "", b.name || ""));
 }
 
+// ---------------------------------------------------------------- Stände
+// Dateien nach dem Muster JJKW_Name_NN (z. B. 2647_Peltierhalter_06) mit gleichem Namen, gleichem Format, im gleichen Ordner und in
+// derselben Gruppe sind Stände eines Teils und liegen als ein Stapel da. Nur Anzeige: nichts wird gespeichert, keine Datei angefasst.
+// Oben liegt der zuletzt geänderte Stand (nicht die höchste Nummer: wer bei v3 weitermachte, arbeitet an v3). Gebündelt wird nur, was
+// Suche und Filter zeigen — ein Treffer verschwindet nie in einem Stapel. Eigene Reihenfolgen (Sammlung, Warteschlange) und der
+// Papierkorb bleiben, wie sie sind.
+const STAND_MUSTER = /^(\d{4})_(.+)_(\d{1,3})$/;
+function staendeBilden(liste) {
+  zustand.staende = new Map();       // id des obersten Stands → { schluessel, glieder: Modelle, zuletzt geänderter zuerst }
+  zustand.imStand = new Map();       // id eines aufgeklappten älteren Stands → id des obersten
+  if (!zustand.staendeBuendeln || zustand.sammlung || zustand.ansicht === "warteschlange" || zustand.ansicht === "papierkorb") return liste;
+  const art = GRUPPEN[zustand.gruppierung];
+  const je = new Map();
+  for (const m of liste) {
+    const t = STAND_MUSTER.exec(m.name || "");
+    if (!t) continue;
+    const k = JSON.stringify([art ? art.schluessel(m) : "", (m.ordner || [])[0] || "", t[2].toLowerCase(), m.format || ""]);
+    if (!je.has(k)) je.set(k, []);
+    je.get(k).push(m);
+  }
+  const kopfVon = new Map();
+  for (const [k, l] of je) {
+    if (l.length < 2) continue;
+    l.sort((a, b) => (b.geaendert || 0) - (a.geaendert || 0) || natuerlich(b.name || "", a.name || ""));
+    zustand.staende.set(l[0].id, { schluessel: k, glieder: l });
+    for (const m of l.slice(1)) kopfVon.set(m.id, l[0].id);
+  }
+  const aus = [];
+  for (const m of liste) {          // der Stapel steht dort, wo die Sortierung seinen obersten Stand hinstellt
+    if (kopfVon.has(m.id)) continue;
+    aus.push(m);
+    const st = zustand.staende.get(m.id);
+    if (st && zustand.staendeOffen.has(st.schluessel)) for (const g of st.glieder.slice(1)) { aus.push(g); zustand.imStand.set(g.id, m.id); }
+  }
+  return aus;
+}
+// Das eine Zeichen für Stände, in Raster, Liste und Karten am selben Ort: rechts am Namen. Ein Klick klappt auf oder zu.
+function standZeichen(m) {
+  const st = zustand.staende.get(m.id);
+  if (!st) return "";
+  const auf = zustand.staendeOffen.has(st.schluessel), n = st.glieder.length;
+  return `<button type="button" class="stand-zeichen${auf ? " auf" : ""}" data-staende="${esc(st.schluessel)}" title="${n} Stände — ${auf
+    ? "zuklappen" : "aufklappen"} (oben der zuletzt geänderte)" aria-expanded="${auf}">${auf ? "▾" : "▸"} ${n}</button>`;
+}
+// Der Name mit Zeichen: der Name kürzt sich mit „…“, das Zeichen bleibt immer ganz sichtbar.
+const mitStand = (m, inhalt) => (zustand.staende.has(m.id) ? `<span class="n-text">${inhalt}</span>${standZeichen(m)}` : inhalt);
+
 // zustand.roh (sortiert, mit Entwürfen) → was das Raster zeigt.
 function listeAnwenden() {
   const liste = zustand.roh;
   // Entwürfe ausblenden: gemerkt; die Leiste sagt, wie viele fehlen, damit niemand ein Modell vermisst.
   zustand.entwuerfeN = liste.filter((m) => m.entwurf).length;
   const sichtbar = zustand.ohneEntwuerfe && zustand.ansicht !== "papierkorb" ? liste.filter((m) => !m.entwurf) : liste;
-  const g = gruppiere(sichtbar);
+  const g = gruppiere(staendeBilden(sichtbar));
   zustand.modelle = g.liste;
   zustand.gruppen = g.gruppen;
   zustand.idIndex = new Map(g.liste.map((x, i) => [x?.id, i]));
@@ -931,7 +979,7 @@ function karte(m, x, y) {
       ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
       ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
-    <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
+    <div class="text"><div class="name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, `${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>`)}</div>
       ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}</div></div>`;
 }
 
@@ -947,7 +995,7 @@ function zeileK(m, y) {
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
     <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : m.format === "fcstd" ? "FCStd" : ""}</div>`}</div>
     <div class="k-text">
-      <div class="k-name" title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}</div>
+      <div class="k-name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, `${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</div>
       <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
       <div class="k-chips">${chips}</div>
       <div class="k-ordner" title="${esc(ordner)}">${ordner ? "▸ " + esc(ordner) : ""}</div>
@@ -1023,7 +1071,7 @@ function zeileL(m, y) {
   return `<div class="zeile-l ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
-    <span title="${esc(m.name)}">${m.favorit ? "♥ " : ""}${esc(m.name)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}</span>
+    <span title="${esc(m.name)}"${zustand.staende.has(m.id) ? ' class="mit-stand"' : ""}>${mitStand(m, `${m.favorit ? "♥ " : ""}${esc(m.name)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</span>
     ${zustand.spalten.map((k) => `<span class="mono">${SPALTEN[k].zelle(m)}</span>`).join("")}${hoverAktionen(m)}</div>`;
 }
 
@@ -2782,6 +2830,7 @@ document.addEventListener("pointerdown", (e) => {
     if (o.classList.contains("aktiv") && !e.target.closest(".pfeil")) langsam.ziel = { ordner: o.dataset.ordner };
     return;
   }
+  if (e.target.closest?.("[data-staende]")) return;
   const n = e.target.closest?.(NAMEN_SELEKTOR);
   const id = n && (n.closest("[data-id]")?.dataset.id || $("#inspektor").dataset.id);
   if (id && zustand.auswahl.size <= 1 && (zustand.gewaehlt === id || n.closest("#inspektor")) && zustand.angezeigt === id) langsam.ziel = { id, n };
@@ -2923,6 +2972,13 @@ document.addEventListener("click", async (e) => {
   }
   const hv = t.closest("[data-hv]");
   if (hv) { e.stopImmediatePropagation(); return modellOeffnen({ pfad: hv.dataset.hv }, hv.dataset.hvId); }
+  const sz = t.closest("[data-staende]");
+  if (sz) {
+    e.stopImmediatePropagation();
+    const k = sz.dataset.staende;
+    zustand.staendeOffen.has(k) ? zustand.staendeOffen.delete(k) : zustand.staendeOffen.add(k);
+    return listeAnwenden();
+  }
   const st = t.closest("[data-stapel]");
   if (st) return stapelAktion(st.dataset.stapel, undefined, st);
   const lay = t.closest("[data-layout]");

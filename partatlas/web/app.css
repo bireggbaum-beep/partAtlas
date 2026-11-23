@@ -1500,3 +1500,11 @@ body.im-lager #inspektor > * { visibility: hidden; }
 
 /* Hinweis auf der Kachel, solange ein neues Vorschaubild gerechnet wird; das alte bleibt darunter sichtbar. */
 .karte .rechnet { position: absolute; left: var(--s3); bottom: var(--s3); font: 11px var(--mono); padding: 1px 6px; border-radius: 999px; color: var(--ink-2); background: var(--panel); border: 1px dashed var(--line-strong); }
+
+/* Stände: ein Zeichen rechts am Namen, in Raster, Liste und Karten gleich. Der Name kürzt sich, das Zeichen nie. */
+.mit-stand { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.mit-stand .n-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }
+.stand-zeichen { flex: none; border: 0; background: none; padding: 0 var(--s1); border-radius: 4px; font-weight: 600; font-size: 12px; line-height: 1.4; font-family: inherit;
+                 color: var(--accent); cursor: pointer; white-space: nowrap; }
+.stand-zeichen:hover, .stand-zeichen:focus-visible { background: var(--accent-soft); }
+.zeile-l span.mit-stand { display: flex; }
