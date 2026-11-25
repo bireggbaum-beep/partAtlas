@@ -4,7 +4,15 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## Stand: 1.0.18 auf dem Branch `ccr-40e24d2e-976s9h`, vorbereitet (23.11.2026) — **nicht auf `main`, `test_ui.py` komplett steht vor dem Push**
+## Stand: 1.0.18 auf `main` (25.11.2026, für den Tester) — Rückweg `fassung-1.0.17`
+
+Vor dem Push: alle 61 Suiten grün, `test_ui` 71/71 einmal komplett, `test_staende_ui` 18/18 (`test_verschieben_ui` einmal 4/5 unter
+Last parallel zu einer zweiten Browser-Prüfung, einzeln dreimal 5/5). Update geprüft wie beim Tester: derselbe Bestand und derselbe Browser
+erst mit 1.0.17, dann mit 1.0.18 — startet, alle Modelle da, gewohnte Einstellungen bleiben, Hinweis „Neu“ nennt die Stände, kein Fehler
+in Browser und Serverprotokoll (8/8). Server und Speicherform unverändert (nur `version.py`, `neuigkeiten.py`); Skript und Stile prüft der
+Browser bei jedem Aufruf neu (`no-cache`), eine alte Oberfläche bleibt nicht hängen. Zurück auf 1.0.17 geht ohne Folgen (nichts gespeichert).
+
+### 1.0.18 im Einzelnen
 
 Stände (JJKW_Name_NN und Name_JJKW_NN — zweite Schreibweise auf Wunsch des Testers 24.11., beide zusammen ein Stapel; fest für ihn,
 verallgemeinern in Issue #37 — als Stapel, oben der zuletzt geänderte, `▸ n Stände` — Raster eigene Zeile unten rechts (+18 px, nur wenn die Ansicht Stapel hat; auf dem Bild und im Namen ist bei voll eingeschalteter Kachel kein Platz), Liste kurz `▸ n`, Karten am Namen, Hinweis in der Leiste, Einstellung;
