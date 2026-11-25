@@ -194,8 +194,11 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   was Suche und Filter zeigen; Sammlung, Warteschlange und Papierkorb
   bündeln nicht. Ein Zeichen `▸ n` am Namen (Raster, Liste, Karten) klappt
   auf; die Leiste nennt die eingeklappten. Abschaltbar (Einstellungen ›
-  Ansicht). Stand-Namen kürzen sich in der Mitte (das Ende unterscheidet
-  die Stände); über jedem gekürzten Namen nach 250 ms der ganze.
+  Ansicht). Im Raster steht jeder Name auf bis zu zwei Zeilen (Umbruch,
+  wo der Platz endet; alle Kacheln eine Zeile höher); in Liste und Karten
+  kürzen sich Stand-Namen in der Mitte (das Ende unterscheidet die Stände);
+  über jedem gekürzten Namen nach 250 ms der ganze. Mitte statt Ende kürzen
+  auch im Raster: Issue #38.
   Bündeln von Hand, ★ „gilt“, Notizen je Stand: Issue #28, offen.
   Geprüft in `tests/test_staende_ui.py`.
 

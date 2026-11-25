@@ -386,7 +386,7 @@ function standTreffer(name) {
   return null;
 }
 const standName = (name) => standTreffer(name)?.groups.name.toLowerCase() ?? null;
-// Was einen Stand vom anderen unterscheidet, steht hinten (_06, bei Name vorn _2648_06): bei Stand-Dateien kürzt sich deshalb die Mitte,
+// Liste und Karten (eine Zeile): was einen Stand vom anderen unterscheidet, steht hinten (_06, bei Name vorn _2648_06): bei Stand-Dateien kürzt sich deshalb die Mitte,
 // das Ende bleibt stehen — „Leuchtensta…_2648_01.stl“ statt „Leuchtenstativ_Fu…“ (Anwender, 25.11.2026). Andere Namen wie bisher hinten.
 function nameHtml(m, mitEndung) {
   const name = m.name || "", end = mitEndung ? `<span class="endung">${esc(endung[m.format] || "")}</span>` : "";
@@ -955,9 +955,10 @@ const datumZeit = (s) => new Date(s * 1000).toLocaleString("de-DE", { day: "2-di
 // Kachelgrösse (Einstellungen › Ansicht) nach den Fibonacci-Abständen: 144, 144 + 34, 233. Das Bild bleibt quadratisch.
 const KACHEL_BREITE = { klein: 144, mittel: 178, gross: 233 };
 const kachelBreite = () => KACHEL_BREITE[zustand.kachelGroesse];
-// Bild + oben 13 + Name 21 + Zeilen + unten 13. Ausgeschaltete Zeilen machen die Kachel niedriger — die frühere Untergrenze
+// Bild + oben 13 + Name 42 (zwei Zeilen, für jede Kachel gleich: das Raster braucht eine Höhe) + Zeilen + unten 13. Ausgeschaltete
+// Zeilen machen die Kachel niedriger — die frühere Untergrenze
 // (Bild + 89) liess bei wenigen Zeilen nur Leerraum stehen.
-const kachelHoehe = () => kachelBreite() + 13 + 21 + 18 * zustand.kachelZeilen.length + 13;
+const kachelHoehe = () => kachelBreite() + 13 + 42 + 18 * zustand.kachelZeilen.length + 13;
 function kachelHoeheSetzen() {
   document.documentElement.style.setProperty("--karte-h", `${kachelHoehe()}px`);
   document.documentElement.style.setProperty("--karte-b", `${kachelBreite()}px`);
@@ -1007,7 +1008,7 @@ function karte(m, x, y) {
       ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
       ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
-    <div class="text"><div class="name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, nameHtml(m, true))}</div>
+    <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>${standZeichen(m)}</div>
       ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}</div></div>`;
 }
 
@@ -2800,7 +2801,7 @@ document.addEventListener("mouseover", (e) => {
   if (!el || e.target.closest("[data-staende]")) return;
   namensTip.el = el;
   namensTip.zeit = setTimeout(() => {
-    const gekuerzt = [el, ...el.querySelectorAll(".n-text, .n-anf")].some((x) => x.scrollWidth > x.clientWidth + 1);
+    const gekuerzt = [el, ...el.querySelectorAll(".n-text, .n-anf")].some((x) => x.scrollWidth > x.clientWidth + 1 || x.scrollHeight > x.clientHeight + 1);
     if (!gekuerzt || !el.isConnected) return;
     let tip = $("#namens-tip");
     if (!tip) {

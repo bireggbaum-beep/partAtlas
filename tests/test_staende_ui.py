@@ -90,17 +90,24 @@ if __name__ == "__main__":
             pg.fill("#suche", "Leuchtenstativ")
             pg.wait_for_selector(".karte .name[title^='Leuchtenstativ']")
             pg.wait_for_timeout(300)
-            ende = pg.evaluate("""(() => { const n = document.querySelector('.karte .name'), e = n.querySelector('.n-end'), a = n.querySelector('.n-anf');
+            voll = pg.evaluate("""(() => { const n = document.querySelector('.karte .name');
+                return n.scrollHeight <= n.clientHeight + 1 && n.getBoundingClientRect().height > 30; })()""")
+            check("Im Raster steht ein langer Name auf zwei Zeilen ganz da — Teilname und Nummer", voll)
+            pg.click("[data-layout='liste']")
+            pg.wait_for_selector(".zeile-l .n-anf")
+            ende = pg.evaluate("""(() => { const n = document.querySelector('.zeile-l > span:nth-child(3)'), e = n.querySelector('.n-end'), a = n.querySelector('.n-anf');
                 return { gekuerzt: a.scrollWidth > a.clientWidth, endeGanz: e.getBoundingClientRect().right <= n.getBoundingClientRect().right + 1,
                          text: e.textContent }; })()""")
-            check("Ein langer Stand-Name kürzt sich in der Mitte — Woche und Nummer am Ende bleiben sichtbar",
-                  ende["gekuerzt"] and ende["endeGanz"] and ende["text"] == "_2648_02.stl")
-            pg.hover(".karte .name .n-anf")
+            check("Liste (eine Zeile): ein langer Stand-Name kürzt sich in der Mitte — Woche und Nummer am Ende bleiben sichtbar",
+                  ende["gekuerzt"] and ende["endeGanz"] and ende["text"] == "_2648_02")
+            pg.hover(".zeile-l .n-anf")
             pg.wait_for_timeout(450)
             tip = pg.locator("#namens-tip")
             check("Nach einer Viertelsekunde über dem gekürzten Namen erscheint der ganze",
-                  tip.count() == 1 and tip.is_visible() and tip.inner_text() == "Leuchtenstativhalterfuss_2648_02.stl")
+                  tip.count() == 1 and tip.is_visible() and tip.inner_text() == "Leuchtenstativhalterfuss_2648_02")
             pg.mouse.move(5, 5)
+            pg.click("[data-layout='raster']")
+            pg.wait_for_selector(".karte")
             pg.fill("#suche", "Buegel")
             pg.wait_for_selector(".karte .name[title^='Buegel']")
             pg.wait_for_timeout(300)

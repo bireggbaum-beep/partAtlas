@@ -9,11 +9,12 @@ aktualisieren.
 Stände (JJKW_Name_NN und Name_JJKW_NN — zweite Schreibweise auf Wunsch des Testers 24.11., beide zusammen ein Stapel; fest für ihn,
 verallgemeinern in Issue #37 — als Stapel, oben der zuletzt geänderte, `▸ n` am Namen in Raster/Liste/Karten, Hinweis in der Leiste, Einstellung;
 KONZEPT §3.1), Kachel niedriger ohne Zeilen, Herz oben rechts (lag unter dem Formatetikett), kleine Kachel: „✓“ nicht mehr über dem
-Formatetikett. Nur Oberfläche — Server und Speicherform unverändert. `test_staende_ui` 14/14 (neu), Gegenproben fallen (Kopf nach Nummer,
+Formatetikett. Nur Oberfläche — Server und Speicherform unverändert. `test_staende_ui` 15/15 (neu), Gegenproben fallen (Kopf nach Nummer,
 Ordner nicht im Schlüssel, nur JJKW vorn, Woche nicht geprüft, keine Kürzung in der Mitte, ganzer Name erst nach 1 s, Bündeln vor dem Entwurf-Filter, Zählung der Leiste, Ausschalten); eine Prüfung „Alle auswählen nur Sichtbares“
 gelöscht — sie konnte nicht fallen (die Auswahl wird schon anderswo auf Sichtbares beschränkt). Handbuch nicht nachgezogen.
-Stand-Namen kürzen sich in der Mitte (Ende mit Woche/Nummer bleibt), über einem gekürzten Namen nach 250 ms der ganze (eigener Hinweis
-`#namens-tip`, der title ruht so lange) — Anwender 25.11. Mit Zeichen `▸ n` bleibt bei mittleren Kacheln vom Anfang wenig („Leu…_2648_02“).
+Raster: Name auf bis zu zwei Zeilen (Umbruch irgendwo, Variante C; alle Kacheln +21 px), Liste/Karten: Stand-Namen in der Mitte gekürzt;
+über einem gekürzten Namen nach 250 ms der ganze (`#namens-tip`, der title ruht so lange) — Anwender 25.11. Variante E (Mitte statt Ende
+kürzen, wenn zwei Zeilen nicht reichen): Issue #38.
 
 ## Stand: 1.0.17 auf `main` (14.11.2026, für den Tester) — Rückweg `fassung-1.0.16`
 

@@ -184,7 +184,13 @@ button, input, select { font: inherit; color: inherit; }
 .herz:hover { color: var(--accent); }
 .herz.an { color: var(--accent); }
 .karte .text { padding: var(--s4) var(--s4) 0; }
-.karte .name { font-weight: 600; font-size: var(--fs-title); line-height: var(--s5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Der Name darf zwei Zeilen haben und bricht, wo der Platz endet — auch mitten im Wort: so steht meist der ganze Dateiname da, Teilname
+   und Nummer (Anwender, 25.11.2026). Reicht auch das nicht, kürzt das Ende der zweiten Zeile; der ganze Name kommt beim Darüberfahren.
+   Feste Höhe für alle Kacheln (kachelHoehe). Besser kürzen, ohne das Ende zu verlieren: Issue #38 (Variante E). */
+.karte .name { font-weight: 600; font-size: var(--fs-title); line-height: var(--s5); height: calc(2 * var(--s5)); overflow: hidden;
+               display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; word-break: break-all; }
+.karte .name .stand-zeichen { margin-left: var(--s1); vertical-align: baseline; }
+.karte .name .endung { white-space: nowrap; }        /* „.stl“ bleibt ganz, nicht „05.“ | „stl“ */
 .karte .name .endung { font-weight: 400; color: var(--ink-3); margin-left: 1px; }
 .karte .masse { font-size: 12px; line-height: 18px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .karte .tags { font-size: 12px; line-height: 18px; color: var(--ink-3); white-space: nowrap; }
