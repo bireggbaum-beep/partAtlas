@@ -369,12 +369,22 @@ function sortiere(liste) {
 }
 
 // ---------------------------------------------------------------- Stände
-// Dateien nach dem Muster JJKW_Name_NN (z. B. 2647_Peltierhalter_06) mit gleichem Namen, gleichem Format, im gleichen Ordner und in
+// Dateien nach dem Muster JJKW_Name_NN oder Name_JJKW_NN (2647_Peltierhalter_06, Peltierhalter_2647_06) mit gleichem Namen, gleichem Format, im gleichen Ordner und in
 // derselben Gruppe sind Stände eines Teils und liegen als ein Stapel da. Nur Anzeige: nichts wird gespeichert, keine Datei angefasst.
 // Oben liegt der zuletzt geänderte Stand (nicht die höchste Nummer: wer bei v3 weitermachte, arbeitet an v3). Gebündelt wird nur, was
 // Suche und Filter zeigen — ein Treffer verschwindet nie in einem Stapel. Eigene Reihenfolgen (Sammlung, Warteschlange) und der
 // Papierkorb bleiben, wie sie sind.
-const STAND_MUSTER = /^(\d{4})_(.+)_(\d{1,3})$/;
+// Die zwei Schreibweisen des Testers — fest, für einen Anwender (verallgemeinern: Issue #37). Name vorn wünschte er sich, damit die Teile
+// eines Projekts im Ordner beisammenstehen (24.11.2026). Beide Schreibweisen desselben Namens sind ein Stapel: wer das Schema wechselt,
+// verliert seine alten Stände nicht. Die Kalenderwoche muss 01–53 sein, sonst ist es keine.
+const STAND_MUSTER = [/^(?<jj>\d\d)(?<kw>\d\d)_(?<name>.+)_\d{1,3}$/, /^(?<name>.+)_(?<jj>\d\d)(?<kw>\d\d)_\d{1,3}$/];
+function standName(name) {
+  for (const muster of STAND_MUSTER) {
+    const t = muster.exec(name || "");
+    if (t && +t.groups.kw >= 1 && +t.groups.kw <= 53) return t.groups.name.toLowerCase();
+  }
+  return null;
+}
 function staendeBilden(liste) {
   zustand.staende = new Map();       // id des obersten Stands → { schluessel, glieder: Modelle, zuletzt geänderter zuerst }
   zustand.imStand = new Map();       // id eines aufgeklappten älteren Stands → id des obersten
@@ -383,9 +393,9 @@ function staendeBilden(liste) {
   const art = GRUPPEN[zustand.gruppierung];
   const je = new Map();
   for (const m of liste) {
-    const t = STAND_MUSTER.exec(m.name || "");
-    if (!t) continue;
-    const k = JSON.stringify([art ? art.schluessel(m) : "", (m.ordner || [])[0] || "", t[2].toLowerCase(), m.format || ""]);
+    const name = standName(m.name);
+    if (!name) continue;
+    const k = JSON.stringify([art ? art.schluessel(m) : "", (m.ordner || [])[0] || "", name, m.format || ""]);
     if (!je.has(k)) je.set(k, []);
     je.get(k).push(m);
   }

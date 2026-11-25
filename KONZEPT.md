@@ -183,7 +183,10 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   erst die Quelle entfernen. Nie etwas überschreiben.
 
 - **Stände (1.0.18, 23.11.2026).** Dateien nach dem Muster `JJKW_Name_NN`
-  (Jahr, Kalenderwoche, Name, Nummer — das Schema des Testers) mit gleichem
+  oder `Name_JJKW_NN` (Jahr, Kalenderwoche, Name, Nummer — die zwei
+  Schreibweisen des Testers; Name vorn, damit die Teile eines Projekts im
+  Ordner beisammenstehen; beide Schreibweisen desselben Namens sind ein
+  Stapel; KW 01–53; verallgemeinern: Issue #37) mit gleichem
   Namen, gleichem Format, im gleichen Ordner und in derselben Gruppe liegen
   als ein Stapel da; oben der zuletzt geänderte Stand (nicht die höchste
   Nummer). Nur Anzeige (`staendeBilden` in `app.js`): kein Feld, keine

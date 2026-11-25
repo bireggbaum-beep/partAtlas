@@ -627,7 +627,8 @@ async function einstellungen() {
       <p class="dim">Mehr Zeilen machen die Kachel höher, weniger niedriger. Gilt für diesen Browser und wirkt sofort.</p>
       <div class="i-titel">STÄNDE</div>
       <label><input type="checkbox" id="ein-staende" ${zustand.staendeBuendeln ? "checked" : ""}> Stände eines Teils als Stapel zeigen</label>
-      <p class="dim">Für Dateien nach dem Muster JJKW_Name_NN (etwa 2647_Peltierhalter_06): gleicher Name, gleiches Format, gleicher Ordner.
+      <p class="dim">Für Dateien nach dem Muster JJKW_Name_NN oder Name_JJKW_NN (etwa 2647_Peltierhalter_06 oder Peltierhalter_2647_06):
+        gleicher Name, gleiches Format, gleicher Ordner — beide Schreibweisen gehören zum selben Stapel.
         Oben liegt der zuletzt geänderte Stand, ▸ am Namen klappt auf. Nur die Anzeige — keine Datei wird umbenannt oder verschoben.</p>
       ${/* „Farbe der Vorschaubilder“ ausgeblendet bis sie wirkt (1.0, Anwender): gespeichert wird sie weiter (`vorschau_farbe`), die Bilder
           ändern sich noch nicht — eine Einstellung ohne Wirkung gehört nicht in die Oberfläche. Zurück: den Abschnitt aus 0.98.6 holen. */ ""}`],

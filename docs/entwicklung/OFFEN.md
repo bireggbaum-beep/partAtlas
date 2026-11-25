@@ -6,12 +6,14 @@ aktualisieren.
 
 ## Stand: 1.0.18 auf dem Branch `ccr-40e24d2e-976s9h`, vorbereitet (23.11.2026) — **nicht auf `main`, `test_ui.py` komplett steht vor dem Push**
 
-Stände (JJKW_Name_NN als Stapel, oben der zuletzt geänderte, `▸ n` am Namen in Raster/Liste/Karten, Hinweis in der Leiste, Einstellung;
+Stände (JJKW_Name_NN und Name_JJKW_NN — zweite Schreibweise auf Wunsch des Testers 24.11., beide zusammen ein Stapel; fest für ihn,
+verallgemeinern in Issue #37 — als Stapel, oben der zuletzt geänderte, `▸ n` am Namen in Raster/Liste/Karten, Hinweis in der Leiste, Einstellung;
 KONZEPT §3.1), Kachel niedriger ohne Zeilen, Herz oben rechts (lag unter dem Formatetikett), kleine Kachel: „✓“ nicht mehr über dem
-Formatetikett. Nur Oberfläche — Server und Speicherform unverändert. `test_staende_ui` 10/10 (neu), Gegenproben fallen (Kopf nach Nummer,
-Ordner nicht im Schlüssel, Bündeln vor dem Entwurf-Filter, Zählung der Leiste, Ausschalten); eine Prüfung „Alle auswählen nur Sichtbares“
+Formatetikett. Nur Oberfläche — Server und Speicherform unverändert. `test_staende_ui` 12/12 (neu), Gegenproben fallen (Kopf nach Nummer,
+Ordner nicht im Schlüssel, nur JJKW vorn, Woche nicht geprüft, Bündeln vor dem Entwurf-Filter, Zählung der Leiste, Ausschalten); eine Prüfung „Alle auswählen nur Sichtbares“
 gelöscht — sie konnte nicht fallen (die Auswahl wird schon anderswo auf Sichtbares beschränkt). Handbuch nicht nachgezogen.
-Befund, nicht behoben: bei mittleren Kacheln kürzt der Name das Ende ab („2647_Peltierhalter_0…“) — gerade die Nummer, die Stände unterscheidet.
+Befund, nicht behoben: bei mittleren Kacheln kürzt der Name das Ende ab („2647_Peltierhalter_0…“) — gerade die Nummer, die Stände unterscheidet;
+mit Name vorn (`Leuchtenstativ_Fuss_2648_01`) verschwinden Woche und Nummer ganz hinter „…“.
 
 ## Stand: 1.0.17 auf `main` (14.11.2026, für den Tester) — Rückweg `fassung-1.0.16`
 

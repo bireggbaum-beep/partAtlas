@@ -8,8 +8,9 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
-    ("1.0.18", ["Stände: Dateien nach dem Muster JJKW_Name_NN (etwa 2647_Peltierhalter_06) mit gleichem Namen, gleichem Format und im gleichen "
-                "Ordner liegen jetzt als ein Stapel da — oben der Stand, an dem du zuletzt gearbeitet hast (nach „zuletzt geändert“, nicht nach der "
+    ("1.0.18", ["Stände: Dateien nach dem Muster JJKW_Name_NN oder Name_JJKW_NN (etwa 2647_Peltierhalter_06 oder Peltierhalter_2647_06) mit "
+                "gleichem Namen, gleichem Format und im gleichen Ordner liegen jetzt als ein Stapel da — beide Schreibweisen zusammen, wenn du "
+                "umstellst. Oben liegt der Stand, an dem du zuletzt gearbeitet hast (nach „zuletzt geändert“, nicht nach der "
                 "Nummer). ▸ 6 am Namen klappt die älteren Stände auf, in Raster, Liste und Karten gleich. Die Leiste sagt, wie viele eingeklappt "
                 "sind, und klappt alle auf einmal auf. Keine Datei wird umbenannt oder verschoben; abschalten unter Einstellungen › Ansicht › Stände.",
                 "Kacheln werden niedriger, wenn du Zeilen unter dem Namen ausschaltest (Einstellungen › Ansicht).",
