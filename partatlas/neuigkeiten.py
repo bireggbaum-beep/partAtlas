@@ -13,6 +13,8 @@ NEUES = [
                 "umstellst. Oben liegt der Stand, an dem du zuletzt gearbeitet hast (nach „zuletzt geändert“, nicht nach der "
                 "Nummer). ▸ 6 am Namen klappt die älteren Stände auf, in Raster, Liste und Karten gleich. Die Leiste sagt, wie viele eingeklappt "
                 "sind, und klappt alle auf einmal auf. Keine Datei wird umbenannt oder verschoben; abschalten unter Einstellungen › Ansicht › Stände.",
+                "Lange Namen von Ständen kürzen sich in der Mitte: Woche und Nummer am Ende bleiben stehen („Leuchte…_2648_02.stl“). Fährst du "
+                "über einen gekürzten Namen, zeigt sich nach einer Viertelsekunde der ganze.",
                 "Kacheln werden niedriger, wenn du Zeilen unter dem Namen ausschaltest (Einstellungen › Ansicht).",
                 "Behoben: Mit eingeschaltetem Dateiformat auf dem Vorschaubild lag das Herz eines Favoriten unsichtbar darunter. Das Herz sitzt "
                 "jetzt oben rechts neben dem Auswahlhäkchen.",

@@ -378,12 +378,22 @@ function sortiere(liste) {
 // eines Projekts im Ordner beisammenstehen (24.11.2026). Beide Schreibweisen desselben Namens sind ein Stapel: wer das Schema wechselt,
 // verliert seine alten Stände nicht. Die Kalenderwoche muss 01–53 sein, sonst ist es keine.
 const STAND_MUSTER = [/^(?<jj>\d\d)(?<kw>\d\d)_(?<name>.+)_\d{1,3}$/, /^(?<name>.+)_(?<jj>\d\d)(?<kw>\d\d)_\d{1,3}$/];
-function standName(name) {
+function standTreffer(name) {
   for (const muster of STAND_MUSTER) {
     const t = muster.exec(name || "");
-    if (t && +t.groups.kw >= 1 && +t.groups.kw <= 53) return t.groups.name.toLowerCase();
+    if (t && +t.groups.kw >= 1 && +t.groups.kw <= 53) return t;
   }
   return null;
+}
+const standName = (name) => standTreffer(name)?.groups.name.toLowerCase() ?? null;
+// Was einen Stand vom anderen unterscheidet, steht hinten (_06, bei Name vorn _2648_06): bei Stand-Dateien kürzt sich deshalb die Mitte,
+// das Ende bleibt stehen — „Leuchtensta…_2648_01.stl“ statt „Leuchtenstativ_Fu…“ (Anwender, 25.11.2026). Andere Namen wie bisher hinten.
+function nameHtml(m, mitEndung) {
+  const name = m.name || "", end = mitEndung ? `<span class="endung">${esc(endung[m.format] || "")}</span>` : "";
+  const t = standTreffer(name);
+  if (!t) return esc(name) + end;
+  const schnitt = t.index === 0 && name.startsWith(t.groups.name) ? t.groups.name.length : name.lastIndexOf("_");
+  return `<span class="n-mitte"><span class="n-anf">${esc(name.slice(0, schnitt))}</span><span class="n-end">${esc(name.slice(schnitt))}${end}</span></span>`;
 }
 function staendeBilden(liste) {
   zustand.staende = new Map();       // id des obersten Stands → { schluessel, glieder: Modelle, zuletzt geänderter zuerst }
@@ -997,7 +1007,7 @@ function karte(m, x, y) {
       ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
       ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
-    <div class="text"><div class="name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, `${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>`)}</div>
+    <div class="text"><div class="name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, nameHtml(m, true))}</div>
       ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}</div></div>`;
 }
 
@@ -1013,7 +1023,7 @@ function zeileK(m, y) {
     <input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
     <div class="k-bild">${url ? bildTag(url) : `<div class="mini">${m.format === "step" ? "STEP" : m.format === "fcstd" ? "FCStd" : ""}</div>`}</div>
     <div class="k-text">
-      <div class="k-name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, `${m.favorit ? "♥ " : ""}${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</div>
+      <div class="k-name${zustand.staende.has(m.id) ? " mit-stand" : ""}" title="${esc(m.name)}">${mitStand(m, `${m.favorit ? "♥ " : ""}${nameHtml(m, true)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</div>
       <div class="k-fakten">${esc(fakten)}${status ? `<span class="k-status">${status}</span>` : ""}</div>
       <div class="k-chips">${chips}</div>
       <div class="k-ordner" title="${esc(ordner)}">${ordner ? "▸ " + esc(ordner) : ""}</div>
@@ -1089,7 +1099,7 @@ function zeileL(m, y) {
   return `<div class="zeile-l${standKlasse(m)} ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
-    <span title="${esc(m.name)}"${zustand.staende.has(m.id) ? ' class="mit-stand"' : ""}>${mitStand(m, `${m.favorit ? "♥ " : ""}${esc(m.name)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</span>
+    <span title="${esc(m.name)}"${zustand.staende.has(m.id) ? ' class="mit-stand"' : ""}>${mitStand(m, `${m.favorit ? "♥ " : ""}${nameHtml(m, false)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</span>
     ${zustand.spalten.map((k) => `<span class="mono">${SPALTEN[k].zelle(m)}</span>`).join("")}${hoverAktionen(m)}</div>`;
 }
 
@@ -2769,6 +2779,45 @@ async function endgueltigEntfernen(id) {
 $("#dialog-inhalt").addEventListener("input", (e) => {
   if (e.target.id === "endgueltig-wort") $("#endgueltig-ja").disabled = e.target.value.trim().toLowerCase() !== "entfernen";
 });
+
+// ---------------------------------------------------------------- Ganzer Name beim Darüberfahren
+// Über einem gekürzten Namen zeigt sich nach 250 ms der ganze (Anwender, 25.11.2026) — der Hinweis des Browsers (title) kommt erst nach etwa
+// einer Sekunde. Nur wenn wirklich gekürzt ist; der title ruht so lange, damit nicht beide erscheinen.
+const NAMENS_ZIEL = ".karte .name, .zeile-k .k-name, .zeile-l > span:nth-child(3)";
+const namensTip = { el: null, zeit: null };
+function namensTipWeg() {
+  clearTimeout(namensTip.zeit);
+  const el = namensTip.el;
+  if (el && el.dataset.titel !== undefined) { el.title = el.dataset.titel; delete el.dataset.titel; }
+  namensTip.el = null;
+  const tip = $("#namens-tip");
+  if (tip) tip.hidden = true;
+}
+document.addEventListener("mouseover", (e) => {
+  const el = e.target.closest?.(NAMENS_ZIEL);
+  if (el === namensTip.el) return;
+  namensTipWeg();
+  if (!el || e.target.closest("[data-staende]")) return;
+  namensTip.el = el;
+  namensTip.zeit = setTimeout(() => {
+    const gekuerzt = [el, ...el.querySelectorAll(".n-text, .n-anf")].some((x) => x.scrollWidth > x.clientWidth + 1);
+    if (!gekuerzt || !el.isConnected) return;
+    let tip = $("#namens-tip");
+    if (!tip) {
+      tip = Object.assign(document.createElement("div"), { id: "namens-tip" });
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+    }
+    tip.textContent = (el.title || el.dataset.titel || "") + (el.querySelector(".endung")?.textContent || "");
+    el.dataset.titel = el.title;
+    el.removeAttribute("title");
+    tip.hidden = false;
+    const r = el.getBoundingClientRect();
+    tip.style.left = `${Math.max(4, Math.min(r.left, innerWidth - tip.offsetWidth - 4))}px`;
+    tip.style.top = `${r.bottom + 4 + tip.offsetHeight > innerHeight ? r.top - tip.offsetHeight - 4 : r.bottom + 4}px`;
+  }, 250);
+});
+for (const art of ["scroll", "mousedown", "keydown"]) document.addEventListener(art, namensTipWeg, true);
 
 // ---------------------------------------------------------------- Umbenennen an Ort und Stelle (wie im Explorer)
 // Ein Feld genau über dem Namen — in der Kachel, der Zeile, den Karten oder oben im Inspektor; markiert ist der Name ohne Endung (die

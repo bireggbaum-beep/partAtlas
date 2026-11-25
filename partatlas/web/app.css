@@ -1517,3 +1517,11 @@ body.im-lager #inspektor > * { visibility: hidden; }
 .zeile-l.im-stand > span:nth-child(3) { padding-left: var(--s4); border-left: 2px solid var(--accent); }
 .zeile-k.im-stand { box-shadow: inset 3px 0 0 var(--accent); }
 .zeile-k.im-stand .k-text { padding-left: var(--s4); }
+/* Stand-Dateien kürzen sich in der Mitte: der Anfang mit „…“, das Ende (Woche, Nummer, Endung) bleibt ganz. */
+.n-mitte { display: inline-flex; max-width: 100%; min-width: 0; vertical-align: bottom; }
+.n-anf { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.n-end { flex: none; white-space: nowrap; }
+.mit-stand .n-text { display: flex; }
+#namens-tip { position: fixed; z-index: 60; max-width: min(60vw, 520px); padding: var(--s1) var(--s2); background: var(--panel); color: var(--ink);
+              border: 1px solid var(--line-strong); border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); font-size: 13px;
+              word-break: break-all; pointer-events: none; }
