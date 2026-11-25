@@ -427,18 +427,21 @@ function staendeBilden(liste) {
   }
   return aus;
 }
-// Das eine Zeichen für Stände, in Raster, Liste und Karten am selben Ort: rechts am Namen. Ein Klick klappt auf oder zu.
-function standZeichen(m) {
+// Das Zeichen für Stände: in Liste und Karten rechts am Namen, im Raster unten links auf dem Vorschaubild (im Namen nahm es Platz weg, neben
+// dem Datum fehlen bei mittleren Kacheln 16 px — gemessen 25.11.2026). Ein Klick klappt auf oder zu. „Stände“ ausgeschrieben: die Zahl allein
+// war nicht zu deuten (Anwender, 25.11.2026); `kurz`, wo das Bild unten voll ist (Formatetikett, Gedruckt/G-Code, kleine Kachel) und in
+// der Liste (die Namensspalte ist schmal: „Stände“ drückte den Namen auf nichts).
+function standZeichen(m, kurz = false) {
   const st = zustand.staende.get(m.id);
   if (!st) return "";
   const auf = zustand.staendeOffen.has(st.schluessel), n = st.glieder.length;
   return `<button type="button" class="stand-zeichen${auf ? " auf" : ""}" data-staende="${esc(st.schluessel)}" title="${n} Stände — ${auf
-    ? "zuklappen" : "aufklappen"} (oben der zuletzt geänderte)" aria-expanded="${auf}">${auf ? "▾" : "▸"} ${n}</button>`;
+    ? "zuklappen" : "aufklappen"} (oben der zuletzt geänderte)" aria-expanded="${auf}">${auf ? "▾" : "▸"} ${n}${kurz ? "" : " Stände"}</button>`;
 }
 // Der Name mit Zeichen: der Name kürzt sich mit „…“, das Zeichen bleibt immer ganz sichtbar.
 const standKlasse = (m) => (zustand.imStand.has(m.id) ? " im-stand"
   : zustand.staende.has(m.id) ? (zustand.staendeOffen.has(zustand.staende.get(m.id).schluessel) ? " stand-offen" : " stand-kopf") : "");
-const mitStand = (m, inhalt) => (zustand.staende.has(m.id) ? `<span class="n-text">${inhalt}</span>${standZeichen(m)}` : inhalt);
+const mitStand = (m, inhalt, kurz = false) => (zustand.staende.has(m.id) ? `<span class="n-text">${inhalt}</span>${standZeichen(m, kurz)}` : inhalt);
 
 // zustand.roh (sortiert, mit Entwürfen) → was das Raster zeigt.
 function listeAnwenden() {
@@ -1006,9 +1009,13 @@ function karte(m, x, y) {
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
       ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
-      ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
+      ${(() => {
+        const fmt = zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : "";
+        const st = zustand.staende.has(m.id) ? standZeichen(m, !!fmt || zustand.kachelGroesse === "klein" || !!statusBadge(m)) : "";
+        return st ? `<span class="unten-links">${fmt}${st}</span>` : fmt;
+      })()}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
-    <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span>${standZeichen(m)}</div>
+    <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
       ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}</div></div>`;
 }
 
@@ -1100,7 +1107,7 @@ function zeileL(m, y) {
   return `<div class="zeile-l${standKlasse(m)} ${zustand.gewaehlt === m.id || markiert ? "gewaehlt" : ""} ${m.fehlt && !m.ohne_datei ? "fehlt" : ""}" draggable="true" style="top:${y}px" data-id="${esc(m.id)}" data-f="${esc(m.format || "")}">
     <span>${url ? bildTag(url) : '<div class="mini"></div>'}</span>
     <span><input type="checkbox" class="wahl-l" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""}></span>
-    <span title="${esc(m.name)}"${zustand.staende.has(m.id) ? ' class="mit-stand"' : ""}>${mitStand(m, `${m.favorit ? "♥ " : ""}${nameHtml(m, false)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`)}</span>
+    <span title="${esc(m.name)}"${zustand.staende.has(m.id) ? ' class="mit-stand"' : ""}>${mitStand(m, `${m.favorit ? "♥ " : ""}${nameHtml(m, false)}${m.entwurf ? ' <small class="entwurf-zeichen">Entwurf</small>' : ""}`, true)}</span>
     ${zustand.spalten.map((k) => `<span class="mono">${SPALTEN[k].zelle(m)}</span>`).join("")}${hoverAktionen(m)}</div>`;
 }
 

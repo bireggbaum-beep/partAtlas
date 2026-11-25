@@ -67,7 +67,7 @@ if __name__ == "__main__":
                   "2647_Peltierhalter_05" in titel and "2647_Peltierhalter_06" not in titel)
             check("Gleicher Name in einem anderen Ordner gehört nicht in den Stapel", "2647_Peltierhalter_07" in titel)
             PELTIER = ".karte:has(.name[title='2647_Peltierhalter_05']) .stand-zeichen"
-            check("Das Zeichen am Namen nennt die Zahl der Stände", pg.inner_text(PELTIER).strip() == "▸ 6")
+            check("Das Zeichen am Namen nennt die Zahl der Stände", pg.inner_text(PELTIER).strip() == "▸ 6 Stände")
             check("Die Leiste sagt, wie viele ältere Stände eingeklappt sind — niemand vermisst eine Datei",
                   pg.inner_text("#staende-auf").strip() == "8 ältere Stände eingeklappt")
             pg.click(PELTIER)
@@ -86,7 +86,7 @@ if __name__ == "__main__":
             pg.wait_for_selector(".karte .name[title^='Klemme']")
             pg.wait_for_timeout(300)
             check("Name vorn (Klemme_2648_03) ist ein Stand wie JJKW vorn — beide Schreibweisen desselben Namens sind ein Stapel",
-                  pg.evaluate(TITEL) == ["Klemme_2648_03"] and pg.inner_text(".karte .stand-zeichen").strip() == "▸ 3")
+                  pg.evaluate(TITEL) == ["Klemme_2648_03"] and pg.inner_text(".karte .stand-zeichen").strip() == "▸ 3 Stände")
             pg.fill("#suche", "Leuchtenstativ")
             pg.wait_for_selector(".karte .name[title^='Leuchtenstativ']")
             pg.wait_for_timeout(300)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             titel = pg.evaluate(TITEL)
             check("Ist der oberste Stand als Entwurf ausgeblendet, liegt der nächste oben — der Stapel verschwindet nicht",
                   "2647_Peltierhalter_06" in titel
-                  and pg.inner_text(".karte:has(.name[title='2647_Peltierhalter_06']) .stand-zeichen").strip() == "▸ 5")
+                  and pg.inner_text(".karte:has(.name[title='2647_Peltierhalter_06']) .stand-zeichen").strip() == "▸ 5 Stände")
             pg.evaluate("localStorage.setItem('partatlas.ohneEntwuerfe', '0')")
             pg.evaluate("localStorage.setItem('partatlas.staendeBuendeln', '0')")
             pg.reload()

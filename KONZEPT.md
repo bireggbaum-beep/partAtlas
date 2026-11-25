@@ -192,7 +192,7 @@ Noch nicht umgestellt: Seitenleiste links (Felder, Zeilen), Dialoge, Kopfzeilenh
   Nummer). Nur Anzeige (`staendeBilden` in `app.js`): kein Feld, keine
   Kante, keine Datei angefasst, die Speicherform bleibt. Gebündelt wird nur,
   was Suche und Filter zeigen; Sammlung, Warteschlange und Papierkorb
-  bündeln nicht. Ein Zeichen `▸ n` am Namen (Raster, Liste, Karten) klappt
+  bündeln nicht. Ein Zeichen `▸ n Stände` am Namen (Raster, Liste, Karten) klappt
   auf; die Leiste nennt die eingeklappten. Abschaltbar (Einstellungen ›
   Ansicht). Im Raster steht jeder Name auf bis zu zwei Zeilen (Umbruch,
   wo der Platz endet; alle Kacheln eine Zeile höher); in Liste und Karten
