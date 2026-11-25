@@ -189,10 +189,8 @@ button, input, select { font: inherit; color: inherit; }
    Feste Höhe für alle Kacheln (kachelHoehe). Besser kürzen, ohne das Ende zu verlieren: Issue #38 (Variante E). */
 .karte .name { font-weight: 600; font-size: var(--fs-title); line-height: var(--s5); height: calc(2 * var(--s5)); overflow: hidden;
                display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; word-break: break-all; }
-/* Im Raster unten links auf dem Bild, wie das Formatetikett (mit dem es sich die Ecke teilt): der Name behält beide Zeilen. */
-.bild .unten-links { position: absolute; left: var(--s3); bottom: var(--s3); display: flex; align-items: center; gap: var(--s2); }
-.bild .unten-links .fmt-etikett { position: static; }
-.bild .stand-zeichen { background: var(--panel); border: 1px solid var(--accent); border-radius: 999px; padding: 0 var(--s2); line-height: 18px; }
+/* Im Raster eine eigene Zeile unten rechts, unter den anderen Daten — Bild und Name bleiben, wie sie sind. */
+.karte .stand-zeile { position: absolute; right: var(--s4); bottom: var(--s4); line-height: 18px; }
 .karte .name .endung { white-space: nowrap; }        /* „.stl“ bleibt ganz, nicht „05.“ | „stl“ */
 .karte .name .endung { font-weight: 400; color: var(--ink-3); margin-left: 1px; }
 .karte .masse { font-size: 12px; line-height: 18px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

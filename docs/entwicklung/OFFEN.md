@@ -7,9 +7,9 @@ aktualisieren.
 ## Stand: 1.0.18 auf dem Branch `ccr-40e24d2e-976s9h`, vorbereitet (23.11.2026) — **nicht auf `main`, `test_ui.py` komplett steht vor dem Push**
 
 Stände (JJKW_Name_NN und Name_JJKW_NN — zweite Schreibweise auf Wunsch des Testers 24.11., beide zusammen ein Stapel; fest für ihn,
-verallgemeinern in Issue #37 — als Stapel, oben der zuletzt geänderte, `▸ n Stände` — Raster unten links auf dem Bild, Liste/Karten am Namen; kurz `▸ n` bei Formatetikett, Gedruckt/G-Code, kleiner Kachel und in der Liste, Hinweis in der Leiste, Einstellung;
+verallgemeinern in Issue #37 — als Stapel, oben der zuletzt geänderte, `▸ n Stände` — Raster eigene Zeile unten rechts (+18 px, nur wenn die Ansicht Stapel hat; auf dem Bild und im Namen ist bei voll eingeschalteter Kachel kein Platz), Liste kurz `▸ n`, Karten am Namen, Hinweis in der Leiste, Einstellung;
 KONZEPT §3.1), Kachel niedriger ohne Zeilen, Herz oben rechts (lag unter dem Formatetikett), kleine Kachel: „✓“ nicht mehr über dem
-Formatetikett. Nur Oberfläche — Server und Speicherform unverändert. `test_staende_ui` 15/15 (neu), Gegenproben fallen (Kopf nach Nummer,
+Formatetikett. Nur Oberfläche — Server und Speicherform unverändert. `test_staende_ui` 18/18 (neu), Gegenproben fallen (Kopf nach Nummer,
 Ordner nicht im Schlüssel, nur JJKW vorn, Woche nicht geprüft, keine Kürzung in der Mitte, ganzer Name erst nach 1 s, Bündeln vor dem Entwurf-Filter, Zählung der Leiste, Ausschalten); eine Prüfung „Alle auswählen nur Sichtbares“
 gelöscht — sie konnte nicht fallen (die Auswahl wird schon anderswo auf Sichtbares beschränkt). Handbuch nicht nachgezogen.
 Raster: Name auf bis zu zwei Zeilen (Umbruch irgendwo, Variante C; alle Kacheln +21 px), Liste/Karten: Stand-Namen in der Mitte gekürzt;

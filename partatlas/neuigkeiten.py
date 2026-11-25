@@ -11,7 +11,8 @@ NEUES = [
     ("1.0.18", ["Stände: Dateien nach dem Muster JJKW_Name_NN oder Name_JJKW_NN (etwa 2647_Peltierhalter_06 oder Peltierhalter_2647_06) mit "
                 "gleichem Namen, gleichem Format und im gleichen Ordner liegen jetzt als ein Stapel da — beide Schreibweisen zusammen, wenn du "
                 "umstellst. Oben liegt der Stand, an dem du zuletzt gearbeitet hast (nach „zuletzt geändert“, nicht nach der "
-                "Nummer). „▸ 6 Stände“ unten links auf dem Vorschaubild (in Liste und Karten am Namen) klappt die älteren Stände auf. Die Leiste sagt, wie viele eingeklappt "
+                "Nummer). „▸ 6 Stände“ unten rechts in der Kachel (in Liste und Karten am Namen) klappt die älteren Stände auf; liegen Stapel in der "
+                "Ansicht, sind die Kacheln dafür eine Zeile höher. Die Leiste sagt, wie viele eingeklappt "
                 "sind, und klappt alle auf einmal auf. Keine Datei wird umbenannt oder verschoben; abschalten unter Einstellungen › Ansicht › Stände.",
                 "Auf den Kacheln steht der Name jetzt auf bis zu zwei Zeilen — meist der ganze Dateiname, Teilname und Nummer. Die Kacheln "
                 "sind dafür eine Zeile höher. In Liste und Karten kürzen sich lange Namen von Ständen in der Mitte, Woche und Nummer am Ende "

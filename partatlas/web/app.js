@@ -427,10 +427,9 @@ function staendeBilden(liste) {
   }
   return aus;
 }
-// Das Zeichen für Stände: in Liste und Karten rechts am Namen, im Raster unten links auf dem Vorschaubild (im Namen nahm es Platz weg, neben
-// dem Datum fehlen bei mittleren Kacheln 16 px — gemessen 25.11.2026). Ein Klick klappt auf oder zu. „Stände“ ausgeschrieben: die Zahl allein
-// war nicht zu deuten (Anwender, 25.11.2026); `kurz`, wo das Bild unten voll ist (Formatetikett, Gedruckt/G-Code, kleine Kachel) und in
-// der Liste (die Namensspalte ist schmal: „Stände“ drückte den Namen auf nichts).
+// Das Zeichen für Stände: in Liste und Karten rechts am Namen, im Raster in einer eigenen Zeile unten rechts (kachelHoehe). Ein Klick klappt
+// auf oder zu. „Stände“ ausgeschrieben: die Zahl allein war nicht zu deuten (Anwender, 25.11.2026); `kurz` in der Liste (die Namensspalte ist
+// schmal: „Stände“ drückte den Namen auf nichts).
 function standZeichen(m, kurz = false) {
   const st = zustand.staende.get(m.id);
   if (!st) return "";
@@ -457,6 +456,7 @@ function listeAnwenden() {
   zeichneFilterzeile();
   zeichneStapel();
   zeichneListenkopf();
+  kachelHoeheSetzen();                                 // mit oder ohne Zeile für die Stände
   raster.neu();
   if (zustand.baugruppe) zeigeBaugruppeFlaeche(true);
 }
@@ -961,7 +961,9 @@ const kachelBreite = () => KACHEL_BREITE[zustand.kachelGroesse];
 // Bild + oben 13 + Name 42 (zwei Zeilen, für jede Kachel gleich: das Raster braucht eine Höhe) + Zeilen + unten 13. Ausgeschaltete
 // Zeilen machen die Kachel niedriger — die frühere Untergrenze
 // (Bild + 89) liess bei wenigen Zeilen nur Leerraum stehen.
-const kachelHoehe = () => kachelBreite() + 13 + 42 + 18 * zustand.kachelZeilen.length + 13;
+// Liegen Stapel in der Ansicht, kommt unten eine Zeile für „▸ 6 Stände“ dazu (für alle Kacheln gleich): auf dem Bild und im Namen ist bei
+// voll eingeschalteter Kachel kein Platz, neben dem Datum fehlen bei mittleren Kacheln 16 px (gemessen 25.11.2026). Ohne Stapel wie bisher.
+const kachelHoehe = () => kachelBreite() + 13 + 42 + 18 * zustand.kachelZeilen.length + (zustand.staende?.size ? 18 : 0) + 13;
 function kachelHoeheSetzen() {
   document.documentElement.style.setProperty("--karte-h", `${kachelHoehe()}px`);
   document.documentElement.style.setProperty("--karte-b", `${kachelBreite()}px`);
@@ -1009,14 +1011,11 @@ function karte(m, x, y) {
       <input type="checkbox" class="wahl" data-wahl="${esc(m.id)}" ${markiert ? "checked" : ""} title="auswählen">
       ${zustand.ansicht === "papierkorb" ? "" : `<button class="herz ${m.favorit ? "an" : ""}" data-herz="${esc(m.id)}" title="Favorit">♥</button>`}
       ${m.entwurf ? `<span class="badge entwurf" title="Als Entwurf markiert">Entwurf</span>` : ""}
-      ${(() => {
-        const fmt = zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : "";
-        const st = zustand.staende.has(m.id) ? standZeichen(m, !!fmt || zustand.kachelGroesse === "klein" || !!statusBadge(m)) : "";
-        return st ? `<span class="unten-links">${fmt}${st}</span>` : fmt;
-      })()}
+      ${zustand.formatEtikett && m.format ? `<span class="fmt-etikett">${esc((endung[m.format] || m.format).replace(".", "").toUpperCase())}</span>` : ""}
       ${m.fehlt && !m.ohne_datei ? `<div class="fehlt-band" title="Die Datei liegt an keinem bekannten Ort mehr. Tags, Bilder und Verknüpfungen sind noch da — legt man sie zurück, ist alles wieder verbunden.">⚠ Datei fehlt</div>` : statusBadge(m)}</div>
     <div class="text"><div class="name" title="${esc(m.name)}">${esc(m.name)}<span class="endung">${esc(endung[m.format] || "")}</span></div>
-      ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}</div></div>`;
+      ${zustand.kachelZeilen.map((k) => KACHEL_ZEILEN[k].zeile(m)).filter(Boolean).map((z) => `<div class="info">${z}</div>`).join("")}
+      ${zustand.staende.has(m.id) ? `<div class="stand-zeile">${standZeichen(m)}</div>` : ""}</div></div>`;
 }
 
 // Karten: wie eine Liste, aber höher — rechts neben dem Bild ist Platz für mehr vom Modell.

@@ -127,6 +127,26 @@ if __name__ == "__main__":
                   "2647_Peltierhalter_06" in titel
                   and pg.inner_text(".karte:has(.name[title='2647_Peltierhalter_06']) .stand-zeichen").strip() == "▸ 5 Stände")
             pg.evaluate("localStorage.setItem('partatlas.ohneEntwuerfe', '0')")
+            # Voll eingeschaltete Kachel: Formatetikett, alle Zeilen, Favorit, Entwurf, zweimal gedruckt — auf dem Bild und im Namen ist dann
+            # kein Platz; das Zeichen darf nichts überdecken (am 25.11. zweimal falsch gemacht).
+            abfrage(port, f"/api/modelle/{kopf}", {"favorit": True}, "PATCH")
+            for _ in range(2):
+                abfrage(port, "/api/drucke", {"modelle": [kopf], "felder": {}})
+            pg.evaluate("""localStorage.setItem('partatlas.formatEtikett', '1');
+                localStorage.setItem('partatlas.kachelZeilen', JSON.stringify(['masse', 'gewicht', 'material', 'tags', 'geaendert']))""")
+            for groesse in ("klein", "mittel", "gross"):
+                pg.evaluate(f"localStorage.setItem('partatlas.kachelGroesse', '{groesse}')")
+                pg.reload()
+                pg.wait_for_selector(".karte .stand-zeichen")
+                pg.wait_for_timeout(400)
+                frei = pg.evaluate("""(() => {
+                  const k = document.querySelector(".karte:has(.name[title='2647_Peltierhalter_05'])"), z = k.querySelector('.stand-zeichen').getBoundingClientRect();
+                  const deckt = (r) => !(z.right <= r.left || r.right <= z.left || z.bottom <= r.top || r.bottom <= z.top);
+                  const andere = [...k.querySelectorAll('.name, .info, .badge, .fmt-etikett, .herz, .wahl, .neu-punkt')].map((e) => e.getBoundingClientRect());
+                  const kr = k.getBoundingClientRect();
+                  return andere.length >= 6 && !andere.some(deckt) && z.bottom <= kr.bottom && z.right <= kr.right; })()""")
+                check(f"Voll eingeschaltete Kachel ({groesse}): „▸ 6 Stände“ überdeckt nichts und bleibt in der Kachel", frei)
+            pg.evaluate("localStorage.removeItem('partatlas.formatEtikett'); localStorage.removeItem('partatlas.kachelGroesse')")
             pg.evaluate("localStorage.setItem('partatlas.staendeBuendeln', '0')")
             pg.reload()
             pg.wait_for_selector(".karte")
