@@ -4,7 +4,15 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
-## 1.0.19 auf dem Branch `ccr-40e24d2e-976s9h`, vorbereitet (27.11.2026) — **nicht auf `main`, `test_ui.py` komplett steht vor dem Push**
+## Stand: 1.0.19 auf `main` (27.11.2026, für den Tester) — Rückweg `fassung-1.0.18`
+
+Vor dem Push: alle 61 Suiten grün; `test_ui` lief zuerst nicht durch — eine Prüfung suchte noch das alte CAD-Feld (`.prog-wahl`),
+angepasst auf die Liste, dann einmal komplett 71/71. Update 1.0.18 → 1.0.19 wie beim Tester geprüft (derselbe Bestand und Browser, 1.0.18 schon
+gesehen): startet, alle Modelle da, Einstellungen bleiben, Stände gebündelt, der Hinweis zeigt nur 1.0.19, Einstellungen › CAD als Liste, kein
+Fehler in Browser und Serverprotokoll (9/9). Speicherform unverändert; neu in `einstellungen.json` nur `programme_eigene.cad`/`programme_aus.cad`,
+die 1.0.18 übergeht (Rückweg ohne Folgen).
+
+### 1.0.19 im Einzelnen
 
 CAD-Programme als Liste wie die Slicer (#29, Wunsch des Testers: FreeCAD und SolidCraft wahlweise): `LISTEN_ARTEN = (SLICER, CAD)`, Reiter CAD
 mit Radio/＋/×/„wieder anzeigen“, im Menü ⋮ „Im CAD öffnen“ als Untermenü (das Menü war schon allgemein). Das Einlesen von STEP/FCStd holt

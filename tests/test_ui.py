@@ -279,9 +279,10 @@ async def oberflaeche(port):
               "PrusaSlicer" in await pg.inner_text("#prog-slicer .prog-zeile >> nth=0") and await pg.locator("#prog-slicer input:not([type=radio])").count() == 0
               and await pg.locator("#prog-slicer input[type=radio]:checked").count() == 1)
         await pg.click('[data-ein="cad"]')
-        check("Einstellungen › CAD: FreeCAD steht schon drin", "FreeCAD" in await pg.inner_text("#prog-cad .prog-wahl"))
+        check("Einstellungen › CAD: FreeCAD steht schon drin, als Standard der Liste (seit 1.0.19 eine Liste wie der Slicer)",
+              "FreeCAD" in await pg.inner_text("#prog-cad .prog-zeile.ist"))
         await pg.click('[data-ein="slicer"]')
-        await pg.click('[data-prog-neu]')                              # der Dateidialog (Attrappe) liefert FreeCAD: als weiterer Slicer in die Liste
+        await pg.click('#prog-slicer [data-prog-neu]')                 # der Dateidialog (Attrappe) liefert FreeCAD: als weiterer Slicer in die Liste
         await pg.wait_for_selector('#prog-slicer .prog-zeile >> nth=1')
         await pg.click('#prog-slicer label:text-is("FreeCAD")')        # … und zum Standard gewählt
         await pg.click('dialog button[value="ja"]')
