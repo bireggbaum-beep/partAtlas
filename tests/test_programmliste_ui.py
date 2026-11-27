@@ -32,6 +32,7 @@ if __name__ == "__main__":
     pfade = {n: attrappe(attrappen, n) for n in ("bambu-studio", "orca-slicer", "prusa-slicer", "superslicer", "cura", "AnycubicSlicerNext", "freecad")}
     orca_ai = attrappe(os.path.join(heim, "Applications"), "OrcaSlicer-2.3.0.AppImage")
     mein = attrappe(os.path.join(tmp, "selbst"), "mein-slicer")
+    solid = attrappe(os.path.join(tmp, "solidcraft"), "SolidCraft")
     antwort = os.path.join(tmp, "antwort.txt")
     with open(os.path.join(attrappen, "zenity"), "w") as f:                    # der Dateidialog des Rechners
         f.write(f'#!/bin/sh\ncat "{antwort}"\n[ -s "{antwort}" ]\n')
@@ -81,24 +82,26 @@ if __name__ == "__main__":
                   sorted(x["ort"] for x in orcas) == ["AppImage", "System"] and all(not x["ort"] for x in z if x["name"] != "OrcaSlicer"))
             check("Radio-Gruppe mit Beschriftung (Leseprogramme), jeder Pfad ist der Beschreibung des Radios",
                   pg.eval_on_selector("#prog-slicer fieldset legend", "e => e.textContent") == "Slicer"
-                  and pg.eval_on_selector_all("#prog-slicer input[name=prog-std]", "l => l.every(r => document.getElementById(r.getAttribute('aria-describedby')))"))
+                  and pg.eval_on_selector_all("#prog-slicer input[name=prog-std-slicer]", "l => l.every(r => document.getElementById(r.getAttribute('aria-describedby')))"))
             check("Der Standard hat kein wirksames ×, die anderen schon", [x["weg"] for x in z] == [False] + [True] * 6)
             check("Slicer und CAD haben je einen Reiter; der Reiter Slicer ist offen, der des CADs verborgen",
                   pg.locator("[data-ein=slicer].aktiv").count() == 1 and pg.locator("[data-ein=cad]").count() == 1
                   and pg.is_visible("#prog-slicer") and not pg.is_visible("#prog-cad"))
             pg.click("[data-ein=cad]")
-            check("CAD bleibt ein Platz: ein Eintrag (FreeCAD) mit „Ändern …“, keine Liste",
-                  pg.locator("#prog-cad [data-prog-aendern=cad]").is_visible() and "FreeCAD" in pg.inner_text("#prog-cad .prog-wahl")
-                  and pg.locator("#prog-cad input[type=radio]").count() == 0)
+            check("CAD ist eine Liste wie der Slicer (#29): FreeCAD als Standard gewählt, mit ＋ Hinzufügen",
+                  pg.locator("#prog-cad input[name=prog-std-cad]:checked").count() == 1 and "FreeCAD" in pg.inner_text("#prog-cad .prog-zeile.ist")
+                  and pg.locator("#prog-cad [data-prog-neu=cad]").is_visible())
+            check("… und sagt, welches FreeCAD Vorschaubilder und Masse rechnet — unabhängig vom Standard",
+                  pfade["freecad"] in pg.inner_text("#prog-cad .prog-einlesen"))
             pg.click("[data-ein=slicer]")
 
             # Tastatur: Pfeil nach unten wählt den nächsten
-            pg.focus("#prog-slicer input[name=prog-std]:checked")
+            pg.focus("#prog-slicer input[name=prog-std-slicer]:checked")
             pg.keyboard.press("ArrowDown")
             z = zeilen()
             check("Mit der Pfeiltaste ist der nächste Slicer Standard, die Marke zieht mit, der Fokus bleibt im Radio",
                   z[1]["gewaehlt"] and z[1]["marke"] == "Standard" and not z[0]["marke"]
-                  and pg.evaluate("document.activeElement?.name") == "prog-std")
+                  and pg.evaluate("document.activeElement?.name") == "prog-std-slicer")
             check("… gespeichert ist noch nichts", slicer()[0]["pfad"] == pfade["bambu-studio"])
             pg.click("dialog button[value=nein]")
             check("Abbrechen verwirft die Wahl", slicer()[0]["pfad"] == pfade["bambu-studio"])
@@ -166,6 +169,36 @@ if __name__ == "__main__":
                   "mein-slicer" not in [x["name"] for x in zeilen()] and pg.locator("#prog-slicer [data-prog-zeigen]").count() == 0)
             speichern()
             check("Gespeichert: entfernt", mein not in [x["pfad"] for x in slicer()])
+
+            # CAD: SolidCraft hinzufügen und zum Standard machen — das Einlesen bleibt bei FreeCAD
+            oeffnen()
+            pg.click("[data-ein=cad]")
+            with open(antwort, "w") as f:
+                f.write(solid + "\n")
+            pg.click("#prog-cad [data-prog-neu]")
+            pg.wait_for_function("document.querySelectorAll('#prog-cad .prog-zeile').length === 2")
+            pg.click("[data-ein=slicer]")             # der Dialog merkt sich den Reiter; die übrigen Prüfungen öffnen ihn beim Slicer
+            speichern()
+            check("CAD: ein hinzugefügtes Programm bleibt nach dem Speichern in der Liste, auch ohne Standard zu sein",
+                  [(p["name"], p["standard"]) for p in liste()["programme"] if p["art"] == "cad"] == [("FreeCAD", True), ("SolidCraft", False)])
+            oeffnen()
+            pg.click("[data-ein=cad]")
+            pg.click("#prog-cad label:text-is('SolidCraft')")
+            pg.click("[data-ein=slicer]")
+            speichern()
+            l = liste()
+            check("CAD: SolidCraft hinzugefügt und als Standard gespeichert — STEP öffnet sich darin, FCStd weiter in FreeCAD",
+                  [(p["name"], p["standard"]) for p in l["programme"] if p["art"] == "cad"] == [("SolidCraft", True), ("FreeCAD", False)]
+                  and l["standard"]["step"] == solid and l["standard"]["fcstd"] == pfade["freecad"])
+            check("… das Einlesen bleibt bei FreeCAD", l["einlesen_freecad"] == pfade["freecad"])
+            oeffnen()
+            pg.click("[data-ein=cad]")
+            pg.click("#prog-cad [data-prog-auto=cad]")
+            pg.click("#prog-cad [aria-label='Entfernen: SolidCraft']")
+            pg.click("[data-ein=slicer]")
+            speichern()
+            check("CAD wieder automatisch, SolidCraft entfernt: FreeCAD allein und Standard",
+                  [(p["name"], p["standard"]) for p in liste()["programme"] if p["art"] == "cad"] == [("FreeCAD", True)])
 
             # Der Standard lässt sich nicht entfernen
             oeffnen()

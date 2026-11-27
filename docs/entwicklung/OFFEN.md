@@ -4,6 +4,17 @@ Arbeitsstand für den nächsten Chat. Führend bleibt `KONZEPT.md`; hier steht,
 was gerade offen ist und was entschieden wurde. Nach jeder erledigten Sache
 aktualisieren.
 
+## 1.0.19 auf dem Branch `ccr-40e24d2e-976s9h`, vorbereitet (27.11.2026) — **nicht auf `main`, `test_ui.py` komplett steht vor dem Push**
+
+CAD-Programme als Liste wie die Slicer (#29, Wunsch des Testers: FreeCAD und SolidCraft wahlweise): `LISTEN_ARTEN = (SLICER, CAD)`, Reiter CAD
+mit Radio/＋/×/„wieder anzeigen“, im Menü ⋮ „Im CAD öffnen“ als Untermenü (das Menü war schon allgemein). Das Einlesen von STEP/FCStd holt
+sich FreeCAD selbst (`programme.freecad_zum_einlesen`: CAD-Standard, wenn FreeCAD; sonst eigene, frühere, erkannte — auch ausgeblendete);
+`scan.py` und `eigene.py` nutzen es. FCStd öffnet nur FreeCAD (`formate_fuer`), ein anderes CAD als Standard lässt FreeCAD dafür einspringen
+(`standard`). Der Reiter CAD nennt das FreeCAD fürs Einlesen. `test_programmliste` 50/50, `test_programmliste_ui` 38/38, `test_api` 96/96
+(Prüfung „fremdes CAD öffnet alles“ angepasst: alles ausser FCStd); Gegenproben fallen (Scan nimmt den CAD-Standard, Einlesen nur über den
+Standard, ausgeblendetes FreeCAD fehlt, fremdes CAD öffnet FCStd, CAD keine Liste, CAD-Liste nicht gespeichert). Eine Prüfung war zu schwach
+(SolidCraft gleich als Standard — stand dann auch ohne Listeneintrag da) und wurde getrennt.
+
 ## Stand: 1.0.18 auf `main` (25.11.2026, für den Tester) — Rückweg `fassung-1.0.17`
 
 Vor dem Push: alle 61 Suiten grün, `test_ui` 71/71 einmal komplett, `test_staende_ui` 18/18 (`test_verschieben_ui` einmal 4/5 unter

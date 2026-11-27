@@ -8,6 +8,11 @@ Zeilen in der Sprache des Anwenders, was er sieht oder tun kann, nicht was im Co
 """
 
 NEUES = [
+    ("1.0.19", ["Mehrere CAD-Programme: Einstellungen › CAD ist jetzt eine Liste wie beim Slicer. Mit „＋ Hinzufügen“ trägst du ein weiteres ein "
+                "(etwa SolidCraft), den Standard wählst du mit dem Auswahlknopf. Im Menü ⋮ einer STEP-Datei stehen dann alle unter „Im CAD öffnen“.",
+                "Vorschaubilder und Masse für STEP und FCStd rechnet weiter FreeCAD — auch wenn ein anderes CAD Standard ist. Welches FreeCAD das "
+                "ist, steht im Reiter CAD.",
+                "FCStd-Dateien öffnen sich immer in FreeCAD: ein anderes CAD kann sie nicht lesen."]),
     ("1.0.18", ["Stände: Dateien nach dem Muster JJKW_Name_NN oder Name_JJKW_NN (etwa 2647_Peltierhalter_06 oder Peltierhalter_2647_06) mit "
                 "gleichem Namen, gleichem Format und im gleichen Ordner liegen jetzt als ein Stapel da — beide Schreibweisen zusammen, wenn du "
                 "umstellst. Oben liegt der Stand, an dem du zuletzt gearbeitet hast (nach „zuletzt geändert“, nicht nach der "
