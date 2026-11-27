@@ -119,8 +119,7 @@ class Eigene:
             einst = self.k.b.einstellungen()
             if fmt == "fcstd" and einst.get("fcstd_freecad") != "ja":
                 return None, a.masse_mm
-            prog = programme.programm_fuer(programme.CAD, einst) or {}
-            befehl = cad.konsole_befehl(prog.get("pfad"))
+            befehl = cad.konsole_befehl(programme.freecad_zum_einlesen(einst))      # nicht der CAD-Standard (#29)
             if not befehl:
                 return None, a.masse_mm
             ziel = self.k.b.pfad("arbeit", "cad", f"komp_{h}.stl")

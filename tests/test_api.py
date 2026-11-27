@@ -203,9 +203,10 @@ if __name__ == "__main__":
         bekannt = _prog.eintrag_fuer(programm_datei("orca-slicer"), "slicer")
         fremd_slicer = _prog.eintrag_fuer(programm_datei("mein-slicer"), "slicer")
         fremd_cad = _prog.eintrag_fuer(programm_datei("mein-cad"), "cad")
-        check("Gewählter Slicer: nie FCStd (bekannt wie unbekannt), ein gewähltes CAD alles",
+        check("Gewählter Slicer: nie FCStd (bekannt wie unbekannt); ein fremdes CAD alles ausser FCStd — das öffnet nur FreeCAD (#29)",
               "fcstd" not in bekannt["formate"] and "fcstd" not in fremd_slicer["formate"] and "stl" in fremd_slicer["formate"]
-              and "3mf" in fremd_slicer["formate"] and set(fremd_cad["formate"]) == set(_prog.FORMATE))
+              and "3mf" in fremd_slicer["formate"] and set(fremd_cad["formate"]) == set(_prog.FORMATE) - {"fcstd"}
+              and "fcstd" in _prog.eintrag_fuer(programm_datei("freecad"), "cad")["formate"])
         check("Auch ein älterer, gespeicherter Eintrag mit allen Formaten behält FCStd nicht im Slicer",
               "fcstd" not in _prog.eigene({"programme": [{"name": "alt", "art": "slicer", "pfad": programm_datei("alt"),
                                                          "formate": list(_prog.FORMATE)}]})[0]["formate"])

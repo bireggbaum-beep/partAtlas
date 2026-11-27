@@ -1238,8 +1238,11 @@ def erstelle_app(bestand_pfad=None, scan_beim_start=None, prozesse=None, im_hint
     @app.get("/api/programme")
     def programme_liste():
         liste, std = _programme()
+        e = zustand["bestand"].einstellungen()
         return {"programme": liste, "standard": std, "arten": programme.ARTEN, "moeglich": programme.moegliche_formate(),
-                "ausgeblendet": programme.ausgeblendete(zustand["bestand"].einstellungen()), "listen": list(programme.LISTEN_ARTEN)}
+                "ausgeblendet": programme.ausgeblendete(e), "listen": list(programme.LISTEN_ARTEN),
+                # Welches FreeCAD Vorschaubilder und Masse für STEP/FCStd rechnet — unabhängig vom CAD-Standard (#29), für den Hinweis im Reiter CAD
+                "einlesen_freecad": programme.freecad_zum_einlesen(e)}
 
     @app.post("/api/programme/waehlen")
     def programm_waehlen(koerper: dict = Depends(json_koerper)):

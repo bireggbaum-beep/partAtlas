@@ -131,7 +131,9 @@ def formate_fuer(name, art, vorgabe=None):
         if n == name:
             return list(formate)
     basis = list(vorgabe) if vorgabe else list(FORMATE)
-    return [f for f in basis if art != SLICER or f != "fcstd"]
+    # FCStd ist das Format von FreeCAD: ein anderes CAD (SolidCraft, Fusion …) öffnet es nicht. Seit das CAD eine Liste ist (#29), startete
+    # der Hauptknopf eine FCStd sonst im gewählten Standard, auch wenn der nichts damit anfangen kann.
+    return [f for f in basis if f != "fcstd" or (art == CAD and "freecad" in name.lower())]
 
 
 def moegliche_formate():
@@ -167,10 +169,10 @@ def eintrag_fuer(pfad, art):
     return {**_eintrag(stamm, art, formate_fuer(stamm, art), pfad), "eigen": True}
 
 
-# Die Arten, für die der Anwender eine Liste führt (mehrere Programme, eines davon der Standard). Der Slicer seit dieser Fassung;
-# das CAD hat weiter genau einen Platz — die Umwandlung von STEP und FCStd (scan.py) hängt an dieser einen Wahl. Kommt das CAD später
-# dazu, ist es hier ein Eintrag mehr; die Schlüssel in den Einstellungen („programme_eigene“, „programme_aus“) tragen die Art schon.
-LISTEN_ARTEN = (SLICER,)
+# Die Arten, für die der Anwender eine Liste führt (mehrere Programme, eines davon der Standard): der Slicer seit 1.0.17, das CAD seit 1.0.19
+# (Issue #29; Tester: FreeCAD und SolidCraft wahlweise). Die Umwandlung von STEP und FCStd hängt nicht mehr an der CAD-Wahl, sondern holt
+# sich FreeCAD selbst (`freecad_zum_einlesen`): wer SolidCraft als Standard wählt, behält Vorschaubilder und Masse.
+LISTEN_ARTEN = (SLICER, CAD)
 
 
 def _echt(pfad):
@@ -244,7 +246,7 @@ def _slicerliste(einstellungen, erkannt, art):
 
 
 def alle(einstellungen, erkannt=None):
-    """Der Slicer als Liste (Standard zuerst), das CAD als genau ein Platz."""
+    """Slicer und CAD je als Liste, der Standard jeweils zuerst."""
     erkannt = erkennen() if erkannt is None else erkannt
     ergebnis = []
     for art in ARTEN:
@@ -267,25 +269,49 @@ def ausgeblendete(einstellungen, erkannt=None):
     return ergebnis
 
 
+def standard_von(programme, art):
+    """Das Programm einer Art, das der Hauptknopf nimmt — das mit der Marke „standard“; ohne Marke (eine Liste aus anderer Quelle) das erste.
+    Überall, wo „der Slicer“ oder „das CAD“ gemeint ist und nicht „irgendeines“, kommt es von hier."""
+    liste = [p for p in programme if p["art"] == art]
+    return next((p for p in liste if p.get("standard")), liste[0] if liste else None)
+
+
 def standard_slicer(programme):
-    """Der Slicer, den der Hauptknopf nimmt — der mit der Marke „standard“; ohne Marke (eine Liste aus anderer Quelle) der erste.
-    Überall, wo „der Slicer“ gemeint ist und nicht „irgendein Slicer“, kommt er von hier."""
-    slicer = [p for p in programme if p["art"] == SLICER]
-    return next((p for p in slicer if p.get("standard")), slicer[0] if slicer else None)
+    return standard_von(programme, SLICER)
+
+
+def freecad_zum_einlesen(einstellungen, erkannt=None):
+    """Der Pfad des FreeCAD, das STEP und FCStd in ein Netz umwandelt (Vorschaubild, Masse, 3D-Ansicht) — unabhängig davon, welches CAD
+    zum Öffnen der Standard ist (#29). Vorher kam es aus der CAD-Wahl: wer Fusion oder SolidCraft wählte, bekam still keine Vorschau mehr.
+    Reihenfolge: der CAD-Standard, wenn er FreeCAD ist; sonst selbst eingetragene und frühere Einträge; sonst die erkannten — auch
+    ausgeblendete (Ausblenden betrifft das Menü „Öffnen“, nicht das Einlesen). None, wenn es auf dem Rechner kein FreeCAD gibt."""
+    from . import cad          # cad kennt programme nicht; erst hier, damit das Laden ohne Kreis bleibt
+    erkannt = erkennen() if erkannt is None else erkannt
+    std = programm_fuer(CAD, einstellungen, erkannt)
+    kandidaten = ([std["pfad"]] if std else []) + [s["pfad"] for s in eigene(einstellungen) if s["art"] == CAD] \
+        + [p for p in pfade_von(einstellungen, "programme_eigene", CAD) if ausfuehrbar(p)] \
+        + [s["pfad"] for s in erkannt if s["art"] == CAD]
+    return next((p for p in kandidaten if cad.konsole_befehl(p)), None)
 
 
 def standard(programme, einstellungen=None):
     """Je Format das Programm, das der Hauptknopf nimmt: STEP und FCStd ins CAD (ein Slicer
     würde STEP nur vernetzen und FCStd gar nicht kennen), alles andere in den Slicer — so wie man druckt.
-    Weitere Slicer der Liste zählen hier nicht: sie stehen im Menü „Öffnen mit“, der Hauptknopf nimmt nur den Standard-Slicer
-    (so wie vor der Liste, als es nur diesen einen gab)."""
-    std = standard_slicer(programme)
-    programme = [p for p in programme if p["art"] != SLICER or p is std]
+    Weitere Slicer und CAD-Programme der Listen zählen hier nicht: sie stehen im Menü „Öffnen mit“, der Hauptknopf nimmt nur den Standard
+    der Art (so wie vor den Listen, als es nur je einen gab)."""
+    std = {art: standard_von(programme, art) for art in ARTEN}
+    alle_cad = [p for p in programme if p["art"] == CAD]
+    programme = [p for p in programme if p is std[p["art"]]]
     ergebnis = {}
     for fmt in FORMATE:
         passend = [p for p in programme if fmt in p["formate"]]
         vorzug = CAD if fmt in CAD_FORMATE else SLICER
-        wahl = next((p for p in passend if p["art"] == vorzug), None) or (passend[0] if passend else None)
+        wahl = next((p for p in passend if p["art"] == vorzug), None)
+        if not wahl and vorzug == CAD:
+            # Kann der CAD-Standard ein CAD-Format nicht öffnen (SolidCraft keine FCStd), springt ein CAD der Liste ein, das es kann
+            # (FreeCAD) — anders als beim Slicer: dort bliebe es bei „nichts“, statt einen nie gewählten Slicer zu starten.
+            wahl = next((p for p in alle_cad if fmt in p["formate"]), None)
+        wahl = wahl or (passend[0] if passend else None)
         ergebnis[fmt] = wahl["pfad"] if wahl else None
     return ergebnis
 

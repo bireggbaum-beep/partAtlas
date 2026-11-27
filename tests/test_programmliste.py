@@ -1,5 +1,6 @@
 """Mehrere Slicer in der Liste: der bisherige Standard bleibt Standard, Ausblenden/Hinzufügen/Entfernen, der Hauptknopf und das geslichte 3MF
-starten nur den Standard-Slicer, und das CAD behält genau einen Platz. Die Programme sind Attrappen, die nur aufschreiben, womit sie gestartet wurden."""
+starten nur den Standard-Slicer. Das CAD ist seit 1.0.19 ebenso eine Liste (#29) — und das Einlesen von STEP/FCStd behält FreeCAD, auch wenn
+ein anderes CAD Standard ist. Die Programme sind Attrappen, die nur aufschreiben, womit sie gestartet wurden."""
 import json
 import os
 import tempfile
@@ -82,7 +83,8 @@ if __name__ == "__main__":
         check("Ohne Wahl: alle erkannten Slicer stehen da, der erste Fund (Bambu Studio) vorn als Standard",
               [p["name"] for p in liste] == ["Bambu Studio", "OrcaSlicer", "PrusaSlicer"] and [p["standard"] for p in liste] == [True, False, False])
         check("… sie sind als „erkannt“ gekennzeichnet, mit Herkunft „System“", all(p["quelle"] == "erkannt" and p["ort"] == "System" for p in liste))
-        check("CAD: weiter genau ein Platz", [p["name"] for p in c.get("/api/programme").json()["programme"] if p["art"] == "cad"] == ["FreeCAD"])
+        check("CAD ohne Wahl: das gefundene FreeCAD ist Standard", [(p["name"], p["standard"]) for p in c.get("/api/programme").json()["programme"]
+                                                                       if p["art"] == "cad"] == [("FreeCAD", True)])
         r, z1 = oeffne(haken)
         check("Hauptknopf für STL startet den Standard-Slicer (Bambu Studio), nicht irgendeinen",
               r.status_code == 200 and len(z1) == 1 and z1[0].startswith("bambu-studio ") and r.json()["programm"] == "Bambu Studio")
@@ -192,19 +194,50 @@ if __name__ == "__main__":
         c.put("/api/einstellungen", json={"programme_eigene": {"slicer": []}})
 
         # ---- Unbekanntes wird nicht übernommen
-        c.put("/api/einstellungen", json={"programme_eigene": {"cad": [eigener], "sonst": [eigener]}, "programme_aus": {"cad": [freecad]}})
-        check("Nur Arten mit Liste werden gespeichert: für das CAD und Unbekanntes bleibt es beim Alten",
-              z["bestand"].einstellungen()["programme_eigene"] == {"slicer": []} and z["bestand"].einstellungen()["programme_aus"] == {"slicer": []})
-        check("… das CAD hat weiter genau einen Eintrag", [p["name"] for p in c.get("/api/programme").json()["programme"] if p["art"] == "cad"] == ["FreeCAD"])
+        c.put("/api/einstellungen", json={"programme_eigene": {"sonst": [eigener]}, "programme_aus": {"sonst": [freecad]}})
+        check("Nur Arten mit Liste werden gespeichert: Unbekanntes bleibt draussen",
+              "sonst" not in z["bestand"].einstellungen()["programme_eigene"] and "sonst" not in z["bestand"].einstellungen()["programme_aus"])
         check("Schlechte Form wird abgelehnt statt gespeichert", c.put("/api/einstellungen", json={"programme_aus": ["x"]}).status_code == 400)
 
-        # ---- CAD: die Umwandlung bekommt denselben Aufruf wie vorher, egal wie lang die Slicerliste ist
+        # ---- CAD als Liste (#29): SolidCraft dazu und als Standard — das Einlesen behält FreeCAD
+        def cads():
+            return [p for p in c.get("/api/programme").json()["programme"] if p["art"] == "cad"]
+        solid = attrappe(os.path.join(tmp, "solidcraft"), "SolidCraft")
+        c.put("/api/einstellungen", json={"programme_eigene": {"cad": [solid]}})
+        check("CAD: eine Liste wie beim Slicer — FreeCAD (Standard) und das hinzugefügte SolidCraft",
+              [(p["name"], p["standard"], p["quelle"]) for p in cads()] == [("FreeCAD", True, "erkannt"), ("SolidCraft", False, "eigen")])
+        c.put("/api/einstellungen", json={"programm": {"cad": solid}})
+        std = c.get("/api/programme").json()["standard"]
+        check("SolidCraft als CAD-Standard: STEP öffnet sich darin, STL weiter im Standard-Slicer",
+              std["step"] == solid and std["stl"] == next(p["pfad"] for p in slicer(c) if p["standard"]))
+        check("… eine FCStd aber in FreeCAD: SolidCraft kann sie nicht öffnen, FreeCAD aus der Liste springt ein",
+              std["fcstd"] == freecad and "fcstd" not in next(p for p in cads() if p["pfad"] == solid)["formate"])
+        e = z["bestand"].einstellungen()
+        check("… das Einlesen behält FreeCAD (Vorschaubilder und Masse für STEP/FCStd bleiben)",
+              pr.freecad_zum_einlesen(e) == freecad and cad.konsole_befehl(pr.freecad_zum_einlesen(e)) == [freecadcmd]
+              and c.get("/api/programme").json()["einlesen_freecad"] == freecad)
+        c.put("/api/einstellungen", json={"programme_aus": {"cad": [freecad]}})
+        check("FreeCAD im Menü ausgeblendet: es fehlt in der Liste, das Einlesen nimmt es trotzdem",
+              "FreeCAD" not in [p["name"] for p in cads()] and pr.freecad_zum_einlesen(z["bestand"].einstellungen()) == freecad)
+        check("Der CAD-Standard lässt sich nicht ausblenden", c.put("/api/einstellungen", json={"programme_aus": {"cad": [freecad, solid]}}).status_code == 400)
+        # Der Weg durch den Scan: eine STEP-Datei mit SolidCraft als Standard wird FreeCADCmd übergeben, nicht als „kein FreeCAD“ liegen gelassen
+        with open(os.path.join(sammlung, "Halter.step"), "w") as f:      # eigener Inhalt: gleiche Bytes wären ein schon bekanntes Modell
+            f.write("ISO-10303-21;\nHEADER;\nFILE_NAME('Halter-SolidCraft-Probe');\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n")
+        if os.path.exists(protokoll):
+            os.remove(protokoll)
+        z["scanner"].starten(); z["scanner"].warten(120)
+        aufrufe = open(protokoll).read() if os.path.exists(protokoll) else ""
+        check("Scan mit SolidCraft als CAD-Standard: die STEP-Datei geht an FreeCADCmd, keine Datei wartet auf „kein FreeCAD“",
+              "FreeCADCmd" in aufrufe and "SolidCraft" not in aufrufe and not z["scanner"].status.get("cad_ohne_freecad"))
+        os.remove(os.path.join(sammlung, "Halter.step"))
+        c.put("/api/einstellungen", json={"programm": {"cad": ""}, "programme_eigene": {"cad": []}, "programme_aus": {"cad": []}})
+        check("Wieder automatisch: FreeCAD ist der einzige CAD-Eintrag und Standard", [(p["name"], p["standard"]) for p in cads()] == [("FreeCAD", True)])
+
+        # ---- Die Umwandlung bekommt denselben Aufruf wie vorher, egal wie lang die Slicerliste ist
         c.put("/api/einstellungen", json={"programme_eigene": {"slicer": [eigener]}, "programme_aus": {"slicer": [orca]}})
         e = z["bestand"].einstellungen()
-        cadprog = pr.programm_fuer(pr.CAD, e)
-        check("CAD: `programm_fuer(CAD)` liefert dasselbe FreeCAD, und die Umwandlung ruft denselben FreeCADCmd auf",
-              cadprog["pfad"] == freecad and cad.konsole_befehl(cadprog["pfad"]) == [freecadcmd])
-        check("CAD: `alle()` liefert weiter genau einen CAD-Eintrag", len([p for p in pr.alle(e) if p["art"] == "cad"]) == 1)
+        check("CAD: das Einlesen ruft denselben FreeCADCmd auf wie vor den Listen",
+              pr.freecad_zum_einlesen(e) == freecad and cad.konsole_befehl(pr.freecad_zum_einlesen(e)) == [freecadcmd])
         c.put("/api/einstellungen", json={"programme_eigene": {"slicer": []}, "programme_aus": {"slicer": []}})
 
         # ---- Gleichnamige Programme: Herkunft unterscheidet sie

@@ -439,8 +439,7 @@ class Worker(_Bahn):
             return True
         if self._cad_anzahl() == 0:
             return False
-        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
-        return bool(self.cad_befehl or cad.konsole_befehl(prog.get("pfad")))
+        return bool(self.cad_befehl or cad.konsole_befehl(programme.freecad_zum_einlesen(self.b.einstellungen())))
 
     def _auslesen(self):
         """Den Inhalt der Dateien lesen, die das Einlesen nur angelegt hat: Masse, Slicer-Daten, eingebettetes Bild. Ergebnisse spätestens
@@ -524,12 +523,14 @@ class Worker(_Bahn):
         offen = self.k.ausstehende_cad()
         if not offen:
             return
-        prog = programme.programm_fuer(programme.CAD, self.b.einstellungen()) or {}
-        befehl = self.cad_befehl or cad.konsole_befehl(prog.get("pfad"))
+        # FreeCAD fürs Einlesen, unabhängig vom CAD-Standard zum Öffnen (#29): wer SolidCraft wählt, behält Vorschaubilder und Masse.
+        einst = self.b.einstellungen()
+        freecad = programme.freecad_zum_einlesen(einst)
+        befehl = self.cad_befehl or cad.konsole_befehl(freecad)
         if not befehl:
             # Ins Protokoll und in den Status: sonst weiss niemand, ob FreeCAD fehlt oder nur nicht als solches erkannt wurde.
-            log.warning("CAD: kein FreeCAD-Aufruf gefunden, %d Dateien warten (erkanntes CAD-Programm: %s)", len(offen),
-                        prog.get("pfad") or "keines")
+            prog = programme.programm_fuer(programme.CAD, einst) or {}
+            log.warning("CAD: kein FreeCAD-Aufruf gefunden, %d Dateien warten (CAD-Standard: %s)", len(offen), prog.get("pfad") or "keines")
             self._setze(cad_ohne_freecad=len(offen), cad_programm=prog.get("pfad") or "")
             return
         log.info("CAD: FreeCAD-Aufruf %s, %d Dateien offen", befehl, len(offen))
